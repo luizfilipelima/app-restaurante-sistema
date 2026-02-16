@@ -14,21 +14,25 @@ interface ProductCardProps {
 export default function ProductCard({ product, onClick, featured = false }: ProductCardProps) {
   return (
     <Card
-      className={`group cursor-pointer border-0 shadow-sm hover:shadow-md transition-all duration-300 bg-white overflow-hidden rounded-2xl ${
+      className={`group cursor-pointer border-0 shadow-sm hover:shadow-md transition-all duration-300 bg-white overflow-hidden rounded-2xl w-full min-w-0 ${
         featured ? 'ring-2 ring-orange-100' : ''
       }`}
       onClick={onClick}
     >
-      <div className="relative">
-        <div className={`relative aspect-[4/3] overflow-hidden bg-slate-100 ${featured ? 'h-40' : 'h-48'}`}>
+      <div className="relative w-full">
+        <div
+          className={`relative w-full overflow-hidden bg-slate-200 ${
+            featured ? 'aspect-[4/3] min-h-[140px]' : 'aspect-[4/3] min-h-[180px]'
+          }`}
+        >
           {product.image_url ? (
             <img
               src={product.image_url}
               alt={product.name}
-              className="absolute inset-0 w-full h-full min-w-full min-h-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
+              className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
             />
           ) : (
-            <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
               <span className="text-4xl">🍕</span>
             </div>
           )}

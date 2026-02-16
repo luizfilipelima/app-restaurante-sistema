@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
-import { Restaurant, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge } from '@/types';
+import { Restaurant, PizzaSize, PizzaDough, PizzaEdge } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency } from '@/lib/utils';
-import { Save, Plus, Trash2, Pizza } from 'lucide-react';
+import { uploadRestaurantLogo } from '@/lib/imageUpload';
+import { Save, Plus, Trash2, Pizza, Upload, Loader2 } from 'lucide-react';
 
 export default function AdminSettings() {
   const restaurantId = useAdminRestaurantId();
@@ -23,19 +24,17 @@ export default function AdminSettings() {
     primary_color: '#000000',
     secondary_color: '#ffffff',
   });
+  const [logoUploading, setLogoUploading] = useState(false);
 
   // Configuração do cardápio por categoria (Pizza)
   const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]);
-  const [pizzaFlavors, setPizzaFlavors] = useState<PizzaFlavor[]>([]);
   const [pizzaDoughs, setPizzaDoughs] = useState<PizzaDough[]>([]);
   const [pizzaEdges, setPizzaEdges] = useState<PizzaEdge[]>([]);
   const [menuConfigLoading, setMenuConfigLoading] = useState(false);
   const [showFormSize, setShowFormSize] = useState(false);
-  const [showFormFlavor, setShowFormFlavor] = useState(false);
   const [showFormDough, setShowFormDough] = useState(false);
   const [showFormEdge, setShowFormEdge] = useState(false);
   const [formSize, setFormSize] = useState({ name: '', max_flavors: 1, price_multiplier: 1, order_index: 0 });
-  const [formFlavor, setFormFlavor] = useState({ name: '', description: '', price: '' });
   const [formDough, setFormDough] = useState({ name: '', extra_price: '' });
   const [formEdge, setFormEdge] = useState({ name: '', price: '' });
 
@@ -80,14 +79,12 @@ export default function AdminSettings() {
     if (!restaurantId) return;
     setMenuConfigLoading(true);
     try {
-      const [sizesRes, flavorsRes, doughsRes, edgesRes] = await Promise.all([
+      const [sizesRes, doughsRes, edgesRes] = await Promise.all([
         supabase.from('pizza_sizes').select('*').eq('restaurant_id', restaurantId).order('order_index'),
-        supabase.from('pizza_flavors').select('*').eq('restaurant_id', restaurantId).order('name'),
         supabase.from('pizza_doughs').select('*').eq('restaurant_id', restaurantId).order('name'),
         supabase.from('pizza_edges').select('*').eq('restaurant_id', restaurantId).order('name'),
       ]);
       if (sizesRes.data) setPizzaSizes(sizesRes.data);
-      if (flavorsRes.data) setPizzaFlavors(flavorsRes.data);
       if (doughsRes.data) setPizzaDoughs(doughsRes.data);
       if (edgesRes.data) setPizzaEdges(edgesRes.data);
     } catch (e) {
@@ -115,32 +112,6 @@ export default function AdminSettings() {
     } catch (err) {
       console.error(err);
       alert('Erro ao salvar tamanho.');
-    }
-  };
-
-  const handleSubmitFlavor = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!restaurantId) return;
-    const price = parseFloat(formFlavor.price.replace(',', '.'));
-    if (isNaN(price) || price < 0) {
-      alert('Preço inválido.');
-      return;
-    }
-    try {
-      const { error } = await supabase.from('pizza_flavors').insert({
-        restaurant_id: restaurantId,
-        name: formFlavor.name,
-        description: formFlavor.description || null,
-        price,
-        is_active: true,
-      });
-      if (error) throw error;
-      setFormFlavor({ name: '', description: '', price: '' });
-      setShowFormFlavor(false);
-      loadMenuConfig();
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao salvar sabor.');
     }
   };
 
@@ -195,15 +166,6 @@ export default function AdminSettings() {
       console.error(e);
     }
   };
-  const deleteFlavor = async (id: string) => {
-    if (!confirm('Excluir este sabor?')) return;
-    try {
-      await supabase.from('pizza_flavors').delete().eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
   const deleteDough = async (id: string) => {
     if (!confirm('Excluir esta massa?')) return;
     try {
@@ -223,14 +185,6 @@ export default function AdminSettings() {
     }
   };
 
-  const toggleFlavorActive = async (id: string, isActive: boolean) => {
-    try {
-      await supabase.from('pizza_flavors').update({ is_active: !isActive }).eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
   const toggleDoughActive = async (id: string, isActive: boolean) => {
     try {
       await supabase.from('pizza_doughs').update({ is_active: !isActive }).eq('id', id);
@@ -346,16 +300,89 @@ export default function AdminSettings() {
               </div>
 
               <div>
-                <Label htmlFor="logo">URL da Logo</Label>
-                <Input
-                  id="logo"
-                  type="url"
-                  value={formData.logo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, logo: e.target.value })
-                  }
-                  placeholder="https://exemplo.com/logo.png"
-                />
+                <Label>Logo do restaurante</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  PNG, JPG ou GIF. Será convertida para WebP (80%) para ficar leve.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 items-start">
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/gif"
+                      className="sr-only"
+                      disabled={logoUploading || !restaurantId}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !restaurantId) return;
+                        setLogoUploading(true);
+                        try {
+                          const url = await uploadRestaurantLogo(restaurantId, file);
+                          setFormData((f) => ({ ...f, logo: url }));
+                          alert('Logo enviada e otimizada (WebP 80%)');
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : 'Erro ao enviar logo. Tente outro arquivo.');
+                        } finally {
+                          setLogoUploading(false);
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="pointer-events-none"
+                      asChild
+                    >
+                      <span>
+                        {logoUploading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Enviando...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Escolher arquivo
+                          </>
+                        )}
+                      </span>
+                    </Button>
+                  </label>
+                  {formData.logo && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden border bg-muted flex-shrink-0">
+                        <img
+                          src={formData.logo}
+                          alt="Logo"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFormData((f) => ({ ...f, logo: '' }))}
+                      >
+                        Remover logo
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div className="pt-2">
+                  <Label htmlFor="logo_url" className="text-xs text-muted-foreground">
+                    Ou cole uma URL da logo
+                  </Label>
+                  <Input
+                    id="logo_url"
+                    type="url"
+                    value={formData.logo}
+                    onChange={(e) =>
+                      setFormData({ ...formData, logo: e.target.value })
+                    }
+                    placeholder="https://..."
+                    className="mt-1"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -464,7 +491,7 @@ export default function AdminSettings() {
                 Configuração do cardápio
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Defina opções por categoria. A categoria <strong>Pizza</strong> usa tamanhos, sabores, massas e bordas para o cliente montar o pedido.
+                Defina opções por categoria. A categoria <strong>Pizza</strong> usa tamanhos, massas e bordas para o cliente montar o pedido.
               </p>
             </CardHeader>
             <CardContent>
@@ -519,50 +546,6 @@ export default function AdminSettings() {
                             <li key={s.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
                               <span><strong>{s.name}</strong> — até {s.max_flavors} sabor(es) — multiplicador {Number(s.price_multiplier)}x</span>
                               <Button type="button" size="icon" variant="ghost" onClick={() => deleteSize(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {/* Sabores */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-base font-semibold">Sabores de pizza</Label>
-                          <Button type="button" size="sm" variant="outline" onClick={() => setShowFormFlavor(!showFormFlavor)}>
-                            <Plus className="h-4 w-4 mr-1" /> Adicionar
-                          </Button>
-                        </div>
-                        {showFormFlavor && (
-                          <form onSubmit={handleSubmitFlavor} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div>
-                                <Label>Nome</Label>
-                                <Input value={formFlavor.name} onChange={(e) => setFormFlavor((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Margherita" required />
-                              </div>
-                              <div>
-                                <Label>Preço (R$)</Label>
-                                <Input value={formFlavor.price} onChange={(e) => setFormFlavor((f) => ({ ...f, price: e.target.value }))} placeholder="35,00" required />
-                              </div>
-                              <div className="sm:col-span-2">
-                                <Label>Descrição (opcional)</Label>
-                                <Input value={formFlavor.description} onChange={(e) => setFormFlavor((f) => ({ ...f, description: e.target.value }))} placeholder="Ex: Molho, mussarela e manjericão" />
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button type="submit" size="sm">Salvar</Button>
-                              <Button type="button" size="sm" variant="outline" onClick={() => setShowFormFlavor(false)}>Cancelar</Button>
-                            </div>
-                          </form>
-                        )}
-                        <ul className="space-y-2">
-                          {pizzaFlavors.length === 0 && <p className="text-sm text-muted-foreground">Nenhum sabor. Adicione para o cliente montar a pizza.</p>}
-                          {pizzaFlavors.map((f) => (
-                            <li key={f.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
-                              <span><strong>{f.name}</strong> — {formatCurrency(Number(f.price))}{!f.is_active && ' (inativo)'}</span>
-                              <div className="flex gap-1">
-                                <Button type="button" size="sm" variant="ghost" onClick={() => toggleFlavorActive(f.id, f.is_active)}>{f.is_active ? 'Desativar' : 'Ativar'}</Button>
-                                <Button type="button" size="icon" variant="ghost" onClick={() => deleteFlavor(f.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                              </div>
                             </li>
                           ))}
                         </ul>

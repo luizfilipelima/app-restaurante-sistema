@@ -71,3 +71,31 @@ export async function uploadProductImage(
   const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(data.path);
   return urlData.publicUrl;
 }
+
+/**
+ * Faz upload da logo do restaurante: converte para WebP 80% e envia para o bucket.
+ * Substitui a logo anterior (upsert) no path {restaurantId}/logo.webp.
+ */
+export async function uploadRestaurantLogo(
+  restaurantId: string,
+  file: File
+): Promise<string> {
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error('Formato não suportado. Use PNG, JPG ou GIF.');
+  }
+
+  const blob = await convertToWebP(file);
+  const path = `${restaurantId}/logo.webp`;
+
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, blob, {
+      contentType: 'image/webp',
+      upsert: true,
+    });
+
+  if (error) throw error;
+  const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return urlData.publicUrl;
+}

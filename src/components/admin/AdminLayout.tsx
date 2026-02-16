@@ -117,21 +117,23 @@ export default function AdminLayout({
         {/* Sidebar Desktop */}
         <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col md:flex-shrink-0">
           <div className="flex flex-col flex-grow border-r bg-card overflow-y-auto">
-            <div className="flex items-center flex-shrink-0 px-4 py-6">
+            <div className="flex flex-col flex-shrink-0 px-4 py-5 w-full min-w-0">
               {isSuperAdminView && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mb-2 w-full justify-start"
+                  className="mb-3 w-full justify-start"
                   onClick={handleBackToRestaurants}
                 >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  <ArrowLeft className="mr-2 h-4 w-4 shrink-0" />
                   Voltar
                 </Button>
               )}
-              <h1 className="text-2xl font-bold text-primary">Painel Admin</h1>
+              <h1 className="text-xl font-bold text-primary leading-tight whitespace-nowrap truncate" title="Painel Admin">
+                Painel Admin
+              </h1>
               {restaurant && (
-                <p className="text-sm text-muted-foreground mt-1 truncate" title={restaurant.name}>
+                <p className="text-sm text-muted-foreground mt-1.5 truncate w-full min-w-0" title={restaurant.name}>
                   {restaurant.name}
                 </p>
               )}
@@ -210,11 +212,11 @@ export default function AdminLayout({
 
         {/* Mobile Header */}
         <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b">
-          <div className="flex items-center justify-between px-4 py-3">
-            <div>
-              <h1 className="text-xl font-bold text-primary">Painel Admin</h1>
+          <div className="flex items-center justify-between gap-3 px-4 py-3 min-w-0">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-bold text-primary leading-tight">Painel Admin</h1>
               {restaurant && (
-                <p className="text-xs text-muted-foreground truncate">{restaurant.name}</p>
+                <p className="text-xs text-muted-foreground truncate mt-0.5" title={restaurant.name}>{restaurant.name}</p>
               )}
             </div>
             <Button variant="ghost" size="icon" onClick={handleSignOut}>
