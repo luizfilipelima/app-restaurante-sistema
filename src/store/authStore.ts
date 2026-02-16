@@ -84,10 +84,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           .single();
 
         if (profileError || !userData) {
+          const uid = data.user.id;
           await supabase.auth.signOut();
           set({ loading: false });
           throw new Error(
-            'Login aceito, mas seu perfil não foi encontrado no sistema. Contate o administrador ou execute o script de cadastro de usuários.'
+            `Login aceito, mas seu perfil não foi encontrado no sistema. No Supabase (mesmo projeto do app), execute o script supabase-fix-perfil-flxlima.sql no SQL Editor. Seu UID: ${uid} — use esse valor no script se o arquivo tiver outro UID.`
           );
         }
 
