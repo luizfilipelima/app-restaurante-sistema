@@ -125,7 +125,7 @@ export default function PizzaModal({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-2xl h-[90vh] md:h-auto md:max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col bg-slate-50">
         
         {/* Header Fixo */}
@@ -144,6 +144,17 @@ export default function PizzaModal({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-8">
           
+          {/* Aviso quando não há tamanhos/sabores configurados */}
+          {(sizes.length === 0 || flavors.length === 0) && (
+            <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-amber-800">
+              <p className="font-semibold mb-1">Cardápio em configuração</p>
+              <p className="text-sm">
+                Os tamanhos e sabores desta pizza ainda não foram configurados pelo restaurante.
+                Em breve você poderá personalizar aqui. Por enquanto, entre em contato pelo WhatsApp para fazer o pedido.
+              </p>
+            </div>
+          )}
+
           {/* PASSO 1: Tamanho */}
           <section className="space-y-3">
             <div className="flex items-center gap-2 mb-2">

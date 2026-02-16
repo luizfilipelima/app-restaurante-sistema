@@ -20,12 +20,12 @@ export default function ProductCard({ product, onClick, featured = false }: Prod
       onClick={onClick}
     >
       <div className="relative">
-        <div className={`aspect-[4/3] overflow-hidden ${featured ? 'h-40' : 'h-48'}`}>
+        <div className={`relative aspect-[4/3] overflow-hidden bg-slate-100 ${featured ? 'h-40' : 'h-48'}`}>
           {product.image_url ? (
             <img
               src={product.image_url}
               alt={product.name}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              className="absolute inset-0 w-full h-full min-w-full min-h-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
             />
           ) : (
             <div className="w-full h-full bg-slate-100 flex items-center justify-center">
@@ -74,13 +74,37 @@ export default function ProductCard({ product, onClick, featured = false }: Prod
           </div>
         </div>
         
-        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-           <span className="text-orange-600 text-sm font-medium group-hover:underline">
-             {product.is_pizza ? 'Personalizar' : 'Ver detalhes'}
-           </span>
-           <Button size="icon" className="h-8 w-8 rounded-full bg-orange-500 hover:bg-orange-600 shadow-md">
-             <Plus className="h-5 w-5 text-white" />
-           </Button>
+        <div
+          className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between cursor-pointer"
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClick();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onClick();
+            }
+          }}
+        >
+          <span className="text-orange-600 text-sm font-medium group-hover:underline">
+            {product.is_pizza ? 'Personalizar' : 'Ver detalhes'}
+          </span>
+          <Button
+            type="button"
+            size="icon"
+            className="h-8 w-8 rounded-full bg-orange-500 hover:bg-orange-600 shadow-md"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onClick();
+            }}
+          >
+            <Plus className="h-5 w-5 text-white" />
+          </Button>
         </div>
       </CardContent>
     </Card>
