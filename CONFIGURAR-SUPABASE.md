@@ -83,6 +83,7 @@ O script:
   - `pizza_edges`
 - Ajusta políticas de **orders** e **order_items** para staff e super_admin.
 - Garante que **super_admin** possa ler todos os restaurantes.
+- Permite que **super_admin** leia a tabela **users** (para a tela de usuários do restaurante no painel).
 
 Depois disso, **admin do restaurante** e **super_admin** devem conseguir:
 
@@ -156,7 +157,26 @@ ON CONFLICT (id) DO UPDATE SET
 
 Ou use o script **`scripts/criar-usuarios.js`** (veja `scripts/README-criar-usuarios.md`), que usa a API com **service_role** para criar usuários e linhas em `public.users`.
 
+**Alternativa: cadastrar pelo painel (super admin)**  
+Se você publicar a Edge Function **create-restaurant-user**, o super admin pode cadastrar usuários (admin e cozinha) direto pelo painel. Veja a seção **Passo 6** abaixo.
+
 Depois disso, ao logar com esse email, o painel deve carregar **só** esse restaurante e as ações de **adicionar zonas de entrega** e **produtos no cardápio** devem funcionar (desde que o Passo 3 tenha sido feito).
+
+---
+
+## Passo 6: Cadastro de usuários pelo painel (opcional)
+
+Para o **super admin** poder cadastrar usuários de cada restaurante (admin e cozinha) pelo painel, é preciso publicar a **Edge Function** `create-restaurant-user`.
+
+1. Instale o [Supabase CLI](https://supabase.com/docs/guides/cli) e faça login: `supabase login`.
+2. No diretório do projeto, vincule ao seu projeto: `supabase link --project-ref SEU_PROJECT_REF` (o ref está na URL do projeto no dashboard).
+3. Faça o deploy da function:
+   ```bash
+   supabase functions deploy create-restaurant-user
+   ```
+4. A função usa as variáveis padrão do Supabase (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`), não é preciso configurar secrets adicionais.
+
+Depois do deploy, no painel do super admin, em **Restaurantes** → **Usuários** (ou ao gerenciar um restaurante, no menu **Usuários**), o formulário "Cadastrar usuário" passará a criar o usuário no Auth e em `public.users`. Se a function não estiver publicada, a tela ainda lista os usuários do restaurante, e você pode continuar usando o script **`scripts/criar-usuarios.js`** para criar novos usuários.
 
 ---
 
@@ -169,6 +189,7 @@ Depois disso, ao logar com esse email, o painel deve carregar **só** esse resta
 | **supabase-criar-super-admin.sql** | Exemplo para chamar `create_super_admin(email, user_id)` e virar super_admin. |
 | **supabase-fix-login.sql** | Apenas a política “Users can read own profile” se você já tiver o resto e só o login estiver falhando. |
 | **supabase-super-admin-policies.sql** | Versão antiga de políticas do super_admin; o **supabase-rls-completo.sql** já cobre e amplia isso. |
+| **supabase/functions/create-restaurant-user/** | Edge Function para o super admin cadastrar usuários (admin/cozinha) pelo painel. Deploy com `supabase functions deploy create-restaurant-user`. |
 
 ---
 
@@ -180,6 +201,7 @@ Depois disso, ao logar com esse email, o painel deve carregar **só** esse resta
 - [ ] Pelo menos um usuário criado em **Authentication**.
 - [ ] Super admin criado com `create_super_admin(email, user_id)`.
 - [ ] (Opcional) Um restaurante criado e um usuário `restaurant_admin` vinculado a ele.
+- [ ] (Opcional) Edge Function `create-restaurant-user` publicada, para cadastrar usuários pelo painel.
 
 Se todos os itens estiverem feitos e as variáveis de ambiente corretas, **adicionar zonas de entrega e produtos no cardápio** deve funcionar sem erro de permissão.
 

@@ -18,6 +18,7 @@ import AdminMenu from './pages/admin/Menu';
 import AdminOrders from './pages/admin/Orders';
 import AdminSettings from './pages/admin/Settings';
 import AdminDeliveryZones from './pages/admin/DeliveryZones';
+import SuperAdminRestaurantUsers from './pages/super-admin/RestaurantUsers';
 
 import KitchenDisplay from './pages/kitchen/KitchenDisplay';
 
@@ -78,6 +79,7 @@ function App() {
           }
         >
           {adminRoutes}
+          <Route path="users" element={<SuperAdminRestaurantUsers />} />
         </Route>
 
         {/* Restaurant Admin */}

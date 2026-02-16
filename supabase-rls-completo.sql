@@ -187,10 +187,22 @@ CREATE POLICY "Super admin read all restaurants"
     )
   );
 
+-- ========== USERS (super_admin pode listar usuários dos restaurantes) ==========
+DROP POLICY IF EXISTS "Super admin can read all users" ON users;
+CREATE POLICY "Super admin can read all users"
+  ON users FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.id = auth.uid() AND u.role = 'super_admin'
+    )
+  );
+
 -- ============================================================
 -- Fim. Agora admin do restaurante e super_admin podem:
 -- - Produtos: criar, editar, excluir
 -- - Zonas de entrega: criar, editar, excluir
 -- - Tamanhos/sabores/massas/bordas de pizza: criar, editar, excluir
 -- - Pedidos: ler e atualizar (já existia criar para qualquer um)
+-- - Super admin pode listar usuários (para tela de usuários do restaurante)
 -- ============================================================

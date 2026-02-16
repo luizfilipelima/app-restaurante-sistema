@@ -16,6 +16,10 @@ import {
   EyeOff,
   ExternalLink,
   Settings,
+  BookOpen,
+  ChefHat,
+  Layout,
+  Users,
 } from 'lucide-react';
 
 export default function SuperAdminRestaurants() {
@@ -285,6 +289,51 @@ export default function SuperAdminRestaurants() {
                         <Settings className="h-4 w-4 mr-2" />
                         Gerenciar restaurante
                       </Button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            window.open(`/${restaurant.slug}`, '_blank')
+                          }
+                        >
+                          <BookOpen className="h-4 w-4 mr-2" />
+                          Cardápio
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            window.open(
+                              `${window.location.origin}/super-admin/restaurants/${restaurant.id}`,
+                              '_blank'
+                            )
+                          }
+                        >
+                          <Layout className="h-4 w-4 mr-2" />
+                          Admin
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            window.open(`${window.location.origin}/kitchen`, '_blank')
+                          }
+                        >
+                          <ChefHat className="h-4 w-4 mr-2" />
+                          Cozinha
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            navigate(`/super-admin/restaurants/${restaurant.id}/users`)
+                          }
+                        >
+                          <Users className="h-4 w-4 mr-2" />
+                          Usuários
+                        </Button>
+                      </div>
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
@@ -308,15 +357,6 @@ export default function SuperAdminRestaurants() {
                               Ativar
                             </>
                           )}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            window.open(`/${restaurant.slug}`, '_blank')
-                          }
-                        >
-                          <ExternalLink className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
