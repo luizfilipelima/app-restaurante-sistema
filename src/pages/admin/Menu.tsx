@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/store/authStore';
-import AdminLayout from '@/components/admin/AdminLayout';
+import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,18 +9,18 @@ import { formatCurrency } from '@/lib/utils';
 import { Plus, Edit, Trash2, Pizza } from 'lucide-react';
 
 export default function AdminMenu() {
-  const { user } = useAuthStore();
+  const restaurantId = useAdminRestaurantId();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user?.restaurant_id) {
+    if (restaurantId) {
       loadProducts();
     }
-  }, [user]);
+  }, [restaurantId]);
 
   const loadProducts = async () => {
-    if (!user?.restaurant_id) return;
+    if (!restaurantId) return;
 
     try {
       setLoading(true);
@@ -29,7 +28,7 @@ export default function AdminMenu() {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('restaurant_id', user.restaurant_id)
+        .eq('restaurant_id', restaurantId)
         .order('category', { ascending: true })
         .order('name', { ascending: true });
 
@@ -90,17 +89,14 @@ export default function AdminMenu() {
 
   if (loading) {
     return (
-      <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
     );
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Cardápio</h1>
@@ -202,7 +198,6 @@ export default function AdminMenu() {
             ))}
           </div>
         )}
-      </div>
-    </AdminLayout>
+    </div>
   );
 }

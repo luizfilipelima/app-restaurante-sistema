@@ -221,6 +221,12 @@ CREATE TRIGGER update_orders_updated_at
 -- Habilitar RLS em todas as tabelas
 ALTER TABLE restaurants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Usuário pode ler o próprio perfil (necessário para o login funcionar)
+CREATE POLICY "Users can read own profile"
+  ON users FOR SELECT
+  USING (auth.uid() = id);
+
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pizza_sizes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pizza_flavors ENABLE ROW LEVEL SECURITY;

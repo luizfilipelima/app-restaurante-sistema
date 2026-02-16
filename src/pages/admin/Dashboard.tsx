@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/store/authStore';
-import AdminLayout from '@/components/admin/AdminLayout';
+import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { DollarSign, ShoppingCart, TrendingUp, Clock } from 'lucide-react';
@@ -22,7 +21,7 @@ import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function AdminDashboard() {
-  const { user } = useAuthStore();
+  const restaurantId = useAdminRestaurantId();
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState({
     totalRevenue: 0,
@@ -34,13 +33,13 @@ export default function AdminDashboard() {
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
 
   useEffect(() => {
-    if (user?.restaurant_id) {
+    if (restaurantId) {
       loadMetrics();
     }
-  }, [user]);
+  }, [restaurantId]);
 
   const loadMetrics = async () => {
-    if (!user?.restaurant_id) return;
+    if (!restaurantId) return;
 
     try {
       setLoading(true);
@@ -51,7 +50,7 @@ export default function AdminDashboard() {
       const { data: orders, error } = await supabase
         .from('orders')
         .select('*')
-        .eq('restaurant_id', user.restaurant_id)
+        .eq('restaurant_id', restaurantId)
         .gte('created_at', thirtyDaysAgo.toISOString());
 
       if (error) throw error;
@@ -124,17 +123,14 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
     );
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground">
@@ -251,7 +247,6 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </AdminLayout>
+    </div>
   );
 }

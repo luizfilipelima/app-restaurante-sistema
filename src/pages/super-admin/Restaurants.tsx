@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
+  Settings,
 } from 'lucide-react';
 
 export default function SuperAdminRestaurants() {
@@ -273,39 +274,51 @@ export default function SuperAdminRestaurants() {
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2">
                       <Button
-                        variant="outline"
                         size="sm"
-                        className="flex-1"
+                        className="w-full"
                         onClick={() =>
-                          toggleRestaurantStatus(
-                            restaurant.id,
-                            restaurant.is_active
-                          )
+                          navigate(`/super-admin/restaurants/${restaurant.id}`)
                         }
                       >
-                        {restaurant.is_active ? (
-                          <>
-                            <EyeOff className="h-4 w-4 mr-2" />
-                            Desativar
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Ativar
-                          </>
-                        )}
+                        <Settings className="h-4 w-4 mr-2" />
+                        Gerenciar restaurante
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          window.open(`/${restaurant.slug}`, '_blank')
-                        }
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() =>
+                            toggleRestaurantStatus(
+                              restaurant.id,
+                              restaurant.is_active
+                            )
+                          }
+                        >
+                          {restaurant.is_active ? (
+                            <>
+                              <EyeOff className="h-4 w-4 mr-2" />
+                              Desativar
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ativar
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            window.open(`/${restaurant.slug}`, '_blank')
+                          }
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

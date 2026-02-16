@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/store/authStore';
-import AdminLayout from '@/components/admin/AdminLayout';
+import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { DatabaseOrder, OrderStatus } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,19 +43,19 @@ const statusConfig = {
 };
 
 export default function AdminOrders() {
-  const { user } = useAuthStore();
+  const restaurantId = useAdminRestaurantId();
   const [orders, setOrders] = useState<DatabaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user?.restaurant_id) {
+    if (restaurantId) {
       loadOrders();
       subscribeToOrders();
     }
-  }, [user]);
+  }, [restaurantId]);
 
   const loadOrders = async () => {
-    if (!user?.restaurant_id) return;
+    if (!restaurantId) return;
 
     try {
       setLoading(true);
@@ -68,7 +67,7 @@ export default function AdminOrders() {
           delivery_zone:delivery_zones(*),
           order_items(*)
         `)
-        .eq('restaurant_id', user.restaurant_id)
+        .eq('restaurant_id', restaurantId)
         .neq('status', OrderStatus.COMPLETED)
         .order('created_at', { ascending: false });
 
@@ -83,7 +82,7 @@ export default function AdminOrders() {
   };
 
   const subscribeToOrders = () => {
-    if (!user?.restaurant_id) return;
+    if (!restaurantId) return;
 
     const channel = supabase
       .channel('orders-changes')
@@ -93,7 +92,7 @@ export default function AdminOrders() {
           event: '*',
           schema: 'public',
           table: 'orders',
-          filter: `restaurant_id=eq.${user.restaurant_id}`,
+          filter: `restaurant_id=eq.${restaurantId}`,
         },
         () => {
           loadOrders();
@@ -157,16 +156,14 @@ export default function AdminOrders() {
 
   if (loading) {
     return (
-      <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
     );
   }
 
   return (
-    <AdminLayout>
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Gestão de Pedidos</h1>
@@ -307,6 +304,6 @@ export default function AdminOrders() {
           })}
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 }

@@ -1,6 +1,9 @@
-import { ReactNode } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ReactNode, useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
+import { supabase } from '@/lib/supabase';
+import { Restaurant } from '@/types';
+import { AdminRestaurantContext } from '@/contexts/AdminRestaurantContext';
 import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
@@ -9,109 +12,198 @@ import {
   MapPin,
   Settings,
   LogOut,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface AdminLayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
+  /** Quando preenchido, super-admin está gerenciando este restaurante */
+  managedRestaurantId?: string | null;
+  /** Base path para links (ex: /super-admin/restaurants/xxx) */
+  basePath?: string;
 }
 
-const navigation = [
-  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'Pedidos', href: '/admin/orders', icon: ClipboardList },
-  { name: 'Cardápio', href: '/admin/menu', icon: UtensilsCrossed },
-  { name: 'Zonas de Entrega', href: '/admin/delivery-zones', icon: MapPin },
-  { name: 'Configurações', href: '/admin/settings', icon: Settings },
+const getNavItems = (basePath: string) => [
+  { name: 'Dashboard', href: basePath || '/admin', icon: LayoutDashboard },
+  { name: 'Pedidos', href: `${basePath || '/admin'}/orders`, icon: ClipboardList },
+  { name: 'Cardápio', href: `${basePath || '/admin'}/menu`, icon: UtensilsCrossed },
+  { name: 'Zonas de Entrega', href: `${basePath || '/admin'}/delivery-zones`, icon: MapPin },
+  { name: 'Configurações', href: `${basePath || '/admin'}/settings`, icon: Settings },
 ];
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+export default function AdminLayout({
+  children,
+  managedRestaurantId = null,
+  basePath = '',
+}: AdminLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuthStore();
+  const { user, signOut } = useAuthStore();
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [loadingRestaurant, setLoadingRestaurant] = useState(!!managedRestaurantId);
+
+  const restaurantId = managedRestaurantId || user?.restaurant_id || null;
+  const isSuperAdminView = !!managedRestaurantId;
+  const navItems = getNavItems(basePath || '/admin');
+
+  useEffect(() => {
+    if (!restaurantId) {
+      setLoadingRestaurant(false);
+      return;
+    }
+    const load = async () => {
+      const { data } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('id', restaurantId)
+        .single();
+      setRestaurant(data || null);
+      setLoadingRestaurant(false);
+    };
+    load();
+  }, [restaurantId]);
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
   };
 
+  const handleBackToRestaurants = () => {
+    navigate('/super-admin/restaurants');
+  };
+
+  if (!restaurantId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Nenhum restaurante selecionado.</p>
+      </div>
+    );
+  }
+
+  if (loadingRestaurant) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  const contextValue = {
+    restaurantId,
+    restaurant,
+    isSuperAdminView,
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Sidebar Desktop */}
-      <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
-        <div className="flex flex-col flex-grow border-r bg-card overflow-y-auto">
-          <div className="flex items-center flex-shrink-0 px-4 py-6">
-            <h1 className="text-2xl font-bold text-primary">Painel Admin</h1>
+    <AdminRestaurantContext.Provider value={contextValue}>
+      <div className="min-h-screen bg-background">
+        {/* Sidebar Desktop */}
+        <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
+          <div className="flex flex-col flex-grow border-r bg-card overflow-y-auto">
+            <div className="flex items-center flex-shrink-0 px-4 py-6">
+              {isSuperAdminView && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mb-2 w-full justify-start"
+                  onClick={handleBackToRestaurants}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Voltar
+                </Button>
+              )}
+              <h1 className="text-2xl font-bold text-primary">Painel Admin</h1>
+              {restaurant && (
+                <p className="text-sm text-muted-foreground mt-1 truncate" title={restaurant.name}>
+                  {restaurant.name}
+                </p>
+              )}
+            </div>
+            <div className="flex-1 flex flex-col">
+              <nav className="flex-1 px-2 space-y-1">
+                {navItems.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={`group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      }`}
+                    >
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </nav>
+              <div className="px-2 pb-4">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="mr-3 h-5 w-5" />
+                  Sair
+                </Button>
+              </div>
+            </div>
           </div>
-          <div className="flex-1 flex flex-col">
-            <nav className="flex-1 px-2 space-y-1">
-              {navigation.map((item) => {
+        </div>
+
+        {/* Mobile Header */}
+        <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b">
+          <div className="flex items-center justify-between px-4 py-3">
+            <div>
+              <h1 className="text-xl font-bold text-primary">Painel Admin</h1>
+              {restaurant && (
+                <p className="text-xs text-muted-foreground truncate">{restaurant.name}</p>
+              )}
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleSignOut}>
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
+          {isSuperAdminView && (
+            <div className="px-4 pb-2">
+              <Button variant="outline" size="sm" onClick={handleBackToRestaurants}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar aos restaurantes
+              </Button>
+            </div>
+          )}
+          <div className="overflow-x-auto px-4 pb-3">
+            <div className="flex gap-2">
+              {navItems.map((item) => {
                 const isActive = location.pathname === item.href;
                 return (
                   <Link
                     key={item.name}
                     to={item.href}
-                    className={`group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors ${
+                    className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${
                       isActive
                         ? 'bg-primary text-primary-foreground'
                         : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                     }`}
                   >
-                    <item.icon className="mr-3 h-5 w-5" />
+                    <item.icon className="h-4 w-4" />
                     {item.name}
                   </Link>
                 );
               })}
-            </nav>
-            <div className="px-2 pb-4">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={handleSignOut}
-              >
-                <LogOut className="mr-3 h-5 w-5" />
-                Sair
-              </Button>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b">
-        <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-xl font-bold text-primary">Painel Admin</h1>
-          <Button variant="ghost" size="icon" onClick={handleSignOut}>
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </div>
-        <div className="overflow-x-auto px-4 pb-3">
-          <div className="flex gap-2">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  }`}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </div>
+        {/* Main Content */}
+        <div className="md:pl-64">
+          <main className="pt-24 md:pt-0">
+            <div className="px-4 sm:px-6 lg:px-8 py-8">{children ?? <Outlet />}</div>
+          </main>
         </div>
       </div>
-
-      {/* Main Content */}
-      <div className="md:pl-64">
-        <main className="pt-24 md:pt-0">
-          <div className="px-4 sm:px-6 lg:px-8 py-8">{children}</div>
-        </main>
-      </div>
-    </div>
+    </AdminRestaurantContext.Provider>
   );
 }

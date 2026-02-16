@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/store/authStore';
-import AdminLayout from '@/components/admin/AdminLayout';
+import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { Restaurant } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Save } from 'lucide-react';
 
 export default function AdminSettings() {
-  const { user } = useAuthStore();
+  const restaurantId = useAdminRestaurantId();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -24,13 +23,13 @@ export default function AdminSettings() {
   });
 
   useEffect(() => {
-    if (user?.restaurant_id) {
+    if (restaurantId) {
       loadRestaurant();
     }
-  }, [user]);
+  }, [restaurantId]);
 
   const loadRestaurant = async () => {
-    if (!user?.restaurant_id) return;
+    if (!restaurantId) return;
 
     try {
       setLoading(true);
@@ -38,7 +37,7 @@ export default function AdminSettings() {
       const { data, error } = await supabase
         .from('restaurants')
         .select('*')
-        .eq('id', user.restaurant_id)
+        .eq('id', restaurantId)
         .single();
 
       if (error) throw error;
@@ -61,7 +60,7 @@ export default function AdminSettings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.restaurant_id) return;
+    if (!restaurantId) return;
 
     try {
       setSaving(true);
@@ -77,7 +76,7 @@ export default function AdminSettings() {
           secondary_color: formData.secondary_color,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user.restaurant_id);
+        .eq('id', restaurantId);
 
       if (error) throw error;
 
@@ -92,17 +91,14 @@ export default function AdminSettings() {
 
   if (loading) {
     return (
-      <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
     );
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl">
         <div>
           <h1 className="text-3xl font-bold">Configurações</h1>
           <p className="text-muted-foreground">
@@ -270,7 +266,6 @@ export default function AdminSettings() {
             {saving ? 'Salvando...' : 'Salvar Configurações'}
           </Button>
         </form>
-      </div>
-    </AdminLayout>
+    </div>
   );
 }

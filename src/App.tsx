@@ -5,27 +5,33 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
 import { UserRole } from './types';
 
-// Pages - serão criadas em seguida
 import LoginPage from './pages/auth/LoginPage';
 import UnauthorizedPage from './pages/auth/UnauthorizedPage';
 
-// Super Admin
 import SuperAdminDashboard from './pages/super-admin/Dashboard';
 import SuperAdminRestaurants from './pages/super-admin/Restaurants';
 
-// Restaurant Admin
+import AdminLayoutWrapper from './components/admin/AdminLayoutWrapper';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminMenu from './pages/admin/Menu';
 import AdminOrders from './pages/admin/Orders';
 import AdminSettings from './pages/admin/Settings';
 import AdminDeliveryZones from './pages/admin/DeliveryZones';
 
-// Kitchen
 import KitchenDisplay from './pages/kitchen/KitchenDisplay';
 
-// Public - Menu Digital
 import PublicMenu from './pages/public/Menu';
 import PublicCheckout from './pages/public/Checkout';
+
+const adminRoutes = (
+  <>
+    <Route index element={<AdminDashboard />} />
+    <Route path="orders" element={<AdminOrders />} />
+    <Route path="menu" element={<AdminMenu />} />
+    <Route path="delivery-zones" element={<AdminDeliveryZones />} />
+    <Route path="settings" element={<AdminSettings />} />
+  </>
+);
 
 function App() {
   const initialize = useAuthStore((state) => state.initialize);
@@ -37,22 +43,13 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Rotas Públicas */}
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <LoginPage />
-            </PublicRoute>
-          }
-        />
+        <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-        {/* Cardápio Digital (Público) */}
         <Route path="/:restaurantSlug" element={<PublicMenu />} />
         <Route path="/:restaurantSlug/checkout" element={<PublicCheckout />} />
 
-        {/* Super Admin Routes */}
+        {/* Super Admin */}
         <Route
           path="/super-admin"
           element={
@@ -70,49 +67,30 @@ function App() {
           }
         />
 
-        {/* Restaurant Admin Routes */}
+        {/* Super Admin: gerenciar um restaurante (mesmas funções do admin) */}
+        <Route
+          path="/super-admin/restaurants/:restaurantId"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
+              <AdminLayoutWrapper />
+            </ProtectedRoute>
+          }
+        >
+          {adminRoutes}
+        </Route>
+
+        {/* Restaurant Admin */}
         <Route
           path="/admin"
           element={
             <ProtectedRoute allowedRoles={[UserRole.RESTAURANT_ADMIN]}>
-              <AdminDashboard />
+              <AdminLayoutWrapper />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/admin/menu"
-          element={
-            <ProtectedRoute allowedRoles={[UserRole.RESTAURANT_ADMIN]}>
-              <AdminMenu />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/orders"
-          element={
-            <ProtectedRoute allowedRoles={[UserRole.RESTAURANT_ADMIN]}>
-              <AdminOrders />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/delivery-zones"
-          element={
-            <ProtectedRoute allowedRoles={[UserRole.RESTAURANT_ADMIN]}>
-              <AdminDeliveryZones />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/settings"
-          element={
-            <ProtectedRoute allowedRoles={[UserRole.RESTAURANT_ADMIN]}>
-              <AdminSettings />
-            </ProtectedRoute>
-          }
-        />
+        >
+          {adminRoutes}
+        </Route>
 
-        {/* Kitchen Routes */}
         <Route
           path="/kitchen"
           element={
@@ -122,7 +100,6 @@ function App() {
           }
         />
 
-        {/* Redirect root to login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
