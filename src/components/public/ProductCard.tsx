@@ -8,10 +8,9 @@ import { Button } from '@/components/ui/button';
 interface ProductCardProps {
   product: Product;
   onClick: () => void;
-  featured?: boolean;
 }
 
-export default function ProductCard({ product, onClick, featured = false }: ProductCardProps) {
+export default function ProductCard({ product, onClick }: ProductCardProps) {
   return (
     <Card
       className="group cursor-pointer border-0 shadow-sm hover:shadow-md transition-all duration-300 bg-white overflow-hidden rounded-2xl w-full min-w-0"

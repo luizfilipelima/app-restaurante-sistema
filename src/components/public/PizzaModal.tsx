@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Product, PizzaSize, PizzaDough, PizzaEdge } from '@/types';
+import { Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ interface PizzaModalProps {
   onClose: () => void;
   product: Product;
   sizes: PizzaSize[];
-  flavors: never[];
+  flavors?: PizzaFlavor[];
   doughs: PizzaDough[];
   edges: PizzaEdge[];
 }
@@ -24,7 +24,6 @@ export default function PizzaModal({
   onClose,
   product,
   sizes,
-  flavors,
   doughs,
   edges,
 }: PizzaModalProps) {
