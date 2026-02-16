@@ -230,16 +230,16 @@ export default function AdminOrders() {
 
   return (
     <>
-      <div className="space-y-8">
+      <div className="space-y-8 min-w-0">
         <div>
-          <h1 className="text-4xl font-bold mb-2">Gestão de Pedidos</h1>
-          <p className="text-muted-foreground text-lg">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-foreground">Gestão de Pedidos</h1>
+          <p className="text-muted-foreground text-base sm:text-lg">
             Acompanhe e gerencie os pedidos em tempo real
           </p>
         </div>
 
         {/* Kanban Board */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 min-w-0">
           {Object.values(OrderStatus).map((status) => {
             const statusOrders = getOrdersByStatus(status);
             const config = statusConfig[status];
@@ -284,7 +284,7 @@ export default function AdminOrders() {
                     statusOrders.map((order, index) => (
                       <Card
                         key={order.id}
-                        className={`border-2 hover:shadow-premium transition-all hover:-translate-y-1 animate-slide-in-bottom ${
+                        className={`border-2 hover:shadow-premium transition-shadow ${
                           order.is_paid ? 'border-green-500 bg-green-50/50' : config.borderColor
                         }`}
                         style={{ animationDelay: `${index * 50}ms` }}

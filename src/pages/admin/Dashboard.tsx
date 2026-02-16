@@ -158,18 +158,18 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 min-w-0">
         <div>
-          <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
-          <p className="text-muted-foreground text-lg">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground text-base sm:text-lg">
             Visão geral do seu negócio (últimos 30 dias)
           </p>
         </div>
 
         {/* Cards de Métricas */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-all hover:-translate-y-1 overflow-hidden group">
-            <div className="absolute inset-0 gradient-primary opacity-90 group-hover:opacity-100 transition-opacity" />
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 min-w-0">
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow overflow-hidden group">
+            <div className="absolute inset-0 gradient-primary opacity-90 group-hover:opacity-100 transition-opacity rounded-lg" />
             <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-semibold text-white/90">
                 Faturamento Total
@@ -189,8 +189,8 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-all hover:-translate-y-1 overflow-hidden group">
-            <div className="absolute inset-0 gradient-secondary opacity-90 group-hover:opacity-100 transition-opacity" />
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow overflow-hidden group">
+            <div className="absolute inset-0 gradient-secondary opacity-90 group-hover:opacity-100 transition-opacity rounded-lg" />
             <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-semibold text-white/90">
                 Total de Pedidos
@@ -209,8 +209,8 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-all hover:-translate-y-1 overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-600 opacity-90 group-hover:opacity-100 transition-opacity" />
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-600 opacity-90 group-hover:opacity-100 transition-opacity rounded-lg" />
             <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-semibold text-white/90">
                 Ticket Médio
@@ -229,8 +229,8 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-all hover:-translate-y-1 overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-600 opacity-90 group-hover:opacity-100 transition-opacity" />
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-600 opacity-90 group-hover:opacity-100 transition-opacity rounded-lg" />
             <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-semibold text-white/90">
                 Pedidos Pendentes
@@ -251,18 +251,19 @@ export default function AdminDashboard() {
         </div>
 
         {/* Gráficos */}
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2 min-w-0">
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
             <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-bold">
+              <CardTitle className="text-xl font-bold text-foreground">
                 Faturamento Diário (Últimos 7 dias)
               </CardTitle>
               <p className="text-sm text-muted-foreground">
                 Acompanhe o desempenho diário das vendas
               </p>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
+            <CardContent className="min-w-0">
+              <div className="w-full min-h-[300px] min-w-0">
+              <ResponsiveContainer width="100%" height={300} minWidth={0}>
                 <BarChart data={dailyRevenue}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="date" stroke="#888" style={{ fontSize: '12px' }} />
@@ -284,21 +285,23 @@ export default function AdminDashboard() {
                   </defs>
                 </BarChart>
               </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow">
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
             <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-bold">
+              <CardTitle className="text-xl font-bold text-foreground">
                 Formas de Pagamento
               </CardTitle>
               <p className="text-sm text-muted-foreground">
                 Distribuição dos métodos de pagamento
               </p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-w-0">
               {paymentMethods.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+                <div className="w-full min-h-[300px] min-w-0">
+                <ResponsiveContainer width="100%" height={300} minWidth={0}>
                   <PieChart>
                     <Pie
                       data={paymentMethods}
@@ -331,6 +334,7 @@ export default function AdminDashboard() {
                     />
                   </PieChart>
                 </ResponsiveContainer>
+                </div>
               ) : (
                 <div className="flex items-center justify-center h-[300px] text-muted-foreground">
                   <div className="text-center">

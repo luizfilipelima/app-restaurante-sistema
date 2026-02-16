@@ -96,9 +96,9 @@ export default function AdminLayout({
 
   return (
     <AdminRestaurantContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background overflow-x-hidden">
         {/* Sidebar Desktop */}
-        <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
+        <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col md:flex-shrink-0">
           <div className="flex flex-col flex-grow border-r bg-card overflow-y-auto">
             <div className="flex items-center flex-shrink-0 px-4 py-6">
               {isSuperAdminView && (
@@ -198,9 +198,11 @@ export default function AdminLayout({
         </div>
 
         {/* Main Content */}
-        <div className="md:pl-64">
-          <main className="pt-24 md:pt-0">
-            <div className="px-4 sm:px-6 lg:px-8 py-8">{children ?? <Outlet />}</div>
+        <div className="md:pl-64 min-w-0 flex-1 w-full">
+          <main className="pt-24 md:pt-8 min-h-screen bg-muted/30">
+            <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px] mx-auto min-w-0">
+              {children ?? <Outlet />}
+            </div>
           </main>
         </div>
       </div>
