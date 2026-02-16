@@ -4,34 +4,36 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 210 40% 98%; /* Slate-50 */
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
     
-    /* Cor primária: laranja vibrante para comida */
-    --primary: 24 92% 50%;
+    /* Cor primária: Orange-500 (#f97316) */
+    --primary: 24 95% 53%; 
     --primary-foreground: 0 0% 100%;
     
-    /* Secundária: verde fresco */
-    --secondary: 142 76% 36%;
+    /* Secundária: Red-600 (#dc2626) */
+    --secondary: 0 72% 51%;
     --secondary-foreground: 0 0% 100%;
     
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
     
     --accent: 24 100% 96%;
-    --accent-foreground: 24 92% 50%;
+    --accent-foreground: 24 95% 53%;
     
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 24 92% 50%;
-    --radius: 0.75rem;
+    --ring: 24 95% 53%;
+    
+    /* Raio da borda aumentado para visual moderno (Rounded-xl default) */
+    --radius: 0.75rem; 
     
     /* Cores para status */
     --success: 142 76% 36%;
@@ -46,9 +48,9 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 24 92% 50%;
+    --primary: 24 95% 53%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 142 76% 36%;
+    --secondary: 0 72% 51%;
     --secondary-foreground: 0 0% 100%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
@@ -58,7 +60,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 24 92% 50%;
+    --ring: 24 95% 53%;
   }
 }
 
@@ -78,34 +80,43 @@
 
 @layer utilities {
   .gradient-primary {
-    @apply bg-gradient-to-br from-orange-400 via-orange-500 to-red-500;
+    @apply bg-gradient-to-br from-orange-500 via-orange-600 to-red-600;
   }
   
   .gradient-secondary {
-    @apply bg-gradient-to-br from-green-400 to-emerald-600;
+    @apply bg-gradient-to-br from-green-500 to-emerald-700;
   }
   
   .gradient-card {
-    @apply bg-gradient-to-br from-white to-gray-50;
+    @apply bg-gradient-to-br from-white to-slate-50;
   }
   
   .shadow-premium {
-    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.08), 0 2px 8px -1px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08);
   }
   
   .shadow-premium-lg {
-    box-shadow: 0 8px 32px -2px rgba(0, 0, 0, 0.12), 0 4px 16px -2px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 20px 60px -15px rgba(0,0,0,0.12);
   }
   
   .text-gradient {
-    @apply bg-gradient-to-r from-orange-500 to-red-600 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent;
+  }
+
+  /* Esconder scrollbar mas permitir scroll */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
 /* Animações customizadas */
 @keyframes slide-in-bottom {
   from {
-    transform: translateY(100%);
+    transform: translateY(20px);
     opacity: 0;
   }
   to {
@@ -117,9 +128,11 @@
 @keyframes pulse-subtle {
   0%, 100% {
     opacity: 1;
+    transform: scale(1);
   }
   50% {
-    opacity: 0.8;
+    opacity: 0.9;
+    transform: scale(1.02);
   }
 }
 
@@ -133,7 +146,7 @@
 }
 
 .animate-slide-in-bottom {
-  animation: slide-in-bottom 0.4s ease-out;
+  animation: slide-in-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-pulse-subtle {
@@ -141,24 +154,6 @@
 }
 
 .skeleton {
-  @apply bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200%_100%];
-  animation: shimmer 1.5s ease-in-out infinite;
-}
-
-/* Scrollbar customizado */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-muted/30;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
+  @apply bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%];
+  animation: shimmer 1.5s linear infinite;
 }

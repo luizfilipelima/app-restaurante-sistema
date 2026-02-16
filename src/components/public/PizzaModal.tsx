@@ -17,10 +17,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { formatCurrency } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Check, Pizza as PizzaIcon, Minus, Plus } from 'lucide-react';
+import { Check, Pizza as PizzaIcon, Minus, Plus, Search, ChevronRight } from 'lucide-react';
 
 interface PizzaModalProps {
   open: boolean;
@@ -47,11 +48,11 @@ export default function PizzaModal({
   const [selectedEdge, setSelectedEdge] = useState<PizzaEdge | null>(null);
   const [observations, setObservations] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const addItem = useCartStore((state) => state.addItem);
 
   useEffect(() => {
-    // Reset ao abrir
     if (open) {
       setSelectedSize(sizes[0] || null);
       setSelectedFlavors([]);
@@ -59,6 +60,7 @@ export default function PizzaModal({
       setSelectedEdge(null);
       setObservations('');
       setQuantity(1);
+      setSearchTerm('');
     }
   }, [open, sizes, doughs]);
 
@@ -72,24 +74,23 @@ export default function PizzaModal({
     } else {
       if (selectedFlavors.length < selectedSize.max_flavors) {
         setSelectedFlavors([...selectedFlavors, flavor]);
+      } else {
+        toast({
+          title: `Máximo de ${selectedSize.max_flavors} sabores`,
+          description: "Remova um sabor para adicionar outro.",
+          variant: "destructive", 
+        });
       }
     }
   };
 
   const calculatePrice = () => {
     if (!selectedSize) return 0;
-
-    // Preço base: maior valor entre os sabores selecionados
     const flavorPrices = selectedFlavors.map((f) => f.price);
     const basePrice = flavorPrices.length > 0 ? Math.max(...flavorPrices) : 0;
-
-    // Aplica multiplicador do tamanho
     const sizePrice = basePrice * selectedSize.price_multiplier;
-
-    // Adiciona preços extras
     const doughPrice = selectedDough?.extra_price || 0;
     const edgePrice = selectedEdge?.price || 0;
-
     return sizePrice + doughPrice + edgePrice;
   };
 
@@ -116,41 +117,45 @@ export default function PizzaModal({
     toast({
       title: "🍕 Pizza adicionada!",
       description: `${product.name} - ${selectedSize.name}`,
-      variant: "success",
+      className: "bg-green-50 border-green-200",
     });
 
     onClose();
   };
 
-  const canAddToCart =
-    selectedSize &&
-    selectedFlavors.length > 0 &&
-    selectedFlavors.length <= selectedSize.max_flavors;
+  const canAddToCart = selectedSize && selectedFlavors.length > 0 && selectedFlavors.length <= selectedSize.max_flavors;
+
+  const filteredFlavors = flavors.filter(f => 
+    f.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (f.description && f.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="space-y-3">
+      <DialogContent className="max-w-2xl h-[90vh] md:h-auto md:max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col bg-slate-50">
+        
+        {/* Header Fixo */}
+        <div className="p-4 border-b border-slate-200 bg-white z-10 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-xl gradient-primary flex items-center justify-center">
-              <PizzaIcon className="h-6 w-6 text-white" />
+            <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+              <PizzaIcon className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <DialogTitle className="text-2xl">{product.name}</DialogTitle>
-              {product.description && (
-                <p className="text-sm text-muted-foreground">{product.description}</p>
-              )}
+              <DialogTitle className="text-lg font-bold text-slate-900">{product.name}</DialogTitle>
+              <p className="text-xs text-slate-500">Monte sua pizza em 4 passos</p>
             </div>
           </div>
-        </DialogHeader>
+        </div>
 
-        <div className="space-y-6 py-4">
-          {/* Tamanho */}
-          <div className="space-y-3">
-            <Label className="text-lg font-semibold flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">1</span>
-              Escolha o Tamanho *
-            </Label>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-8">
+          
+          {/* PASSO 1: Tamanho */}
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="bg-slate-900 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">1</div>
+              <Label className="text-lg font-bold text-slate-900">Escolha o Tamanho</Label>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {sizes.map((size) => (
                 <button
@@ -159,228 +164,203 @@ export default function PizzaModal({
                     setSelectedSize(size);
                     setSelectedFlavors([]);
                   }}
-                  className={`group relative p-5 border-2 rounded-xl text-left transition-all hover:shadow-md ${
+                  className={`group relative p-4 rounded-xl text-left transition-all border-2 ${
                     selectedSize?.id === size.id
-                      ? 'border-primary bg-primary/5 shadow-md'
-                      : 'border-border hover:border-primary/50'
+                      ? 'border-orange-500 bg-orange-50 shadow-sm'
+                      : 'border-slate-200 bg-white hover:border-orange-200'
                   }`}
                 >
-                  {selectedSize?.id === size.id && (
-                    <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-                      <Check className="h-4 w-4 text-white" />
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className={`font-bold text-lg ${selectedSize?.id === size.id ? 'text-orange-700' : 'text-slate-700'}`}>
+                        {size.name}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        Até {size.max_flavors} {size.max_flavors === 1 ? 'sabor' : 'sabores'}
+                      </div>
                     </div>
-                  )}
-                  <div className="font-bold text-lg mb-1">{size.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    Até {size.max_flavors}{' '}
-                    {size.max_flavors === 1 ? 'sabor' : 'sabores'}
+                    {selectedSize?.id === size.id && <div className="bg-orange-500 rounded-full p-1"><Check className="h-3 w-3 text-white" /></div>}
                   </div>
                 </button>
               ))}
             </div>
-          </div>
+          </section>
 
-          {/* Sabores */}
+          {/* PASSO 2: Sabores */}
           {selectedSize && (
-            <div className="space-y-3">
+            <section className="space-y-3 animate-slide-in-bottom">
               <div className="flex items-center justify-between">
-                <Label className="text-lg font-semibold flex items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">2</span>
-                  Escolha {selectedSize.max_flavors === 1 ? 'o Sabor' : 'os Sabores'} *
-                </Label>
-                <Badge variant="secondary" className="text-sm">
-                  {selectedFlavors.length}/{selectedSize.max_flavors}
+                <div className="flex items-center gap-2">
+                  <div className="bg-slate-900 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">2</div>
+                  <Label className="text-lg font-bold text-slate-900">Escolha os Sabores</Label>
+                </div>
+                <Badge variant={selectedFlavors.length === selectedSize.max_flavors ? "default" : "secondary"} className="text-xs">
+                  {selectedFlavors.length}/{selectedSize.max_flavors} selecionados
                 </Badge>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {flavors.map((flavor) => {
+
+              {/* Busca de Sabores */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input 
+                  placeholder="Buscar sabor..." 
+                  className="pl-10 bg-white border-slate-200"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                {filteredFlavors.map((flavor) => {
                   const isSelected = selectedFlavors.some((f) => f.id === flavor.id);
-                  const isDisabled =
-                    !isSelected &&
-                    selectedFlavors.length >= selectedSize.max_flavors;
+                  const isDisabled = !isSelected && selectedFlavors.length >= selectedSize.max_flavors;
 
                   return (
                     <button
                       key={flavor.id}
                       onClick={() => handleFlavorToggle(flavor)}
                       disabled={isDisabled}
-                      className={`group relative p-4 border-2 rounded-xl text-left transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-md ${
+                      className={`flex items-center p-3 rounded-lg border transition-all ${
                         isSelected
-                          ? 'border-primary bg-primary/5 shadow-md'
-                          : 'border-border hover:border-primary/50'
+                          ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500'
+                          : isDisabled 
+                            ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed'
+                            : 'border-slate-200 bg-white hover:border-orange-200'
                       }`}
                     >
-                      {isSelected && (
-                        <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-                          <Check className="h-4 w-4 text-white" />
-                        </div>
-                      )}
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1 pr-2">
-                          <div className="font-bold mb-1">{flavor.name}</div>
-                          {flavor.description && (
-                            <div className="text-xs text-muted-foreground line-clamp-2">
-                              {flavor.description}
-                            </div>
-                          )}
-                        </div>
-                        <Badge variant="secondary" className="font-semibold">
-                          {formatCurrency(flavor.price)}
-                        </Badge>
+                      {/* Checkbox Visual */}
+                      <div className={`w-5 h-5 rounded-md border flex items-center justify-center mr-3 transition-colors ${
+                        isSelected ? 'bg-orange-500 border-orange-500' : 'border-slate-300 bg-white'
+                      }`}>
+                        {isSelected && <Check className="h-3 w-3 text-white" />}
                       </div>
+
+                      <div className="flex-1 text-left">
+                        <div className="font-semibold text-slate-900">{flavor.name}</div>
+                        {flavor.description && (
+                          <div className="text-xs text-slate-500 line-clamp-1">{flavor.description}</div>
+                        )}
+                      </div>
+                      <div className="font-bold text-slate-700">{formatCurrency(flavor.price)}</div>
                     </button>
                   );
                 })}
               </div>
-            </div>
+            </section>
           )}
 
-          {/* Massa */}
-          {doughs.length > 0 && (
-            <div className="space-y-3">
-              <Label className="text-lg font-semibold flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">3</span>
-                Tipo de Massa
-              </Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {doughs.map((dough) => (
-                  <button
-                    key={dough.id}
-                    onClick={() => setSelectedDough(dough)}
-                    className={`group relative p-4 border-2 rounded-xl text-left transition-all hover:shadow-md ${
-                      selectedDough?.id === dough.id
-                        ? 'border-primary bg-primary/5 shadow-md'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    {selectedDough?.id === dough.id && (
-                      <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-                        <Check className="h-4 w-4 text-white" />
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold">{dough.name}</span>
-                      {dough.extra_price > 0 && (
-                        <Badge className="gradient-secondary text-white">
-                          +{formatCurrency(dough.extra_price)}
-                        </Badge>
-                      )}
-                    </div>
-                  </button>
-                ))}
+          {/* PASSO 3: Massa e Borda */}
+          {selectedSize && (
+            <section className="space-y-4 animate-slide-in-bottom delay-100">
+              <div className="flex items-center gap-2">
+                <div className="bg-slate-900 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">3</div>
+                <Label className="text-lg font-bold text-slate-900">Massa e Borda</Label>
               </div>
-            </div>
+              
+              {doughs.length > 0 && (
+                <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                  <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Tipo de Massa</span>
+                  <div className="flex flex-wrap gap-2">
+                    {doughs.map((dough) => (
+                      <button
+                        key={dough.id}
+                        onClick={() => setSelectedDough(dough)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                          selectedDough?.id === dough.id
+                            ? 'bg-slate-800 text-white border-slate-800'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                        }`}
+                      >
+                        {dough.name} {dough.extra_price > 0 && `(+${formatCurrency(dough.extra_price)})`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {edges.length > 0 && (
+                <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                  <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Borda Recheada</span>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setSelectedEdge(null)}
+                      className={`w-full flex items-center justify-between p-3 rounded-lg border text-left ${
+                        !selectedEdge ? 'border-orange-500 bg-orange-50' : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <span className="font-medium">Sem borda</span>
+                      {!selectedEdge && <Check className="h-4 w-4 text-orange-500" />}
+                    </button>
+                    {edges.map((edge) => (
+                      <button
+                        key={edge.id}
+                        onClick={() => setSelectedEdge(edge)}
+                        className={`w-full flex items-center justify-between p-3 rounded-lg border text-left ${
+                          selectedEdge?.id === edge.id ? 'border-orange-500 bg-orange-50' : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <span className="font-medium">{edge.name}</span>
+                        <span className="text-sm font-semibold text-slate-600">+{formatCurrency(edge.price)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
           )}
 
-          {/* Borda */}
-          {edges.length > 0 && (
-            <div className="space-y-3">
-              <Label className="text-lg font-semibold flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs">4</span>
-                Borda Recheada <span className="text-sm text-muted-foreground font-normal">(Opcional)</span>
-              </Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  onClick={() => setSelectedEdge(null)}
-                  className={`group relative p-4 border-2 rounded-xl text-left transition-all hover:shadow-md ${
-                    !selectedEdge
-                      ? 'border-primary bg-primary/5 shadow-md'
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                >
-                  {!selectedEdge && (
-                    <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-                      <Check className="h-4 w-4 text-white" />
-                    </div>
-                  )}
-                  <span className="font-bold">Sem borda</span>
-                </button>
-                {edges.map((edge) => (
-                  <button
-                    key={edge.id}
-                    onClick={() => setSelectedEdge(edge)}
-                    className={`group relative p-4 border-2 rounded-xl text-left transition-all hover:shadow-md ${
-                      selectedEdge?.id === edge.id
-                        ? 'border-primary bg-primary/5 shadow-md'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    {selectedEdge?.id === edge.id && (
-                      <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-                        <Check className="h-4 w-4 text-white" />
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold">{edge.name}</span>
-                      <Badge className="gradient-secondary text-white">
-                        +{formatCurrency(edge.price)}
-                      </Badge>
-                    </div>
-                  </button>
-                ))}
+          {/* PASSO 4: Observações */}
+          {selectedSize && (
+            <section className="space-y-3 pb-4 animate-slide-in-bottom delay-200">
+              <div className="flex items-center gap-2">
+                <div className="bg-slate-900 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">4</div>
+                <Label className="text-lg font-bold text-slate-900">Observações</Label>
               </div>
-            </div>
+              <Textarea
+                placeholder="Ex: Tirar a cebola, cortar em 8 pedaços, etc."
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                rows={3}
+                className="bg-white border-slate-200 focus:border-orange-500"
+              />
+            </section>
           )}
-
-          {/* Observações */}
-          <div className="space-y-3">
-            <Label htmlFor="observations" className="text-base font-semibold">
-              Observações <span className="text-sm text-muted-foreground font-normal">(Opcional)</span>
-            </Label>
-            <Textarea
-              id="observations"
-              placeholder="Ex: sem cebola, bem passada, cortar em 8 pedaços..."
-              value={observations}
-              onChange={(e) => setObservations(e.target.value)}
-              rows={3}
-              className="resize-none"
-            />
-          </div>
-
-          {/* Quantidade */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold">Quantidade</Label>
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="h-12 w-12 rounded-xl"
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="text-2xl font-bold w-16 text-center">
-                {quantity}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setQuantity(quantity + 1)}
-                className="h-12 w-12 rounded-xl"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
         </div>
 
-        <DialogFooter className="flex flex-col gap-3 sm:flex-col border-t pt-6">
-          <div className="flex justify-between items-center p-4 bg-muted rounded-xl">
-            <span className="text-lg font-semibold">Total:</span>
-            <span className="text-2xl font-bold text-gradient">
-              {formatCurrency(calculatePrice() * quantity)}
-            </span>
+        {/* Footer Actions */}
+        <div className="p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 flex-shrink-0">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center border rounded-lg overflow-hidden">
+                <button 
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <div className="px-3 py-2 font-bold text-slate-900 bg-white min-w-[2rem] text-center">{quantity}</div>
+                <button 
+                  onClick={() => setQuantity(quantity + 1)}
+                  className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-xs text-slate-500 block">Total</span>
+              <span className="text-2xl font-bold text-slate-900">{formatCurrency(calculatePrice() * quantity)}</span>
+            </div>
           </div>
           <Button
             size="lg"
             onClick={handleAddToCart}
             disabled={!canAddToCart}
-            className="w-full h-14 text-lg font-semibold gradient-primary hover:shadow-premium transition-all"
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold h-12 rounded-xl shadow-lg shadow-orange-200"
           >
-            <PizzaIcon className="mr-2 h-5 w-5" />
             Adicionar ao Carrinho
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

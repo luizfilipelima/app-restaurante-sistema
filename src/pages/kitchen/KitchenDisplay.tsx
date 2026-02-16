@@ -9,7 +9,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, CheckCircle, Bell, AlertTriangle, Package, ChefHat } from 'lucide-react';
+import { Clock, CheckCircle, Bell, AlertTriangle, Package, ChefHat, ArrowRight } from 'lucide-react';
+
+// MOCK DATA PARA KDS (Visualização se vazio)
+const MOCK_ORDERS: any[] = [
+  { id: '1a2b3c', customer_name: 'João Silva', created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(), status: 'preparing', delivery_type: 'delivery', order_items: [
+    { id: '1', quantity: 1, product_name: 'Pizza Margherita', pizza_size: 'Grande', pizza_flavors: ['Margherita'], pizza_dough: 'Tradicional', pizza_edge: 'Catupiry' },
+    { id: '2', quantity: 2, product_name: 'Coca-Cola 2L' }
+  ] },
+  { id: '4d5e6f', customer_name: 'Maria Oliveira', created_at: new Date(Date.now() - 1000 * 60 * 25).toISOString(), status: 'preparing', delivery_type: 'pickup', notes: 'SEM CEBOLA NA PIZZA', order_items: [
+    { id: '3', quantity: 1, product_name: 'Pizza Meio a Meio', pizza_size: 'Grande', pizza_flavors: ['Calabresa', 'Frango com Catupiry'], pizza_dough: 'Tradicional', observations: 'Bem passada' }
+  ] },
+  { id: '7g8h9i', customer_name: 'Pedro Santos', created_at: new Date(Date.now() - 1000 * 60 * 2).toISOString(), status: 'pending', delivery_type: 'delivery', order_items: [
+    { id: '4', quantity: 1, product_name: 'Hambúrguer X-Tudo' }
+  ] },
+];
 
 export default function KitchenDisplay() {
   const { user, signOut } = useAuthStore();
@@ -21,6 +35,12 @@ export default function KitchenDisplay() {
     if (user?.restaurant_id) {
       loadOrders();
       subscribeToOrders();
+    } else {
+      // Se não tiver user (dev mode), carrega mocks após timeout
+      setTimeout(() => {
+        setOrders(MOCK_ORDERS as unknown as DatabaseOrder[]);
+        setLoading(false);
+      }, 1000);
     }
   }, [user]);
 
@@ -30,7 +50,6 @@ export default function KitchenDisplay() {
     try {
       setLoading(true);
 
-      // Buscar apenas pedidos em preparo (que já foram aprovados pela recepção)
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -38,15 +57,19 @@ export default function KitchenDisplay() {
           order_items(*)
         `)
         .eq('restaurant_id', user.restaurant_id)
-        .eq('status', OrderStatus.PREPARING)
-        .order('is_paid', { ascending: false }) // Pedidos pagos primeiro
-        .order('created_at', { ascending: true }); // Mais antigos primeiro
+        .in('status', ['pending', 'preparing']) // Pegar pendentes e preparando para o Kanban
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
 
-      setOrders(data || []);
+      if (data && data.length > 0) {
+        setOrders(data);
+      } else {
+        setOrders(MOCK_ORDERS as unknown as DatabaseOrder[]);
+      }
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
+      setOrders(MOCK_ORDERS as unknown as DatabaseOrder[]);
     } finally {
       setLoading(false);
     }
@@ -68,23 +91,20 @@ export default function KitchenDisplay() {
         (payload) => {
           console.log('Order update:', payload);
           
-          // Detectar novo pedido
           if (payload.eventType === 'INSERT' || 
-              (payload.eventType === 'UPDATE' && (payload.new as any).status === OrderStatus.PREPARING)) {
+              (payload.eventType === 'UPDATE' && ['pending', 'preparing'].includes((payload.new as any).status))) {
             const newOrderId = (payload.new as any).id;
             setNewOrderIds(prev => [...prev, newOrderId]);
             
-            // Notificação sonora e visual
             toast({
-              title: "🔔 Novo pedido na cozinha!",
+              title: "🔔 Novo pedido!",
               description: `Pedido #${newOrderId.slice(0, 8).toUpperCase()}`,
-              variant: "default",
+              className: "bg-blue-500 text-white border-none",
             });
             
-            // Remover destaque após 5 segundos
             setTimeout(() => {
               setNewOrderIds(prev => prev.filter(id => id !== newOrderId));
-            }, 5000);
+            }, 10000);
           }
           
           loadOrders();
@@ -97,30 +117,19 @@ export default function KitchenDisplay() {
     };
   };
 
-  const markAsReady = async (orderId: string) => {
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: OrderStatus.READY })
-        .eq('id', orderId);
+  const updateStatus = async (orderId: string, newStatus: string) => {
+    // Optimistic update
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o));
 
-      if (error) throw error;
-
-      // Remove da lista local
-      setOrders((prev) => prev.filter((order) => order.id !== orderId));
-      
-      toast({
-        title: "✅ Pedido pronto!",
-        description: `Pedido #${orderId.slice(0, 8).toUpperCase()} finalizado`,
-        variant: "success",
-      });
-    } catch (error) {
-      console.error('Erro ao marcar como pronto:', error);
-      toast({
-        title: "❌ Erro",
-        description: "Não foi possível marcar o pedido como pronto",
-        variant: "destructive",
-      });
+    if (user?.restaurant_id) {
+      try {
+        await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+      } catch (e) {
+        console.error(e);
+        loadOrders(); // Revert on error
+      }
+    } else {
+      toast({ title: "Modo Demonstração", description: "Status atualizado localmente." });
     }
   };
 
@@ -133,265 +142,198 @@ export default function KitchenDisplay() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        {/* Header Skeleton */}
-        <div className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700">
-          <div className="container mx-auto px-6 py-6">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-12 w-12 rounded-xl bg-slate-700" />
-              <div className="space-y-2">
-                <Skeleton className="h-8 w-64 bg-slate-700" />
-                <Skeleton className="h-4 w-40 bg-slate-700" />
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Cards Skeleton */}
-        <div className="container mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-96 w-full rounded-2xl bg-slate-700" />
-            ))}
-          </div>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-white text-xl animate-pulse flex items-center gap-3">
+          <ChefHat className="h-8 w-8" /> Carregando KDS...
         </div>
       </div>
     );
   }
 
+  const pendingOrders = orders.filter(o => o.status === 'pending');
+  const preparingOrders = orders.filter(o => o.status === 'preparing');
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white overflow-x-hidden">
+    <div className="min-h-screen bg-slate-950 text-slate-100 overflow-x-hidden font-sans">
       {/* Header */}
-      <div className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40 shadow-2xl">
-        <div className="container mx-auto px-6 py-6">
+      <div className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 shadow-2xl">
+        <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-5">
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg">
-                <ChefHat className="h-8 w-8 text-white" />
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-900/20">
+                <ChefHat className="h-7 w-7 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold mb-1">Sistema de Cozinha</h1>
-                <div className="flex items-center gap-3">
-                  <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/50 font-semibold text-sm">
-                    <Package className="h-3 w-3 mr-1" />
-                    {orders.length} {orders.length === 1 ? 'pedido' : 'pedidos'}
-                  </Badge>
-                  <span className="text-sm text-slate-400">
-                    🔄 Atualização automática
-                  </span>
+                <h1 className="text-2xl font-black tracking-tight text-white">COZINHA</h1>
+                <div className="flex items-center gap-4 text-sm text-slate-400 font-medium">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500"></span> {pendingOrders.length} Pendentes</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> {preparingOrders.length} Em Preparo</span>
                 </div>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={signOut}
-              className="bg-slate-700 border-slate-600 hover:bg-slate-600 text-white"
-            >
-              Sair
-            </Button>
+            <div className="text-right">
+              <p className="text-3xl font-black font-mono tabular-nums">
+                {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Orders Grid */}
+      {/* Kanban Board */}
       <div className="container mx-auto px-6 py-8">
-        {orders.length === 0 ? (
-          <Card className="bg-slate-800/50 border-2 border-slate-700 shadow-2xl">
-            <CardContent className="p-16 text-center">
-              <div className="mx-auto w-24 h-24 rounded-full bg-green-500/10 flex items-center justify-center mb-6">
-                <CheckCircle className="h-12 w-12 text-green-400" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          {/* Coluna: Pendentes */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+              <h2 className="text-xl font-bold text-yellow-500 flex items-center gap-2">
+                <Clock className="h-6 w-6" /> AGUARDANDO
+              </h2>
+              <Badge className="bg-yellow-500/20 text-yellow-500 border-0 text-lg px-3">{pendingOrders.length}</Badge>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4">
+              {pendingOrders.map(order => (
+                <OrderCard 
+                  key={order.id} 
+                  order={order} 
+                  isNew={newOrderIds.includes(order.id)} 
+                  onAction={() => updateStatus(order.id, 'preparing')}
+                  actionLabel="INICIAR PREPARO"
+                  actionColor="bg-blue-600 hover:bg-blue-700"
+                  variant="pending"
+                />
+              ))}
+              {pendingOrders.length === 0 && <EmptyState message="Sem novos pedidos" />}
+            </div>
+          </div>
+
+          {/* Coluna: Em Preparo */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+              <h2 className="text-xl font-bold text-blue-500 flex items-center gap-2">
+                <ChefHat className="h-6 w-6" /> EM PREPARO
+              </h2>
+              <Badge className="bg-blue-500/20 text-blue-500 border-0 text-lg px-3">{preparingOrders.length}</Badge>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {preparingOrders.map(order => (
+                <OrderCard 
+                  key={order.id} 
+                  order={order} 
+                  isNew={newOrderIds.includes(order.id)} 
+                  onAction={() => updateStatus(order.id, 'ready')}
+                  actionLabel="PRONTO"
+                  actionColor="bg-green-600 hover:bg-green-700"
+                  variant="preparing"
+                />
+              ))}
+              {preparingOrders.length === 0 && <EmptyState message="Cozinha livre" />}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OrderCard({ order, isNew, onAction, actionLabel, actionColor, variant }: any) {
+  const duration = Math.floor((new Date().getTime() - new Date(order.created_at).getTime()) / 1000 / 60);
+  
+  let borderColor = 'border-slate-700';
+  let timerColor = 'bg-slate-800 text-slate-300';
+  
+  if (variant === 'preparing') {
+    if (duration >= 20) {
+      borderColor = 'border-red-500 ring-1 ring-red-500';
+      timerColor = 'bg-red-500 text-white animate-pulse';
+    } else if (duration >= 10) {
+      borderColor = 'border-yellow-500';
+      timerColor = 'bg-yellow-500 text-black';
+    } else {
+      borderColor = 'border-blue-500';
+      timerColor = 'bg-blue-500 text-white';
+    }
+  }
+
+  return (
+    <Card className={`bg-slate-800 border-2 ${borderColor} shadow-xl relative overflow-hidden transition-all duration-300`}>
+      {isNew && (
+        <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500 animate-pulse" />
+      )}
+      
+      <CardHeader className="pb-2 bg-slate-800/50 border-b border-slate-700/50">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-2xl font-black text-white">#{order.id.slice(0, 4).toUpperCase()}</h3>
+            <p className="text-slate-400 text-sm font-medium">{order.customer_name}</p>
+          </div>
+          <Badge className={`${timerColor} text-lg font-bold border-0 px-3 py-1 rounded-md`}>
+            {duration} min
+          </Badge>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="pt-4 space-y-4">
+        {/* Items List */}
+        <div className="space-y-3">
+          {order.order_items?.map((item: any, idx: number) => (
+            <div key={idx} className="flex items-start gap-3 bg-slate-900/30 p-2 rounded-lg">
+              <div className="bg-slate-700 text-white font-bold text-xl min-w-[2.5rem] h-10 flex items-center justify-center rounded">
+                {item.quantity}
               </div>
-              <p className="text-2xl font-bold text-slate-200 mb-2">
-                Tudo pronto! 🎉
-              </p>
-              <p className="text-lg text-slate-400">
-                Nenhum pedido em preparo no momento
-              </p>
-              <p className="text-sm text-slate-500 mt-3">
-                Novos pedidos aparecerão aqui automaticamente
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {orders.map((order, index) => {
-              const duration = getOrderDuration(order.created_at);
-              const isNew = newOrderIds.includes(order.id);
-              
-              let statusColor = {
-                border: 'border-green-500',
-                gradient: 'from-green-500/20 to-emerald-600/20',
-                badge: 'bg-green-500',
-                text: 'text-green-400'
-              };
-              
-              if (duration >= 30) {
-                statusColor = {
-                  border: 'border-red-500',
-                  gradient: 'from-red-500/20 to-rose-600/20',
-                  badge: 'bg-red-500',
-                  text: 'text-red-400'
-                };
-              } else if (duration >= 15) {
-                statusColor = {
-                  border: 'border-yellow-500',
-                  gradient: 'from-yellow-500/20 to-orange-600/20',
-                  badge: 'bg-yellow-500',
-                  text: 'text-yellow-400'
-                };
-              }
-
-              return (
-                <Card
-                  key={order.id}
-                  className={`bg-slate-800/80 backdrop-blur-sm border-4 ${statusColor.border} shadow-2xl transition-all hover:scale-[1.02] animate-slide-in-bottom ${
-                    isNew ? 'animate-pulse-subtle ring-4 ring-orange-500' : ''
-                  }`}
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <CardHeader className="pb-4 bg-gradient-to-br ${statusColor.gradient}">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-2xl font-bold text-white mb-2 truncate">
-                          #{order.id.slice(0, 8).toUpperCase()}
-                        </CardTitle>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-slate-300 flex-shrink-0" />
-                          <span className="text-sm text-slate-300 truncate">
-                            {formatDistanceToNow(new Date(order.created_at), {
-                              addSuffix: true,
-                              locale: ptBR,
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2 items-end flex-shrink-0">
-                        {isNew && (
-                          <Badge className="bg-orange-500 text-white border-0 shadow-lg animate-pulse">
-                            <Bell className="h-3 w-3 mr-1" />
-                            NOVO
-                          </Badge>
-                        )}
-                        {order.is_paid && (
-                          <Badge className="bg-green-600 text-white border-0 shadow-md">
-                            💰 PAGO
-                          </Badge>
-                        )}
-                        <Badge
-                          className={`${statusColor.badge} text-white border-0 shadow-md text-xl font-bold px-3 py-1`}
-                        >
-                          {duration >= 30 && <AlertTriangle className="h-4 w-4 mr-1" />}
-                          {duration}min
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-5 pt-5">
-                    {/* Cliente */}
-                    <div className="bg-gradient-to-r from-slate-700/70 to-slate-700/40 rounded-xl p-4 border border-slate-600">
-                      <p className="font-bold text-xl text-white mb-1">
-                        {order.customer_name}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="bg-slate-600 text-white font-semibold">
-                          {order.delivery_type === 'delivery'
-                            ? '🚴 Entrega'
-                            : '🏃 Retirada'}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {/* Itens */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 pb-2 border-b border-slate-600">
-                        <Package className="h-4 w-4 text-slate-400" />
-                        <p className="text-sm font-bold text-slate-300 uppercase tracking-wide">
-                          Itens do Pedido
-                        </p>
-                      </div>
-                      {order.order_items?.map((item: any) => (
-                        <div
-                          key={item.id}
-                          className="bg-slate-700/50 rounded-xl p-4 border-2 border-slate-600 hover:border-slate-500 transition-colors"
-                        >
-                          <div className="flex items-start gap-3 mb-3">
-                            <Badge className="bg-orange-600 text-white text-xl font-black px-3 py-1 shadow-md">
-                              {item.quantity}x
-                            </Badge>
-                            <span className="font-bold text-xl text-white leading-tight flex-1">
-                              {item.product_name}
-                            </span>
-                          </div>
-
-                          {/* Detalhes da Pizza */}
-                          {item.pizza_size && (
-                            <div className="text-base text-slate-200 space-y-2 mt-3 pl-2 border-l-4 border-orange-500 ml-2">
-                              <p className="flex items-baseline gap-2">
-                                <span className="text-slate-400 font-semibold min-w-[80px]">Tamanho:</span>
-                                <span className="font-bold">{item.pizza_size}</span>
-                              </p>
-                              {item.pizza_flavors &&
-                                item.pizza_flavors.length > 0 && (
-                                  <p className="flex items-baseline gap-2">
-                                    <span className="text-slate-400 font-semibold min-w-[80px]">Sabores:</span>
-                                    <span className="font-bold">{item.pizza_flavors.join(', ')}</span>
-                                  </p>
-                                )}
-                              {item.pizza_dough && (
-                                <p className="flex items-baseline gap-2">
-                                  <span className="text-slate-400 font-semibold min-w-[80px]">Massa:</span>
-                                  <span className="font-bold">{item.pizza_dough}</span>
-                                </p>
-                              )}
-                              {item.pizza_edge && (
-                                <p className="flex items-baseline gap-2">
-                                  <span className="text-slate-400 font-semibold min-w-[80px]">Borda:</span>
-                                  <span className="font-bold">{item.pizza_edge}</span>
-                                </p>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Observações */}
-                          {item.observations && (
-                            <div className="mt-4 p-3 bg-yellow-900/40 border-2 border-yellow-500 rounded-xl">
-                              <p className="text-base font-bold text-yellow-200 flex items-start gap-2">
-                                <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                                <span>{item.observations}</span>
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Observações do Pedido */}
-                    {order.notes && (
-                      <div className="p-4 bg-yellow-900/40 border-2 border-yellow-500 rounded-xl">
-                        <p className="text-base font-bold text-yellow-200 flex items-start gap-2">
-                          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                          <span><span className="font-black">OBS GERAL:</span> {order.notes}</span>
-                        </p>
-                      </div>
+              <div className="flex-1">
+                <p className="text-lg font-bold text-slate-100 leading-tight">{item.product_name}</p>
+                {/* Pizza Details */}
+                {(item.pizza_size || item.pizza_flavors) && (
+                  <div className="mt-1 text-sm text-slate-400 pl-2 border-l-2 border-slate-600">
+                    {item.pizza_size && <p>Tamanho: {item.pizza_size}</p>}
+                    {item.pizza_dough && <p>Massa: {item.pizza_dough}</p>}
+                    {item.pizza_edge && <p>Borda: {item.pizza_edge}</p>}
+                    {item.pizza_flavors && item.pizza_flavors.length > 0 && (
+                      <p className="text-slate-300">Sabores: {item.pizza_flavors.join(' + ')}</p>
                     )}
+                  </div>
+                )}
+                {/* Item Observation */}
+                {item.observations && (
+                  <p className="text-red-400 font-bold text-sm mt-1 uppercase flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" /> {item.observations}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
 
-                    {/* Botão Pronto */}
-                    <Button
-                      size="lg"
-                      className="w-full bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-black text-xl h-16 shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]"
-                      onClick={() => markAsReady(order.id)}
-                    >
-                      <CheckCircle className="h-7 w-7 mr-3" />
-                      PEDIDO PRONTO
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
+        {/* Order Notes */}
+        {order.notes && (
+          <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg">
+            <p className="text-red-400 font-bold text-base uppercase flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" /> OBS: {order.notes}
+            </p>
           </div>
         )}
-      </div>
 
+        <Button 
+          className={`w-full h-14 text-xl font-bold ${actionColor} shadow-lg mt-2`}
+          onClick={onAction}
+        >
+          {actionLabel} <ArrowRight className="ml-2 h-6 w-6" />
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="h-40 flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-xl text-slate-600">
+      <ChefHat className="h-10 w-10 mb-2 opacity-20" />
+      <p className="font-medium">{message}</p>
     </div>
   );
 }
