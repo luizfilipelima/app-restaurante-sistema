@@ -278,29 +278,6 @@ export default function PublicMenu() {
           </div>
         </div>
 
-        {/* Destaques / Ofertas (Simulado) */}
-        {selectedCategory === 'all' && (
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-900">🔥 Ofertas do Dia</h2>
-              <button className="text-sm text-orange-600 font-semibold flex items-center">
-                Ver todas <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide snap-x">
-              {filteredProducts.slice(0, 3).map((product) => (
-                <div key={product.id} className="min-w-[280px] snap-center">
-                  <ProductCard 
-                    product={product} 
-                    onClick={() => handleProductClick(product)} 
-                    featured 
-                  />
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
         {/* Lista de Produtos */}
         <section>
           <h2 className="text-lg font-bold text-slate-900 mb-4">

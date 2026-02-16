@@ -38,9 +38,10 @@ export const useCartStore = create<CartState>()(
         const existingIndex = items.findIndex((i) => {
           if (i.productId !== item.productId) return false;
           if (i.isPizza && item.isPizza) {
+            const sameFlavors = (JSON.stringify(i.pizzaFlavors ?? []) === JSON.stringify(item.pizzaFlavors ?? []));
             return (
               i.pizzaSize === item.pizzaSize &&
-              JSON.stringify(i.pizzaFlavors) === JSON.stringify(item.pizzaFlavors) &&
+              sameFlavors &&
               i.pizzaDough === item.pizzaDough &&
               i.pizzaEdge === item.pizzaEdge &&
               i.observations === item.observations
@@ -83,12 +84,7 @@ export const useCartStore = create<CartState>()(
 
       getSubtotal: () => {
         const items = get().items;
-        return items.reduce((total, item) => {
-          const itemTotal = item.unitPrice * item.quantity;
-          const doughExtra = (item.pizzaDoughPrice || 0) * item.quantity;
-          const edgeExtra = (item.pizzaEdgePrice || 0) * item.quantity;
-          return total + itemTotal + doughExtra + edgeExtra;
-        }, 0);
+        return items.reduce((total, item) => total + item.unitPrice * item.quantity, 0);
       },
 
       getItemsCount: () => {

@@ -39,11 +39,7 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
           ) : (
             <div className="space-y-4">
               {items.map((item, index) => {
-                const itemTotal =
-                  (item.unitPrice +
-                    (item.pizzaDoughPrice || 0) +
-                    (item.pizzaEdgePrice || 0)) *
-                  item.quantity;
+                const itemTotal = item.unitPrice * item.quantity;
 
                 return (
                   <div

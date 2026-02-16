@@ -2,7 +2,7 @@ import { Product } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
-import { Plus, Flame } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ProductCardProps {
@@ -14,16 +14,12 @@ interface ProductCardProps {
 export default function ProductCard({ product, onClick, featured = false }: ProductCardProps) {
   return (
     <Card
-      className={`group cursor-pointer border-0 shadow-sm hover:shadow-md transition-all duration-300 bg-white overflow-hidden rounded-2xl w-full min-w-0 ${
-        featured ? 'ring-2 ring-orange-100' : ''
-      }`}
+      className="group cursor-pointer border-0 shadow-sm hover:shadow-md transition-all duration-300 bg-white overflow-hidden rounded-2xl w-full min-w-0"
       onClick={onClick}
     >
       <div className="relative w-full">
         <div
-          className={`relative w-full overflow-hidden bg-slate-200 ${
-            featured ? 'aspect-[4/3] min-h-[140px]' : 'aspect-[4/3] min-h-[180px]'
-          }`}
+          className="relative w-full overflow-hidden bg-slate-200 aspect-[4/3] min-h-[180px]"
         >
           {product.image_url ? (
             <img
@@ -46,11 +42,6 @@ export default function ProductCard({ product, onClick, featured = false }: Prod
           {product.is_pizza && (
             <Badge className="bg-white/90 text-slate-800 hover:bg-white backdrop-blur-md shadow-sm border-0 font-semibold px-2">
               Pizza
-            </Badge>
-          )}
-          {featured && (
-            <Badge className="bg-red-500 text-white border-0 shadow-sm font-bold flex items-center gap-1 animate-pulse-subtle">
-              <Flame className="h-3 w-3" /> Oferta
             </Badge>
           )}
         </div>
