@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
+import { Toaster } from './components/ui/toaster';
 import { UserRole } from './types';
 
 import LoginPage from './pages/auth/LoginPage';
@@ -102,6 +103,7 @@ function App() {
 
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
+      <Toaster />
     </BrowserRouter>
   );
 }

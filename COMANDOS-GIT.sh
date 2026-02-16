@@ -12,7 +12,7 @@
 # ============================================================================
 
 # SUBSTITUA AQUI! ⬇️
-GITHUB_USERNAME="SEU-USUARIO"  # <-- Coloque seu username aqui!
+GITHUB_USERNAME="luizfilipelima"  # <-- Coloque seu username aqui!
 REPO_NAME="app-restaurante-sistema"
 
 # ============================================================================

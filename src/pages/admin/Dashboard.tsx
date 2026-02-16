@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils';
-import { DollarSign, ShoppingCart, TrendingUp, Clock } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, Clock, ArrowUpRight } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -123,127 +124,221 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="space-y-6 animate-pulse">
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-48" />
+          <Skeleton className="h-5 w-96" />
+        </div>
+        
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardHeader className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-8 w-24" />
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+        
+        <div className="grid gap-6 md:grid-cols-2">
+          {[1, 2].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-[300px] w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
+          <p className="text-muted-foreground text-lg">
             Visão geral do seu negócio (últimos 30 dias)
           </p>
         </div>
 
         {/* Cards de Métricas */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-all hover:-translate-y-1 overflow-hidden group">
+            <div className="absolute inset-0 gradient-primary opacity-90 group-hover:opacity-100 transition-opacity" />
+            <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-white/90">
                 Faturamento Total
               </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="relative">
+              <div className="text-3xl font-bold text-white mb-1">
                 {formatCurrency(metrics.totalRevenue)}
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total de Pedidos
-              </CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.totalOrders}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(metrics.averageTicket)}
+              <div className="flex items-center text-white/80 text-xs">
+                <ArrowUpRight className="h-3 w-3 mr-1" />
+                <span>Últimos 30 dias</span>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-all hover:-translate-y-1 overflow-hidden group">
+            <div className="absolute inset-0 gradient-secondary opacity-90 group-hover:opacity-100 transition-opacity" />
+            <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-white/90">
+                Total de Pedidos
+              </CardTitle>
+              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <ShoppingCart className="h-5 w-5 text-white" />
+              </div>
+            </CardHeader>
+            <CardContent className="relative">
+              <div className="text-3xl font-bold text-white mb-1">
+                {metrics.totalOrders}
+              </div>
+              <div className="flex items-center text-white/80 text-xs">
+                <span>Pedidos realizados</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-all hover:-translate-y-1 overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-600 opacity-90 group-hover:opacity-100 transition-opacity" />
+            <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-white/90">
+                Ticket Médio
+              </CardTitle>
+              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-white" />
+              </div>
+            </CardHeader>
+            <CardContent className="relative">
+              <div className="text-3xl font-bold text-white mb-1">
+                {formatCurrency(metrics.averageTicket)}
+              </div>
+              <div className="flex items-center text-white/80 text-xs">
+                <span>Valor médio por pedido</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-all hover:-translate-y-1 overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-600 opacity-90 group-hover:opacity-100 transition-opacity" />
+            <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-white/90">
                 Pedidos Pendentes
               </CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.pendingOrders}</div>
+            <CardContent className="relative">
+              <div className="text-3xl font-bold text-white mb-1">
+                {metrics.pendingOrders}
+              </div>
+              <div className="flex items-center text-white/80 text-xs">
+                <span>Aguardando preparo</span>
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Gráficos */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Faturamento Diário (Últimos 7 dias)</CardTitle>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl font-bold">
+                Faturamento Diário (Últimos 7 dias)
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Acompanhe o desempenho diário das vendas
+              </p>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={dailyRevenue}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="date" stroke="#888" style={{ fontSize: '12px' }} />
+                  <YAxis stroke="#888" style={{ fontSize: '12px' }} />
                   <Tooltip
                     formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: 'none',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    }}
                   />
-                  <Bar dataKey="revenue" fill="#8884d8" />
+                  <Bar dataKey="revenue" fill="url(#colorRevenue)" radius={[8, 8, 0, 0]} />
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f97316" stopOpacity={0.9}/>
+                      <stop offset="100%" stopColor="#ea580c" stopOpacity={0.9}/>
+                    </linearGradient>
+                  </defs>
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Formas de Pagamento</CardTitle>
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl font-bold">
+                Formas de Pagamento
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Distribuição dos métodos de pagamento
+              </p>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={paymentMethods}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(entry) => paymentMethodNames[entry.name] || entry.name}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {paymentMethods.map((_entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
-                  />
-                  <Legend
-                    formatter={(value) => paymentMethodNames[value] || value}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              {paymentMethods.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={paymentMethods}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={(entry) => paymentMethodNames[entry.name] || entry.name}
+                      outerRadius={90}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {paymentMethods.map((_entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number) => formatCurrency(value)}
+                      contentStyle={{
+                        borderRadius: '8px',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      }}
+                    />
+                    <Legend
+                      formatter={(value) => paymentMethodNames[value] || value}
+                      wrapperStyle={{ fontSize: '14px' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                  <div className="text-center">
+                    <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                    <p>Sem dados de pagamento</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
