@@ -5,11 +5,10 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { DatabaseOrder, OrderStatus } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatPhone } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, Phone, MapPin, CreditCard, CheckCircle, XCircle } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard } from 'lucide-react';
 
 const statusConfig = {
   [OrderStatus.PENDING]: {

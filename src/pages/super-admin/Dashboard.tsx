@@ -8,7 +8,7 @@ import { formatCurrency } from '@/lib/utils';
 import { Store, DollarSign, ShoppingCart, TrendingUp, LogOut } from 'lucide-react';
 
 export default function SuperAdminDashboard() {
-  const { user, signOut } = useAuthStore();
+  const { signOut } = useAuthStore();
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState({
     totalRestaurants: 0,

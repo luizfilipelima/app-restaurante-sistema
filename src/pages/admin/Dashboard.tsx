@@ -233,7 +233,7 @@ export default function AdminDashboard() {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {paymentMethods.map((entry, index) => (
+                    {paymentMethods.map((_entry, index) => (
                       <Cell
                         key={`cell-${index}`}
                         fill={COLORS[index % COLORS.length]}

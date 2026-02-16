@@ -7,7 +7,6 @@ import { useRestaurantStore } from '@/store/restaurantStore';
 import { ShoppingCart, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { formatCurrency } from '@/lib/utils';
 import ProductCard from '@/components/public/ProductCard';
 import CartDrawer from '@/components/public/CartDrawer';
 import PizzaModal from '@/components/public/PizzaModal';
@@ -30,7 +29,7 @@ export default function PublicMenu() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [pizzaModalOpen, setPizzaModalOpen] = useState(false);
 
-  const { items, getItemsCount, setRestaurant: setCartRestaurant } = useCartStore();
+  const { getItemsCount, setRestaurant: setCartRestaurant } = useCartStore();
   const { setCurrentRestaurant } = useRestaurantStore();
 
   useEffect(() => {

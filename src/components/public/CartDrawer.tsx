@@ -1,7 +1,7 @@
 import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
-import { X, Plus, Minus, Trash2 } from 'lucide-react';
+import { Plus, Minus, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
