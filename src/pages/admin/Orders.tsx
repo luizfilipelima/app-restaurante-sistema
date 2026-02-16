@@ -81,6 +81,18 @@ const statusConfig = {
     nextLabel: null,
     nextIcon: null,
   },
+  [OrderStatus.CANCELLED]: {
+    label: 'Cancelados',
+    icon: X,
+    color: 'bg-slate-400',
+    gradient: 'from-slate-400 to-slate-500',
+    textColor: 'text-slate-600',
+    bgColor: 'bg-slate-50',
+    borderColor: 'border-slate-200',
+    nextStatus: null,
+    nextLabel: null,
+    nextIcon: null,
+  },
 };
 
 const ACTIVE_STATUSES = [
