@@ -15,14 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatCurrency, formatPhone, generateWhatsAppLink } from '@/lib/utils';
+import { formatCurrency, generateWhatsAppLink } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, MapPin, Bike, Store, Smartphone, CreditCard, Banknote, Send } from 'lucide-react';
 
 export default function PublicCheckout() {
   const { restaurantSlug } = useParams();
   const navigate = useNavigate();
-  const { items, restaurantId, removeItem, updateQuantity, getTotal, clearCart } =
+  const { items, restaurantId, updateQuantity, getSubtotal, clearCart } =
     useCartStore();
 
   const [loading, setLoading] = useState(false);
@@ -58,7 +58,7 @@ export default function PublicCheckout() {
 
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
   const deliveryFee = deliveryType === DeliveryType.DELIVERY ? (selectedZone?.fee || 0) : 0;
-  const subtotal = getTotal();
+  const subtotal = getSubtotal();
   const total = subtotal + deliveryFee;
 
   const handleCheckout = async () => {
@@ -124,8 +124,15 @@ export default function PublicCheckout() {
 
       if (itemsError) throw itemsError;
 
-      // WhatsApp Redirect
-      const link = generateWhatsAppLink('5511999999999', { ...orderData, items: items }); // TODO: Pegar telefone real do restaurante
+      // WhatsApp Redirect - mensagem em texto para o restaurante
+      const itemsText = items
+        .map(
+          (i) =>
+            `• ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''} - ${formatCurrency(i.unitPrice * i.quantity)}`
+        )
+        .join('\n');
+      const message = `*Novo Pedido*\n\nCliente: ${customerName}\nTel: ${customerPhone}\nEntrega: ${deliveryType}\n${deliveryType === DeliveryType.DELIVERY ? `Endereço: ${address}\n` : ''}Pagamento: ${paymentMethod}\nSubtotal: ${formatCurrency(subtotal)}\nTaxa: ${formatCurrency(deliveryFee)}\n*Total: ${formatCurrency(total)}*\n\n*Itens:*\n${itemsText}${notes ? `\n\nObs: ${notes}` : ''}`;
+      const link = generateWhatsAppLink('5511999999999', message); // TODO: Pegar telefone real do restaurante
       window.open(link, '_blank');
 
       clearCart();
@@ -186,8 +193,8 @@ export default function PublicCheckout() {
             <CardTitle className="text-lg text-slate-800">Itens do Pedido</CardTitle>
           </CardHeader>
           <CardContent className="pt-4 space-y-4">
-            {items.map((item) => (
-              <div key={item.itemId} className="flex gap-4">
+            {items.map((item, index) => (
+              <div key={index} className="flex gap-4">
                 <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 font-bold text-sm flex-shrink-0">
                   {item.quantity}x
                 </div>
@@ -206,7 +213,7 @@ export default function PublicCheckout() {
                   )}
                   <div className="mt-2 flex gap-3">
                     <button 
-                      onClick={() => updateQuantity(item.itemId, Math.max(0, item.quantity - 1))}
+                      onClick={() => updateQuantity(index, Math.max(0, item.quantity - 1))}
                       className="text-xs text-slate-400 hover:text-orange-500 font-medium"
                     >
                       Remover

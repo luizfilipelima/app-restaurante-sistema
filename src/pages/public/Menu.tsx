@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
-import { ShoppingCart, Phone, MapPin, Clock, Star, Search, ChevronRight, Utensils, Coffee, IceCream } from 'lucide-react';
+import { ShoppingCart, Clock, Star, Search, ChevronRight, Utensils, Coffee, IceCream } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';

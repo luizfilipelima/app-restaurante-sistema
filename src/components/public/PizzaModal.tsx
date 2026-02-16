@@ -7,13 +7,7 @@ import {
   PizzaEdge,
 } from '@/types';
 import { useCartStore } from '@/store/cartStore';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { formatCurrency } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Check, Pizza as PizzaIcon, Minus, Plus, Search, ChevronRight } from 'lucide-react';
+import { Check, Pizza as PizzaIcon, Minus, Plus, Search } from 'lucide-react';
 
 interface PizzaModalProps {
   open: boolean;

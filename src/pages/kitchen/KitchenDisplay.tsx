@@ -1,15 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { DatabaseOrder, OrderStatus } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DatabaseOrder } from '@/types';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Clock, CheckCircle, Bell, AlertTriangle, Package, ChefHat, ArrowRight } from 'lucide-react';
+import { Clock, AlertTriangle, ChefHat, ArrowRight } from 'lucide-react';
 
 // MOCK DATA PARA KDS (Visualização se vazio)
 const MOCK_ORDERS: any[] = [
@@ -26,7 +23,7 @@ const MOCK_ORDERS: any[] = [
 ];
 
 export default function KitchenDisplay() {
-  const { user, signOut } = useAuthStore();
+  const { user } = useAuthStore();
   const [orders, setOrders] = useState<DatabaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [newOrderIds, setNewOrderIds] = useState<string[]>([]);
@@ -131,13 +128,6 @@ export default function KitchenDisplay() {
     } else {
       toast({ title: "Modo Demonstração", description: "Status atualizado localmente." });
     }
-  };
-
-  const getOrderDuration = (createdAt: string) => {
-    const minutes = Math.floor(
-      (new Date().getTime() - new Date(createdAt).getTime()) / 1000 / 60
-    );
-    return minutes;
   };
 
   if (loading) {
