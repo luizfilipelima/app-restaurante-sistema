@@ -77,24 +77,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (error) throw error;
 
       if (data.user) {
-        const { data: userData, error: profileError } = await supabase
+        let userData: unknown = null;
+        const { data: profileFromDb, error: profileError } = await supabase
           .from('users')
           .select('*')
           .eq('id', data.user.id)
           .single();
 
-        if (profileError || !userData) {
+        if (!profileError && profileFromDb) {
+          userData = profileFromDb;
+        }
+
+        // Se não achou perfil, tenta Edge Function que cria automaticamente (evita rodar SQL à mão)
+        if (!userData && data.session?.access_token) {
+          const { data: fromFunction, error: fnError } = await supabase.functions.invoke(
+            'get-or-create-my-profile',
+            {
+              headers: { Authorization: `Bearer ${data.session.access_token}` },
+            }
+          );
+          if (!fnError && fromFunction && !fromFunction.error) {
+            userData = fromFunction;
+          }
+        }
+
+        if (!userData) {
           const uid = data.user.id;
           await supabase.auth.signOut();
           set({ loading: false });
           throw new Error(
-            `Login aceito, mas seu perfil não foi encontrado no sistema. No Supabase (mesmo projeto do app), execute o script supabase-fix-perfil-flxlima.sql no SQL Editor. Seu UID: ${uid} — use esse valor no script se o arquivo tiver outro UID.`
+            `Login aceito, mas seu perfil não foi encontrado. Alternativas: 1) Publique a Edge Function "get-or-create-my-profile" no Supabase (ela cria o perfil no primeiro login). 2) Execute no SQL Editor o script supabase-fix-perfil-flxlima.sql. Seu UID: ${uid}`
           );
         }
 
         set({
           session: data.session,
-          user: userData,
+          user: userData as User,
           loading: false,
         });
       }
