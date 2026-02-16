@@ -19,6 +19,8 @@ CREATE TABLE restaurants (
   primary_color VARCHAR(7) DEFAULT '#000000',
   secondary_color VARCHAR(7) DEFAULT '#ffffff',
   is_active BOOLEAN DEFAULT TRUE,
+  opening_hours JSONB DEFAULT '{}',
+  is_manually_closed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

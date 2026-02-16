@@ -1,7 +1,7 @@
 import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
-import { Plus, Minus, Trash2 } from 'lucide-react';
+import { Plus, Minus, Trash2, MessageCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -110,7 +110,14 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
         </div>
 
         {items.length > 0 && (
-          <DialogFooter className="flex flex-col gap-2 sm:flex-col">
+          <DialogFooter className="flex flex-col gap-3 sm:flex-col">
+            <div className="w-full rounded-xl bg-sky-50 border border-sky-200 p-3 flex gap-2">
+              <MessageCircle className="h-5 w-5 text-sky-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-sky-800">
+                <p className="font-semibold">Envie sua localização no WhatsApp</p>
+                <p className="text-sky-700 mt-0.5">Ao finalizar o pedido, envie sua localização pelo WhatsApp para facilitar a entrega.</p>
+              </div>
+            </div>
             <div className="flex justify-between items-center text-lg font-bold">
               <span>Subtotal:</span>
               <span>{formatCurrency(getSubtotal())}</span>

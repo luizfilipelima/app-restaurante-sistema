@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
-import { Restaurant, PizzaSize, PizzaDough, PizzaEdge } from '@/types';
+import { Restaurant, PizzaSize, PizzaDough, PizzaEdge, DayKey } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,13 +9,22 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency } from '@/lib/utils';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
-import { Save, Plus, Trash2, Pizza, Upload, Loader2 } from 'lucide-react';
+import { Save, Plus, Trash2, Pizza, Upload, Loader2, Clock } from 'lucide-react';
 
 export default function AdminSettings() {
   const restaurantId = useAdminRestaurantId();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const DAYS: { key: DayKey; label: string }[] = [
+    { key: 'mon', label: 'Segunda' },
+    { key: 'tue', label: 'Terça' },
+    { key: 'wed', label: 'Quarta' },
+    { key: 'thu', label: 'Quinta' },
+    { key: 'fri', label: 'Sexta' },
+    { key: 'sat', label: 'Sábado' },
+    { key: 'sun', label: 'Domingo' },
+  ];
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -23,6 +32,8 @@ export default function AdminSettings() {
     logo: '',
     primary_color: '#000000',
     secondary_color: '#ffffff',
+    is_manually_closed: false,
+    opening_hours: {} as Record<DayKey, { open: string; close: string } | null>,
   });
   const [logoUploading, setLogoUploading] = useState(false);
 
@@ -60,6 +71,7 @@ export default function AdminSettings() {
       if (error) throw error;
 
       setRestaurant(data);
+      const hours = (data.opening_hours || {}) as Record<DayKey, { open: string; close: string } | null>;
       setFormData({
         name: data.name || '',
         phone: data.phone || '',
@@ -67,6 +79,8 @@ export default function AdminSettings() {
         logo: data.logo || '',
         primary_color: data.primary_color || '#000000',
         secondary_color: data.secondary_color || '#ffffff',
+        is_manually_closed: !!data.is_manually_closed,
+        opening_hours: DAYS.reduce((acc, d) => ({ ...acc, [d.key]: hours[d.key] || null }), {} as Record<DayKey, { open: string; close: string } | null>),
       });
     } catch (error) {
       console.error('Erro ao carregar restaurante:', error);
@@ -218,6 +232,8 @@ export default function AdminSettings() {
           logo: formData.logo,
           primary_color: formData.primary_color,
           secondary_color: formData.secondary_color,
+          is_manually_closed: formData.is_manually_closed,
+          opening_hours: formData.opening_hours,
           updated_at: new Date().toISOString(),
         })
         .eq('id', restaurantId);
@@ -382,6 +398,83 @@ export default function AdminSettings() {
                     placeholder="https://..."
                     className="mt-1"
                   />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" /> Horário de funcionamento
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Configure os horários de abertura e fechamento. O cliente verá &quot;Aberto&quot; ou &quot;Fechado&quot; conforme o horário atual.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <Label className="font-medium">Estabelecimento fechado agora</Label>
+                  <p className="text-xs text-muted-foreground">Quando ativo, o cardápio público mostra &quot;Fechado&quot; independente do horário.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={formData.is_manually_closed}
+                  onChange={(e) => setFormData({ ...formData, is_manually_closed: e.target.checked })}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Horários por dia</Label>
+                <div className="space-y-2">
+                  {DAYS.map(({ key, label }) => {
+                    const slot = formData.opening_hours[key];
+                    const isClosed = !slot;
+                    return (
+                      <div key={key} className="flex flex-wrap items-center gap-2 rounded border p-2">
+                        <span className="w-24 text-sm font-medium">{label}</span>
+                        <label className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            checked={isClosed}
+                            onChange={(e) => {
+                              const next = { ...formData.opening_hours };
+                              next[key] = e.target.checked ? null : { open: '11:00', close: '23:00' };
+                              setFormData({ ...formData, opening_hours: next });
+                            }}
+                            className="h-3 w-3 rounded"
+                          />
+                          Fechado
+                        </label>
+                        {!isClosed && (
+                          <>
+                            <Input
+                              type="time"
+                              value={slot?.open || '11:00'}
+                              onChange={(e) => {
+                                const next = { ...formData.opening_hours };
+                                next[key] = { open: e.target.value, close: next[key]?.close || '23:00' };
+                                setFormData({ ...formData, opening_hours: next });
+                              }}
+                              className="w-28 h-8"
+                            />
+                            <span className="text-slate-400">até</span>
+                            <Input
+                              type="time"
+                              value={slot?.close || '23:00'}
+                              onChange={(e) => {
+                                const next = { ...formData.opening_hours };
+                                next[key] = { open: next[key]?.open || '11:00', close: e.target.value };
+                                setFormData({ ...formData, opening_hours: next });
+                              }}
+                              className="w-28 h-8"
+                            />
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </CardContent>

@@ -4,12 +4,13 @@ import { supabase } from '@/lib/supabase';
 import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
-import { ShoppingCart, Clock, Star, Search, ChevronRight, Utensils, Coffee, IceCream } from 'lucide-react';
+import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
+import { isWithinOpeningHours } from '@/lib/utils';
 import ProductCard from '@/components/public/ProductCard';
 import CartDrawer from '@/components/public/CartDrawer';
 import PizzaModal from '@/components/public/PizzaModal';
@@ -162,74 +163,59 @@ export default function PublicMenu() {
 
   if (!restaurant) return <div>Restaurante não encontrado</div>;
 
+  const hasHours = restaurant.opening_hours && Object.keys(restaurant.opening_hours).length > 0;
+  const isOpen = restaurant.is_manually_closed
+    ? false
+    : hasHours
+      ? isWithinOpeningHours(restaurant.opening_hours as Record<string, { open: string; close: string } | null>)
+      : restaurant.is_active;
+
   return (
     <div className="min-h-screen bg-slate-50 pb-24 font-sans">
-      {/* Hero Banner / Header */}
-      <div className="relative h-[280px] md:h-[350px] overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10" />
-        <img 
-          src="https://images.unsplash.com/photo-1590947132387-155cc02f3212?w=1600&q=80" 
-          alt="Banner Pizzaria" 
-          className="w-full h-full object-cover"
-        />
-        
-        {/* Top Bar Floating */}
-        <div className="absolute top-0 left-0 right-0 z-50 p-4 flex justify-between items-center">
-          <div className="bg-white/90 backdrop-blur-md rounded-full px-3 py-1 flex items-center gap-2 shadow-lg">
-            <div className={`w-2 h-2 rounded-full ${restaurant.is_active ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
-            <span className="text-xs font-bold text-slate-800">{restaurant.is_active ? 'ABERTO' : 'FECHADO'}</span>
-          </div>
-          <Button
-            variant="secondary"
-            size="icon"
-            className="rounded-full bg-white/90 backdrop-blur-md text-orange-500 hover:bg-white shadow-lg relative"
-            onClick={() => setCartOpen(true)}
-          >
-            <ShoppingCart className="h-5 w-5" />
-            {getItemsCount() > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-600 text-white border-2 border-white">
-                {getItemsCount()}
-              </Badge>
-            )}
-          </Button>
-        </div>
-
-        {/* Restaurant Info Card */}
-        <div className="absolute bottom-0 left-0 right-0 z-20 px-4 pb-6 transform translate-y-8 md:translate-y-10">
-          <div className="container mx-auto">
-            <div className="bg-white rounded-2xl shadow-premium p-4 md:p-6 flex items-start gap-4">
-              <div className="h-16 w-16 md:h-20 md:w-20 rounded-xl overflow-hidden shadow-md flex-shrink-0 bg-slate-100">
+      {/* Header compacto sem banner */}
+      <div className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-20">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="h-14 w-14 md:h-16 md:w-16 rounded-xl overflow-hidden shadow-md flex-shrink-0 bg-slate-100">
                 {restaurant.logo ? (
                   <img src={restaurant.logo} alt={restaurant.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-orange-100 text-orange-500 font-bold text-2xl">
+                  <div className="w-full h-full flex items-center justify-center bg-orange-100 text-orange-500 font-bold text-xl">
                     {restaurant.name.charAt(0)}
                   </div>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl md:text-2xl font-bold text-slate-900 truncate mb-1">{restaurant.name}</h1>
-                <div className="flex flex-wrap gap-y-1 gap-x-3 text-sm text-slate-600">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                    <span className="font-semibold text-slate-900">4.8</span>
-                    <span className="text-slate-400">(120+)</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4 text-slate-400" />
-                    <span>30-45 min</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-green-600 font-medium">
-                    <span className="text-xs px-2 py-0.5 bg-green-100 rounded-full">Entrega Grátis</span>
-                  </div>
+              <div className="min-w-0">
+                <h1 className="text-lg md:text-xl font-bold text-slate-900 truncate">{restaurant.name}</h1>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <div className={`w-2 h-2 rounded-full ${isOpen ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+                  <span className="text-sm font-medium text-slate-600">{isOpen ? 'Aberto' : 'Fechado'}</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-sm text-slate-500 flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" /> 30–45 min
+                  </span>
                 </div>
               </div>
             </div>
+            <Button
+              size="lg"
+              className="rounded-xl bg-orange-500 hover:bg-orange-600 text-white shadow-lg border-0 px-5 py-6 h-auto gap-2 font-bold text-base relative min-w-[140px] flex-shrink-0"
+              onClick={() => setCartOpen(true)}
+            >
+              <ShoppingCart className="h-6 w-6" />
+              <span className="hidden sm:inline">Ver Carrinho</span>
+              {getItemsCount() > 0 && (
+                <Badge className="absolute -top-0.5 -right-0.5 h-6 min-w-6 flex items-center justify-center px-1.5 py-0 bg-red-600 text-white border-2 border-white text-xs font-bold">
+                  {getItemsCount()}
+                </Badge>
+              )}
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 mt-16 md:mt-20 space-y-8">
+      <div className="container mx-auto px-4 py-6 space-y-6">
         
         {/* Search & Categories */}
         <div className="sticky top-0 z-30 bg-slate-50/95 backdrop-blur-sm py-2 -mx-4 px-4 border-b border-slate-200/50">
@@ -301,23 +287,20 @@ export default function PublicMenu() {
         </section>
       </div>
 
-      {/* Cart FAB (Mobile only when scroll) */}
+      {/* Cart FAB (Mobile) */}
       {getItemsCount() > 0 && (
         <div className="fixed bottom-6 left-4 right-4 z-40 md:hidden">
           <Button
-            className="w-full h-14 rounded-full bg-orange-600 text-white shadow-xl hover:bg-orange-700 flex items-center justify-between px-6 transition-transform active:scale-95"
+            className="w-full h-16 rounded-2xl bg-orange-500 text-white shadow-2xl hover:bg-orange-600 flex items-center justify-between px-6 transition-transform active:scale-98 font-bold text-lg border-0"
             onClick={() => navigate(`/${restaurantSlug}/checkout`)}
           >
             <div className="flex items-center gap-3">
-              <div className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
-                {getItemsCount()}
+              <div className="bg-white/25 px-3 py-1.5 rounded-xl text-sm font-bold">
+                {getItemsCount()} {getItemsCount() === 1 ? 'item' : 'itens'}
               </div>
-              <span className="font-semibold text-lg">Ver Carrinho</span>
+              <span>Ver Carrinho</span>
             </div>
-            <span className="font-bold text-lg">
-              {/* Preço total seria calculado aqui */}
-              Ir <ChevronRight className="inline h-5 w-5 ml-1" />
-            </span>
+            <span className="flex items-center gap-1">Finalizar <ChevronRight className="h-5 w-5" /></span>
           </Button>
         </div>
       )}

@@ -36,6 +36,13 @@ export enum ProductCategory {
 
 // ==================== DATABASE TYPES ====================
 
+export type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
+export interface OpeningHoursSlot {
+  open: string;
+  close: string;
+}
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -46,6 +53,8 @@ export interface Restaurant {
   primary_color?: string;
   secondary_color?: string;
   is_active: boolean;
+  opening_hours?: Record<DayKey, OpeningHoursSlot | null>;
+  is_manually_closed?: boolean;
   created_at: string;
   updated_at: string;
 }

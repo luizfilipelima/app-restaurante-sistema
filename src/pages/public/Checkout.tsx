@@ -15,20 +15,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatCurrency, generateWhatsAppLink } from '@/lib/utils';
+import { useRestaurantStore } from '@/store/restaurantStore';
+import { formatCurrency, formatGuarani, generateWhatsAppLink, normalizePhoneWithCountryCode } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, MapPin, Bike, Store, Smartphone, CreditCard, Banknote, Send } from 'lucide-react';
+import { ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote, Send } from 'lucide-react';
 
 export default function PublicCheckout() {
   const { restaurantSlug } = useParams();
   const navigate = useNavigate();
   const { items, restaurantId, updateQuantity, getSubtotal, clearCart } =
     useCartStore();
+  const { currentRestaurant } = useRestaurantStore();
 
   const [loading, setLoading] = useState(false);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState<'BR' | 'PY'>('BR');
   
   // Delivery State
   const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
@@ -45,6 +48,16 @@ export default function PublicCheckout() {
       loadZones();
     }
   }, [restaurantId]);
+
+  // Garantir restaurante no store (ex.: usuário entrou direto no checkout)
+  useEffect(() => {
+    if (!restaurantId || currentRestaurant?.id === restaurantId) return;
+    const loadRestaurant = async () => {
+      const { data } = await supabase.from('restaurants').select('*').eq('id', restaurantId).single();
+      if (data) useRestaurantStore.getState().setCurrentRestaurant(data);
+    };
+    loadRestaurant();
+  }, [restaurantId, currentRestaurant?.id]);
 
   const loadZones = async () => {
     if (!restaurantId) return;
@@ -67,15 +80,12 @@ export default function PublicCheckout() {
       return;
     }
 
-    if (deliveryType === DeliveryType.DELIVERY && (!selectedZoneId || !address)) {
-      toast({ title: 'Preencha os dados de entrega', variant: 'destructive' });
+    if (deliveryType === DeliveryType.DELIVERY && !selectedZoneId) {
+      toast({ title: 'Selecione o bairro/região de entrega', variant: 'destructive' });
       return;
     }
 
-    if (paymentMethod === PaymentMethod.CASH && changeFor && parseFloat(changeFor) < total) {
-      toast({ title: 'Valor do troco deve ser maior que o total', variant: 'destructive' });
-      return;
-    }
+    // Troco em dinheiro é opcional e em Guaranies
 
     setLoading(true);
 
@@ -83,7 +93,7 @@ export default function PublicCheckout() {
       const orderData = {
         restaurant_id: restaurantId,
         customer_name: customerName,
-        customer_phone: customerPhone,
+        customer_phone: normalizePhoneWithCountryCode(customerPhone, phoneCountry),
         delivery_type: deliveryType,
         delivery_zone_id: deliveryType === DeliveryType.DELIVERY ? selectedZoneId : null,
         delivery_address: deliveryType === DeliveryType.DELIVERY ? address : null,
@@ -91,7 +101,7 @@ export default function PublicCheckout() {
         subtotal,
         total,
         payment_method: paymentMethod,
-        payment_change_for: changeFor ? parseFloat(changeFor) : null,
+        payment_change_for: changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null,
         status: 'pending',
         notes: notes || null,
       };
@@ -124,15 +134,47 @@ export default function PublicCheckout() {
 
       if (itemsError) throw itemsError;
 
-      // WhatsApp Redirect - mensagem em texto para o restaurante
+      // WhatsApp: mensagem organizada para o estabelecimento
       const itemsText = items
         .map(
           (i) =>
-            `• ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''} - ${formatCurrency(i.unitPrice * i.quantity)}`
+            `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''} — ${formatCurrency(i.unitPrice * i.quantity)}`
         )
         .join('\n');
-      const message = `*Novo Pedido*\n\nCliente: ${customerName}\nTel: ${customerPhone}\nEntrega: ${deliveryType}\n${deliveryType === DeliveryType.DELIVERY ? `Endereço: ${address}\n` : ''}Pagamento: ${paymentMethod}\nSubtotal: ${formatCurrency(subtotal)}\nTaxa: ${formatCurrency(deliveryFee)}\n*Total: ${formatCurrency(total)}*\n\n*Itens:*\n${itemsText}${notes ? `\n\nObs: ${notes}` : ''}`;
-      const link = generateWhatsAppLink('5511999999999', message); // TODO: Pegar telefone real do restaurante
+      const sections: string[] = [
+        '🆕 *NOVO PEDIDO*',
+        '',
+        '👤 *Cliente:* ' + customerName,
+        '📱 *Tel/WhatsApp:* +' + normalizePhoneWithCountryCode(customerPhone, phoneCountry),
+        '🚚 *Entrega:* ' + (deliveryType === DeliveryType.DELIVERY ? 'Entrega' : 'Retirada'),
+      ];
+      if (deliveryType === DeliveryType.DELIVERY && address) {
+        sections.push('📍 *Endereço:* ' + address);
+      }
+      if (deliveryType === DeliveryType.DELIVERY && selectedZoneId) {
+        const zone = zones.find((z) => z.id === selectedZoneId);
+        if (zone) sections.push('🏘️ *Bairro/Região:* ' + zone.location_name);
+      }
+      sections.push('');
+      sections.push('💳 *Pagamento:* ' + (paymentMethod === 'pix' ? 'PIX' : paymentMethod === 'card' ? 'Cartão na entrega' : 'Dinheiro'));
+      if (paymentMethod === PaymentMethod.CASH && changeFor) {
+        const gs = changeFor.replace(/\D/g, '');
+        sections.push('🔄 *Troco para:* ' + (gs ? formatGuarani(parseInt(gs, 10)) : changeFor));
+      }
+      sections.push('');
+      sections.push('📋 *Resumo:*');
+      sections.push('  Subtotal: ' + formatCurrency(subtotal));
+      if (deliveryFee > 0) sections.push('  Taxa entrega: ' + formatCurrency(deliveryFee));
+      sections.push('  *Total: ' + formatCurrency(total) + '*' + '\n');
+      sections.push('🍽️ *Itens:*');
+      sections.push(itemsText);
+      if (notes) sections.push('\n📝 *Obs:* ' + notes);
+      const message = sections.join('\n');
+      const restaurantWhatsApp = (currentRestaurant?.whatsapp || '').replace(/\D/g, '');
+      const whatsappNumber = restaurantWhatsApp.length >= 10
+        ? (restaurantWhatsApp.startsWith('55') || restaurantWhatsApp.startsWith('595') ? restaurantWhatsApp : '55' + restaurantWhatsApp)
+        : '5511999999999';
+      const link = generateWhatsAppLink(whatsappNumber, message);
       window.open(link, '_blank');
 
       clearCart();
@@ -259,7 +301,24 @@ export default function PublicCheckout() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Celular / WhatsApp</Label>
-                <Input id="phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="(99) 99999-9999" className="bg-slate-50 border-slate-200" />
+                <div className="flex gap-2">
+                  <Select value={phoneCountry} onValueChange={(v) => setPhoneCountry(v as 'BR' | 'PY')}>
+                    <SelectTrigger className="w-[100px] bg-slate-50 border-slate-200 shrink-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BR">🇧🇷 +55</SelectItem>
+                      <SelectItem value="PY">🇵🇾 +595</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    id="phone"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder={phoneCountry === 'BR' ? '(11) 99999-9999' : '981 123 456'}
+                    className="bg-slate-50 border-slate-200 flex-1"
+                  />
+                </div>
               </div>
             </div>
 
@@ -281,17 +340,14 @@ export default function PublicCheckout() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="address">Endereço Completo</Label>
+                  <Label htmlFor="address">Endereço completo (opcional)</Label>
                   <Input 
                     id="address" 
                     value={address} 
                     onChange={(e) => setAddress(e.target.value)} 
-                    placeholder="Rua, Número, Complemento" 
+                    placeholder="Rua, número, complemento — ou envie a localização no WhatsApp" 
                     className="bg-slate-50 border-slate-200"
                   />
-                  <Button variant="outline" size="sm" className="w-full text-orange-600 border-orange-200 bg-orange-50 hover:bg-orange-100">
-                    <MapPin className="h-4 w-4 mr-2" /> Usar minha localização atual
-                  </Button>
                 </div>
               </div>
             )}
@@ -326,9 +382,9 @@ export default function PublicCheckout() {
                 </div>
                 {paymentMethod === PaymentMethod.CASH && (
                   <div className="pl-7">
-                    <Label className="text-xs text-slate-500">Precisa de troco para quanto?</Label>
+                    <Label className="text-xs text-slate-500">Troco para quanto? (em Guaranies)</Label>
                     <Input 
-                      placeholder="Ex: 50,00" 
+                      placeholder="Ex: 50.000" 
                       value={changeFor}
                       onChange={(e) => setChangeFor(e.target.value)}
                       className="mt-1 bg-white"
