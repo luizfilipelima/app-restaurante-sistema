@@ -10,7 +10,15 @@ import { toast } from '@/hooks/use-toast';
 import { formatCurrency, formatPhone } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, Phone, MapPin, CreditCard, Check, ChevronRight, Package, Truck, CheckCircle2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Clock, Phone, MapPin, CreditCard, Check, ChevronRight, Package, Truck, CheckCircle2, X } from 'lucide-react';
 
 const statusConfig = {
   [OrderStatus.PENDING]: {
@@ -75,10 +83,28 @@ const statusConfig = {
   },
 };
 
+const ACTIVE_STATUSES = [
+  OrderStatus.PENDING,
+  OrderStatus.PREPARING,
+  OrderStatus.READY,
+  OrderStatus.DELIVERING,
+];
+
+/** Statuses exibidos nas abas do Kanban (exclui CANCELLED) */
+const ORDER_TAB_STATUSES = [
+  OrderStatus.PENDING,
+  OrderStatus.PREPARING,
+  OrderStatus.READY,
+  OrderStatus.DELIVERING,
+  OrderStatus.COMPLETED,
+];
+
 export default function AdminOrders() {
   const restaurantId = useAdminRestaurantId();
   const [orders, setOrders] = useState<DatabaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [orderToRemove, setOrderToRemove] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
     if (restaurantId) {
@@ -101,7 +127,7 @@ export default function AdminOrders() {
           order_items(*)
         `)
         .eq('restaurant_id', restaurantId)
-        .neq('status', OrderStatus.COMPLETED)
+        .in('status', ACTIVE_STATUSES)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -199,6 +225,36 @@ export default function AdminOrders() {
     }
   };
 
+  const removeOrder = async (orderId: string) => {
+    if (!orderId) return;
+    setRemoving(true);
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: OrderStatus.CANCELLED })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      setOrders((prev) => prev.filter((order) => order.id !== orderId));
+      setOrderToRemove(null);
+      toast({
+        title: "Pedido removido",
+        description: "O pedido foi cancelado e removido da lista.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Erro ao remover pedido:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover o pedido.",
+        variant: "destructive",
+      });
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   const getOrdersByStatus = (status: OrderStatus) => {
     return orders.filter((order) => order.status === status);
   };
@@ -240,7 +296,7 @@ export default function AdminOrders() {
 
         {/* Kanban Board */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 min-w-0">
-          {Object.values(OrderStatus).map((status) => {
+          {ORDER_TAB_STATUSES.map((status) => {
             const statusOrders = getOrdersByStatus(status);
             const config = statusConfig[status];
             const IconComponent = config.icon;
@@ -305,23 +361,36 @@ export default function AdminOrders() {
                                 </span>
                               </div>
                             </div>
-                            {order.is_paid ? (
-                              <Badge className="bg-green-500 text-white border-0 shadow-sm">
-                                <Check className="h-3 w-3 mr-1" />
-                                Pago
-                              </Badge>
-                            ) : (
-                              status === OrderStatus.PENDING && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => markAsPaid(order.id)}
-                                  className="h-7 text-xs hover:bg-green-50 hover:border-green-500 hover:text-green-600"
-                                >
-                                  Confirmar
-                                </Button>
-                              )
-                            )}
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                onClick={() => setOrderToRemove(order.id)}
+                                title="Remover pedido"
+                                aria-label="Remover pedido"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                              {order.is_paid ? (
+                                <Badge className="bg-green-500 text-white border-0 shadow-sm">
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Pago
+                                </Badge>
+                              ) : (
+                                status === OrderStatus.PENDING && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => markAsPaid(order.id)}
+                                    className="h-7 text-xs hover:bg-green-50 hover:border-green-500 hover:text-green-600"
+                                  >
+                                    Confirmar
+                                  </Button>
+                                )
+                              )}
+                            </div>
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-3">
@@ -409,6 +478,42 @@ export default function AdminOrders() {
           })}
         </div>
       </div>
+
+      {/* Diálogo de confirmação para remover pedido */}
+      <Dialog open={!!orderToRemove} onOpenChange={(open) => !open && setOrderToRemove(null)}>
+        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => removing && e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                <X className="h-5 w-5" />
+              </span>
+              Remover pedido?
+            </DialogTitle>
+            <DialogDescription>
+              O pedido será cancelado e removido da lista. Esta ação não envia notificação ao cliente.
+              Você pode precisar avisá-lo por WhatsApp se já tiver sido confirmado.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOrderToRemove(null)}
+              disabled={removing}
+            >
+              Manter
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => orderToRemove && removeOrder(orderToRemove)}
+              disabled={removing}
+            >
+              {removing ? 'Removendo...' : 'Remover pedido'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

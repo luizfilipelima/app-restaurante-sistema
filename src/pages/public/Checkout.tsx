@@ -171,8 +171,11 @@ export default function PublicCheckout() {
       if (notes) sections.push('\n📝 *Obs:* ' + notes);
       const message = sections.join('\n');
       const restaurantWhatsApp = (currentRestaurant?.whatsapp || '').replace(/\D/g, '');
-      const whatsappNumber = restaurantWhatsApp.length >= 10
-        ? (restaurantWhatsApp.startsWith('55') || restaurantWhatsApp.startsWith('595') ? restaurantWhatsApp : '55' + restaurantWhatsApp)
+      const country = (currentRestaurant as { phone_country?: 'BR' | 'PY' })?.phone_country || 'BR';
+      const prefix = country === 'PY' ? '595' : '55';
+      const hasPrefix = restaurantWhatsApp.startsWith('55') || restaurantWhatsApp.startsWith('595');
+      const whatsappNumber = restaurantWhatsApp.length >= 9
+        ? (hasPrefix ? restaurantWhatsApp : prefix + restaurantWhatsApp)
         : '5511999999999';
       const link = generateWhatsAppLink(whatsappNumber, message);
       window.open(link, '_blank');

@@ -6,10 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency } from '@/lib/utils';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
-import { Save, Plus, Trash2, Pizza, Upload, Loader2, Clock } from 'lucide-react';
+import { Save, Plus, Trash2, Pizza, Upload, Loader2, Clock, Instagram } from 'lucide-react';
 
 export default function AdminSettings() {
   const restaurantId = useAdminRestaurantId();
@@ -29,6 +36,8 @@ export default function AdminSettings() {
     name: '',
     phone: '',
     whatsapp: '',
+    phone_country: 'BR' as 'BR' | 'PY',
+    instagram_url: '',
     logo: '',
     primary_color: '#000000',
     secondary_color: '#ffffff',
@@ -76,6 +85,8 @@ export default function AdminSettings() {
         name: data.name || '',
         phone: data.phone || '',
         whatsapp: data.whatsapp || '',
+        phone_country: (data.phone_country === 'PY' ? 'PY' : 'BR') as 'BR' | 'PY',
+        instagram_url: data.instagram_url || '',
         logo: data.logo || '',
         primary_color: data.primary_color || '#000000',
         secondary_color: data.secondary_color || '#ffffff',
@@ -229,6 +240,8 @@ export default function AdminSettings() {
           name: formData.name,
           phone: formData.phone,
           whatsapp: formData.whatsapp,
+          phone_country: formData.phone_country,
+          instagram_url: formData.instagram_url || null,
           logo: formData.logo,
           primary_color: formData.primary_color,
           secondary_color: formData.secondary_color,
@@ -285,6 +298,25 @@ export default function AdminSettings() {
               </div>
 
               <div>
+                <Label>País do telefone / WhatsApp</Label>
+                <Select
+                  value={formData.phone_country}
+                  onValueChange={(v) => setFormData({ ...formData, phone_country: v as 'BR' | 'PY' })}
+                >
+                  <SelectTrigger className="w-full max-w-[200px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BR">🇧🇷 Brasil (+55)</SelectItem>
+                    <SelectItem value="PY">🇵🇾 Paraguai (+595)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Define o código do país para Telefone e WhatsApp
+                </p>
+              </div>
+
+              <div>
                 <Label htmlFor="phone">Telefone</Label>
                 <Input
                   id="phone"
@@ -293,13 +325,13 @@ export default function AdminSettings() {
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
                   }
-                  placeholder="(00) 00000-0000"
+                  placeholder={formData.phone_country === 'BR' ? '(11) 99999-9999' : '981 123 456'}
                   required
                 />
               </div>
 
               <div>
-                <Label htmlFor="whatsapp">WhatsApp (com DDD)</Label>
+                <Label htmlFor="whatsapp">WhatsApp</Label>
                 <Input
                   id="whatsapp"
                   type="tel"
@@ -307,11 +339,30 @@ export default function AdminSettings() {
                   onChange={(e) =>
                     setFormData({ ...formData, whatsapp: e.target.value })
                   }
-                  placeholder="11999999999"
+                  placeholder={formData.phone_country === 'BR' ? '(11) 99999-9999' : '981 123 456'}
                   required
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Apenas números, sem parênteses ou traços
+                  {formData.phone_country === 'BR' ? 'Brasil: DDD + número (apenas dígitos)' : 'Paraguai: número com 9 dígitos'}
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="instagram_url" className="flex items-center gap-2">
+                  <Instagram className="h-4 w-4" /> Instagram
+                </Label>
+                <Input
+                  id="instagram_url"
+                  type="url"
+                  value={formData.instagram_url}
+                  onChange={(e) =>
+                    setFormData({ ...formData, instagram_url: e.target.value })
+                  }
+                  placeholder="https://instagram.com/seu-restaurante"
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Link completo do perfil (opcional)
                 </p>
               </div>
 

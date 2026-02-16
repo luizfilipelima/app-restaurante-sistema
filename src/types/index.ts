@@ -12,6 +12,7 @@ export enum OrderStatus {
   READY = 'ready',
   DELIVERING = 'delivering',
   COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
 }
 
 export enum PaymentMethod {
@@ -43,6 +44,8 @@ export interface OpeningHoursSlot {
   close: string;
 }
 
+export type PhoneCountry = 'BR' | 'PY';
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -50,6 +53,9 @@ export interface Restaurant {
   logo?: string;
   phone: string;
   whatsapp: string;
+  /** País do número de telefone/WhatsApp: BR ou PY */
+  phone_country?: PhoneCountry;
+  instagram_url?: string;
   primary_color?: string;
   secondary_color?: string;
   is_active: boolean;
