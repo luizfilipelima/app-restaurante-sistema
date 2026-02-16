@@ -218,49 +218,54 @@ export default function PublicMenu() {
       <div className="container mx-auto px-4 py-6 space-y-6">
         
         {/* Search & Categories */}
-        <div className="sticky top-0 z-30 bg-slate-50/95 backdrop-blur-sm py-2 -mx-4 px-4 border-b border-slate-200/50">
-          <div className="relative mb-4 container mx-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input 
-              placeholder="O que você procura hoje?" 
-              className="pl-10 bg-white border-slate-200 shadow-sm rounded-xl focus-visible:ring-orange-500"
-            />
-          </div>
-          
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide container mx-auto">
-            <button
-              onClick={() => setSelectedCategory('all')}
-              className={`flex flex-col items-center gap-1 min-w-[70px] p-2 rounded-xl transition-all ${
-                selectedCategory === 'all' 
-                  ? 'bg-orange-500 text-white shadow-md scale-105' 
-                  : 'bg-white text-slate-600 border border-slate-200 hover:border-orange-200'
-              }`}
-            >
-              <div className={`p-2 rounded-full ${selectedCategory === 'all' ? 'bg-white/20' : 'bg-slate-100'}`}>
-                <Utensils className="h-5 w-5" />
-              </div>
-              <span className="text-xs font-semibold">Todos</span>
-            </button>
+        <div className="sticky top-0 z-30 -mx-4 px-4 py-3 bg-white border-b border-slate-200 rounded-b-2xl shadow-sm">
+          {/* Faixa laranja no topo */}
+          <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-orange-400 to-orange-500" aria-hidden />
+          <div className="container mx-auto space-y-4">
+            {/* Campo de busca: lupa dentro do input */}
+            <div className="relative w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-orange-500 pointer-events-none z-10" />
+              <Input
+                placeholder="O que você procura hoje?"
+                className="w-full h-12 pl-11 pr-4 bg-slate-50 border-slate-200 rounded-xl border-2 focus-visible:border-orange-400 focus-visible:ring-2 focus-visible:ring-orange-200 text-slate-900 placeholder:text-slate-400"
+              />
+            </div>
 
-            {categories.map((category) => {
-              const Icon = CATEGORY_ICONS[category] || CATEGORY_ICONS['default'];
-              return (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`flex flex-col items-center gap-1 min-w-[70px] p-2 rounded-xl transition-all ${
-                    selectedCategory === category
-                      ? 'bg-orange-500 text-white shadow-md scale-105'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:border-orange-200'
-                  }`}
-                >
-                  <div className={`p-2 rounded-full ${selectedCategory === category ? 'bg-white/20' : 'bg-slate-100'}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <span className="text-xs font-semibold whitespace-nowrap">{category}</span>
-                </button>
-              );
-            })}
+            {/* Categorias */}
+            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+              <button
+                onClick={() => setSelectedCategory('all')}
+                className={`flex flex-col items-center gap-1 min-w-[72px] p-3 rounded-xl transition-all flex-shrink-0 ${
+                  selectedCategory === 'all'
+                    ? 'bg-orange-500 text-white shadow-md shadow-orange-200 scale-[1.02]'
+                    : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-orange-50 hover:border-orange-200'
+                }`}
+              >
+                <div className={`p-2 rounded-full ${selectedCategory === 'all' ? 'bg-white/25' : 'bg-white'}`}>
+                  <Utensils className="h-5 w-5" />
+                </div>
+                <span className="text-xs font-semibold">Todos</span>
+              </button>
+              {categories.map((category) => {
+                const Icon = CATEGORY_ICONS[category] || CATEGORY_ICONS['default'];
+                return (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`flex flex-col items-center gap-1 min-w-[72px] p-3 rounded-xl transition-all flex-shrink-0 ${
+                      selectedCategory === category
+                        ? 'bg-orange-500 text-white shadow-md shadow-orange-200 scale-[1.02]'
+                        : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-orange-50 hover:border-orange-200'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-full ${selectedCategory === category ? 'bg-white/25' : 'bg-white'}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span className="text-xs font-semibold whitespace-nowrap">{category}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
