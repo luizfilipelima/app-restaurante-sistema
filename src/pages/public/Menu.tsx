@@ -231,17 +231,18 @@ export default function PublicMenu() {
               />
             </div>
 
-            {/* Categorias */}
-            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+            {/* Categorias - padding evita sombra cortada pelo overflow */}
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide py-2 px-0.5 -mx-0.5">
               <button
+                type="button"
                 onClick={() => setSelectedCategory('all')}
-                className={`flex flex-col items-center gap-1 min-w-[72px] p-3 rounded-xl transition-all flex-shrink-0 ${
+                className={`flex flex-col items-center justify-center gap-1 min-w-[72px] h-[80px] p-3 rounded-xl transition-all flex-shrink-0 box-border ${
                   selectedCategory === 'all'
-                    ? 'bg-orange-500 text-white shadow-md shadow-orange-200 scale-[1.02]'
-                    : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-orange-50 hover:border-orange-200'
+                    ? 'bg-orange-500 text-white border-2 border-orange-500 shadow-[0_4px_12px_rgba(249,115,22,0.35)]'
+                    : 'bg-slate-100 text-slate-600 border-2 border-slate-200 hover:bg-orange-50 hover:border-orange-200'
                 }`}
               >
-                <div className={`p-2 rounded-full ${selectedCategory === 'all' ? 'bg-white/25' : 'bg-white'}`}>
+                <div className={`p-2 rounded-full shrink-0 ${selectedCategory === 'all' ? 'bg-white/25' : 'bg-white'}`}>
                   <Utensils className="h-5 w-5" />
                 </div>
                 <span className="text-xs font-semibold">Todos</span>
@@ -250,15 +251,16 @@ export default function PublicMenu() {
                 const Icon = CATEGORY_ICONS[category] || CATEGORY_ICONS['default'];
                 return (
                   <button
+                    type="button"
                     key={category}
                     onClick={() => setSelectedCategory(category)}
-                    className={`flex flex-col items-center gap-1 min-w-[72px] p-3 rounded-xl transition-all flex-shrink-0 ${
+                    className={`flex flex-col items-center justify-center gap-1 min-w-[72px] h-[80px] p-3 rounded-xl transition-all flex-shrink-0 box-border ${
                       selectedCategory === category
-                        ? 'bg-orange-500 text-white shadow-md shadow-orange-200 scale-[1.02]'
-                        : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-orange-50 hover:border-orange-200'
+                        ? 'bg-orange-500 text-white border-2 border-orange-500 shadow-[0_4px_12px_rgba(249,115,22,0.35)]'
+                        : 'bg-slate-100 text-slate-600 border-2 border-slate-200 hover:bg-orange-50 hover:border-orange-200'
                     }`}
                   >
-                    <div className={`p-2 rounded-full ${selectedCategory === category ? 'bg-white/25' : 'bg-white'}`}>
+                    <div className={`p-2 rounded-full shrink-0 ${selectedCategory === category ? 'bg-white/25' : 'bg-white'}`}>
                       <Icon className="h-5 w-5" />
                     </div>
                     <span className="text-xs font-semibold whitespace-nowrap">{category}</span>
