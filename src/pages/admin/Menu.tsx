@@ -5,19 +5,72 @@ import { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { toast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
-import { Plus, Edit, Trash2, Pizza } from 'lucide-react';
+import { Plus, Edit, Trash2, Pizza, Loader2 } from 'lucide-react';
+
+const CATEGORIAS_SUGERIDAS = [
+  'Pizza',
+  'Bebidas',
+  'Sobremesas',
+  'Aperitivos',
+  'Massas',
+  'Lanches',
+  'Outros',
+];
+
+const formDefaults = {
+  name: '',
+  category: 'Pizza',
+  description: '',
+  price: '',
+  is_pizza: false,
+  image_url: '',
+};
 
 export default function AdminMenu() {
   const restaurantId = useAdminRestaurantId();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(formDefaults);
 
   useEffect(() => {
     if (restaurantId) {
       loadProducts();
     }
   }, [restaurantId]);
+
+  const openNew = () => {
+    setEditingProduct(null);
+    setForm(formDefaults);
+    setModalOpen(true);
+  };
+
+  const openEdit = (product: Product) => {
+    setEditingProduct(product);
+    setForm({
+      name: product.name,
+      category: product.category,
+      description: product.description || '',
+      price: String(product.price),
+      is_pizza: product.is_pizza,
+      image_url: product.image_url || '',
+    });
+    setModalOpen(true);
+  };
 
   const loadProducts = async () => {
     if (!restaurantId) return;
@@ -37,8 +90,77 @@ export default function AdminMenu() {
       setProducts(data || []);
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
+      toast({
+        title: 'Erro ao carregar cardápio',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurantId) return;
+
+    const name = form.name.trim();
+    const category = form.category.trim();
+    const price = parseFloat(form.price.replace(',', '.'));
+
+    if (!name) {
+      toast({ title: 'Nome obrigatório', variant: 'destructive' });
+      return;
+    }
+    if (!category) {
+      toast({ title: 'Categoria obrigatória', variant: 'destructive' });
+      return;
+    }
+    if (isNaN(price) || price < 0) {
+      toast({ title: 'Preço inválido', variant: 'destructive' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        restaurant_id: restaurantId,
+        name,
+        category,
+        description: form.description.trim() || null,
+        price,
+        is_pizza: form.is_pizza,
+        image_url: form.image_url.trim() || null,
+        is_active: true,
+      };
+
+      if (editingProduct) {
+        const { error } = await supabase
+          .from('products')
+          .update(payload)
+          .eq('id', editingProduct.id);
+
+        if (error) throw error;
+        toast({ title: 'Produto atualizado!', variant: 'success' });
+      } else {
+        const { error } = await supabase.from('products').insert(payload);
+
+        if (error) throw error;
+        toast({ title: 'Produto adicionado ao cardápio!', variant: 'success' });
+      }
+
+      setModalOpen(false);
+      loadProducts();
+    } catch (error) {
+      console.error('Erro ao salvar produto:', error);
+      const msg = error instanceof Error ? error.message : 'Verifique as permissões no Supabase.';
+      toast({
+        title: 'Erro ao salvar produto',
+        description: msg,
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -99,12 +221,12 @@ export default function AdminMenu() {
     <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Cardápio</h1>
+            <h1 className="text-3xl font-bold text-foreground">Cardápio</h1>
             <p className="text-muted-foreground">
               Gerencie os produtos do seu cardápio
             </p>
           </div>
-          <Button>
+          <Button onClick={openNew}>
             <Plus className="h-4 w-4 mr-2" />
             Novo Produto
           </Button>
@@ -116,7 +238,7 @@ export default function AdminMenu() {
               <p className="text-muted-foreground mb-4">
                 Você ainda não tem produtos cadastrados
               </p>
-              <Button>
+              <Button onClick={openNew}>
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Primeiro Produto
               </Button>
@@ -179,7 +301,11 @@ export default function AdminMenu() {
                           >
                             {product.is_active ? 'Desativar' : 'Ativar'}
                           </Button>
-                          <Button variant="outline" size="icon">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => openEdit(product)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
@@ -198,6 +324,112 @@ export default function AdminMenu() {
             ))}
           </div>
         )}
+
+      {/* Modal Adicionar/Editar Produto */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingProduct ? 'Editar Produto' : 'Novo Produto'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveProduct} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome *</Label>
+              <Input
+                id="name"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Ex: Pizza Margherita"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="category">Categoria *</Label>
+              <Input
+                id="category"
+                list="categories-list"
+                value={form.category}
+                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                placeholder="Ex: Pizza, Bebidas"
+                required
+              />
+              <datalist id="categories-list">
+                {CATEGORIAS_SUGERIDAS.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="Descrição opcional do produto"
+                rows={2}
+                className="resize-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="price">Preço (R$) *</Label>
+              <Input
+                id="price"
+                type="text"
+                inputMode="decimal"
+                value={form.price}
+                onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                placeholder="0,00"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="image_url">URL da imagem</Label>
+              <Input
+                id="image_url"
+                type="url"
+                value={form.image_url}
+                onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_pizza"
+                checked={form.is_pizza}
+                onChange={(e) => setForm((f) => ({ ...f, is_pizza: e.target.checked }))}
+                className="h-4 w-4 rounded border-input"
+              />
+              <Label htmlFor="is_pizza" className="cursor-pointer font-normal">
+                É pizza? (permite personalizar tamanho, sabores, borda)
+              </Label>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setModalOpen(false)}
+                disabled={saving}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : editingProduct ? (
+                  'Salvar'
+                ) : (
+                  'Adicionar ao cardápio'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
