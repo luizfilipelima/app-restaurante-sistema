@@ -180,6 +180,50 @@ Depois do deploy, no painel do super admin, em **Restaurantes** → **Usuários*
 
 ---
 
+## Passo 7: Imagens do cardápio (upload em WebP)
+
+Ao adicionar ou editar itens do cardápio, o sistema permite **enviar uma imagem** (PNG, JPG ou GIF). Ela é convertida automaticamente para **WebP com 80% de qualidade** (arquivo leve e boa qualidade) e armazenada no Supabase Storage.
+
+Para isso funcionar, crie o bucket e as políticas no Supabase:
+
+1. No dashboard: **Storage** → **New bucket**.
+2. Nome do bucket: **`product-images`**.
+3. Marque **Public bucket** (as imagens do cardápio precisam ser acessíveis publicamente).
+4. Clique em **Create bucket**.
+5. Abra o bucket → **Policies** → **New policy** (ou **RLS**). Crie uma política que permita:
+   - **INSERT**: usuários autenticados que sejam `restaurant_admin` do restaurante ou `super_admin` (upload na pasta `{restaurant_id}/`).
+   - **SELECT** (leitura pública): já coberto por ser bucket público.
+
+No **SQL Editor** você pode usar as políticas abaixo (ajuste se o Supabase já tiver sintaxe diferente para storage):
+
+```sql
+-- Permite admin do restaurante e super_admin fazer upload na pasta do seu restaurante
+CREATE POLICY "Admin e super_admin podem fazer upload de imagens"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'product-images'
+  AND (
+    EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.id = auth.uid()
+      AND ( (u.role = 'restaurant_admin' AND (storage.foldername(name))[1] = u.restaurant_id::text)
+            OR u.role = 'super_admin' )
+    )
+  )
+);
+
+-- Permite leitura pública (se o bucket for público, isso já costuma estar liberado)
+CREATE POLICY "Leitura pública das imagens do cardápio"
+ON storage.objects FOR SELECT
+TO public
+USING ( bucket_id = 'product-images' );
+```
+
+Se não configurar o bucket, o admin ainda pode usar o campo **“Ou cole uma URL”** para colar um link de imagem existente.
+
+---
+
 ## Resumo: o que cada arquivo SQL faz
 
 | Arquivo | O que faz |
@@ -202,6 +246,7 @@ Depois do deploy, no painel do super admin, em **Restaurantes** → **Usuários*
 - [ ] Super admin criado com `create_super_admin(email, user_id)`.
 - [ ] (Opcional) Um restaurante criado e um usuário `restaurant_admin` vinculado a ele.
 - [ ] (Opcional) Edge Function `create-restaurant-user` publicada, para cadastrar usuários pelo painel.
+- [ ] (Opcional) Bucket **product-images** criado no Storage (público) e políticas de INSERT para admin/super_admin, para upload de imagens do cardápio em WebP.
 
 Se todos os itens estiverem feitos e as variáveis de ambiente corretas, **adicionar zonas de entrega e produtos no cardápio** deve funcionar sem erro de permissão.
 

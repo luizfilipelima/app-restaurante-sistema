@@ -24,7 +24,8 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
-import { Plus, Edit, Trash2, Pizza, Loader2, Info } from 'lucide-react';
+import { uploadProductImage } from '@/lib/imageUpload';
+import { Plus, Edit, Trash2, Pizza, Loader2, Info, Upload } from 'lucide-react';
 
 // Categorias fixas do cardápio com configurações específicas por tipo
 interface CategoryConfig {
@@ -70,6 +71,7 @@ export default function AdminMenu() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [form, setForm] = useState(formDefaults);
 
   useEffect(() => {
@@ -476,14 +478,91 @@ export default function AdminMenu() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="image_url">URL da imagem</Label>
-              <Input
-                id="image_url"
-                type="url"
-                value={form.image_url}
-                onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
-                placeholder="https://..."
-              />
+              <Label>Imagem do produto</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                PNG, JPG ou GIF. Será convertida para WebP (80%) para ficar leve e em boa qualidade.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 items-start">
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/gif"
+                    className="sr-only"
+                    disabled={imageUploading || !restaurantId}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !restaurantId) return;
+                      setImageUploading(true);
+                      try {
+                        const url = await uploadProductImage(restaurantId, file);
+                        setForm((f) => ({ ...f, image_url: url }));
+                        toast({ title: 'Imagem enviada e otimizada (WebP 80%)' });
+                      } catch (err) {
+                        toast({
+                          title: 'Erro ao enviar imagem',
+                          description: err instanceof Error ? err.message : 'Tente outro arquivo.',
+                          variant: 'destructive',
+                        });
+                      } finally {
+                        setImageUploading(false);
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="pointer-events-none"
+                    asChild
+                  >
+                    <span>
+                      {imageUploading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Enviando e otimizando...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Escolher arquivo
+                        </>
+                      )}
+                    </span>
+                  </Button>
+                </label>
+                {form.image_url && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-16 h-16 rounded-lg overflow-hidden border bg-muted flex-shrink-0">
+                      <img
+                        src={form.image_url}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setForm((f) => ({ ...f, image_url: '' }))}
+                    >
+                      Remover imagem
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="pt-1">
+                <Label htmlFor="image_url_optional" className="text-xs text-muted-foreground">
+                  Ou cole uma URL (link) da imagem
+                </Label>
+                <Input
+                  id="image_url_optional"
+                  type="url"
+                  value={form.image_url}
+                  onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
+                  placeholder="https://..."
+                  className="mt-1"
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button
