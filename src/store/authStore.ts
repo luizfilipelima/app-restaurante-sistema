@@ -77,11 +77,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (error) throw error;
 
       if (data.user) {
-        const { data: userData } = await supabase
+        const { data: userData, error: profileError } = await supabase
           .from('users')
           .select('*')
           .eq('id', data.user.id)
           .single();
+
+        if (profileError || !userData) {
+          await supabase.auth.signOut();
+          set({ loading: false });
+          throw new Error(
+            'Login aceito, mas seu perfil não foi encontrado no sistema. Contate o administrador ou execute o script de cadastro de usuários.'
+          );
+        }
 
         set({
           session: data.session,
