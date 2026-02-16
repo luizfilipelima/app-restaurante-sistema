@@ -451,7 +451,13 @@ export default function AdminSettings() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Button type="submit" size="lg" disabled={saving}>
+            <Save className="h-4 w-4 mr-2" />
+            {saving ? 'Salvando...' : 'Salvar Configurações'}
+          </Button>
+        </form>
+
+        <Card className="mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Pizza className="h-5 w-5" />
@@ -647,12 +653,6 @@ export default function AdminSettings() {
               </Tabs>
             </CardContent>
           </Card>
-
-          <Button type="submit" size="lg" disabled={saving}>
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? 'Salvando...' : 'Salvar Configurações'}
-          </Button>
-        </form>
     </div>
   );
 }
