@@ -15,27 +15,52 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
-import { Plus, Edit, Trash2, Pizza, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Pizza, Loader2, Info } from 'lucide-react';
 
-const CATEGORIAS_SUGERIDAS = [
-  'Pizza',
-  'Bebidas',
-  'Sobremesas',
-  'Aperitivos',
-  'Massas',
-  'Lanches',
-  'Outros',
+// Categorias fixas do cardápio com configurações específicas por tipo
+interface CategoryConfig {
+  id: string;
+  label: string;
+  isPizza: boolean;
+  priceLabel?: string;
+  extraField?: string;
+  extraLabel?: string;
+  extraPlaceholder?: string;
+}
+
+const CATEGORIAS_CARDAPIO: CategoryConfig[] = [
+  { id: 'Pizza', label: 'Pizza', isPizza: true, priceLabel: 'Preço base (por sabor)' },
+  { id: 'Bebidas', label: 'Bebidas', isPizza: false, extraField: 'volume', extraLabel: 'Volume ou medida', extraPlaceholder: 'Ex: 350ml, 1L, 2L' },
+  { id: 'Sobremesas', label: 'Sobremesas', isPizza: false, extraField: 'portion', extraLabel: 'Porção', extraPlaceholder: 'Ex: individual, fatia, 500g' },
+  { id: 'Aperitivos', label: 'Aperitivos', isPizza: false },
+  { id: 'Massas', label: 'Massas', isPizza: false },
+  { id: 'Lanches', label: 'Lanches', isPizza: false },
+  { id: 'Combos', label: 'Combos', isPizza: false, extraField: 'detail', extraLabel: 'Detalhe do combo', extraPlaceholder: 'Ex: Pizza + Refrigerante' },
+  { id: 'Outros', label: 'Outros', isPizza: false },
 ];
+
+type CategoryId = (typeof CATEGORIAS_CARDAPIO)[number]['id'];
+
+const getCategoryConfig = (categoryId: string): CategoryConfig =>
+  CATEGORIAS_CARDAPIO.find((c) => c.id === categoryId) ?? CATEGORIAS_CARDAPIO[CATEGORIAS_CARDAPIO.length - 1];
 
 const formDefaults = {
   name: '',
-  category: 'Pizza',
+  category: 'Pizza' as CategoryId,
   description: '',
   price: '',
-  is_pizza: false,
+  is_pizza: true, // Pizza é padrão na primeira categoria
   image_url: '',
+  categoryDetail: '', // Campo extra conforme categoria (volume, porção, etc.)
 };
 
 export default function AdminMenu() {
@@ -61,15 +86,32 @@ export default function AdminMenu() {
 
   const openEdit = (product: Product) => {
     setEditingProduct(product);
+    const config = getCategoryConfig(product.category);
+    const desc = product.description || '';
+    const hasDetail = config.extraField && desc.includes(' - ');
+    const [categoryDetail, description] = hasDetail
+      ? (desc.split(/ - (.+)/).slice(0, 2) as [string, string])
+      : ['', desc];
     setForm({
       name: product.name,
-      category: product.category,
-      description: product.description || '',
+      category: (config.id as CategoryId) || 'Outros',
+      description: description?.trim() || '',
       price: String(product.price),
-      is_pizza: product.is_pizza,
+      is_pizza: config.isPizza,
       image_url: product.image_url || '',
+      categoryDetail: categoryDetail?.trim() || '',
     });
     setModalOpen(true);
+  };
+
+  const handleCategoryChange = (categoryId: string) => {
+    const config = getCategoryConfig(categoryId);
+    setForm((f) => ({
+      ...f,
+      category: categoryId as CategoryId,
+      is_pizza: config.isPizza,
+      categoryDetail: config.extraField != null ? f.categoryDetail : '',
+    }));
   };
 
   const loadProducts = async () => {
@@ -121,15 +163,24 @@ export default function AdminMenu() {
       return;
     }
 
+    const config = getCategoryConfig(category);
+    const isPizza = config.isPizza;
+    const descriptionFinal =
+      form.categoryDetail.trim()
+        ? form.description.trim()
+          ? `${form.categoryDetail.trim()} - ${form.description.trim()}`
+          : form.categoryDetail.trim()
+        : form.description.trim() || null;
+
     setSaving(true);
     try {
       const payload = {
         restaurant_id: restaurantId,
         name,
         category,
-        description: form.description.trim() || null,
+        description: descriptionFinal,
         price,
-        is_pizza: form.is_pizza,
+        is_pizza: isPizza,
         image_url: form.image_url.trim() || null,
         is_active: true,
       };
@@ -340,39 +391,80 @@ export default function AdminMenu() {
                 id="name"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Ex: Pizza Margherita"
+                placeholder={
+                  form.category === 'Pizza'
+                    ? 'Ex: Margherita, Calabresa'
+                    : form.category === 'Bebidas'
+                    ? 'Ex: Refrigerante, Suco'
+                    : 'Ex: nome do produto'
+                }
                 required
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="category">Categoria *</Label>
-              <Input
-                id="category"
-                list="categories-list"
+              <Label>Categoria do cardápio *</Label>
+              <Select
                 value={form.category}
-                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                placeholder="Ex: Pizza, Bebidas"
+                onValueChange={handleCategoryChange}
                 required
-              />
-              <datalist id="categories-list">
-                {CATEGORIAS_SUGERIDAS.map((c) => (
-                  <option key={c} value={c} />
-                ))}
-              </datalist>
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIAS_CARDAPIO.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.label}
+                      {cat.isPizza && ' (tamanhos e sabores)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            {getCategoryConfig(form.category).isPizza && (
+              <div className="flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-foreground">
+                <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <span>
+                  Produto configurado como <strong>pizza</strong>. O cliente poderá escolher tamanho, sabores e borda na hora do pedido. Configure tamanhos, sabores e bordas nas configurações do restaurante.
+                </span>
+              </div>
+            )}
+
+            {getCategoryConfig(form.category).extraField && (
+              <div className="space-y-2">
+                <Label htmlFor="categoryDetail">
+                  {getCategoryConfig(form.category).extraLabel}
+                </Label>
+                <Input
+                  id="categoryDetail"
+                  value={form.categoryDetail}
+                  onChange={(e) => setForm((f) => ({ ...f, categoryDetail: e.target.value }))}
+                  placeholder={getCategoryConfig(form.category).extraPlaceholder}
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="description">Descrição</Label>
               <Textarea
                 id="description"
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Descrição opcional do produto"
+                placeholder={
+                  form.category === 'Pizza'
+                    ? 'Ex: Molho de tomate, mussarela e manjericão'
+                    : 'Descrição opcional do produto'
+                }
                 rows={2}
                 className="resize-none"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="price">Preço (R$) *</Label>
+              <Label htmlFor="price">
+                {getCategoryConfig(form.category).priceLabel || 'Preço (R$) *'}
+              </Label>
               <Input
                 id="price"
                 type="text"
@@ -392,18 +484,6 @@ export default function AdminMenu() {
                 onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
                 placeholder="https://..."
               />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="is_pizza"
-                checked={form.is_pizza}
-                onChange={(e) => setForm((f) => ({ ...f, is_pizza: e.target.checked }))}
-                className="h-4 w-4 rounded border-input"
-              />
-              <Label htmlFor="is_pizza" className="cursor-pointer font-normal">
-                É pizza? (permite personalizar tamanho, sabores, borda)
-              </Label>
             </div>
             <DialogFooter>
               <Button
