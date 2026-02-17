@@ -22,6 +22,7 @@ import AdminCouriers from './pages/admin/Couriers';
 import KitchenDisplay from './pages/kitchen/KitchenDisplay';
 import PublicMenu from './pages/public/Menu';
 import PublicCheckout from './pages/public/Checkout';
+import MenuViewOnly from './pages/public/MenuViewOnly';
 
 const adminRoutes = (
   <>
@@ -114,6 +115,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/:restaurantSlug" element={<PublicMenu />} />
+        <Route path="/:restaurantSlug/menu" element={<MenuViewOnly />} />
         <Route path="/:restaurantSlug/checkout" element={<PublicCheckout />} />
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route

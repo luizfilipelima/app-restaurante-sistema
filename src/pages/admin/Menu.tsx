@@ -649,25 +649,54 @@ export default function AdminMenu() {
             </div>
           </div>
           {(slug || restaurant?.slug) && (
-            <div>
-              <Label>Link público do cardápio:</Label>
-              <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                <Input
-                  readOnly
-                  value={getCardapioPublicUrl(slug || restaurant?.slug || '')}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={copyCardapioLink}
-                  className="w-full sm:w-auto"
-                >
-                  {linkCopied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
-                  {linkCopied ? 'Copiado!' : 'Copiar'}
-                </Button>
+            <>
+              <div>
+                <Label>Link público do cardápio (interativo):</Label>
+                <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                  <Input
+                    readOnly
+                    value={getCardapioPublicUrl(slug || restaurant?.slug || '')}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={copyCardapioLink}
+                    className="w-full sm:w-auto"
+                  >
+                    {linkCopied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                    {linkCopied ? 'Copiado!' : 'Copiar'}
+                  </Button>
+                </div>
               </div>
-            </div>
+              <div>
+                <Label>Link do cardápio (somente visualização):</Label>
+                <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                  <Input
+                    readOnly
+                    value={getCardapioPublicUrl(slug || restaurant?.slug || '') + '/menu'}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const url = getCardapioPublicUrl(slug || restaurant?.slug || '') + '/menu';
+                      navigator.clipboard.writeText(url).then(() => {
+                        toast({ title: 'Link copiado!' });
+                      });
+                    }}
+                    className="w-full sm:w-auto"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copiar
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Cardápio sem opção de pedidos, ideal para substituir cardápio físico
+                </p>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

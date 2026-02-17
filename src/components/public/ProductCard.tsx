@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 
 interface ProductCardProps {
   product: Product;
-  onClick: () => void;
+  onClick?: () => void;
+  readOnly?: boolean;
 }
 
-export default function ProductCard({ product, onClick }: ProductCardProps) {
+export default function ProductCard({ product, onClick, readOnly = false }: ProductCardProps) {
   const isBeverage = product.category?.toLowerCase() === 'bebidas';
   const hasNoImage = !product.image_url;
   const isSimplified = isBeverage && hasNoImage;
@@ -19,8 +20,10 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
   if (isSimplified) {
     return (
       <Card
-        className="group cursor-pointer bg-white border border-slate-200/80 overflow-hidden rounded-xl sm:rounded-2xl w-full min-w-0 shadow-sm hover:shadow-lg active:shadow-md hover:border-slate-300/80 active:border-slate-300 transition-all duration-300 touch-manipulation"
-        onClick={onClick}
+        className={`group bg-white border border-slate-200/80 overflow-hidden rounded-xl sm:rounded-2xl w-full min-w-0 shadow-sm transition-all duration-300 ${
+          readOnly ? '' : 'cursor-pointer hover:shadow-lg active:shadow-md hover:border-slate-300/80 active:border-slate-300 touch-manipulation'
+        }`}
+        onClick={readOnly ? undefined : onClick}
       >
         <CardContent className="p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3 sm:gap-4">
@@ -40,23 +43,25 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
                   {product.description}
                 </p>
               )}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                <span className="text-slate-600 text-sm sm:text-base font-medium group-hover:text-slate-900 transition-colors text-sm-mobile-inline">
-                  Adicionar
-                </span>
-                <Button
-                  type="button"
-                  size="icon"
-                  className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-white shadow-sm transition-all touch-manipulation active:scale-95"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onClick();
-                  }}
-                >
-                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
-                </Button>
-              </div>
+              {!readOnly && (
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  <span className="text-slate-600 text-sm sm:text-base font-medium group-hover:text-slate-900 transition-colors text-sm-mobile-inline">
+                    Adicionar
+                  </span>
+                  <Button
+                    type="button"
+                    size="icon"
+                    className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-white shadow-sm transition-all touch-manipulation active:scale-95"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onClick?.();
+                    }}
+                  >
+                    <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -67,8 +72,10 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
   // Layout padrão com imagem
   return (
     <Card
-      className="group cursor-pointer bg-white border border-slate-200/80 overflow-hidden rounded-xl sm:rounded-2xl w-full min-w-0 shadow-sm hover:shadow-lg active:shadow-md hover:border-slate-300/80 active:border-slate-300 transition-all duration-300 touch-manipulation"
-      onClick={onClick}
+      className={`group bg-white border border-slate-200/80 overflow-hidden rounded-xl sm:rounded-2xl w-full min-w-0 shadow-sm transition-all duration-300 ${
+        readOnly ? '' : 'cursor-pointer hover:shadow-lg active:shadow-md hover:border-slate-300/80 active:border-slate-300 touch-manipulation'
+      }`}
+      onClick={readOnly ? undefined : onClick}
     >
       <div className="relative w-full">
         <div className="relative w-full overflow-hidden bg-slate-100 aspect-[4/3] min-h-[140px] sm:min-h-[160px]">
@@ -121,38 +128,40 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
           )}
         </div>
 
-        <div
-          className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-slate-100 flex items-center justify-between cursor-pointer touch-manipulation"
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onClick();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onClick();
-            }
-          }}
-        >
-          <span className="text-slate-600 text-base sm:text-sm font-medium group-hover:text-slate-900 transition-colors text-sm-mobile-inline">
-            {product.is_pizza || product.is_marmita ? 'Personalizar' : 'Adicionar'}
-          </span>
-          <Button
-            type="button"
-            size="icon"
-            className="h-10 w-10 sm:h-9 sm:w-9 rounded-lg sm:rounded-xl bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-white shadow-sm transition-all touch-manipulation active:scale-95"
+        {!readOnly && (
+          <div
+            className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-slate-100 flex items-center justify-between cursor-pointer touch-manipulation"
+            role="button"
+            tabIndex={0}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              onClick();
+              onClick?.();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick?.();
+              }
             }}
           >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
+            <span className="text-slate-600 text-base sm:text-sm font-medium group-hover:text-slate-900 transition-colors text-sm-mobile-inline">
+              {product.is_pizza || product.is_marmita ? 'Personalizar' : 'Adicionar'}
+            </span>
+            <Button
+              type="button"
+              size="icon"
+              className="h-10 w-10 sm:h-9 sm:w-9 rounded-lg sm:rounded-xl bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-white shadow-sm transition-all touch-manipulation active:scale-95"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClick?.();
+              }}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

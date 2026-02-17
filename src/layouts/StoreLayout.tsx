@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import PublicMenu from '@/pages/public/Menu';
 import PublicCheckout from '@/pages/public/Checkout';
+import MenuViewOnly from '@/pages/public/MenuViewOnly';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
 import { supabase } from '@/lib/supabase';
 
@@ -42,6 +43,7 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<PublicMenu tenantSlug={tenantSlug} />} />
+        <Route path="/menu" element={<MenuViewOnly tenantSlug={tenantSlug} />} />
         <Route path="/checkout" element={<PublicCheckout tenantSlug={tenantSlug} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
