@@ -28,6 +28,7 @@ import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils'
 import { uploadProductImage } from '@/lib/imageUpload';
 import { Plus, Edit, Trash2, Pizza, Loader2, Info, Upload, Copy, Check } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
+import CategoryReorder from '@/components/admin/CategoryReorder';
 
 // Categorias fixas do cardápio com configurações específicas por tipo
 interface CategoryConfig {
@@ -287,8 +288,31 @@ export default function AdminMenu() {
           : form.categoryDetail.trim()
         : form.description.trim() || null;
 
-    setSaving(true);
+      setSaving(true);
     try {
+      // Garantir que a categoria existe na tabela categories
+      if (restaurantId) {
+        const { data: existingCategory } = await supabase
+          .from('categories')
+          .select('id')
+          .eq('restaurant_id', restaurantId)
+          .eq('name', category)
+          .single();
+
+        if (!existingCategory) {
+          // Criar categoria se não existir
+          const { data: nextOrderIndex } = await supabase.rpc('get_next_category_order_index', {
+            restaurant_uuid: restaurantId,
+          });
+
+          await supabase.from('categories').insert({
+            restaurant_id: restaurantId,
+            name: category,
+            order_index: nextOrderIndex ?? 0,
+          });
+        }
+      }
+
       const payload = {
         restaurant_id: restaurantId,
         name,
@@ -704,10 +728,11 @@ export default function AdminMenu() {
       {/* QR Code do Cardápio */}
       <MenuQRCodeCard slug={slug || restaurant?.slug || ''} />
 
-      {/* Tabs: Produtos e Configurações */}
+      {/* Tabs: Produtos, Categorias e Configurações */}
       <Tabs defaultValue="produtos" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="produtos">Produtos</TabsTrigger>
+          <TabsTrigger value="categorias">Categorias</TabsTrigger>
           <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
         </TabsList>
 
@@ -817,6 +842,17 @@ export default function AdminMenu() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* Aba Categorias */}
+        <TabsContent value="categorias" className="space-y-6 mt-6">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Reordenar Categorias</h2>
+            <p className="text-muted-foreground text-sm">
+              Arraste as categorias para definir a ordem de exibição no cardápio público.
+            </p>
+          </div>
+          {restaurantId && <CategoryReorder restaurantId={restaurantId} />}
         </TabsContent>
 
         {/* Aba Configurações */}

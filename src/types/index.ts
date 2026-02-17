@@ -325,6 +325,17 @@ export interface RestaurantWithMetrics extends Restaurant {
   active_orders?: number;
 }
 
+// ==================== CATEGORIES TYPES ====================
+
+export interface Category {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // ==================== BUFFET COMANDAS TYPES ====================
 
 export type ComandaStatus = 'open' | 'closed';

@@ -136,20 +136,34 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
         setCurrentRestaurant(restaurantData);
         setCartRestaurant(restaurantData.id);
 
+        // Buscar categorias ordenadas
+        const { data: categoriesData } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('restaurant_id', restaurantData.id)
+          .order('order_index', { ascending: true });
+
+        // Criar mapa de ordem de categorias
+        const categoryOrderMap = new Map<string, number>();
+        if (categoriesData && categoriesData.length > 0) {
+          categoriesData.forEach((cat) => {
+            categoryOrderMap.set(cat.name, cat.order_index);
+          });
+        }
+
         // Buscar produtos
         const { data: productsData } = await supabase
           .from('products')
           .select('*')
           .eq('restaurant_id', restaurantData.id)
           .eq('is_active', true)
-          .order('category', { ascending: true })
           .order('name', { ascending: true });
 
         if (productsData && productsData.length > 0) {
-          // Ordenar produtos: primeiro por categoria (usando ordem definida), depois por nome
+          // Ordenar produtos: primeiro por categoria (usando order_index do banco), depois por nome
           const sortedProducts = [...productsData].sort((a, b) => {
-            const orderA = CATEGORY_ORDER[a.category] || 999;
-            const orderB = CATEGORY_ORDER[b.category] || 999;
+            const orderA = categoryOrderMap.get(a.category) ?? CATEGORY_ORDER[a.category] ?? 999;
+            const orderB = categoryOrderMap.get(b.category) ?? CATEGORY_ORDER[b.category] ?? 999;
             if (orderA !== orderB) {
               return orderA - orderB;
             }
@@ -157,8 +171,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
           });
           
           setProducts(sortedProducts);
+          
+          // Ordenar categorias usando order_index do banco
           const uniqueCategories = Array.from(new Set(productsData.map((p) => p.category)));
-          const sortedCategories = sortCategories(uniqueCategories);
+          const sortedCategories = uniqueCategories.sort((a, b) => {
+            const orderA = categoryOrderMap.get(a) ?? CATEGORY_ORDER[a] ?? 999;
+            const orderB = categoryOrderMap.get(b) ?? CATEGORY_ORDER[b] ?? 999;
+            return orderA - orderB;
+          });
           setCategories(sortedCategories);
         } else {
           // Fallback para Mock Data se não houver produtos no banco
