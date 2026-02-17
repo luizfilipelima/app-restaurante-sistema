@@ -37,6 +37,16 @@ export function generateSlug(text: string): string {
     .trim();
 }
 
+/** URL pública do cardápio: em produção (quiero.food) usa subdomínio (slug.quiero.food), senão usa path (origin/slug). */
+export function getCardapioPublicUrl(slug: string): string {
+  if (!slug) return '';
+  if (typeof window === 'undefined') return `https://${slug}.quiero.food`;
+  const hostname = window.location.hostname;
+  const origin = window.location.origin;
+  if (hostname.endsWith('quiero.food')) return `https://${slug}.quiero.food`;
+  return `${origin}/${slug}`;
+}
+
 /** Gera link do WhatsApp. O número deve vir com código do país (ex: 5511999999999 ou 595981123456). */
 export function generateWhatsAppLink(phone: string, message: string): string {
   const cleanPhone = phone.replace(/\D/g, '');

@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
 import { Save, Plus, Trash2, Pizza, Upload, Loader2, Clock, Instagram } from 'lucide-react';
 
@@ -34,6 +34,7 @@ export default function AdminSettings() {
   ];
   const [formData, setFormData] = useState({
     name: '',
+    slug: '',
     phone: '',
     whatsapp: '',
     phone_country: 'BR' as 'BR' | 'PY',
@@ -83,6 +84,7 @@ export default function AdminSettings() {
       const hours = (data.opening_hours || {}) as Record<DayKey, { open: string; close: string } | null>;
       setFormData({
         name: data.name || '',
+        slug: data.slug || '',
         phone: data.phone || '',
         whatsapp: data.whatsapp || '',
         phone_country: (data.phone_country === 'PY' ? 'PY' : 'BR') as 'BR' | 'PY',
@@ -234,10 +236,17 @@ export default function AdminSettings() {
     try {
       setSaving(true);
 
+      const slugNormalized = generateSlug(formData.slug) || generateSlug(formData.name);
+      if (!slugNormalized) {
+        alert('O slug do cardápio não pode ficar vazio.');
+        return;
+      }
+
       const { error } = await supabase
         .from('restaurants')
         .update({
           name: formData.name,
+          slug: slugNormalized,
           phone: formData.phone,
           whatsapp: formData.whatsapp,
           phone_country: formData.phone_country,
@@ -592,25 +601,42 @@ export default function AdminSettings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Link do Cardápio Digital</CardTitle>
+              <CardTitle>Cardápio Digital</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                O slug define o endereço do seu cardápio. Em produção será acessível em <strong>slug.quiero.food</strong> (ex: restaurante → restaurante.quiero.food).
+              </p>
             </CardHeader>
-            <CardContent>
-              {restaurant && (
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="slug">Slug do cardápio</Label>
+                <Input
+                  id="slug"
+                  value={formData.slug}
+                  onChange={(e) =>
+                    setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') })
+                  }
+                  placeholder="ex: minha-pizzaria"
+                  className="max-w-xs mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Apenas letras minúsculas, números e hífens. Será salvo ao clicar em &quot;Salvar Configurações&quot;.
+                </p>
+              </div>
+              {(formData.slug || restaurant?.slug) && (
                 <div>
-                  <Label>Seu link público:</Label>
+                  <Label>Link público do cardápio:</Label>
                   <div className="flex gap-2 mt-2">
                     <Input
                       readOnly
-                      value={`${window.location.origin}/${restaurant.slug}`}
+                      value={getCardapioPublicUrl(formData.slug || restaurant?.slug || '')}
                       className="flex-1"
                     />
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => {
-                        navigator.clipboard.writeText(
-                          `${window.location.origin}/${restaurant.slug}`
-                        );
+                        const url = getCardapioPublicUrl(formData.slug || restaurant?.slug || '');
+                        navigator.clipboard.writeText(url);
                         alert('Link copiado!');
                       }}
                     >

@@ -6,6 +6,7 @@ import { Restaurant } from '@/types';
 import { AdminRestaurantContext } from '@/contexts/AdminRestaurantContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { getCardapioPublicUrl } from '@/lib/utils';
 import {
   LayoutDashboard,
   UtensilsCrossed,
@@ -80,9 +81,7 @@ export default function AdminLayout({
     navigate('/super-admin/restaurants');
   };
 
-  const cardapioUrl = restaurant?.slug
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${restaurant.slug}`
-    : '';
+  const cardapioUrl = restaurant?.slug ? getCardapioPublicUrl(restaurant.slug) : '';
   const copyCardapioLink = () => {
     if (!cardapioUrl) return;
     navigator.clipboard.writeText(cardapioUrl).then(
