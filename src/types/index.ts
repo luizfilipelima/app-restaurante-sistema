@@ -78,6 +78,8 @@ export interface Restaurant {
   is_active: boolean;
   opening_hours?: Record<DayKey, OpeningHoursSlot | null>;
   is_manually_closed?: boolean;
+  /** Se true, considerado aberto 24h (ignora horários por dia) */
+  always_open?: boolean;
   /** Impressão automática ao receber novo pedido */
   print_auto_on_new_order?: boolean;
   /** Largura do papel: 58mm ou 80mm */

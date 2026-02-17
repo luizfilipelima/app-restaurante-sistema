@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useRestaurantStore } from '@/store/restaurantStore';
-import { formatCurrency, formatGuarani, generateWhatsAppLink, normalizePhoneWithCountryCode } from '@/lib/utils';
+import { formatCurrency, formatGuarani, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote, Send } from 'lucide-react';
 
@@ -106,7 +106,36 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       return;
     }
 
-    // Troco em dinheiro é opcional e em Guaranies
+    if (!restaurantId) {
+      toast({
+        title: 'Carrinho inválido',
+        description: 'Volte ao cardápio e adicione os itens novamente.',
+        variant: 'destructive',
+      });
+      handleBackToMenu();
+      return;
+    }
+
+    // Horário de funcionamento: bloquear se o restaurante estiver fechado
+    if (currentRestaurant) {
+      const hasHours = currentRestaurant.opening_hours && Object.keys(currentRestaurant.opening_hours).length > 0;
+      const alwaysOpen = !!currentRestaurant.always_open;
+      const isOpen = currentRestaurant.is_manually_closed
+        ? false
+        : alwaysOpen
+          ? true
+          : hasHours
+            ? isWithinOpeningHours(currentRestaurant.opening_hours as Record<string, { open: string; close: string } | null>)
+            : true;
+      if (!isOpen) {
+        toast({
+          title: 'Restaurante fechado',
+          description: 'No momento estamos fora do horário de funcionamento. Tente novamente mais tarde.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
 
     setLoading(true);
 
@@ -135,19 +164,25 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
       if (error) throw error;
 
-      const orderItems = items.map((item) => ({
-        order_id: order.id,
-        product_id: item.productId,
-        product_name: item.productName,
-        quantity: item.quantity,
-        unit_price: item.unitPrice,
-        total_price: item.unitPrice * item.quantity,
-        observations: item.observations,
-        pizza_size: item.pizzaSize,
-        pizza_flavors: item.pizzaFlavors,
-        pizza_dough: item.pizzaDough,
-        pizza_edge: item.pizzaEdge,
-      }));
+      const orderItems = items.map((item) => {
+        const itemTotal =
+          item.unitPrice * item.quantity +
+          (item.pizzaEdgePrice ?? 0) * item.quantity +
+          (item.pizzaDoughPrice ?? 0) * item.quantity;
+        return {
+          order_id: order.id,
+          product_id: item.productId ?? null,
+          product_name: item.productName,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          total_price: itemTotal,
+          observations: item.observations ?? null,
+          pizza_size: item.pizzaSize ?? null,
+          pizza_flavors: item.pizzaFlavors ?? null,
+          pizza_dough: item.pizzaDough ?? null,
+          pizza_edge: item.pizzaEdge ?? null,
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('order_items')
@@ -208,12 +243,15 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         className: 'bg-green-50 border-green-200'
       });
       handleBackToMenu();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao finalizar:', error);
-      toast({ 
-        title: 'Erro ao finalizar pedido', 
-        description: 'Tente novamente.', 
-        variant: 'destructive' 
+      const message = error && typeof error === 'object' && 'message' in error
+        ? String((error as { message: string }).message)
+        : 'Tente novamente.';
+      toast({
+        title: 'Erro ao finalizar pedido',
+        description: message,
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);

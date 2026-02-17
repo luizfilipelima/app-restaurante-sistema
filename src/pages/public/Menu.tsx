@@ -201,11 +201,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
   if (!restaurant) return <div>Restaurante não encontrado</div>;
 
   const hasHours = restaurant.opening_hours && Object.keys(restaurant.opening_hours).length > 0;
+  const alwaysOpen = !!restaurant.always_open;
   const isOpen = restaurant.is_manually_closed
     ? false
-    : hasHours
-      ? isWithinOpeningHours(restaurant.opening_hours as Record<string, { open: string; close: string } | null>)
-      : restaurant.is_active;
+    : alwaysOpen
+      ? true
+      : hasHours
+        ? isWithinOpeningHours(restaurant.opening_hours as Record<string, { open: string; close: string } | null>)
+        : restaurant.is_active;
 
   return (
     <div className="min-h-screen bg-slate-100/80 pb-28 font-sans antialiased">

@@ -43,6 +43,7 @@ export default function AdminSettings() {
     primary_color: '#000000',
     secondary_color: '#ffffff',
     is_manually_closed: false,
+    always_open: false,
     opening_hours: {} as Record<DayKey, { open: string; close: string } | null>,
     print_auto_on_new_order: false,
     print_paper_width: '80mm' as PrintPaperWidth,
@@ -95,6 +96,7 @@ export default function AdminSettings() {
         primary_color: data.primary_color || '#000000',
         secondary_color: data.secondary_color || '#ffffff',
         is_manually_closed: !!data.is_manually_closed,
+        always_open: !!data.always_open,
         opening_hours: DAYS.reduce((acc, d) => ({ ...acc, [d.key]: hours[d.key] || null }), {} as Record<DayKey, { open: string; close: string } | null>),
         print_auto_on_new_order: !!data.print_auto_on_new_order,
         print_paper_width: (data.print_paper_width === '58mm' ? '58mm' : '80mm') as PrintPaperWidth,
@@ -259,6 +261,7 @@ export default function AdminSettings() {
           primary_color: formData.primary_color,
           secondary_color: formData.secondary_color,
           is_manually_closed: formData.is_manually_closed,
+          always_open: formData.always_open,
           opening_hours: formData.opening_hours,
           print_auto_on_new_order: formData.print_auto_on_new_order,
           print_paper_width: formData.print_paper_width,
@@ -479,6 +482,18 @@ export default function AdminSettings() {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex items-center justify-between rounded-lg border p-4 bg-emerald-50/50 border-emerald-200/60">
+                <div>
+                  <Label className="font-medium">Sempre aberto (24h)</Label>
+                  <p className="text-xs text-muted-foreground">Quando marcado, o estabelecimento é considerado em funcionamento o tempo todo. Ignora os horários por dia abaixo.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={formData.always_open}
+                  onChange={(e) => setFormData({ ...formData, always_open: e.target.checked })}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+              </div>
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div>
                   <Label className="font-medium">Estabelecimento fechado agora</Label>
@@ -492,7 +507,7 @@ export default function AdminSettings() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Horários por dia</Label>
+                <Label>Horários por dia {formData.always_open && <span className="text-muted-foreground font-normal">(ignorados quando &quot;Sempre aberto&quot; está ativo)</span>}</Label>
                 <div className="space-y-2">
                   {DAYS.map(({ key, label }) => {
                     const slot = formData.opening_hours[key];
