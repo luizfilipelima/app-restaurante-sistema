@@ -18,6 +18,12 @@ export default function KitchenDisplay() {
   const [orders, setOrders] = useState<DatabaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [newOrderIds, setNewOrderIds] = useState<string[]>([]);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const tick = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(tick);
+  }, []);
 
   useEffect(() => {
     if (!effectiveRestaurantId) {
@@ -181,7 +187,7 @@ export default function KitchenDisplay() {
                 </Link>
               )}
               <p className="text-3xl font-black font-mono tabular-nums">
-                {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                {now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </p>
             </div>
           </div>
