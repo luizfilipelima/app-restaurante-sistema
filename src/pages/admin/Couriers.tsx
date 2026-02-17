@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Bike, Plus, Pencil, Trash2, Phone, User, Loader2 } from 'lucide-react';
 import { generateWhatsAppLink } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 const STATUS_LABELS: Record<CourierStatus, string> = {
   available: 'Disponível',
@@ -88,9 +89,22 @@ export default function AdminCouriers() {
         });
       }
       setDialogOpen(false);
-    } catch (err) {
+      toast({
+        title: editingCourier ? 'Entregador atualizado' : 'Entregador criado',
+        description: `${form.name} foi ${editingCourier ? 'atualizado' : 'adicionado'} com sucesso.`,
+        variant: 'default',
+      });
+    } catch (err: unknown) {
       console.error(err);
-      alert('Erro ao salvar entregador.');
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: string }).message)
+          : 'Verifique os dados e tente novamente.';
+      toast({
+        title: 'Erro ao salvar entregador',
+        description: message,
+        variant: 'destructive',
+      });
     } finally {
       setSaving(false);
     }
@@ -100,9 +114,22 @@ export default function AdminCouriers() {
     if (!confirm('Excluir este entregador? Pedidos atribuídos a ele não serão removidos.')) return;
     try {
       await deleteCourier(id);
-    } catch (err) {
+      toast({
+        title: 'Entregador excluído',
+        description: 'O entregador foi removido com sucesso.',
+        variant: 'default',
+      });
+    } catch (err: unknown) {
       console.error(err);
-      alert('Erro ao excluir.');
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: string }).message)
+          : 'Não foi possível excluir o entregador.';
+      toast({
+        title: 'Erro ao excluir',
+        description: message,
+        variant: 'destructive',
+      });
     }
   };
 
