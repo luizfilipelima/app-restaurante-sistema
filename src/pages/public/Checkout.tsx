@@ -80,6 +80,15 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     loadRestaurant();
   }, [restaurantId, currentRestaurant?.id]);
 
+  // Atualizar título da página com o nome do restaurante
+  useEffect(() => {
+    if (currentRestaurant?.name) {
+      document.title = `${currentRestaurant.name} - Finalizar Pedido`;
+    } else {
+      document.title = 'Finalizar Pedido';
+    }
+  }, [currentRestaurant?.name]);
+
   const loadZones = async () => {
     if (!restaurantId) return;
     const { data } = await supabase

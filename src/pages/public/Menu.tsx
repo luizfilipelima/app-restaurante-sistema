@@ -99,6 +99,15 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
     loadRestaurantData();
   }, [restaurantSlug]);
 
+  // Atualizar título da página com o nome do restaurante
+  useEffect(() => {
+    if (restaurant?.name) {
+      document.title = restaurant.name;
+    } else {
+      document.title = 'Cardápio';
+    }
+  }, [restaurant?.name]);
+
   const loadRestaurantData = async () => {
     if (!restaurantSlug) return;
 
