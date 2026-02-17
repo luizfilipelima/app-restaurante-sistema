@@ -227,23 +227,67 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       sections.push(itemsText);
       if (notes) sections.push('\n📝 *Obs:* ' + notes);
       const message = sections.join('\n');
+      
+      // Obter e validar número do WhatsApp do restaurante
       const restaurantWhatsApp = (currentRestaurant?.whatsapp || '').replace(/\D/g, '');
       const country = (currentRestaurant as { phone_country?: 'BR' | 'PY' })?.phone_country || 'BR';
       const prefix = country === 'PY' ? '595' : '55';
-      const hasPrefix = restaurantWhatsApp.startsWith('55') || restaurantWhatsApp.startsWith('595');
-      const whatsappNumber = restaurantWhatsApp.length >= 9
-        ? (hasPrefix ? restaurantWhatsApp : prefix + restaurantWhatsApp)
-        : '5511999999999';
+      
+      let whatsappNumber: string;
+      
+      if (!restaurantWhatsApp || restaurantWhatsApp.length < 9) {
+        // Se não houver WhatsApp configurado, usar o telefone do restaurante como fallback
+        const restaurantPhone = (currentRestaurant?.phone || '').replace(/\D/g, '');
+        if (restaurantPhone && restaurantPhone.length >= 9) {
+          const hasPhonePrefix = restaurantPhone.startsWith('55') || restaurantPhone.startsWith('595');
+          whatsappNumber = hasPhonePrefix ? restaurantPhone : prefix + restaurantPhone;
+        } else {
+          // Se não houver telefone também, mostrar erro
+          throw new Error('WhatsApp do restaurante não configurado. Entre em contato com o estabelecimento.');
+        }
+      } else {
+        const hasPrefix = restaurantWhatsApp.startsWith('55') || restaurantWhatsApp.startsWith('595');
+        whatsappNumber = hasPrefix ? restaurantWhatsApp : prefix + restaurantWhatsApp;
+      }
+      
+      // Gerar link do WhatsApp
       const link = generateWhatsAppLink(whatsappNumber, message);
-      window.open(link, '_blank');
-
+      
+      // Limpar carrinho antes de redirecionar
       clearCart();
+      
+      // Mostrar toast de sucesso
       toast({ 
-        title: 'Pedido realizado!', 
-        description: 'Seu pedido foi enviado para o WhatsApp.',
+        title: '✅ Pedido realizado!', 
+        description: 'Redirecionando para o WhatsApp...',
         className: 'bg-green-50 border-green-200'
       });
-      handleBackToMenu();
+      
+      // Abrir WhatsApp
+      // Em mobile, window.location.href funciona melhor e redireciona diretamente
+      // Em desktop, tentamos window.open primeiro
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        // Mobile: redirecionar diretamente (melhor experiência)
+        setTimeout(() => {
+          window.location.href = link;
+        }, 500); // Pequeno delay para o toast aparecer
+      } else {
+        // Desktop: tentar abrir em nova aba
+        const opened = window.open(link, '_blank', 'noopener,noreferrer');
+        if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+          // Pop-up bloqueado, redirecionar na mesma aba
+          setTimeout(() => {
+            window.location.href = link;
+          }, 500);
+        } else {
+          // Pop-up aberto com sucesso, voltar ao menu após um tempo
+          setTimeout(() => {
+            handleBackToMenu();
+          }, 1000);
+        }
+      }
     } catch (error: unknown) {
       console.error('Erro ao finalizar:', error);
       const message = error && typeof error === 'object' && 'message' in error
