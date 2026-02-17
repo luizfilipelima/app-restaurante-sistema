@@ -22,11 +22,11 @@
 
 INSERT INTO public.users (id, email, login, role, restaurant_id)
 VALUES (
-  '632b886d-96ce-448a-9692-f16a916d308a',     -- id: UID do usuário (Authentication → Users, após criar com contato@luizfilipe.com.br)
-  'aaa',  -- email (fixo)
-  'admin',          -- login: nome de usuário para entrar (ex: contato, luizfilipe)
+  '151b6126-df3d-4b4a-a953-298f140c679b',     -- id: UID do usuário (Authentication → Users, após criar com contato@luizfilipe.com.br)
+  'fagues@quiero.food',  -- email (fixo)
+  'fagues',          -- login: nome de usuário para entrar (ex: contato, luizfilipe)
   'restaurant_admin',           -- role (sempre restaurant_admin)
-  'ef31239a-5b55-4061-b379-3fd8e2d97e79'         -- restaurant_id: UUID do restaurante desejado
+  'bfc8c758-d05e-42d6-a86f-9bbe76833ff6'         -- restaurant_id: UUID do restaurante desejado
 )
 ON CONFLICT (id) DO UPDATE SET
   email        = EXCLUDED.email,

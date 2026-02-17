@@ -59,6 +59,9 @@ type CategoryId = (typeof CATEGORIAS_CARDAPIO)[number]['id'];
 const getCategoryConfig = (categoryId: string): CategoryConfig =>
   CATEGORIAS_CARDAPIO.find((c) => c.id === categoryId) ?? CATEGORIAS_CARDAPIO[CATEGORIAS_CARDAPIO.length - 1];
 
+/** Símbolo da moeda para labels (R$ ou Gs.) conforme configuração do restaurante */
+const getCurrencySymbol = (currency: 'BRL' | 'PYG') => (currency === 'PYG' ? 'Gs.' : 'R$');
+
 const formDefaults = {
   name: '',
   category: 'Marmitas' as CategoryId,
@@ -947,7 +950,7 @@ export default function AdminMenu() {
                               <Input value={formDough.name} onChange={(e) => setFormDough((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Tradicional" required />
                             </div>
                             <div>
-                              <Label>Acréscimo (R$)</Label>
+                              <Label>Acréscimo ({getCurrencySymbol(currency)})</Label>
                               <Input type="text" value={formDough.extra_price} onChange={(e) => setFormDough((f) => ({ ...f, extra_price: e.target.value }))} placeholder="0" />
                             </div>
                           </div>
@@ -991,7 +994,7 @@ export default function AdminMenu() {
                               <Input value={formEdge.name} onChange={(e) => setFormEdge((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Catupiry" required />
                             </div>
                             <div>
-                              <Label>Preço (R$)</Label>
+                              <Label>Preço ({getCurrencySymbol(currency)})</Label>
                               <Input type="text" value={formEdge.price} onChange={(e) => setFormEdge((f) => ({ ...f, price: e.target.value }))} placeholder="8,00" required />
                             </div>
                           </div>
@@ -1050,11 +1053,11 @@ export default function AdminMenu() {
                               <Input type="number" min={100} step={50} value={formMarmitaSize.weight_grams} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, weight_grams: parseInt(e.target.value, 10) || 500 }))} required />
                             </div>
                             <div>
-                              <Label>Preço Base (R$)</Label>
+                              <Label>Preço Base ({getCurrencySymbol(currency)})</Label>
                               <Input type="text" value={formMarmitaSize.base_price} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, base_price: e.target.value }))} placeholder="15,00" required />
                             </div>
                             <div>
-                              <Label>Preço por Grama (R$)</Label>
+                              <Label>Preço por Grama ({getCurrencySymbol(currency)})</Label>
                               <Input type="text" value={formMarmitaSize.price_per_gram} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,05" />
                             </div>
                             <div>
@@ -1103,7 +1106,7 @@ export default function AdminMenu() {
                               <Input value={formMarmitaProtein.description} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, description: e.target.value }))} placeholder="Ex: Peito de frango temperado e grelhado" />
                             </div>
                             <div>
-                              <Label>Preço por Grama (R$)</Label>
+                              <Label>Preço por Grama ({getCurrencySymbol(currency)})</Label>
                               <Input type="text" value={formMarmitaProtein.price_per_gram} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,08" required />
                             </div>
                           </div>
@@ -1153,7 +1156,7 @@ export default function AdminMenu() {
                                 <Input value={formMarmitaSide.category} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, category: e.target.value }))} placeholder="Ex: Arroz, Feijão, Salada" />
                               </div>
                               <div>
-                                <Label>Preço por Grama (R$)</Label>
+                                <Label>Preço por Grama ({getCurrencySymbol(currency)})</Label>
                                 <Input type="text" value={formMarmitaSide.price_per_gram} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,02" required />
                               </div>
                             </div>
@@ -1272,7 +1275,7 @@ export default function AdminMenu() {
 
               <div className="space-y-2">
                 <Label htmlFor="price">
-                  {getCategoryConfig(form.category).priceLabel || 'Preço (R$) *'}
+                  {getCategoryConfig(form.category).priceLabel ? `${getCategoryConfig(form.category).priceLabel} (${getCurrencySymbol(currency)}) *` : `Preço (${getCurrencySymbol(currency)}) *`}
                 </Label>
                 <Input
                   id="price"
