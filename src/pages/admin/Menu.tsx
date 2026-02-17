@@ -32,6 +32,7 @@ interface CategoryConfig {
   id: string;
   label: string;
   isPizza: boolean;
+  isMarmita?: boolean;
   priceLabel?: string;
   extraField?: string;
   extraLabel?: string;
@@ -39,6 +40,7 @@ interface CategoryConfig {
 }
 
 const CATEGORIAS_CARDAPIO: CategoryConfig[] = [
+  { id: 'Marmitas', label: 'Marmitas', isPizza: false, isMarmita: true, priceLabel: 'Preço base' },
   { id: 'Pizza', label: 'Pizza', isPizza: true, priceLabel: 'Preço base (por sabor)' },
   { id: 'Bebidas', label: 'Bebidas', isPizza: false, extraField: 'volume', extraLabel: 'Volume ou medida', extraPlaceholder: 'Ex: 350ml, 1L, 2L' },
   { id: 'Sobremesas', label: 'Sobremesas', isPizza: false, extraField: 'portion', extraLabel: 'Porção', extraPlaceholder: 'Ex: individual, fatia, 500g' },
@@ -56,10 +58,11 @@ const getCategoryConfig = (categoryId: string): CategoryConfig =>
 
 const formDefaults = {
   name: '',
-  category: 'Pizza' as CategoryId,
+  category: 'Marmitas' as CategoryId,
   description: '',
   price: '',
-  is_pizza: true, // Pizza é padrão na primeira categoria
+  is_pizza: false,
+  is_marmita: true, // Marmitas é padrão na primeira categoria
   image_url: '',
   categoryDetail: '', // Campo extra conforme categoria (volume, porção, etc.)
 };
@@ -99,7 +102,8 @@ export default function AdminMenu() {
       category: (config.id as CategoryId) || 'Outros',
       description: description?.trim() || '',
       price: String(product.price),
-      is_pizza: config.isPizza,
+      is_pizza: config.isPizza || false,
+      is_marmita: config.isMarmita || false,
       image_url: product.image_url || '',
       categoryDetail: categoryDetail?.trim() || '',
     });
@@ -111,7 +115,8 @@ export default function AdminMenu() {
     setForm((f) => ({
       ...f,
       category: categoryId as CategoryId,
-      is_pizza: config.isPizza,
+      is_pizza: config.isPizza || false,
+      is_marmita: config.isMarmita || false,
       categoryDetail: config.extraField != null ? f.categoryDetail : '',
     }));
   };
@@ -166,7 +171,8 @@ export default function AdminMenu() {
     }
 
     const config = getCategoryConfig(category);
-    const isPizza = config.isPizza;
+    const isPizza = config.isPizza || false;
+    const isMarmita = config.isMarmita || false;
     const descriptionFinal =
       form.categoryDetail.trim()
         ? form.description.trim()
@@ -183,6 +189,7 @@ export default function AdminMenu() {
         description: descriptionFinal,
         price,
         is_pizza: isPizza,
+        is_marmita: isMarmita,
         image_url: form.image_url.trim() || null,
         is_active: true,
       };
@@ -320,6 +327,9 @@ export default function AdminMenu() {
                         {product.is_pizza && (
                           <Badge className="absolute top-2 right-2">Pizza</Badge>
                         )}
+                        {product.is_marmita && (
+                          <Badge className="absolute top-2 right-2">Marmita</Badge>
+                        )}
                         {!product.is_active && (
                           <Badge
                             variant="destructive"
@@ -417,9 +427,10 @@ export default function AdminMenu() {
                 <SelectContent>
                   {CATEGORIAS_CARDAPIO.map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>
-                      {cat.label}
-                      {cat.isPizza && ' (tamanhos e sabores)'}
-                    </SelectItem>
+                    {cat.label}
+                    {cat.isPizza && ' (tamanhos e sabores)'}
+                    {cat.isMarmita && ' (monte sua marmita)'}
+                  </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -430,6 +441,15 @@ export default function AdminMenu() {
                 <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
                 <span>
                   Produto configurado como <strong>pizza</strong>. O cliente poderá escolher tamanho, sabores e borda na hora do pedido. Configure tamanhos, sabores e bordas nas configurações do restaurante.
+                </span>
+              </div>
+            )}
+
+            {getCategoryConfig(form.category).isMarmita && (
+              <div className="flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-foreground">
+                <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <span>
+                  Produto configurado como <strong>marmita</strong>. O cliente poderá escolher tamanho (peso), proteínas e acompanhamentos na hora do pedido. Configure tamanhos, proteínas e acompanhamentos nas configurações do restaurante.
                 </span>
               </div>
             )}
