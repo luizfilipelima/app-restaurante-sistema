@@ -7,7 +7,6 @@ import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
@@ -281,11 +280,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
             >
               <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="hidden sm:inline">Ver Carrinho</span>
-              {getItemsCount() > 0 && (
-                <Badge className="absolute -top-1 -right-1 sm:-top-0.5 sm:-right-0.5 h-5 min-w-5 flex items-center justify-center px-1 py-0 bg-slate-900 text-white text-[10px] font-bold border-0">
-                  {getItemsCount()}
-                </Badge>
-              )}
             </Button>
           </div>
         </div>
