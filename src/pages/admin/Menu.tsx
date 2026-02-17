@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
 import { uploadProductImage } from '@/lib/imageUpload';
-import { Plus, Edit, Trash2, Pizza, Loader2, Info, Upload, Settings, UtensilsCrossed, Copy, Check } from 'lucide-react';
+import { Plus, Edit, Trash2, Pizza, Loader2, Info, Upload, Copy, Check } from 'lucide-react';
 
 // Categorias fixas do cardápio com configurações específicas por tipo
 interface CategoryConfig {
@@ -597,32 +597,6 @@ export default function AdminMenu() {
     }
   };
 
-  const toggleMarmitaSizeActive = async (id: string, isActive: boolean) => {
-    try {
-      await supabase.from('marmita_sizes').update({ is_active: !isActive }).eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const toggleMarmitaProteinActive = async (id: string, isActive: boolean) => {
-    try {
-      await supabase.from('marmita_proteins').update({ is_active: !isActive }).eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const toggleMarmitaSideActive = async (id: string, isActive: boolean) => {
-    try {
-      await supabase.from('marmita_sides').update({ is_active: !isActive }).eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   // Agrupar produtos por categoria
   const groupedProducts = products.reduce((acc, product) => {

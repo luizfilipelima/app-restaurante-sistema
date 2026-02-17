@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
-import { Restaurant, DayKey, PrintPaperWidth } from '@/types';
+import { DayKey, PrintPaperWidth } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,14 +13,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatCurrency } from '@/lib/utils';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
 import { Save, Upload, Loader2, Clock, Instagram, Printer } from 'lucide-react';
 
 export default function AdminSettings() {
   const restaurantId = useAdminRestaurantId();
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const DAYS: { key: DayKey; label: string }[] = [
@@ -70,7 +67,6 @@ export default function AdminSettings() {
 
       if (error) throw error;
 
-      setRestaurant(data);
       const hours = (data.opening_hours || {}) as Record<DayKey, { open: string; close: string } | null>;
       setFormData({
         name: data.name || '',
@@ -519,295 +515,6 @@ export default function AdminSettings() {
             {saving ? 'Salvando...' : 'Salvar Configurações'}
           </Button>
         </form>
-                <TabsContent value="pizza" className="space-y-8 mt-6">
-                  {menuConfigLoading ? (
-                    <div className="flex justify-center py-8">
-                      <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
-                    </div>
-                  ) : (
-                    <>
-                      {/* Tamanhos */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-base font-semibold">Tamanhos de pizza</Label>
-                          <Button type="button" size="sm" variant="outline" onClick={() => setShowFormSize(!showFormSize)}>
-                            <Plus className="h-4 w-4 mr-1" /> Adicionar
-                          </Button>
-                        </div>
-                        {showFormSize && (
-                          <form onSubmit={handleSubmitSize} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <Label>Nome</Label>
-                                <Input value={formSize.name} onChange={(e) => setFormSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Broto, Média, Grande" required />
-                              </div>
-                              <div>
-                                <Label>Máx. sabores</Label>
-                                <Input type="number" min={1} value={formSize.max_flavors} onChange={(e) => setFormSize((f) => ({ ...f, max_flavors: parseInt(e.target.value, 10) || 1 }))} />
-                              </div>
-                              <div>
-                                <Label>Multiplicador de preço</Label>
-                                <Input type="number" step="0.01" min="0" value={formSize.price_multiplier} onChange={(e) => setFormSize((f) => ({ ...f, price_multiplier: parseFloat(e.target.value) || 1 }))} placeholder="1.0" />
-                              </div>
-                              <div>
-                                <Label>Ordem</Label>
-                                <Input type="number" min={0} value={formSize.order_index} onChange={(e) => setFormSize((f) => ({ ...f, order_index: parseInt(e.target.value, 10) || 0 }))} />
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button type="submit" size="sm">Salvar</Button>
-                              <Button type="button" size="sm" variant="outline" onClick={() => setShowFormSize(false)}>Cancelar</Button>
-                            </div>
-                          </form>
-                        )}
-                        <ul className="space-y-2">
-                          {pizzaSizes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tamanho. Adicione para o cliente escolher no cardápio.</p>}
-                          {pizzaSizes.map((s) => (
-                            <li key={s.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
-                              <span><strong>{s.name}</strong> — até {s.max_flavors} sabor(es) — multiplicador {Number(s.price_multiplier)}x</span>
-                              <Button type="button" size="icon" variant="ghost" onClick={() => deleteSize(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {/* Massas */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-base font-semibold">Tipos de massa</Label>
-                          <Button type="button" size="sm" variant="outline" onClick={() => setShowFormDough(!showFormDough)}>
-                            <Plus className="h-4 w-4 mr-1" /> Adicionar
-                          </Button>
-                        </div>
-                        {showFormDough && (
-                          <form onSubmit={handleSubmitDough} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                            <div className="flex gap-3 flex-wrap">
-                              <div>
-                                <Label>Nome</Label>
-                                <Input value={formDough.name} onChange={(e) => setFormDough((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Tradicional" required />
-                              </div>
-                              <div>
-                                <Label>Acréscimo (R$)</Label>
-                                <Input type="text" value={formDough.extra_price} onChange={(e) => setFormDough((f) => ({ ...f, extra_price: e.target.value }))} placeholder="0" />
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button type="submit" size="sm">Salvar</Button>
-                              <Button type="button" size="sm" variant="outline" onClick={() => setShowFormDough(false)}>Cancelar</Button>
-                            </div>
-                          </form>
-                        )}
-                        <ul className="space-y-2">
-                          {pizzaDoughs.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tipo. Adicione (ex: Tradicional, Integral).</p>}
-                          {pizzaDoughs.map((d) => (
-                            <li key={d.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
-                              <span><strong>{d.name}</strong> {Number(d.extra_price) > 0 ? `+ ${formatCurrency(Number(d.extra_price))}` : '(sem acréscimo)'}{!d.is_active && ' (inativo)'}</span>
-                              <div className="flex gap-1">
-                                <Button type="button" size="sm" variant="ghost" onClick={() => toggleDoughActive(d.id, d.is_active)}>{d.is_active ? 'Desativar' : 'Ativar'}</Button>
-                                <Button type="button" size="icon" variant="ghost" onClick={() => deleteDough(d.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {/* Bordas */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-base font-semibold">Bordas recheadas</Label>
-                          <Button type="button" size="sm" variant="outline" onClick={() => setShowFormEdge(!showFormEdge)}>
-                            <Plus className="h-4 w-4 mr-1" /> Adicionar
-                          </Button>
-                        </div>
-                        {showFormEdge && (
-                          <form onSubmit={handleSubmitEdge} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                            <div className="flex gap-3 flex-wrap">
-                              <div>
-                                <Label>Nome</Label>
-                                <Input value={formEdge.name} onChange={(e) => setFormEdge((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Catupiry" required />
-                              </div>
-                              <div>
-                                <Label>Preço (R$)</Label>
-                                <Input type="text" value={formEdge.price} onChange={(e) => setFormEdge((f) => ({ ...f, price: e.target.value }))} placeholder="8,00" required />
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button type="submit" size="sm">Salvar</Button>
-                              <Button type="button" size="sm" variant="outline" onClick={() => setShowFormEdge(false)}>Cancelar</Button>
-                            </div>
-                          </form>
-                        )}
-                        <ul className="space-y-2">
-                          {pizzaEdges.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma borda. Adicione (ex: Catupiry, Cheddar).</p>}
-                          {pizzaEdges.map((e) => (
-                            <li key={e.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
-                              <span><strong>{e.name}</strong> — {formatCurrency(Number(e.price))}{!e.is_active && ' (inativo)'}</span>
-                              <div className="flex gap-1">
-                                <Button type="button" size="sm" variant="ghost" onClick={() => toggleEdgeActive(e.id, e.is_active)}>{e.is_active ? 'Desativar' : 'Ativar'}</Button>
-                                <Button type="button" size="icon" variant="ghost" onClick={() => deleteEdge(e.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="marmitas" className="space-y-8 mt-6">
-                  {menuConfigLoading ? (
-                    <div className="flex justify-center py-8">
-                      <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
-                    </div>
-                  ) : (
-                    <>
-                      {/* Tamanhos de Marmita */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-base font-semibold">Tamanhos (Pesos)</Label>
-                          <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSize(!showFormMarmitaSize)}>
-                            <Plus className="h-4 w-4 mr-1" /> Adicionar
-                          </Button>
-                        </div>
-                        {showFormMarmitaSize && (
-                          <form onSubmit={handleSubmitMarmitaSize} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <Label>Nome</Label>
-                                <Input value={formMarmitaSize.name} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: 300g, 500g, 700g" required />
-                              </div>
-                              <div>
-                                <Label>Peso (gramas)</Label>
-                                <Input type="number" min={100} step={50} value={formMarmitaSize.weight_grams} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, weight_grams: parseInt(e.target.value, 10) || 500 }))} required />
-                              </div>
-                              <div>
-                                <Label>Preço Base (R$)</Label>
-                                <Input type="text" value={formMarmitaSize.base_price} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, base_price: e.target.value }))} placeholder="15,00" required />
-                              </div>
-                              <div>
-                                <Label>Preço por Grama (R$)</Label>
-                                <Input type="text" value={formMarmitaSize.price_per_gram} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,05" />
-                              </div>
-                              <div>
-                                <Label>Ordem</Label>
-                                <Input type="number" min={0} value={formMarmitaSize.order_index} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, order_index: parseInt(e.target.value, 10) || 0 }))} />
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button type="submit" size="sm">Salvar</Button>
-                              <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSize(false)}>Cancelar</Button>
-                            </div>
-                          </form>
-                        )}
-                        <ul className="space-y-2">
-                          {marmitaSizes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tamanho. Adicione para o cliente escolher no cardápio.</p>}
-                          {marmitaSizes.map((s) => (
-                            <li key={s.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
-                              <span><strong>{s.name}</strong> — {s.weight_grams}g — Base: {formatCurrency(Number(s.base_price))} {Number(s.price_per_gram) > 0 && `— R$ ${Number(s.price_per_gram).toFixed(4)}/g`}</span>
-                              <div className="flex gap-1">
-                                <Button type="button" size="sm" variant="ghost" onClick={() => toggleMarmitaSizeActive(s.id, s.is_active)}>{s.is_active ? 'Desativar' : 'Ativar'}</Button>
-                                <Button type="button" size="icon" variant="ghost" onClick={() => deleteMarmitaSize(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {/* Proteínas */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-base font-semibold">Proteínas</Label>
-                          <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaProtein(!showFormMarmitaProtein)}>
-                            <Plus className="h-4 w-4 mr-1" /> Adicionar
-                          </Button>
-                        </div>
-                        {showFormMarmitaProtein && (
-                          <form onSubmit={handleSubmitMarmitaProtein} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                            <div className="space-y-3">
-                              <div>
-                                <Label>Nome</Label>
-                                <Input value={formMarmitaProtein.name} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Frango Grelhado" required />
-                              </div>
-                              <div>
-                                <Label>Descrição (opcional)</Label>
-                                <Input value={formMarmitaProtein.description} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, description: e.target.value }))} placeholder="Ex: Peito de frango temperado e grelhado" />
-                              </div>
-                              <div>
-                                <Label>Preço por Grama (R$)</Label>
-                                <Input type="text" value={formMarmitaProtein.price_per_gram} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,08" required />
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button type="submit" size="sm">Salvar</Button>
-                              <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaProtein(false)}>Cancelar</Button>
-                            </div>
-                          </form>
-                        )}
-                        <ul className="space-y-2">
-                          {marmitaProteins.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma proteína. Adicione (ex: Frango, Carne, Peixe).</p>}
-                          {marmitaProteins.map((p) => (
-                            <li key={p.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
-                              <span><strong>{p.name}</strong> — {formatCurrency(Number(p.price_per_gram))}/g{!p.is_active && ' (inativo)'}</span>
-                              <div className="flex gap-1">
-                                <Button type="button" size="sm" variant="ghost" onClick={() => toggleMarmitaProteinActive(p.id, p.is_active)}>{p.is_active ? 'Desativar' : 'Ativar'}</Button>
-                                <Button type="button" size="icon" variant="ghost" onClick={() => deleteMarmitaProtein(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {/* Acompanhamentos */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-base font-semibold">Acompanhamentos</Label>
-                          <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSide(!showFormMarmitaSide)}>
-                            <Plus className="h-4 w-4 mr-1" /> Adicionar
-                          </Button>
-                        </div>
-                        {showFormMarmitaSide && (
-                          <form onSubmit={handleSubmitMarmitaSide} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                            <div className="space-y-3">
-                              <div>
-                                <Label>Nome</Label>
-                                <Input value={formMarmitaSide.name} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Arroz Branco" required />
-                              </div>
-                              <div>
-                                <Label>Descrição (opcional)</Label>
-                                <Input value={formMarmitaSide.description} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, description: e.target.value }))} placeholder="Ex: Arroz soltinho" />
-                              </div>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <Label>Categoria</Label>
-                                  <Input value={formMarmitaSide.category} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, category: e.target.value }))} placeholder="Ex: Arroz, Feijão, Salada" />
-                                </div>
-                                <div>
-                                  <Label>Preço por Grama (R$)</Label>
-                                  <Input type="text" value={formMarmitaSide.price_per_gram} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,02" required />
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button type="submit" size="sm">Salvar</Button>
-                              <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSide(false)}>Cancelar</Button>
-                            </div>
-                          </form>
-                        )}
-                        <ul className="space-y-2">
-                          {marmitaSides.length === 0 && <p className="text-sm text-muted-foreground">Nenhum acompanhamento. Adicione (ex: Arroz, Feijão, Salada).</p>}
-                          {marmitaSides.map((s) => (
-                            <li key={s.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
-                              <span><strong>{s.name}</strong> {s.category && `(${s.category})`} — {formatCurrency(Number(s.price_per_gram))}/g{!s.is_active && ' (inativo)'}</span>
-                              <div className="flex gap-1">
-                                <Button type="button" size="sm" variant="ghost" onClick={() => toggleMarmitaSideActive(s.id, s.is_active)}>{s.is_active ? 'Desativar' : 'Ativar'}</Button>
-                                <Button type="button" size="icon" variant="ghost" onClick={() => deleteMarmitaSide(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </>
-                  )}
     </div>
   );
 }
