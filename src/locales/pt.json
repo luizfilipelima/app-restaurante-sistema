@@ -111,6 +111,7 @@
   },
   "menuViewOnly": {
     "noSearchResults": "Nenhum produto encontrado com essa busca.",
-    "noProductsInCategory": "Nenhum produto nesta categoria."
+    "noProductsInCategory": "Nenhum produto nesta categoria.",
+    "close": "Fechar"
   }
 }

@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { isWithinOpeningHours } from '@/lib/utils';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
-import ProductCard from '@/components/public/ProductCard';
+import ProductCardViewOnly from '@/components/public/ProductCardViewOnly';
 
 const CATEGORY_ICONS: Record<string, any> = {
   'Marmitas': UtensilsCrossed,
@@ -169,13 +169,12 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
               <Skeleton key={i} className="h-[74px] w-[70px] rounded-2xl flex-shrink-0" />
             ))}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
-                <Skeleton className="aspect-[4/3] w-full" />
-                <div className="p-4 space-y-3">
+                <Skeleton className="aspect-square w-full" />
+                <div className="p-3 space-y-2">
                   <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-full" />
                   <Skeleton className="h-3 w-1/2" />
                 </div>
               </div>
@@ -297,13 +296,11 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                   <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
                     {category}
                   </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                     {categoryProducts.map((product) => (
-                      <ProductCard
+                      <ProductCardViewOnly
                         key={product.id}
                         product={product}
-                        onClick={undefined}
-                        readOnly={true}
                         currency={currency}
                       />
                     ))}
@@ -317,13 +314,11 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
               <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
                 {selectedCategory}
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredProducts.map((product) => (
-                  <ProductCard
+                  <ProductCardViewOnly
                     key={product.id}
                     product={product}
-                    onClick={undefined}
-                    readOnly={true}
                     currency={currency}
                   />
                 ))}
