@@ -137,7 +137,14 @@ CREATE POLICY "Admin or super_admin manage pizza_edges"
     )
   );
 
--- ========== ORDERS (garantir super_admin) ==========
+-- ========== ORDERS (garantir INSERT público + super_admin) ==========
+-- IMPORTANTE: Qualquer pessoa pode criar pedidos (sem autenticação)
+DROP POLICY IF EXISTS "Anyone can create orders" ON orders;
+CREATE POLICY "Anyone can create orders"
+  ON orders FOR INSERT
+  WITH CHECK (true);
+
+-- Staff e super_admin podem ler pedidos
 DROP POLICY IF EXISTS "Restaurant staff can read their orders" ON orders;
 DROP POLICY IF EXISTS "Restaurant staff or super_admin can read orders" ON orders;
 CREATE POLICY "Staff or super_admin read orders"
@@ -150,6 +157,7 @@ CREATE POLICY "Staff or super_admin read orders"
     )
   );
 
+-- Staff e super_admin podem atualizar pedidos
 DROP POLICY IF EXISTS "Restaurant staff can update their orders" ON orders;
 DROP POLICY IF EXISTS "Restaurant staff or super_admin can update orders" ON orders;
 CREATE POLICY "Staff or super_admin update orders"
@@ -162,7 +170,14 @@ CREATE POLICY "Staff or super_admin update orders"
     )
   );
 
--- ========== ORDER_ITEMS (ler para staff e super_admin) ==========
+-- ========== ORDER_ITEMS (INSERT público + ler para staff e super_admin) ==========
+-- IMPORTANTE: Qualquer pessoa pode criar itens de pedido (sem autenticação)
+DROP POLICY IF EXISTS "Anyone can create order items" ON order_items;
+CREATE POLICY "Anyone can create order items"
+  ON order_items FOR INSERT
+  WITH CHECK (true);
+
+-- Staff e super_admin podem ler itens de pedido
 DROP POLICY IF EXISTS "Restaurant staff can read order items" ON order_items;
 DROP POLICY IF EXISTS "Restaurant staff or super_admin can read order items" ON order_items;
 CREATE POLICY "Staff or super_admin read order items"
@@ -203,6 +218,7 @@ CREATE POLICY "Super admin can read all users"
 -- - Produtos: criar, editar, excluir
 -- - Zonas de entrega: criar, editar, excluir
 -- - Tamanhos/sabores/massas/bordas de pizza: criar, editar, excluir
--- - Pedidos: ler e atualizar (já existia criar para qualquer um)
+-- - Pedidos: QUALQUER PESSOA pode criar (INSERT público), staff pode ler e atualizar
+-- - Order Items: QUALQUER PESSOA pode criar (INSERT público), staff pode ler
 -- - Super admin pode listar usuários (para tela de usuários do restaurante)
 -- ============================================================
