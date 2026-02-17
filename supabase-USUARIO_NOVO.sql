@@ -23,7 +23,7 @@
 INSERT INTO public.users (id, email, login, role, restaurant_id)
 VALUES (
   '632b886d-96ce-448a-9692-f16a916d308a',     -- id: UID do usuário (Authentication → Users, após criar com contato@luizfilipe.com.br)
-  'contato@luizfilipe.com.br',  -- email (fixo)
+  'aaa',  -- email (fixo)
   'admin',          -- login: nome de usuário para entrar (ex: contato, luizfilipe)
   'restaurant_admin',           -- role (sempre restaurant_admin)
   'ef31239a-5b55-4061-b379-3fd8e2d97e79'         -- restaurant_id: UUID do restaurante desejado

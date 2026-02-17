@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
-import { Product } from '@/types';
+import { Product, Restaurant, PizzaSize, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,10 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
 import { uploadProductImage } from '@/lib/imageUpload';
-import { Plus, Edit, Trash2, Pizza, Loader2, Info, Upload } from 'lucide-react';
+import { Plus, Edit, Trash2, Pizza, Loader2, Info, Upload, Settings, UtensilsCrossed, Copy, Check } from 'lucide-react';
 
 // Categorias fixas do cardápio com configurações específicas por tipo
 interface CategoryConfig {
@@ -69,6 +70,7 @@ const formDefaults = {
 
 export default function AdminMenu() {
   const restaurantId = useAdminRestaurantId();
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -76,12 +78,116 @@ export default function AdminMenu() {
   const [saving, setSaving] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [form, setForm] = useState(formDefaults);
+  
+  // Estados para Cardápio Digital
+  const [slug, setSlug] = useState('');
+  const [slugSaving, setSlugSaving] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  
+  // Estados para configurações de cardápio (Pizza)
+  const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]);
+  const [pizzaDoughs, setPizzaDoughs] = useState<PizzaDough[]>([]);
+  const [pizzaEdges, setPizzaEdges] = useState<PizzaEdge[]>([]);
+  const [menuConfigLoading, setMenuConfigLoading] = useState(false);
+  const [showFormSize, setShowFormSize] = useState(false);
+  const [showFormDough, setShowFormDough] = useState(false);
+  const [showFormEdge, setShowFormEdge] = useState(false);
+  const [formSize, setFormSize] = useState({ name: '', max_flavors: 1, price_multiplier: 1, order_index: 0 });
+  const [formDough, setFormDough] = useState({ name: '', extra_price: '' });
+  const [formEdge, setFormEdge] = useState({ name: '', price: '' });
+
+  // Estados para configurações de cardápio (Marmitas)
+  const [marmitaSizes, setMarmitaSizes] = useState<MarmitaSize[]>([]);
+  const [marmitaProteins, setMarmitaProteins] = useState<MarmitaProtein[]>([]);
+  const [marmitaSides, setMarmitaSides] = useState<MarmitaSide[]>([]);
+  const [showFormMarmitaSize, setShowFormMarmitaSize] = useState(false);
+  const [showFormMarmitaProtein, setShowFormMarmitaProtein] = useState(false);
+  const [showFormMarmitaSide, setShowFormMarmitaSide] = useState(false);
+  const [formMarmitaSize, setFormMarmitaSize] = useState({ name: '', weight_grams: 500, base_price: '', price_per_gram: '', order_index: 0 });
+  const [formMarmitaProtein, setFormMarmitaProtein] = useState({ name: '', description: '', price_per_gram: '' });
+  const [formMarmitaSide, setFormMarmitaSide] = useState({ name: '', description: '', price_per_gram: '', category: '' });
 
   useEffect(() => {
     if (restaurantId) {
+      loadRestaurant();
       loadProducts();
+      loadMenuConfig();
     }
   }, [restaurantId]);
+
+  const loadRestaurant = async () => {
+    if (!restaurantId) return;
+    try {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('id', restaurantId)
+        .single();
+      if (error) throw error;
+      setRestaurant(data);
+      setSlug(data?.slug || '');
+    } catch (error) {
+      console.error('Erro ao carregar restaurante:', error);
+    }
+  };
+
+  const loadMenuConfig = async () => {
+    if (!restaurantId) return;
+    setMenuConfigLoading(true);
+    try {
+      const [sizesRes, doughsRes, edgesRes, marmitaSizesRes, marmitaProteinsRes, marmitaSidesRes] = await Promise.all([
+        supabase.from('pizza_sizes').select('*').eq('restaurant_id', restaurantId).order('order_index'),
+        supabase.from('pizza_doughs').select('*').eq('restaurant_id', restaurantId).order('name'),
+        supabase.from('pizza_edges').select('*').eq('restaurant_id', restaurantId).order('name'),
+        supabase.from('marmita_sizes').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('order_index'),
+        supabase.from('marmita_proteins').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('name'),
+        supabase.from('marmita_sides').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('category', { ascending: true }).order('name'),
+      ]);
+      if (sizesRes.data) setPizzaSizes(sizesRes.data);
+      if (doughsRes.data) setPizzaDoughs(doughsRes.data);
+      if (edgesRes.data) setPizzaEdges(edgesRes.data);
+      if (marmitaSizesRes.data) setMarmitaSizes(marmitaSizesRes.data);
+      if (marmitaProteinsRes.data) setMarmitaProteins(marmitaProteinsRes.data);
+      if (marmitaSidesRes.data) setMarmitaSides(marmitaSidesRes.data);
+    } catch (e) {
+      console.error('Erro ao carregar configuração do cardápio:', e);
+    } finally {
+      setMenuConfigLoading(false);
+    }
+  };
+
+  const handleSaveSlug = async () => {
+    if (!restaurantId) return;
+    const slugNormalized = generateSlug(slug) || generateSlug(restaurant?.name || '');
+    if (!slugNormalized) {
+      toast({ title: 'Slug inválido', description: 'O slug não pode ficar vazio.', variant: 'destructive' });
+      return;
+    }
+    setSlugSaving(true);
+    try {
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ slug: slugNormalized })
+        .eq('id', restaurantId);
+      if (error) throw error;
+      setSlug(slugNormalized);
+      toast({ title: 'Slug salvo com sucesso!' });
+    } catch (error) {
+      console.error('Erro ao salvar slug:', error);
+      toast({ title: 'Erro ao salvar slug', variant: 'destructive' });
+    } finally {
+      setSlugSaving(false);
+    }
+  };
+
+  const copyCardapioLink = () => {
+    const url = getCardapioPublicUrl(slug || restaurant?.slug || '');
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true);
+      toast({ title: 'Link copiado!' });
+      setTimeout(() => setLinkCopied(false), 2000);
+    });
+  };
 
   const openNew = () => {
     setEditingProduct(null);
@@ -260,6 +366,264 @@ export default function AdminMenu() {
     }
   };
 
+  // Funções CRUD para Pizza
+  const handleSubmitSize = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurantId) return;
+    try {
+      const { error } = await supabase.from('pizza_sizes').insert({
+        restaurant_id: restaurantId,
+        name: formSize.name,
+        max_flavors: formSize.max_flavors,
+        price_multiplier: formSize.price_multiplier,
+        order_index: formSize.order_index,
+      });
+      if (error) throw error;
+      setFormSize({ name: '', max_flavors: 1, price_multiplier: 1, order_index: pizzaSizes.length });
+      setShowFormSize(false);
+      loadMenuConfig();
+      toast({ title: 'Tamanho adicionado!' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao salvar tamanho', variant: 'destructive' });
+    }
+  };
+
+  const handleSubmitDough = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurantId) return;
+    const extra_price = parseFloat(String(formDough.extra_price).replace(',', '.')) || 0;
+    try {
+      const { error } = await supabase.from('pizza_doughs').insert({
+        restaurant_id: restaurantId,
+        name: formDough.name,
+        extra_price,
+        is_active: true,
+      });
+      if (error) throw error;
+      setFormDough({ name: '', extra_price: '' });
+      setShowFormDough(false);
+      loadMenuConfig();
+      toast({ title: 'Massa adicionada!' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao salvar massa', variant: 'destructive' });
+    }
+  };
+
+  const handleSubmitEdge = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurantId) return;
+    const price = parseFloat(String(formEdge.price).replace(',', '.')) || 0;
+    try {
+      const { error } = await supabase.from('pizza_edges').insert({
+        restaurant_id: restaurantId,
+        name: formEdge.name,
+        price,
+        is_active: true,
+      });
+      if (error) throw error;
+      setFormEdge({ name: '', price: '' });
+      setShowFormEdge(false);
+      loadMenuConfig();
+      toast({ title: 'Borda adicionada!' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao salvar borda', variant: 'destructive' });
+    }
+  };
+
+  const deleteSize = async (id: string) => {
+    if (!confirm('Excluir este tamanho?')) return;
+    try {
+      await supabase.from('pizza_sizes').delete().eq('id', id);
+      loadMenuConfig();
+      toast({ title: 'Tamanho excluído!' });
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Erro ao excluir', variant: 'destructive' });
+    }
+  };
+
+  const deleteDough = async (id: string) => {
+    if (!confirm('Excluir esta massa?')) return;
+    try {
+      await supabase.from('pizza_doughs').delete().eq('id', id);
+      loadMenuConfig();
+      toast({ title: 'Massa excluída!' });
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Erro ao excluir', variant: 'destructive' });
+    }
+  };
+
+  const deleteEdge = async (id: string) => {
+    if (!confirm('Excluir esta borda?')) return;
+    try {
+      await supabase.from('pizza_edges').delete().eq('id', id);
+      loadMenuConfig();
+      toast({ title: 'Borda excluída!' });
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Erro ao excluir', variant: 'destructive' });
+    }
+  };
+
+  const toggleDoughActive = async (id: string, isActive: boolean) => {
+    try {
+      await supabase.from('pizza_doughs').update({ is_active: !isActive }).eq('id', id);
+      loadMenuConfig();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const toggleEdgeActive = async (id: string, isActive: boolean) => {
+    try {
+      await supabase.from('pizza_edges').update({ is_active: !isActive }).eq('id', id);
+      loadMenuConfig();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Funções CRUD para Marmitas
+  const handleSubmitMarmitaSize = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurantId) return;
+    const base_price = parseFloat(String(formMarmitaSize.base_price).replace(',', '.')) || 0;
+    const price_per_gram = parseFloat(String(formMarmitaSize.price_per_gram).replace(',', '.')) || 0;
+    try {
+      const { error } = await supabase.from('marmita_sizes').insert({
+        restaurant_id: restaurantId,
+        name: formMarmitaSize.name,
+        weight_grams: formMarmitaSize.weight_grams,
+        base_price,
+        price_per_gram,
+        order_index: formMarmitaSize.order_index,
+        is_active: true,
+      });
+      if (error) throw error;
+      setFormMarmitaSize({ name: '', weight_grams: 500, base_price: '', price_per_gram: '', order_index: marmitaSizes.length });
+      setShowFormMarmitaSize(false);
+      loadMenuConfig();
+      toast({ title: 'Tamanho de marmita adicionado!' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao salvar tamanho', variant: 'destructive' });
+    }
+  };
+
+  const handleSubmitMarmitaProtein = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurantId) return;
+    const price_per_gram = parseFloat(String(formMarmitaProtein.price_per_gram).replace(',', '.')) || 0;
+    try {
+      const { error } = await supabase.from('marmita_proteins').insert({
+        restaurant_id: restaurantId,
+        name: formMarmitaProtein.name,
+        description: formMarmitaProtein.description || null,
+        price_per_gram,
+        is_active: true,
+      });
+      if (error) throw error;
+      setFormMarmitaProtein({ name: '', description: '', price_per_gram: '' });
+      setShowFormMarmitaProtein(false);
+      loadMenuConfig();
+      toast({ title: 'Proteína adicionada!' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao salvar proteína', variant: 'destructive' });
+    }
+  };
+
+  const handleSubmitMarmitaSide = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurantId) return;
+    const price_per_gram = parseFloat(String(formMarmitaSide.price_per_gram).replace(',', '.')) || 0;
+    try {
+      const { error } = await supabase.from('marmita_sides').insert({
+        restaurant_id: restaurantId,
+        name: formMarmitaSide.name,
+        description: formMarmitaSide.description || null,
+        price_per_gram,
+        category: formMarmitaSide.category || null,
+        is_active: true,
+      });
+      if (error) throw error;
+      setFormMarmitaSide({ name: '', description: '', price_per_gram: '', category: '' });
+      setShowFormMarmitaSide(false);
+      loadMenuConfig();
+      toast({ title: 'Acompanhamento adicionado!' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao salvar acompanhamento', variant: 'destructive' });
+    }
+  };
+
+  const deleteMarmitaSize = async (id: string) => {
+    if (!confirm('Excluir este tamanho de marmita?')) return;
+    try {
+      await supabase.from('marmita_sizes').delete().eq('id', id);
+      loadMenuConfig();
+      toast({ title: 'Tamanho excluído!' });
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Erro ao excluir', variant: 'destructive' });
+    }
+  };
+
+  const deleteMarmitaProtein = async (id: string) => {
+    if (!confirm('Excluir esta proteína?')) return;
+    try {
+      await supabase.from('marmita_proteins').delete().eq('id', id);
+      loadMenuConfig();
+      toast({ title: 'Proteína excluída!' });
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Erro ao excluir', variant: 'destructive' });
+    }
+  };
+
+  const deleteMarmitaSide = async (id: string) => {
+    if (!confirm('Excluir este acompanhamento?')) return;
+    try {
+      await supabase.from('marmita_sides').delete().eq('id', id);
+      loadMenuConfig();
+      toast({ title: 'Acompanhamento excluído!' });
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Erro ao excluir', variant: 'destructive' });
+    }
+  };
+
+  const toggleMarmitaSizeActive = async (id: string, isActive: boolean) => {
+    try {
+      await supabase.from('marmita_sizes').update({ is_active: !isActive }).eq('id', id);
+      loadMenuConfig();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const toggleMarmitaProteinActive = async (id: string, isActive: boolean) => {
+    try {
+      await supabase.from('marmita_proteins').update({ is_active: !isActive }).eq('id', id);
+      loadMenuConfig();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const toggleMarmitaSideActive = async (id: string, isActive: boolean) => {
+    try {
+      await supabase.from('marmita_sides').update({ is_active: !isActive }).eq('id', id);
+      loadMenuConfig();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   // Agrupar produtos por categoria
   const groupedProducts = products.reduce((acc, product) => {
     if (!acc[product.category]) {
@@ -279,194 +643,605 @@ export default function AdminMenu() {
 
   return (
     <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      {/* Seção Cardápio Digital */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Cardápio Digital</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Configure o endereço público do seu cardápio. Em produção será acessível em <strong>slug.quiero.food</strong>.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <Label htmlFor="slug">Slug do cardápio</Label>
+              <Input
+                id="slug"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'))}
+                placeholder="ex: minha-pizzaria"
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Apenas letras minúsculas, números e hífens.
+              </p>
+            </div>
+            <div className="flex items-end">
+              <Button onClick={handleSaveSlug} disabled={slugSaving} className="w-full sm:w-auto">
+                {slugSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                Salvar Slug
+              </Button>
+            </div>
+          </div>
+          {(slug || restaurant?.slug) && (
+            <div>
+              <Label>Link público do cardápio:</Label>
+              <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                <Input
+                  readOnly
+                  value={getCardapioPublicUrl(slug || restaurant?.slug || '')}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={copyCardapioLink}
+                  className="w-full sm:w-auto"
+                >
+                  {linkCopied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                  {linkCopied ? 'Copiado!' : 'Copiar'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Tabs: Produtos e Configurações */}
+      <Tabs defaultValue="produtos" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="produtos">Produtos</TabsTrigger>
+          <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
+        </TabsList>
+
+        {/* Aba Produtos */}
+        <TabsContent value="produtos" className="space-y-6 mt-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">Produtos do Cardápio</h2>
+              <p className="text-muted-foreground text-sm">
+                Gerencie os produtos do seu cardápio
+              </p>
+            </div>
+            <Button onClick={openNew} className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Produto
+            </Button>
+          </div>
+
+          {Object.keys(groupedProducts).length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <p className="text-muted-foreground mb-4">
+                  Você ainda não tem produtos cadastrados
+                </p>
+                <Button onClick={openNew}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Primeiro Produto
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-8">
+              {Object.entries(groupedProducts).map(([category, categoryProducts]) => (
+                <div key={category} className="space-y-4">
+                  <h3 className="text-xl font-semibold capitalize">{category}</h3>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {categoryProducts.map((product) => (
+                      <Card key={product.id} className="overflow-hidden">
+                        <div className="relative">
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="w-full h-48 object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-48 bg-muted flex items-center justify-center">
+                              <Pizza className="h-12 w-12 text-muted-foreground" />
+                            </div>
+                          )}
+                          {product.is_pizza && (
+                            <Badge className="absolute top-2 right-2">Pizza</Badge>
+                          )}
+                          {product.is_marmita && (
+                            <Badge className="absolute top-2 right-2">Marmita</Badge>
+                          )}
+                          {!product.is_active && (
+                            <Badge variant="destructive" className="absolute top-2 left-2">
+                              Inativo
+                            </Badge>
+                          )}
+                        </div>
+                        <CardContent className="p-4">
+                          <h4 className="font-semibold text-lg mb-1">{product.name}</h4>
+                          {product.description && (
+                            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                              {product.description}
+                            </p>
+                          )}
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="text-lg font-bold text-primary">
+                              {formatCurrency(product.price)}
+                            </span>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => toggleProductStatus(product.id, product.is_active)}
+                            >
+                              {product.is_active ? 'Desativar' : 'Ativar'}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => openEdit(product)}
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Editar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deleteProduct(product.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Aba Configurações */}
+        <TabsContent value="configuracoes" className="space-y-6 mt-6">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Cardápio</h1>
-            <p className="text-muted-foreground">
-              Gerencie os produtos do seu cardápio
+            <h2 className="text-2xl font-bold text-foreground">Configurações do Cardápio</h2>
+            <p className="text-muted-foreground text-sm">
+              Defina opções por categoria. A categoria <strong>Pizza</strong> usa tamanhos, massas e bordas. A categoria <strong>Marmitas</strong> usa tamanhos (pesos), proteínas e acompanhamentos.
             </p>
           </div>
-          <Button onClick={openNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Produto
-          </Button>
-        </div>
 
-        {Object.keys(groupedProducts).length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <p className="text-muted-foreground mb-4">
-                Você ainda não tem produtos cadastrados
-              </p>
-              <Button onClick={openNew}>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Primeiro Produto
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-8">
-            {Object.entries(groupedProducts).map(([category, categoryProducts]) => (
-              <div key={category} className="space-y-4">
-                <h2 className="text-2xl font-semibold capitalize">{category}</h2>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {categoryProducts.map((product) => (
-                    <Card key={product.id}>
-                      <div className="relative">
-                        {product.image_url ? (
-                          <img
-                            src={product.image_url}
-                            alt={product.name}
-                            className="w-full h-48 object-cover rounded-t-lg"
-                          />
-                        ) : (
-                          <div className="w-full h-48 bg-muted flex items-center justify-center rounded-t-lg">
-                            <Pizza className="h-12 w-12 text-muted-foreground" />
-                          </div>
-                        )}
-                        {product.is_pizza && (
-                          <Badge className="absolute top-2 right-2">Pizza</Badge>
-                        )}
-                        {product.is_marmita && (
-                          <Badge className="absolute top-2 right-2">Marmita</Badge>
-                        )}
-                        {!product.is_active && (
-                          <Badge
-                            variant="destructive"
-                            className="absolute top-2 left-2"
-                          >
-                            Inativo
-                          </Badge>
-                        )}
-                      </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold text-lg mb-1">
-                          {product.name}
-                        </h3>
-                        {product.description && (
-                          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                            {product.description}
-                          </p>
-                        )}
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="text-lg font-bold text-primary">
-                            {formatCurrency(product.price)}
-                          </span>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() =>
-                              toggleProductStatus(product.id, product.is_active)
-                            }
-                          >
-                            {product.is_active ? 'Desativar' : 'Ativar'}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => openEdit(product)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => deleteProduct(product.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+          <Tabs defaultValue="pizza" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 max-w-md">
+              <TabsTrigger value="pizza">Pizza</TabsTrigger>
+              <TabsTrigger value="marmitas">Marmitas</TabsTrigger>
+            </TabsList>
+
+            {/* Configurações Pizza */}
+            <TabsContent value="pizza" className="space-y-8 mt-6">
+              {menuConfigLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ) : (
+                <>
+                  {/* Tamanhos */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <CardTitle className="text-lg">Tamanhos de Pizza</CardTitle>
+                        <Button type="button" size="sm" variant="outline" onClick={() => setShowFormSize(!showFormSize)}>
+                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {showFormSize && (
+                        <form onSubmit={handleSubmitSize} className="p-4 border rounded-lg space-y-3 bg-muted/30">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <Label>Nome</Label>
+                              <Input value={formSize.name} onChange={(e) => setFormSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Broto, Média, Grande" required />
+                            </div>
+                            <div>
+                              <Label>Máx. sabores</Label>
+                              <Input type="number" min={1} value={formSize.max_flavors} onChange={(e) => setFormSize((f) => ({ ...f, max_flavors: parseInt(e.target.value, 10) || 1 }))} />
+                            </div>
+                            <div>
+                              <Label>Multiplicador de preço</Label>
+                              <Input type="number" step="0.01" min="0" value={formSize.price_multiplier} onChange={(e) => setFormSize((f) => ({ ...f, price_multiplier: parseFloat(e.target.value) || 1 }))} placeholder="1.0" />
+                            </div>
+                            <div>
+                              <Label>Ordem</Label>
+                              <Input type="number" min={0} value={formSize.order_index} onChange={(e) => setFormSize((f) => ({ ...f, order_index: parseInt(e.target.value, 10) || 0 }))} />
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button type="submit" size="sm" className="flex-1">Salvar</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormSize(false)} className="flex-1">Cancelar</Button>
+                          </div>
+                        </form>
+                      )}
+                      <ul className="space-y-2">
+                        {pizzaSizes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tamanho. Adicione para o cliente escolher no cardápio.</p>}
+                        {pizzaSizes.map((s) => (
+                          <li key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
+                            <span className="text-sm"><strong>{s.name}</strong> — até {s.max_flavors} sabor(es) — multiplicador {Number(s.price_multiplier)}x</span>
+                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteSize(s.id)} className="text-destructive"><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
 
-      {/* Modal Adicionar/Editar Produto */}
+                  {/* Massas */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <CardTitle className="text-lg">Tipos de Massa</CardTitle>
+                        <Button type="button" size="sm" variant="outline" onClick={() => setShowFormDough(!showFormDough)}>
+                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {showFormDough && (
+                        <form onSubmit={handleSubmitDough} className="p-4 border rounded-lg space-y-3 bg-muted/30">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <Label>Nome</Label>
+                              <Input value={formDough.name} onChange={(e) => setFormDough((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Tradicional" required />
+                            </div>
+                            <div>
+                              <Label>Acréscimo (R$)</Label>
+                              <Input type="text" value={formDough.extra_price} onChange={(e) => setFormDough((f) => ({ ...f, extra_price: e.target.value }))} placeholder="0" />
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button type="submit" size="sm" className="flex-1">Salvar</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormDough(false)} className="flex-1">Cancelar</Button>
+                          </div>
+                        </form>
+                      )}
+                      <ul className="space-y-2">
+                        {pizzaDoughs.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tipo. Adicione (ex: Tradicional, Integral).</p>}
+                        {pizzaDoughs.map((d) => (
+                          <li key={d.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
+                            <span className="text-sm"><strong>{d.name}</strong> {Number(d.extra_price) > 0 ? `+ ${formatCurrency(Number(d.extra_price))}` : '(sem acréscimo)'}{!d.is_active && ' (inativo)'}</span>
+                            <div className="flex gap-1">
+                              <Button type="button" size="sm" variant="ghost" onClick={() => toggleDoughActive(d.id, d.is_active)}>{d.is_active ? 'Desativar' : 'Ativar'}</Button>
+                              <Button type="button" size="sm" variant="ghost" onClick={() => deleteDough(d.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+
+                  {/* Bordas */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <CardTitle className="text-lg">Bordas Recheadas</CardTitle>
+                        <Button type="button" size="sm" variant="outline" onClick={() => setShowFormEdge(!showFormEdge)}>
+                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {showFormEdge && (
+                        <form onSubmit={handleSubmitEdge} className="p-4 border rounded-lg space-y-3 bg-muted/30">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <Label>Nome</Label>
+                              <Input value={formEdge.name} onChange={(e) => setFormEdge((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Catupiry" required />
+                            </div>
+                            <div>
+                              <Label>Preço (R$)</Label>
+                              <Input type="text" value={formEdge.price} onChange={(e) => setFormEdge((f) => ({ ...f, price: e.target.value }))} placeholder="8,00" required />
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button type="submit" size="sm" className="flex-1">Salvar</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormEdge(false)} className="flex-1">Cancelar</Button>
+                          </div>
+                        </form>
+                      )}
+                      <ul className="space-y-2">
+                        {pizzaEdges.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma borda. Adicione (ex: Catupiry, Cheddar).</p>}
+                        {pizzaEdges.map((e) => (
+                          <li key={e.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
+                            <span className="text-sm"><strong>{e.name}</strong> — {formatCurrency(Number(e.price))}{!e.is_active && ' (inativo)'}</span>
+                            <div className="flex gap-1">
+                              <Button type="button" size="sm" variant="ghost" onClick={() => toggleEdgeActive(e.id, e.is_active)}>{e.is_active ? 'Desativar' : 'Ativar'}</Button>
+                              <Button type="button" size="sm" variant="ghost" onClick={() => deleteEdge(e.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </TabsContent>
+
+            {/* Configurações Marmitas */}
+            <TabsContent value="marmitas" className="space-y-8 mt-6">
+              {menuConfigLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                </div>
+              ) : (
+                <>
+                  {/* Tamanhos de Marmita */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <CardTitle className="text-lg">Tamanhos (Pesos)</CardTitle>
+                        <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSize(!showFormMarmitaSize)}>
+                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {showFormMarmitaSize && (
+                        <form onSubmit={handleSubmitMarmitaSize} className="p-4 border rounded-lg space-y-3 bg-muted/30">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <Label>Nome</Label>
+                              <Input value={formMarmitaSize.name} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: 300g, 500g, 700g" required />
+                            </div>
+                            <div>
+                              <Label>Peso (gramas)</Label>
+                              <Input type="number" min={100} step={50} value={formMarmitaSize.weight_grams} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, weight_grams: parseInt(e.target.value, 10) || 500 }))} required />
+                            </div>
+                            <div>
+                              <Label>Preço Base (R$)</Label>
+                              <Input type="text" value={formMarmitaSize.base_price} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, base_price: e.target.value }))} placeholder="15,00" required />
+                            </div>
+                            <div>
+                              <Label>Preço por Grama (R$)</Label>
+                              <Input type="text" value={formMarmitaSize.price_per_gram} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,05" />
+                            </div>
+                            <div>
+                              <Label>Ordem</Label>
+                              <Input type="number" min={0} value={formMarmitaSize.order_index} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, order_index: parseInt(e.target.value, 10) || 0 }))} />
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button type="submit" size="sm" className="flex-1">Salvar</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSize(false)} className="flex-1">Cancelar</Button>
+                          </div>
+                        </form>
+                      )}
+                      <ul className="space-y-2">
+                        {marmitaSizes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tamanho. Adicione para o cliente escolher no cardápio.</p>}
+                        {marmitaSizes.map((s) => (
+                          <li key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
+                            <span className="text-sm"><strong>{s.name}</strong> — {s.weight_grams}g — Base: {formatCurrency(Number(s.base_price))} {Number(s.price_per_gram) > 0 && `— R$ ${Number(s.price_per_gram).toFixed(4)}/g`}</span>
+                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSize(s.id)} className="text-destructive"><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+
+                  {/* Proteínas */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <CardTitle className="text-lg">Proteínas</CardTitle>
+                        <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaProtein(!showFormMarmitaProtein)}>
+                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {showFormMarmitaProtein && (
+                        <form onSubmit={handleSubmitMarmitaProtein} className="p-4 border rounded-lg space-y-3 bg-muted/30">
+                          <div className="space-y-3">
+                            <div>
+                              <Label>Nome</Label>
+                              <Input value={formMarmitaProtein.name} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Frango Grelhado" required />
+                            </div>
+                            <div>
+                              <Label>Descrição (opcional)</Label>
+                              <Input value={formMarmitaProtein.description} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, description: e.target.value }))} placeholder="Ex: Peito de frango temperado e grelhado" />
+                            </div>
+                            <div>
+                              <Label>Preço por Grama (R$)</Label>
+                              <Input type="text" value={formMarmitaProtein.price_per_gram} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,08" required />
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button type="submit" size="sm" className="flex-1">Salvar</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaProtein(false)} className="flex-1">Cancelar</Button>
+                          </div>
+                        </form>
+                      )}
+                      <ul className="space-y-2">
+                        {marmitaProteins.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma proteína. Adicione (ex: Frango, Carne, Peixe).</p>}
+                        {marmitaProteins.map((p) => (
+                          <li key={p.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
+                            <span className="text-sm"><strong>{p.name}</strong> — {formatCurrency(Number(p.price_per_gram))}/g{!p.is_active && ' (inativo)'}</span>
+                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaProtein(p.id)} className="text-destructive"><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+
+                  {/* Acompanhamentos */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <CardTitle className="text-lg">Acompanhamentos</CardTitle>
+                        <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSide(!showFormMarmitaSide)}>
+                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {showFormMarmitaSide && (
+                        <form onSubmit={handleSubmitMarmitaSide} className="p-4 border rounded-lg space-y-3 bg-muted/30">
+                          <div className="space-y-3">
+                            <div>
+                              <Label>Nome</Label>
+                              <Input value={formMarmitaSide.name} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Arroz Branco" required />
+                            </div>
+                            <div>
+                              <Label>Descrição (opcional)</Label>
+                              <Input value={formMarmitaSide.description} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, description: e.target.value }))} placeholder="Ex: Arroz soltinho" />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <Label>Categoria</Label>
+                                <Input value={formMarmitaSide.category} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, category: e.target.value }))} placeholder="Ex: Arroz, Feijão, Salada" />
+                              </div>
+                              <div>
+                                <Label>Preço por Grama (R$)</Label>
+                                <Input type="text" value={formMarmitaSide.price_per_gram} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,02" required />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button type="submit" size="sm" className="flex-1">Salvar</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSide(false)} className="flex-1">Cancelar</Button>
+                          </div>
+                        </form>
+                      )}
+                      <ul className="space-y-2">
+                        {marmitaSides.length === 0 && <p className="text-sm text-muted-foreground">Nenhum acompanhamento. Adicione (ex: Arroz, Feijão, Salada).</p>}
+                        {marmitaSides.map((s) => (
+                          <li key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
+                            <span className="text-sm"><strong>{s.name}</strong> {s.category && `(${s.category})`} — {formatCurrency(Number(s.price_per_gram))}/g{!s.is_active && ' (inativo)'}</span>
+                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSide(s.id)} className="text-destructive"><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+      </Tabs>
+
+      {/* Modal Adicionar/Editar Produto - Melhorado para Mobile */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-xl sm:text-2xl">
               {editingProduct ? 'Editar Produto' : 'Novo Produto'}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSaveProduct} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome *</Label>
-              <Input
-                id="name"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder={
-                  form.category === 'Pizza'
-                    ? 'Ex: Margherita, Calabresa'
-                    : form.category === 'Bebidas'
-                    ? 'Ex: Refrigerante, Suco'
-                    : 'Ex: nome do produto'
-                }
-                required
-              />
+          <form onSubmit={handleSaveProduct} className="space-y-5">
+            {/* Nome e Categoria em Grid Responsivo */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome *</Label>
+                <Input
+                  id="name"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder={
+                    form.category === 'Pizza'
+                      ? 'Ex: Margherita, Calabresa'
+                      : form.category === 'Bebidas'
+                      ? 'Ex: Refrigerante, Suco'
+                      : 'Ex: nome do produto'
+                  }
+                  className="text-base"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Categoria *</Label>
+                <Select
+                  value={form.category}
+                  onValueChange={handleCategoryChange}
+                  required
+                >
+                  <SelectTrigger className="text-base">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIAS_CARDAPIO.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.label}
+                        {cat.isPizza && ' (tamanhos e sabores)'}
+                        {cat.isMarmita && ' (monte sua marmita)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Categoria do cardápio *</Label>
-              <Select
-                value={form.category}
-                onValueChange={handleCategoryChange}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIAS_CARDAPIO.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                    {cat.label}
-                    {cat.isPizza && ' (tamanhos e sabores)'}
-                    {cat.isMarmita && ' (monte sua marmita)'}
-                  </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
+            {/* Mensagens informativas */}
             {getCategoryConfig(form.category).isPizza && (
-              <div className="flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-foreground">
+              <div className="flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
                 <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
                 <span>
-                  Produto configurado como <strong>pizza</strong>. O cliente poderá escolher tamanho, sabores e borda na hora do pedido. Configure tamanhos, sabores e bordas nas configurações do restaurante.
+                  Produto configurado como <strong>pizza</strong>. O cliente poderá escolher tamanho, sabores e borda na hora do pedido. Configure nas <strong>Configurações</strong>.
                 </span>
               </div>
             )}
 
             {getCategoryConfig(form.category).isMarmita && (
-              <div className="flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-foreground">
+              <div className="flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
                 <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
                 <span>
-                  Produto configurado como <strong>marmita</strong>. O cliente poderá escolher tamanho (peso), proteínas e acompanhamentos na hora do pedido. Configure tamanhos, proteínas e acompanhamentos nas configurações do restaurante.
+                  Produto configurado como <strong>marmita</strong>. O cliente poderá escolher tamanho (peso), proteínas e acompanhamentos na hora do pedido. Configure nas <strong>Configurações</strong>.
                 </span>
               </div>
             )}
 
-            {getCategoryConfig(form.category).extraField && (
+            {/* Campo extra e Descrição em Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {getCategoryConfig(form.category).extraField && (
+                <div className="space-y-2">
+                  <Label htmlFor="categoryDetail">
+                    {getCategoryConfig(form.category).extraLabel}
+                  </Label>
+                  <Input
+                    id="categoryDetail"
+                    value={form.categoryDetail}
+                    onChange={(e) => setForm((f) => ({ ...f, categoryDetail: e.target.value }))}
+                    placeholder={getCategoryConfig(form.category).extraPlaceholder}
+                    className="text-base"
+                  />
+                </div>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="categoryDetail">
-                  {getCategoryConfig(form.category).extraLabel}
+                <Label htmlFor="price">
+                  {getCategoryConfig(form.category).priceLabel || 'Preço (R$) *'}
                 </Label>
                 <Input
-                  id="categoryDetail"
-                  value={form.categoryDetail}
-                  onChange={(e) => setForm((f) => ({ ...f, categoryDetail: e.target.value }))}
-                  placeholder={getCategoryConfig(form.category).extraPlaceholder}
+                  id="price"
+                  type="text"
+                  inputMode="decimal"
+                  value={form.price}
+                  onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                  placeholder="0,00"
+                  className="text-base"
+                  required
                 />
               </div>
-            )}
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="description">Descrição</Label>
@@ -479,31 +1254,89 @@ export default function AdminMenu() {
                     ? 'Ex: Molho de tomate, mussarela e manjericão'
                     : 'Descrição opcional do produto'
                 }
-                rows={2}
-                className="resize-none"
+                rows={3}
+                className="resize-none text-base"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="price">
-                {getCategoryConfig(form.category).priceLabel || 'Preço (R$) *'}
-              </Label>
-              <Input
-                id="price"
-                type="text"
-                inputMode="decimal"
-                value={form.price}
-                onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-                placeholder="0,00"
-                required
-              />
-            </div>
-            <div className="space-y-2">
+
+            {/* Imagem - Layout Melhorado */}
+            <div className="space-y-3">
               <Label>Imagem do produto</Label>
-              <p className="text-xs text-muted-foreground mb-2">
-                PNG, JPG ou GIF. Será convertida para WebP (80%) para ficar leve e em boa qualidade.
+              <p className="text-xs text-muted-foreground">
+                PNG, JPG, GIF ou WebP. Será convertida para WebP (80%) automaticamente.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 items-start">
-                <label className="cursor-pointer">
+              
+              {form.image_url ? (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border rounded-lg bg-muted/30">
+                  <div className="w-24 h-24 rounded-lg overflow-hidden border bg-muted flex-shrink-0">
+                    <img
+                      src={form.image_url}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <Input
+                      type="url"
+                      value={form.image_url}
+                      onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
+                      placeholder="Ou cole uma URL"
+                      className="text-base"
+                    />
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <label className="cursor-pointer flex-1">
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                          className="sr-only"
+                          disabled={imageUploading || !restaurantId}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file || !restaurantId) return;
+                            setImageUploading(true);
+                            try {
+                              const url = await uploadProductImage(restaurantId, file);
+                              setForm((f) => ({ ...f, image_url: url }));
+                              toast({ title: 'Imagem enviada e otimizada!' });
+                            } catch (err) {
+                              toast({
+                                title: 'Erro ao enviar imagem',
+                                description: err instanceof Error ? err.message : 'Tente outro arquivo.',
+                                variant: 'destructive',
+                              });
+                            } finally {
+                              setImageUploading(false);
+                              e.target.value = '';
+                            }
+                          }}
+                        />
+                        <Button type="button" variant="outline" className="w-full" disabled={imageUploading}>
+                          {imageUploading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Enviando...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4 mr-2" />
+                              Trocar imagem
+                            </>
+                          )}
+                        </Button>
+                      </label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setForm((f) => ({ ...f, image_url: '' }))}
+                        className="w-full sm:w-auto"
+                      >
+                        Remover
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <label className="cursor-pointer block">
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
@@ -516,7 +1349,7 @@ export default function AdminMenu() {
                       try {
                         const url = await uploadProductImage(restaurantId, file);
                         setForm((f) => ({ ...f, image_url: url }));
-                        toast({ title: 'Imagem enviada e otimizada (WebP 80%)' });
+                        toast({ title: 'Imagem enviada e otimizada!' });
                       } catch (err) {
                         toast({
                           title: 'Erro ao enviar imagem',
@@ -529,80 +1362,51 @@ export default function AdminMenu() {
                       }
                     }}
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="pointer-events-none"
-                    asChild
-                  >
-                    <span>
-                      {imageUploading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Enviando e otimizando...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Escolher arquivo
-                        </>
-                      )}
-                    </span>
-                  </Button>
-                </label>
-                {form.image_url && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-16 h-16 rounded-lg overflow-hidden border bg-muted flex-shrink-0">
-                      <img
-                        src={form.image_url}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setForm((f) => ({ ...f, image_url: '' }))}
-                    >
-                      Remover imagem
-                    </Button>
+                  <div className="border-2 border-dashed rounded-lg p-8 text-center hover:bg-muted/50 transition-colors">
+                    {imageUploading ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <span className="text-sm text-muted-foreground">Enviando e otimizando...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-sm font-medium">Clique para fazer upload</span>
+                        <span className="text-xs text-muted-foreground">Ou cole uma URL abaixo</span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="pt-1">
-                <Label htmlFor="image_url_optional" className="text-xs text-muted-foreground">
-                  Ou cole uma URL (link) da imagem
-                </Label>
-                <Input
-                  id="image_url_optional"
-                  type="url"
-                  value={form.image_url}
-                  onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
-                  placeholder="https://..."
-                  className="mt-1"
-                />
-              </div>
+                  <Input
+                    type="url"
+                    value={form.image_url}
+                    onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
+                    placeholder="Ou cole uma URL da imagem aqui"
+                    className="mt-2 text-base"
+                  />
+                </label>
+              )}
             </div>
-            <DialogFooter>
+
+            <DialogFooter className="flex-col sm:flex-row gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setModalOpen(false)}
                 disabled={saving}
+                className="w-full sm:w-auto"
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving} className="w-full sm:w-auto">
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Salvando...
                   </>
                 ) : editingProduct ? (
-                  'Salvar'
+                  'Salvar Alterações'
                 ) : (
-                  'Adicionar ao cardápio'
+                  'Adicionar ao Cardápio'
                 )}
               </Button>
             </DialogFooter>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
-import { Restaurant, PizzaSize, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide, DayKey, PrintPaperWidth } from '@/types';
+import { Restaurant, DayKey, PrintPaperWidth } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,9 +14,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
-import { Save, Plus, Trash2, Pizza, Upload, Loader2, Clock, Instagram, Printer } from 'lucide-react';
+import { Save, Upload, Loader2, Clock, Instagram, Printer } from 'lucide-react';
 
 export default function AdminSettings() {
   const restaurantId = useAdminRestaurantId();
@@ -34,7 +34,6 @@ export default function AdminSettings() {
   ];
   const [formData, setFormData] = useState({
     name: '',
-    slug: '',
     phone: '',
     whatsapp: '',
     phone_country: 'BR' as 'BR' | 'PY',
@@ -50,33 +49,10 @@ export default function AdminSettings() {
   });
   const [logoUploading, setLogoUploading] = useState(false);
 
-  // Configuração do cardápio por categoria (Pizza)
-  const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]);
-  const [pizzaDoughs, setPizzaDoughs] = useState<PizzaDough[]>([]);
-  const [pizzaEdges, setPizzaEdges] = useState<PizzaEdge[]>([]);
-  const [menuConfigLoading, setMenuConfigLoading] = useState(false);
-  const [showFormSize, setShowFormSize] = useState(false);
-  const [showFormDough, setShowFormDough] = useState(false);
-  const [showFormEdge, setShowFormEdge] = useState(false);
-  const [formSize, setFormSize] = useState({ name: '', max_flavors: 1, price_multiplier: 1, order_index: 0 });
-  const [formDough, setFormDough] = useState({ name: '', extra_price: '' });
-  const [formEdge, setFormEdge] = useState({ name: '', price: '' });
-
-  // Configuração do cardápio por categoria (Marmitas)
-  const [marmitaSizes, setMarmitaSizes] = useState<MarmitaSize[]>([]);
-  const [marmitaProteins, setMarmitaProteins] = useState<MarmitaProtein[]>([]);
-  const [marmitaSides, setMarmitaSides] = useState<MarmitaSide[]>([]);
-  const [showFormMarmitaSize, setShowFormMarmitaSize] = useState(false);
-  const [showFormMarmitaProtein, setShowFormMarmitaProtein] = useState(false);
-  const [showFormMarmitaSide, setShowFormMarmitaSide] = useState(false);
-  const [formMarmitaSize, setFormMarmitaSize] = useState({ name: '', weight_grams: 500, base_price: '', price_per_gram: '', order_index: 0 });
-  const [formMarmitaProtein, setFormMarmitaProtein] = useState({ name: '', description: '', price_per_gram: '' });
-  const [formMarmitaSide, setFormMarmitaSide] = useState({ name: '', description: '', price_per_gram: '', category: '' });
 
   useEffect(() => {
     if (restaurantId) {
       loadRestaurant();
-      loadMenuConfig();
     }
   }, [restaurantId]);
 
@@ -98,7 +74,6 @@ export default function AdminSettings() {
       const hours = (data.opening_hours || {}) as Record<DayKey, { open: string; close: string } | null>;
       setFormData({
         name: data.name || '',
-        slug: data.slug || '',
         phone: data.phone || '',
         whatsapp: data.whatsapp || '',
         phone_country: (data.phone_country === 'PY' ? 'PY' : 'BR') as 'BR' | 'PY',
@@ -119,266 +94,6 @@ export default function AdminSettings() {
     }
   };
 
-  const loadMenuConfig = async () => {
-    if (!restaurantId) return;
-    setMenuConfigLoading(true);
-    try {
-      const [sizesRes, doughsRes, edgesRes, marmitaSizesRes, marmitaProteinsRes, marmitaSidesRes] = await Promise.all([
-        supabase.from('pizza_sizes').select('*').eq('restaurant_id', restaurantId).order('order_index'),
-        supabase.from('pizza_doughs').select('*').eq('restaurant_id', restaurantId).order('name'),
-        supabase.from('pizza_edges').select('*').eq('restaurant_id', restaurantId).order('name'),
-        supabase.from('marmita_sizes').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('order_index'),
-        supabase.from('marmita_proteins').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('name'),
-        supabase.from('marmita_sides').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('category', { ascending: true }).order('name'),
-      ]);
-      if (sizesRes.data) setPizzaSizes(sizesRes.data);
-      if (doughsRes.data) setPizzaDoughs(doughsRes.data);
-      if (edgesRes.data) setPizzaEdges(edgesRes.data);
-      if (marmitaSizesRes.data) setMarmitaSizes(marmitaSizesRes.data);
-      if (marmitaProteinsRes.data) setMarmitaProteins(marmitaProteinsRes.data);
-      if (marmitaSidesRes.data) setMarmitaSides(marmitaSidesRes.data);
-    } catch (e) {
-      console.error('Erro ao carregar configuração do cardápio:', e);
-    } finally {
-      setMenuConfigLoading(false);
-    }
-  };
-
-  const handleSubmitSize = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!restaurantId) return;
-    try {
-      const { error } = await supabase.from('pizza_sizes').insert({
-        restaurant_id: restaurantId,
-        name: formSize.name,
-        max_flavors: formSize.max_flavors,
-        price_multiplier: formSize.price_multiplier,
-        order_index: formSize.order_index,
-      });
-      if (error) throw error;
-      setFormSize({ name: '', max_flavors: 1, price_multiplier: 1, order_index: pizzaSizes.length });
-      setShowFormSize(false);
-      loadMenuConfig();
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao salvar tamanho.');
-    }
-  };
-
-  const handleSubmitDough = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!restaurantId) return;
-    const extra_price = parseFloat(String(formDough.extra_price).replace(',', '.')) || 0;
-    try {
-      const { error } = await supabase.from('pizza_doughs').insert({
-        restaurant_id: restaurantId,
-        name: formDough.name,
-        extra_price,
-        is_active: true,
-      });
-      if (error) throw error;
-      setFormDough({ name: '', extra_price: '' });
-      setShowFormDough(false);
-      loadMenuConfig();
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao salvar massa.');
-    }
-  };
-
-  const handleSubmitEdge = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!restaurantId) return;
-    const price = parseFloat(String(formEdge.price).replace(',', '.')) || 0;
-    try {
-      const { error } = await supabase.from('pizza_edges').insert({
-        restaurant_id: restaurantId,
-        name: formEdge.name,
-        price,
-        is_active: true,
-      });
-      if (error) throw error;
-      setFormEdge({ name: '', price: '' });
-      setShowFormEdge(false);
-      loadMenuConfig();
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao salvar borda.');
-    }
-  };
-
-  const deleteSize = async (id: string) => {
-    if (!confirm('Excluir este tamanho?')) return;
-    try {
-      await supabase.from('pizza_sizes').delete().eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-  const deleteDough = async (id: string) => {
-    if (!confirm('Excluir esta massa?')) return;
-    try {
-      await supabase.from('pizza_doughs').delete().eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-  const deleteEdge = async (id: string) => {
-    if (!confirm('Excluir esta borda?')) return;
-    try {
-      await supabase.from('pizza_edges').delete().eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const toggleDoughActive = async (id: string, isActive: boolean) => {
-    try {
-      await supabase.from('pizza_doughs').update({ is_active: !isActive }).eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-  const toggleEdgeActive = async (id: string, isActive: boolean) => {
-    try {
-      await supabase.from('pizza_edges').update({ is_active: !isActive }).eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Funções para Marmitas
-  const handleSubmitMarmitaSize = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!restaurantId) return;
-    const base_price = parseFloat(String(formMarmitaSize.base_price).replace(',', '.')) || 0;
-    const price_per_gram = parseFloat(String(formMarmitaSize.price_per_gram).replace(',', '.')) || 0;
-    try {
-      const { error } = await supabase.from('marmita_sizes').insert({
-        restaurant_id: restaurantId,
-        name: formMarmitaSize.name,
-        weight_grams: formMarmitaSize.weight_grams,
-        base_price,
-        price_per_gram,
-        order_index: formMarmitaSize.order_index,
-        is_active: true,
-      });
-      if (error) throw error;
-      setFormMarmitaSize({ name: '', weight_grams: 500, base_price: '', price_per_gram: '', order_index: marmitaSizes.length });
-      setShowFormMarmitaSize(false);
-      loadMenuConfig();
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao salvar tamanho de marmita.');
-    }
-  };
-
-  const handleSubmitMarmitaProtein = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!restaurantId) return;
-    const price_per_gram = parseFloat(String(formMarmitaProtein.price_per_gram).replace(',', '.')) || 0;
-    try {
-      const { error } = await supabase.from('marmita_proteins').insert({
-        restaurant_id: restaurantId,
-        name: formMarmitaProtein.name,
-        description: formMarmitaProtein.description || null,
-        price_per_gram,
-        is_active: true,
-      });
-      if (error) throw error;
-      setFormMarmitaProtein({ name: '', description: '', price_per_gram: '' });
-      setShowFormMarmitaProtein(false);
-      loadMenuConfig();
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao salvar proteína.');
-    }
-  };
-
-  const handleSubmitMarmitaSide = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!restaurantId) return;
-    const price_per_gram = parseFloat(String(formMarmitaSide.price_per_gram).replace(',', '.')) || 0;
-    try {
-      const { error } = await supabase.from('marmita_sides').insert({
-        restaurant_id: restaurantId,
-        name: formMarmitaSide.name,
-        description: formMarmitaSide.description || null,
-        price_per_gram,
-        category: formMarmitaSide.category || null,
-        is_active: true,
-      });
-      if (error) throw error;
-      setFormMarmitaSide({ name: '', description: '', price_per_gram: '', category: '' });
-      setShowFormMarmitaSide(false);
-      loadMenuConfig();
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao salvar acompanhamento.');
-    }
-  };
-
-  const deleteMarmitaSize = async (id: string) => {
-    if (!confirm('Excluir este tamanho de marmita?')) return;
-    try {
-      await supabase.from('marmita_sizes').delete().eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const deleteMarmitaProtein = async (id: string) => {
-    if (!confirm('Excluir esta proteína?')) return;
-    try {
-      await supabase.from('marmita_proteins').delete().eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const deleteMarmitaSide = async (id: string) => {
-    if (!confirm('Excluir este acompanhamento?')) return;
-    try {
-      await supabase.from('marmita_sides').delete().eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const toggleMarmitaSizeActive = async (id: string, isActive: boolean) => {
-    try {
-      await supabase.from('marmita_sizes').update({ is_active: !isActive }).eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const toggleMarmitaProteinActive = async (id: string, isActive: boolean) => {
-    try {
-      await supabase.from('marmita_proteins').update({ is_active: !isActive }).eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const toggleMarmitaSideActive = async (id: string, isActive: boolean) => {
-    try {
-      await supabase.from('marmita_sides').update({ is_active: !isActive }).eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -387,17 +102,10 @@ export default function AdminSettings() {
     try {
       setSaving(true);
 
-      const slugNormalized = generateSlug(formData.slug) || generateSlug(formData.name);
-      if (!slugNormalized) {
-        alert('O slug do cardápio não pode ficar vazio.');
-        return;
-      }
-
       const { error } = await supabase
         .from('restaurants')
         .update({
           name: formData.name,
-          slug: slugNormalized,
           phone: formData.phone,
           whatsapp: formData.whatsapp,
           phone_country: formData.phone_country,
@@ -806,77 +514,11 @@ export default function AdminSettings() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Cardápio Digital</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                O slug define o endereço do seu cardápio. Em produção será acessível em <strong>slug.quiero.food</strong> (ex: restaurante → restaurante.quiero.food).
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="slug">Slug do cardápio</Label>
-                <Input
-                  id="slug"
-                  value={formData.slug}
-                  onChange={(e) =>
-                    setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') })
-                  }
-                  placeholder="ex: minha-pizzaria"
-                  className="max-w-xs mt-1"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Apenas letras minúsculas, números e hífens. Será salvo ao clicar em &quot;Salvar Configurações&quot;.
-                </p>
-              </div>
-              {(formData.slug || restaurant?.slug) && (
-                <div>
-                  <Label>Link público do cardápio:</Label>
-                  <div className="flex gap-2 mt-2">
-                    <Input
-                      readOnly
-                      value={getCardapioPublicUrl(formData.slug || restaurant?.slug || '')}
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        const url = getCardapioPublicUrl(formData.slug || restaurant?.slug || '');
-                        navigator.clipboard.writeText(url);
-                        alert('Link copiado!');
-                      }}
-                    >
-                      Copiar
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           <Button type="submit" size="lg" disabled={saving}>
             <Save className="h-4 w-4 mr-2" />
             {saving ? 'Salvando...' : 'Salvar Configurações'}
           </Button>
         </form>
-
-        <Card className="mt-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Pizza className="h-5 w-5" />
-                Configuração do cardápio
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Defina opções por categoria. A categoria <strong>Pizza</strong> usa tamanhos, massas e bordas. A categoria <strong>Marmitas</strong> usa tamanhos (pesos), proteínas e acompanhamentos.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="pizza" className="w-full">
-                <TabsList className="grid w-full max-w-md grid-cols-2">
-                  <TabsTrigger value="pizza">Pizza</TabsTrigger>
-                  <TabsTrigger value="marmitas">Marmitas</TabsTrigger>
-                </TabsList>
                 <TabsContent value="pizza" className="space-y-8 mt-6">
                   {menuConfigLoading ? (
                     <div className="flex justify-center py-8">
@@ -1166,10 +808,6 @@ export default function AdminSettings() {
                       </div>
                     </>
                   )}
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
     </div>
   );
 }
