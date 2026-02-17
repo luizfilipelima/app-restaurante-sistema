@@ -323,7 +323,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-28 sm:pb-24 safe-area-inset-bottom">
+    <div className="min-h-screen bg-slate-50 pb-44 sm:pb-36 safe-area-inset-bottom">
       {/* Header - Mobile First */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30 safe-area-inset-top">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center gap-3 sm:gap-4">
@@ -529,7 +529,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       </div>
 
       {/* Footer Fixo - Mobile First */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 sm:p-4 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] safe-area-inset-bottom">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 sm:p-4 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] safe-area-inset-bottom" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
         <div className="container mx-auto max-w-2xl space-y-2 sm:space-y-3">
           <div className="flex justify-between items-center text-xs sm:text-sm">
             <span className="text-slate-500">Subtotal</span>
