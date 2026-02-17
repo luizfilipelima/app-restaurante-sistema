@@ -527,7 +527,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         </div>
 
         {/* Resumo e Botão Finalizar - Integrado ao conteúdo */}
-        <Card className="border-0 shadow-lg bg-white rounded-xl sm:rounded-2xl sticky bottom-0 sm:static">
+        <Card className="border-0 shadow-lg bg-white rounded-xl sm:rounded-2xl">
           <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6 pb-4 sm:pb-6 space-y-3 sm:space-y-4">
             <div className="space-y-2 sm:space-y-2.5">
               <div className="flex justify-between items-center text-sm sm:text-base">
