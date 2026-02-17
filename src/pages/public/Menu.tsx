@@ -410,9 +410,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
             paddingRight: 'max(12px, env(safe-area-inset-right))'
           }}
         >
-          <div className="bg-white border-t border-slate-200 p-3 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]">
+          <div className="px-3 pb-3">
             <Button
-              className="w-full h-16 rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch"
+              className="w-full h-16 rounded-2xl bg-slate-900 text-white shadow-xl shadow-slate-900/30 hover:bg-slate-800 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch"
               onClick={() => setCartOpen(true)}
             >
               {/* Left Side: Info */}

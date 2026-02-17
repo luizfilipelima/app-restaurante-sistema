@@ -204,7 +204,7 @@ export default function AdminOrders() {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         loadOrders(true);
       }
-    }, 30000);
+    }, 5000); // Atualiza a cada 5 segundos
 
     return () => {
       supabase.removeChannel(channel);
