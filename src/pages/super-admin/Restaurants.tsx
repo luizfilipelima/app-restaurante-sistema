@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { generateSlug } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 import {
   ArrowLeft,
   Plus,
@@ -58,14 +59,22 @@ export default function SuperAdminRestaurants() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    try {
-      const slug = generateSlug(formData.name);
+    const slug = generateSlug(formData.name);
+    if (!slug) {
+      toast({
+        title: 'Nome inválido',
+        description: 'Digite um nome para o restaurante (o slug será gerado a partir dele).',
+        variant: 'destructive',
+      });
+      return;
+    }
 
+    try {
       const { error } = await supabase.from('restaurants').insert({
-        name: formData.name,
+        name: formData.name.trim(),
         slug,
-        phone: formData.phone,
-        whatsapp: formData.whatsapp,
+        phone: formData.phone.trim(),
+        whatsapp: formData.whatsapp.trim(),
         is_active: true,
       });
 
@@ -73,10 +82,23 @@ export default function SuperAdminRestaurants() {
 
       setFormData({ name: '', phone: '', whatsapp: '' });
       setShowForm(false);
-      loadRestaurants();
-    } catch (error) {
-      console.error('Erro ao criar restaurante:', error);
-      alert('Erro ao criar restaurante. Verifique se o nome já não está em uso.');
+      await loadRestaurants();
+      toast({
+        title: 'Restaurante criado',
+        description: `${formData.name} foi adicionado. Você pode acessá-lo e configurar usuários.`,
+        variant: 'default',
+      });
+    } catch (err: unknown) {
+      console.error('Erro ao criar restaurante:', err);
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: string }).message)
+          : 'Verifique se o slug não está em uso (nome muito curto ou duplicado).';
+      toast({
+        title: 'Erro ao criar restaurante',
+        description: message,
+        variant: 'destructive',
+      });
     }
   };
 
