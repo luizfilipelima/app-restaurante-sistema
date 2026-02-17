@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { email, password, role, restaurant_id } = body;
+    const { email, password, role, restaurant_id, login } = body;
 
     if (!email || !password || !role || !restaurant_id) {
       return new Response(
@@ -92,10 +92,9 @@ Deno.serve(async (req) => {
         const { data: list } = await supabaseAdmin.auth.admin.listUsers();
         const existing = list?.users?.find((u) => u.email === email);
         if (existing) {
-          await supabaseAdmin.from('users').upsert(
-            { id: existing.id, email, role, restaurant_id },
-            { onConflict: 'id' }
-          );
+          const row: Record<string, unknown> = { id: existing.id, email, role, restaurant_id };
+          if (login != null && String(login).trim()) row.login = String(login).trim();
+          await supabaseAdmin.from('users').upsert(row, { onConflict: 'id' });
           return new Response(
             JSON.stringify({ message: 'Usuário já existia; perfil atualizado.', user_id: existing.id }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -109,9 +108,11 @@ Deno.serve(async (req) => {
     }
 
     const userId = authData.user!.id;
+    const row: Record<string, unknown> = { id: userId, email, role, restaurant_id };
+    if (login != null && String(login).trim()) row.login = String(login).trim();
     const { error: insertError } = await supabaseAdmin
       .from('users')
-      .upsert({ id: userId, email, role, restaurant_id }, { onConflict: 'id' });
+      .upsert(row, { onConflict: 'id' });
 
     if (insertError) {
       return new Response(

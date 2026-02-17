@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LogIn, Pizza, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [loginOrEmail, setLoginOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { signIn, loading } = useAuthStore();
@@ -17,7 +17,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      await signIn(email, password);
+      await signIn(loginOrEmail, password);
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login. Verifique suas credenciais.');
     }
@@ -52,17 +52,18 @@ export default function LoginPage() {
         <CardContent className="pb-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold">
-                Email
+              <Label htmlFor="loginOrEmail" className="text-sm font-semibold">
+                Email ou usuário
               </Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="loginOrEmail"
+                type="text"
+                placeholder="seu@email.com ou seu usuário"
+                value={loginOrEmail}
+                onChange={(e) => setLoginOrEmail(e.target.value)}
                 required
                 disabled={loading}
+                autoComplete="username"
                 className="h-11 text-base"
               />
             </div>

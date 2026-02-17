@@ -34,6 +34,7 @@ export default function SuperAdminRestaurantUsers() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    login: '',
     role: UserRole.RESTAURANT_ADMIN as string,
   });
 
@@ -70,21 +71,21 @@ export default function SuperAdminRestaurantUsers() {
     if (!restaurantId) return;
     try {
       setSubmitting(true);
-      const { data, error } = await supabase.functions.invoke('create-restaurant-user', {
-        body: {
-          email: formData.email,
-          password: formData.password,
-          role: formData.role,
-          restaurant_id: restaurantId,
-        },
-      });
+      const body: { email: string; password: string; role: string; restaurant_id: string; login?: string } = {
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        restaurant_id: restaurantId,
+      };
+      if (formData.login.trim()) body.login = formData.login.trim();
+      const { data, error } = await supabase.functions.invoke('create-restaurant-user', { body });
 
       // Mostrar mensagem da Edge Function (ex.: 403, 400) em vez de só "non-2xx"
       if (data?.error) throw new Error(data.error);
       if (error) throw error;
 
       toast({ title: 'Usuário criado', description: `${formData.email} foi cadastrado.` });
-      setFormData({ email: '', password: '', role: UserRole.RESTAURANT_ADMIN });
+      setFormData({ email: '', password: '', login: '', role: UserRole.RESTAURANT_ADMIN });
       setShowForm(false);
       loadUsers();
     } catch (e) {
@@ -139,6 +140,16 @@ export default function SuperAdminRestaurantUsers() {
                 />
               </div>
               <div>
+                <Label htmlFor="login">Usuário / login (opcional)</Label>
+                <Input
+                  id="login"
+                  type="text"
+                  value={formData.login}
+                  onChange={(e) => setFormData({ ...formData, login: e.target.value })}
+                  placeholder="Para entrar com usuário em vez de email"
+                />
+              </div>
+              <div>
                 <Label htmlFor="password">Senha</Label>
                 <Input
                   id="password"
@@ -179,7 +190,7 @@ export default function SuperAdminRestaurantUsers() {
                   variant="outline"
                   onClick={() => {
                     setShowForm(false);
-                    setFormData({ email: '', password: '', role: UserRole.RESTAURANT_ADMIN });
+                    setFormData({ email: '', password: '', login: '', role: UserRole.RESTAURANT_ADMIN });
                   }}
                 >
                   Cancelar

@@ -30,6 +30,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
  * - super_admin: não precisa de restaurant_id (pode omitir ou usar null)
  * - restaurant_admin e kitchen: obrigatório restaurant_id (UUID do restaurante)
  *   Para obter: no Supabase SQL Editor: SELECT id, name FROM restaurants;
+ * - login: opcional; permite entrar com usuário em vez de email na tela de login.
  */
 const USUARIOS_CRIAR = [
   // Exemplo: descomente e edite para adicionar um super_admin
@@ -60,7 +61,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-async function criarUsuario({ email, password, role, restaurant_id }) {
+async function criarUsuario({ email, password, role, restaurant_id, login }) {
   if ((role === 'restaurant_admin' || role === 'kitchen') && (!restaurant_id || restaurant_id === 'COLE_O_RESTAURANT_ID_AQUI')) {
     throw new Error(`Usuário ${email}: restaurant_id é obrigatório para role ${role}`);
   }
@@ -82,23 +83,24 @@ async function criarUsuario({ email, password, role, restaurant_id }) {
       if (!user) {
         throw new Error(`Não foi possível encontrar o usuário ${email} no Auth.`);
       }
-      await inserirNaTabelaUsers(user.id, email, role, restaurant_id);
+      await inserirNaTabelaUsers(user.id, email, role, restaurant_id, login);
       return { email, id: user.id, status: 'users_updated' };
     }
     throw authError;
   }
 
   const userId = authData.user.id;
-  await inserirNaTabelaUsers(userId, email, role, restaurant_id);
+  await inserirNaTabelaUsers(userId, email, role, restaurant_id, login);
   return { email, id: userId, status: 'created' };
 }
 
-async function inserirNaTabelaUsers(id, email, role, restaurant_id) {
+async function inserirNaTabelaUsers(id, email, role, restaurant_id, login) {
   const row = {
     id,
     email,
     role,
     ...(restaurant_id && restaurant_id !== 'COLE_O_RESTAURANT_ID_AQUI' ? { restaurant_id } : {}),
+    ...(login && String(login).trim() ? { login: String(login).trim() } : {}),
   };
   const { error } = await supabase.from('users').upsert(row, { onConflict: 'id' });
   if (error) throw error;

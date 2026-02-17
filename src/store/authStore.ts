@@ -8,7 +8,7 @@ interface AuthState {
   session: Session | null;
   loading: boolean;
   initialized: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (loginOrEmail: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
   hasRole: (roles: UserRole[]) => boolean;
@@ -65,9 +65,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signIn: async (email: string, password: string) => {
+  signIn: async (loginOrEmail: string, password: string) => {
     try {
       set({ loading: true });
+
+      let email = loginOrEmail.trim();
+      if (!email.includes('@')) {
+        const { data: resolvedEmail, error: rpcError } = await supabase.rpc('get_email_for_login', {
+          login_input: email,
+        });
+        if (rpcError || !resolvedEmail) {
+          set({ loading: false });
+          throw new Error('Usuário ou email não encontrado.');
+        }
+        email = resolvedEmail as string;
+      }
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,

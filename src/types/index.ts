@@ -68,6 +68,8 @@ export interface Restaurant {
 export interface User {
   id: string;
   email: string;
+  /** Login/usuário opcional para entrar no sistema (além do email) */
+  login?: string | null;
   role: UserRole;
   restaurant_id?: string;
   created_at: string;
