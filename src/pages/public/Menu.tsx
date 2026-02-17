@@ -5,7 +5,7 @@ import { getSubdomain } from '@/lib/subdomain';
 import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
-import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream } from 'lucide-react';
+import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,6 +26,7 @@ const MOCK_PRODUCTS: Product[] = [
 ];
 
 const CATEGORY_ICONS: Record<string, any> = {
+  'Marmitas': UtensilsCrossed,
   'Pizza': Utensils,
   'Bebidas': Coffee,
   'Sobremesas': IceCream,
