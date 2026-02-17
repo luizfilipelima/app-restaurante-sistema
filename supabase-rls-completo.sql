@@ -11,6 +11,7 @@
 -- ========== PRODUCTS ==========
 DROP POLICY IF EXISTS "Restaurant admin can manage products" ON products;
 DROP POLICY IF EXISTS "Restaurant admin or super_admin can manage products" ON products;
+DROP POLICY IF EXISTS "Admin or super_admin manage products" ON products;
 
 CREATE POLICY "Admin or super_admin manage products"
   ON products FOR ALL
@@ -147,6 +148,7 @@ CREATE POLICY "Anyone can create orders"
 -- Staff e super_admin podem ler pedidos
 DROP POLICY IF EXISTS "Restaurant staff can read their orders" ON orders;
 DROP POLICY IF EXISTS "Restaurant staff or super_admin can read orders" ON orders;
+DROP POLICY IF EXISTS "Staff or super_admin read orders" ON orders;
 CREATE POLICY "Staff or super_admin read orders"
   ON orders FOR SELECT
   USING (
@@ -160,6 +162,7 @@ CREATE POLICY "Staff or super_admin read orders"
 -- Staff e super_admin podem atualizar pedidos
 DROP POLICY IF EXISTS "Restaurant staff can update their orders" ON orders;
 DROP POLICY IF EXISTS "Restaurant staff or super_admin can update orders" ON orders;
+DROP POLICY IF EXISTS "Staff or super_admin update orders" ON orders;
 CREATE POLICY "Staff or super_admin update orders"
   ON orders FOR UPDATE
   USING (
@@ -180,6 +183,7 @@ CREATE POLICY "Anyone can create order items"
 -- Staff e super_admin podem ler itens de pedido
 DROP POLICY IF EXISTS "Restaurant staff can read order items" ON order_items;
 DROP POLICY IF EXISTS "Restaurant staff or super_admin can read order items" ON order_items;
+DROP POLICY IF EXISTS "Staff or super_admin read order items" ON order_items;
 CREATE POLICY "Staff or super_admin read order items"
   ON order_items FOR SELECT
   USING (
@@ -193,6 +197,7 @@ CREATE POLICY "Staff or super_admin read order items"
 
 -- ========== RESTAURANTS (super_admin ler todos) ==========
 DROP POLICY IF EXISTS "Super admin can read all restaurants" ON restaurants;
+DROP POLICY IF EXISTS "Super admin read all restaurants" ON restaurants;
 CREATE POLICY "Super admin read all restaurants"
   ON restaurants FOR SELECT
   USING (
@@ -202,8 +207,16 @@ CREATE POLICY "Super admin read all restaurants"
     )
   );
 
--- ========== USERS (super_admin pode listar usuários dos restaurantes) ==========
+-- ========== USERS (políticas essenciais para login funcionar) ==========
+-- IMPORTANTE: Cada usuário DEVE poder ler seu próprio perfil (obrigatório para login)
+DROP POLICY IF EXISTS "Users can read own profile" ON users;
+CREATE POLICY "Users can read own profile"
+  ON users FOR SELECT
+  USING (auth.uid() = id);
+
+-- Super admin pode ler todos os usuários (lista na aba Usuários)
 DROP POLICY IF EXISTS "Super admin can read all users" ON users;
+DROP POLICY IF EXISTS "Super admin read all users" ON users;
 CREATE POLICY "Super admin can read all users"
   ON users FOR SELECT
   USING (
@@ -220,5 +233,6 @@ CREATE POLICY "Super admin can read all users"
 -- - Tamanhos/sabores/massas/bordas de pizza: criar, editar, excluir
 -- - Pedidos: QUALQUER PESSOA pode criar (INSERT público), staff pode ler e atualizar
 -- - Order Items: QUALQUER PESSOA pode criar (INSERT público), staff pode ler
--- - Super admin pode listar usuários (para tela de usuários do restaurante)
+-- - Usuários: cada usuário pode ler seu próprio perfil (login funciona)
+-- - Super admin pode listar todos os usuários (para tela de usuários do restaurante)
 -- ============================================================
