@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/select';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours } from '@/lib/utils';
+import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
+import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote, Send } from 'lucide-react';
 
@@ -37,6 +39,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const navigate = useNavigate();
   const { items, restaurantId, updateQuantity, getSubtotal, clearCart } =
     useCartStore();
+  const { t } = useTranslation();
   const { currentRestaurant } = useRestaurantStore();
   const currency = (currentRestaurant as { currency?: 'BRL' | 'PYG' })?.currency === 'PYG' ? 'PYG' : 'BRL';
 
@@ -76,7 +79,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     if (!restaurantId || currentRestaurant?.id === restaurantId) return;
     const loadRestaurant = async () => {
       const { data } = await supabase.from('restaurants').select('*').eq('id', restaurantId).single();
-      if (data) useRestaurantStore.getState().setCurrentRestaurant(data);
+      if (data) {
+        useRestaurantStore.getState().setCurrentRestaurant(data);
+        const lang: MenuLanguage = data.language === 'es' ? 'es' : 'pt';
+        i18n.changeLanguage(lang);
+        setStoredMenuLanguage(lang);
+      }
     };
     loadRestaurant();
   }, [restaurantId, currentRestaurant?.id]);
@@ -84,11 +92,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   // Atualizar título da página com o nome do restaurante
   useEffect(() => {
     if (currentRestaurant?.name) {
-      document.title = `${currentRestaurant.name} - Finalizar Pedido`;
+      document.title = `${currentRestaurant.name} - ${t('checkout.title')}`;
     } else {
-      document.title = 'Finalizar Pedido';
+      document.title = t('checkout.title');
     }
-  }, [currentRestaurant?.name]);
+  }, [currentRestaurant?.name, t]);
 
   const loadZones = async () => {
     if (!restaurantId) return;
@@ -107,19 +115,19 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
   const handleCheckout = async () => {
     if (!customerName || !customerPhone) {
-      toast({ title: 'Preencha nome e telefone', variant: 'destructive' });
+      toast({ title: t('checkout.errorFillNamePhone'), variant: 'destructive' });
       return;
     }
 
     if (deliveryType === DeliveryType.DELIVERY && !selectedZoneId) {
-      toast({ title: 'Selecione o bairro/região de entrega', variant: 'destructive' });
+      toast({ title: t('checkout.errorSelectZone'), variant: 'destructive' });
       return;
     }
 
     if (!restaurantId) {
       toast({
-        title: 'Carrinho inválido',
-        description: 'Volte ao cardápio e adicione os itens novamente.',
+        title: t('checkout.errorInvalidCart'),
+        description: t('checkout.errorInvalidCartDesc'),
         variant: 'destructive',
       });
       handleBackToMenu();
@@ -139,8 +147,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             : true;
       if (!isOpen) {
         toast({
-          title: 'Restaurante fechado',
-          description: 'No momento estamos fora do horário de funcionamento. Tente novamente mais tarde.',
+          title: t('checkout.errorRestaurantClosed'),
+          description: t('checkout.errorRestaurantClosedDesc'),
           variant: 'destructive',
         });
         return;
@@ -268,8 +276,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       
       // Mostrar toast de sucesso
       toast({ 
-        title: '✅ Pedido realizado!', 
-        description: 'Redirecionando para o WhatsApp...',
+        title: '✅ ' + t('checkout.successOrderTitle'), 
+        description: t('checkout.successOrderDesc'),
         className: 'bg-green-50 border-green-200'
       });
       
@@ -302,9 +310,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       console.error('Erro ao finalizar:', error);
       const message = error && typeof error === 'object' && 'message' in error
         ? String((error as { message: string }).message)
-        : 'Tente novamente.';
+        : t('checkout.errorGeneric');
       toast({
-        title: 'Erro ao finalizar pedido',
+        title: t('checkout.errorFinalizeTitle'),
         description: message,
         variant: 'destructive',
       });
@@ -320,12 +328,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
             <Store className="h-8 w-8 sm:h-10 sm:w-10 text-orange-500" />
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Seu carrinho está vazio</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">{t('checkout.emptyTitle')}</h2>
           <Button 
             onClick={handleBackToMenu}
             className="bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white rounded-xl h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base touch-manipulation active:scale-95"
           >
-            Voltar ao Cardápio
+            {t('checkout.backToMenu')}
           </Button>
         </div>
       </div>
@@ -345,7 +353,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           >
             <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6 text-slate-600" />
           </Button>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900">Finalizar Pedido</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900">{t('checkout.title')}</h1>
         </div>
       </div>
 
@@ -354,7 +362,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         {/* Lista de Itens - Mobile First */}
         <Card className="border-0 shadow-sm bg-white rounded-xl sm:rounded-2xl overflow-hidden">
           <CardHeader className="pb-2 sm:pb-3 bg-slate-50/50 border-b border-slate-100 px-3 sm:px-6 pt-3 sm:pt-6">
-            <CardTitle className="text-base sm:text-lg text-slate-800">Itens do Pedido</CardTitle>
+            <CardTitle className="text-base sm:text-lg text-slate-800">{t('checkout.orderItems')}</CardTitle>
           </CardHeader>
           <CardContent className="pt-3 sm:pt-4 space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
             {items.map((item, index) => (
@@ -380,7 +388,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       onClick={() => updateQuantity(index, Math.max(0, item.quantity - 1))}
                       className="text-xs text-slate-400 hover:text-orange-500 active:text-orange-600 font-medium touch-manipulation"
                     >
-                      Remover
+                      {t('checkout.remove')}
                     </button>
                   </div>
                 </div>
@@ -399,7 +407,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 : 'text-slate-500 active:bg-white/50'
             }`}
           >
-            <Bike className="h-4 w-4 sm:h-5 sm:w-5" /> <span className="hidden xs:inline">Entrega</span><span className="xs:hidden">Ent.</span>
+            <Bike className="h-4 w-4 sm:h-5 sm:w-5" /> <span className="hidden xs:inline">{t('checkout.delivery')}</span><span className="xs:hidden">{t('checkout.deliveryShort')}</span>
           </button>
           <button
             onClick={() => setDeliveryType(DeliveryType.PICKUP)}
@@ -409,7 +417,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 : 'text-slate-500 active:bg-white/50'
             }`}
           >
-            <Store className="h-4 w-4 sm:h-5 sm:w-5" /> <span className="hidden xs:inline">Retirada</span><span className="xs:hidden">Ret.</span>
+            <Store className="h-4 w-4 sm:h-5 sm:w-5" /> <span className="hidden xs:inline">{t('checkout.pickup')}</span><span className="xs:hidden">{t('checkout.pickupShort')}</span>
           </button>
         </div>
 
@@ -418,17 +426,17 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           <CardContent className="pt-4 sm:pt-6 space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-1.5 sm:space-y-2">
-                <Label htmlFor="name" className="text-sm sm:text-base">Seu Nome</Label>
+                <Label htmlFor="name" className="text-sm sm:text-base">{t('checkout.yourName')}</Label>
                 <Input 
                   id="name" 
                   value={customerName} 
                   onChange={(e) => setCustomerName(e.target.value)} 
-                  placeholder="Como te chamamos?" 
+                  placeholder={t('checkout.namePlaceholder')} 
                   className="bg-slate-50 border-slate-200 h-11 sm:h-12 text-sm sm:text-base touch-manipulation" 
                 />
               </div>
               <div className="space-y-1.5 sm:space-y-2">
-                <Label htmlFor="phone" className="text-sm sm:text-base">Celular / WhatsApp</Label>
+                <Label htmlFor="phone" className="text-sm sm:text-base">{t('checkout.phoneLabel')}</Label>
                 <div className="flex gap-2">
                   <Select value={phoneCountry} onValueChange={(v) => setPhoneCountry(v as 'BR' | 'PY')}>
                     <SelectTrigger className="w-[90px] sm:w-[100px] bg-slate-50 border-slate-200 shrink-0 h-11 sm:h-12 text-sm sm:text-base">
@@ -454,10 +462,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             {deliveryType === DeliveryType.DELIVERY && (
               <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-slate-100">
                 <div className="space-y-1.5 sm:space-y-2">
-                  <Label className="text-sm sm:text-base">Bairro / Região de Entrega</Label>
+                  <Label className="text-sm sm:text-base">{t('checkout.zoneLabel')}</Label>
                   <Select value={selectedZoneId} onValueChange={setSelectedZoneId}>
                     <SelectTrigger className="bg-slate-50 border-slate-200 h-11 sm:h-12 text-sm sm:text-base touch-manipulation">
-                      <SelectValue placeholder="Selecione seu bairro" />
+                      <SelectValue placeholder={t('checkout.zonePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {zones.map((zone) => (
@@ -469,12 +477,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   </Select>
                 </div>
                 <div className="space-y-1.5 sm:space-y-2">
-                  <Label htmlFor="address" className="text-sm sm:text-base">Endereço completo (opcional)</Label>
+                  <Label htmlFor="address" className="text-sm sm:text-base">{t('checkout.addressLabel')}</Label>
                   <Input 
                     id="address" 
                     value={address} 
                     onChange={(e) => setAddress(e.target.value)} 
-                    placeholder="Rua, número, complemento — ou envie a localização no WhatsApp" 
+                    placeholder={t('checkout.addressPlaceholder')} 
                     className="bg-slate-50 border-slate-200 h-11 sm:h-12 text-sm sm:text-base touch-manipulation"
                   />
                 </div>
@@ -486,7 +494,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         {/* Pagamento - Mobile First */}
         <Card className="border-0 shadow-sm bg-white rounded-xl sm:rounded-2xl">
           <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-4 sm:pt-6">
-            <CardTitle className="text-base sm:text-lg text-slate-800">Pagamento</CardTitle>
+            <CardTitle className="text-base sm:text-lg text-slate-800">{t('checkout.payment')}</CardTitle>
           </CardHeader>
           <CardContent className="pt-2 px-3 sm:px-6 pb-4 sm:pb-6">
             <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="gap-2.5 sm:gap-3">
@@ -499,19 +507,19 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               <div className={`flex items-center space-x-2 sm:space-x-3 border p-3 sm:p-4 rounded-xl transition-all touch-manipulation active:scale-[0.98] ${paymentMethod === PaymentMethod.CARD ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200 active:bg-slate-50'}`}>
                 <RadioGroupItem value={PaymentMethod.CARD} id="card" className="h-5 w-5 sm:h-6 sm:w-6" />
                 <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer w-full font-bold text-sm sm:text-base">
-                  <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 flex-shrink-0" /> <span className="hidden xs:inline">Cartão na Entrega</span><span className="xs:hidden">Cartão</span>
+                  <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 flex-shrink-0" /> <span className="hidden xs:inline">{t('checkout.cardOnDelivery')}</span><span className="xs:hidden">{t('checkout.cardShort')}</span>
                 </Label>
               </div>
               <div className={`flex flex-col space-y-2.5 sm:space-y-3 border p-3 sm:p-4 rounded-xl transition-all ${paymentMethod === PaymentMethod.CASH ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200'}`}>
                 <div className="flex items-center space-x-2 sm:space-x-3 touch-manipulation active:scale-[0.98]">
                   <RadioGroupItem value={PaymentMethod.CASH} id="cash" className="h-5 w-5 sm:h-6 sm:w-6" />
                   <Label htmlFor="cash" className="flex items-center gap-2 cursor-pointer w-full font-bold text-sm sm:text-base">
-                    <Banknote className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" /> Dinheiro
+                    <Banknote className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" /> {t('checkout.cash')}
                   </Label>
                 </div>
                 {paymentMethod === PaymentMethod.CASH && (
                   <div className="pl-7 sm:pl-9">
-                    <Label className="text-xs sm:text-sm text-slate-500">Troco para quanto? ({currency === 'PYG' ? 'em Guaranies' : 'em Reais'})</Label>
+                    <Label className="text-xs sm:text-sm text-slate-500">{t('checkout.changeFor')} ({currency === 'PYG' ? t('checkout.changeForGuarani') : t('checkout.changeForReal')})</Label>
                     <Input 
                       placeholder="Ex: 50.000" 
                       value={changeFor}
@@ -526,12 +534,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         </Card>
 
         <div className="space-y-1.5 sm:space-y-2">
-          <Label htmlFor="notes" className="text-sm sm:text-base">Observações Gerais</Label>
+          <Label htmlFor="notes" className="text-sm sm:text-base">{t('checkout.notesLabel')}</Label>
           <Input 
             id="notes" 
             value={notes} 
             onChange={(e) => setNotes(e.target.value)} 
-            placeholder="Ex: Campainha quebrada, deixar na portaria..." 
+            placeholder={t('checkout.notesPlaceholder')} 
             className="bg-white border-slate-200 h-11 sm:h-12 text-sm sm:text-base touch-manipulation"
           />
         </div>
@@ -541,17 +549,17 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6 pb-4 sm:pb-6 space-y-3 sm:space-y-4">
             <div className="space-y-2 sm:space-y-2.5">
               <div className="flex justify-between items-center text-sm sm:text-base">
-                <span className="text-slate-500">Subtotal</span>
+                <span className="text-slate-500">{t('checkout.subtotal')}</span>
                 <span className="font-semibold text-slate-900">{formatCurrency(subtotal, currency)}</span>
               </div>
               {deliveryType === DeliveryType.DELIVERY && (
                 <div className="flex justify-between items-center text-sm sm:text-base">
-                  <span className="text-slate-500">Taxa de Entrega</span>
+                  <span className="text-slate-500">{t('checkout.deliveryFee')}</span>
                   <span className="font-semibold text-red-600">{formatCurrency(deliveryFee, currency)}</span>
                 </div>
               )}
               <div className="flex justify-between items-center text-lg sm:text-xl font-bold border-t border-slate-200 pt-3">
-                <span className="text-slate-900">Total</span>
+                <span className="text-slate-900">{t('checkout.total')}</span>
                 <span className="text-slate-900">{formatCurrency(total, currency)}</span>
               </div>
             </div>
@@ -565,12 +573,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                  Enviando...
+                  {t('checkout.sending')}
                 </span>
               ) : (
                 <>
-                  <span className="hidden xs:inline">Enviar Pedido no WhatsApp</span>
-                  <span className="xs:hidden">Enviar no WhatsApp</span>
+                  <span className="hidden xs:inline">{t('checkout.sendWhatsApp')}</span>
+                  <span className="xs:hidden">{t('checkout.sendWhatsAppShort')}</span>
                   <Send className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                 </>
               )}

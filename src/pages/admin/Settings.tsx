@@ -35,6 +35,7 @@ export default function AdminSettings() {
     whatsapp: '',
     phone_country: 'BR' as 'BR' | 'PY',
     currency: 'BRL' as 'BRL' | 'PYG',
+    language: 'pt' as 'pt' | 'es',
     instagram_url: '',
     logo: '',
     primary_color: '#000000',
@@ -75,6 +76,7 @@ export default function AdminSettings() {
         whatsapp: data.whatsapp || '',
         phone_country: (data.phone_country === 'PY' ? 'PY' : 'BR') as 'BR' | 'PY',
         currency: (data.currency === 'PYG' ? 'PYG' : 'BRL') as 'BRL' | 'PYG',
+        language: (data.language === 'es' ? 'es' : 'pt') as 'pt' | 'es',
         instagram_url: data.instagram_url || '',
         logo: data.logo || '',
         primary_color: data.primary_color || '#000000',
@@ -108,6 +110,7 @@ export default function AdminSettings() {
           whatsapp: formData.whatsapp,
           phone_country: formData.phone_country,
           currency: formData.currency,
+          language: formData.language,
           instagram_url: formData.instagram_url || null,
           logo: formData.logo,
           primary_color: formData.primary_color,
@@ -183,6 +186,25 @@ export default function AdminSettings() {
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
                   Valores do cardápio, produtos e pedidos serão exibidos nesta moeda
+                </p>
+              </div>
+
+              <div>
+                <Label>Idioma do cardápio</Label>
+                <Select
+                  value={formData.language}
+                  onValueChange={(v) => setFormData({ ...formData, language: v as 'pt' | 'es' })}
+                >
+                  <SelectTrigger className="w-full max-w-[200px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pt">🇧🇷 Português</SelectItem>
+                    <SelectItem value="es">🇪🇸 Español</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Interface do cardápio para o cliente (botões, labels, mensagens). Produtos e categorias mantêm o texto cadastrado.
                 </p>
               </div>
 

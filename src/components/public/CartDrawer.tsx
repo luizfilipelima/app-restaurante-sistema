@@ -1,6 +1,7 @@
 import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import { Plus, Minus, Trash2, MessageCircle } from 'lucide-react';
 import {
   Dialog,
@@ -18,6 +19,7 @@ interface CartDrawerProps {
 }
 
 export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL' }: CartDrawerProps) {
+  const { t } = useTranslation();
   const { items, updateQuantity, removeItem, getSubtotal } = useCartStore();
 
   const handleCheckout = () => {
@@ -29,13 +31,13 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-lg max-h-[90vh] sm:max-h-[85vh] flex flex-col p-0 gap-0 safe-area-inset-bottom">
         <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b">
-          <DialogTitle className="text-lg sm:text-xl">Seu Carrinho</DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl">{t('cart.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 sm:py-6 scroll-smooth">
           {items.length === 0 ? (
             <div className="text-center py-12 sm:py-16">
-              <p className="text-muted-foreground text-sm sm:text-base">Seu carrinho está vazio</p>
+              <p className="text-muted-foreground text-sm sm:text-base">{t('cart.empty')}</p>
             </div>
           ) : (
             <div className="space-y-3 sm:space-y-4">
@@ -53,20 +55,20 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                         
                         {item.isPizza && (
                           <div className="text-xs sm:text-sm text-muted-foreground mt-1.5 sm:mt-2 space-y-0.5 sm:space-y-1">
-                            {item.pizzaSize && <p>Tamanho: {item.pizzaSize}</p>}
+                            {item.pizzaSize && <p>{t('cart.size')}: {item.pizzaSize}</p>}
                             {item.pizzaFlavors && item.pizzaFlavors.length > 0 && (
                               <p className="line-clamp-2">
-                                Sabores: {item.pizzaFlavors.join(', ')}
+                                {t('cart.flavors')}: {item.pizzaFlavors.join(', ')}
                               </p>
                             )}
-                            {item.pizzaDough && <p>Massa: {item.pizzaDough}</p>}
-                            {item.pizzaEdge && <p>Borda: {item.pizzaEdge}</p>}
+                            {item.pizzaDough && <p>{t('cart.dough')}: {item.pizzaDough}</p>}
+                            {item.pizzaEdge && <p>{t('cart.edge')}: {item.pizzaEdge}</p>}
                           </div>
                         )}
                         
                         {item.observations && (
                           <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 sm:mt-2 line-clamp-2">
-                            Obs: {item.observations}
+                            {t('cart.obs')}: {item.observations}
                           </p>
                         )}
                       </div>
@@ -116,12 +118,12 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
             <div className="w-full rounded-xl bg-sky-50 border border-sky-200 p-3 sm:p-4 flex gap-2 sm:gap-3">
               <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 text-sky-600 flex-shrink-0 mt-0.5" />
               <div className="text-xs sm:text-sm text-sky-800">
-                <p className="font-semibold">Envie sua localização no WhatsApp</p>
-                <p className="text-sky-700 mt-0.5 leading-relaxed">Ao finalizar o pedido, envie sua localização pelo WhatsApp para facilitar a entrega.</p>
+                <p className="font-semibold">{t('cart.sendLocationTitle')}</p>
+                <p className="text-sky-700 mt-0.5 leading-relaxed">{t('cart.sendLocationDesc')}</p>
               </div>
             </div>
             <div className="flex justify-between items-center text-base sm:text-lg font-bold w-full">
-              <span>Subtotal:</span>
+              <span>{t('cart.subtotal')}:</span>
               <span>{formatCurrency(getSubtotal(), currency)}</span>
             </div>
             <Button 
@@ -129,7 +131,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
               onClick={handleCheckout} 
               className="w-full h-12 sm:h-14 text-sm sm:text-base font-semibold rounded-xl sm:rounded-2xl touch-manipulation active:scale-[0.98]"
             >
-              Finalizar Pedido
+              {t('cart.finalize')}
             </Button>
           </DialogFooter>
         )}

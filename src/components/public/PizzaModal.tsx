@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
 import { Check, Pizza as PizzaIcon, Minus, Plus, X } from 'lucide-react';
 
@@ -34,7 +35,7 @@ export default function PizzaModal({
   const [selectedEdge, setSelectedEdge] = useState<PizzaEdge | null>(null);
   const [observations, setObservations] = useState('');
   const [quantity, setQuantity] = useState(1);
-
+  const { t } = useTranslation();
   const addItem = useCartStore((state) => state.addItem);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ export default function PizzaModal({
     });
 
     toast({
-      title: "🍕 Pizza adicionada!",
+      title: "🍕 " + t('pizzaModal.addedTitle'),
       description: `${product.name} - ${selectedSize.name}`,
       className: "bg-green-50 border-green-200",
     });
@@ -98,14 +99,14 @@ export default function PizzaModal({
             </div>
             <div className="min-w-0 flex-1">
               <DialogTitle className="text-lg sm:text-xl font-bold text-slate-900 truncate leading-tight">{product.name}</DialogTitle>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Monte sua pizza em 3 passos</p>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{t('pizzaModal.stepsTitle')}</p>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
               className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 touch-manipulation active:scale-95 flex-shrink-0"
-              aria-label="Fechar"
+              aria-label={t('pizzaModal.close')}
             >
               <X className="h-5 w-5 sm:h-6 sm:w-6" />
             </Button>
@@ -118,10 +119,9 @@ export default function PizzaModal({
           {/* Aviso quando não há tamanhos configurados */}
           {sizes.length === 0 && (
             <div className="rounded-2xl bg-amber-50/80 border border-amber-200/80 p-5 text-amber-800 shadow-sm">
-              <p className="font-semibold mb-2 text-base">Cardápio em configuração</p>
+              <p className="font-semibold mb-2 text-base">{t('pizzaModal.menuConfigTitle')}</p>
               <p className="text-sm leading-relaxed">
-                Os tamanhos desta pizza ainda não foram configurados pelo restaurante.
-                Em breve você poderá personalizar aqui. Por enquanto, entre em contato pelo WhatsApp para fazer o pedido.
+                {t('pizzaModal.menuConfigDesc')}
               </p>
             </div>
           )}
@@ -130,7 +130,7 @@ export default function PizzaModal({
           <section className="space-y-4">
             <div className="flex items-center gap-3 mb-2">
               <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">1</div>
-              <Label className="text-lg sm:text-xl font-bold text-slate-900">Escolha o Tamanho</Label>
+              <Label className="text-lg sm:text-xl font-bold text-slate-900">{t('pizzaModal.chooseSize')}</Label>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               {sizes.map((size) => (
@@ -170,12 +170,12 @@ export default function PizzaModal({
             <section className="space-y-5 animate-slide-in-bottom">
               <div className="flex items-center gap-3 mb-2">
                 <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">2</div>
-                <Label className="text-lg sm:text-xl font-bold text-slate-900">Massa e Borda</Label>
+                <Label className="text-lg sm:text-xl font-bold text-slate-900">{t('pizzaModal.doughAndEdge')}</Label>
               </div>
               
               {doughs.length > 0 && (
                 <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
-                  <span className="text-xs sm:text-sm font-semibold text-slate-500 uppercase tracking-wider block mb-1">Tipo de Massa</span>
+                  <span className="text-xs sm:text-sm font-semibold text-slate-500 uppercase tracking-wider block mb-1">{t('pizzaModal.doughType')}</span>
                   <div className="flex flex-wrap gap-2.5 sm:gap-3">
                     {doughs.map((dough) => (
                       <button
@@ -196,7 +196,7 @@ export default function PizzaModal({
 
               {edges.length > 0 && (
                 <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
-                  <span className="text-xs sm:text-sm font-semibold text-slate-500 uppercase tracking-wider block mb-1">Borda Recheada</span>
+                  <span className="text-xs sm:text-sm font-semibold text-slate-500 uppercase tracking-wider block mb-1">{t('pizzaModal.stuffedEdge')}</span>
                   <div className="space-y-2.5">
                     <button
                       onClick={() => setSelectedEdge(null)}
@@ -206,7 +206,7 @@ export default function PizzaModal({
                           : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98]'
                       }`}
                     >
-                      <span className="font-semibold text-base text-slate-800">Sem borda</span>
+                      <span className="font-semibold text-base text-slate-800">{t('pizzaModal.noEdge')}</span>
                       {!selectedEdge && (
                         <div className="bg-orange-500 rounded-full p-1.5 flex-shrink-0">
                           <Check className="h-4 w-4 text-white" />
@@ -245,10 +245,10 @@ export default function PizzaModal({
             <section className="space-y-4 pb-4 animate-slide-in-bottom">
               <div className="flex items-center gap-3 mb-2">
                 <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">3</div>
-                <Label className="text-lg sm:text-xl font-bold text-slate-900">Observações</Label>
+                <Label className="text-lg sm:text-xl font-bold text-slate-900">{t('pizzaModal.observations')}</Label>
               </div>
               <Textarea
-                placeholder="Ex: Tirar a cebola, cortar em 8 pedaços, etc."
+                placeholder={t('pizzaModal.observationsPlaceholder')}
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
                 rows={4}
@@ -280,7 +280,7 @@ export default function PizzaModal({
               </div>
             </div>
             <div className="text-right min-w-0 flex-shrink-0">
-              <span className="text-xs text-slate-500 block mb-1">Total</span>
+              <span className="text-xs text-slate-500 block mb-1">{t('pizzaModal.total')}</span>
               <span className="text-xl sm:text-2xl font-bold text-slate-900 whitespace-nowrap">{formatCurrency(calculatePrice() * quantity, currency)}</span>
             </div>
           </div>
@@ -290,7 +290,7 @@ export default function PizzaModal({
             disabled={!canAddToCart}
             className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 active:from-orange-800 active:to-orange-700 text-white font-bold h-14 sm:h-14 rounded-2xl shadow-lg shadow-orange-500/30 touch-manipulation active:scale-[0.98] text-base sm:text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Adicionar ao Carrinho
+            {t('pizzaModal.addToCart')}
           </Button>
         </div>
       </DialogContent>

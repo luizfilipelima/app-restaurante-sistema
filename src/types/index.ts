@@ -86,6 +86,8 @@ export interface Restaurant {
   print_paper_width?: PrintPaperWidth;
   /** Moeda de exibição dos valores no cardápio: BRL (Real) ou PYG (Guaraní) */
   currency?: 'BRL' | 'PYG';
+  /** Idioma da interface do cardápio: pt ou es */
+  language?: 'pt' | 'es';
   created_at: string;
   updated_at: string;
 }

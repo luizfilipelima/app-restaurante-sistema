@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
 import { Check, UtensilsCrossed, Minus, Plus, X } from 'lucide-react';
 
@@ -39,7 +40,7 @@ export default function MarmitaModal({
   const [selectedSides, setSelectedSides] = useState<MarmitaSide[]>([]);
   const [observations, setObservations] = useState('');
   const [quantity, setQuantity] = useState(1);
-
+  const { t } = useTranslation();
   const addItem = useCartStore((state) => state.addItem);
 
   useEffect(() => {
@@ -131,7 +132,7 @@ export default function MarmitaModal({
     });
 
     toast({
-      title: "🍱 Marmita adicionada!",
+      title: "🍱 " + t('marmitaModal.addedTitle'),
       description: `${product.name} - ${selectedSize.name}`,
       className: "bg-green-50 border-green-200",
     });
@@ -161,14 +162,14 @@ export default function MarmitaModal({
             </div>
             <div className="min-w-0 flex-1">
               <DialogTitle className="text-lg sm:text-xl font-bold text-slate-900 truncate leading-tight">{product.name}</DialogTitle>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Monte sua marmita</p>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{t('marmitaModal.title')}</p>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
               className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 touch-manipulation active:scale-95 flex-shrink-0"
-              aria-label="Fechar"
+              aria-label={t('marmitaModal.close')}
             >
               <X className="h-5 w-5 sm:h-6 sm:w-6" />
             </Button>
@@ -181,10 +182,9 @@ export default function MarmitaModal({
           {/* Aviso quando não há tamanhos configurados */}
           {sizes.length === 0 && (
             <div className="rounded-2xl bg-amber-50/80 border border-amber-200/80 p-5 text-amber-800 shadow-sm">
-              <p className="font-semibold mb-2 text-base">Cardápio em configuração</p>
+              <p className="font-semibold mb-2 text-base">{t('marmitaModal.menuConfigTitle')}</p>
               <p className="text-sm leading-relaxed">
-                Os tamanhos de marmita ainda não foram configurados pelo restaurante.
-                Em breve você poderá personalizar aqui. Por enquanto, entre em contato pelo WhatsApp para fazer o pedido.
+                {t('marmitaModal.menuConfigDesc')}
               </p>
             </div>
           )}
@@ -193,7 +193,7 @@ export default function MarmitaModal({
           <section className="space-y-4">
             <div className="flex items-center gap-3 mb-2">
               <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">1</div>
-              <Label className="text-lg sm:text-xl font-bold text-slate-900">Escolha o Tamanho</Label>
+              <Label className="text-lg sm:text-xl font-bold text-slate-900">{t('marmitaModal.chooseSize')}</Label>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               {sizes.map((size) => (
@@ -240,7 +240,7 @@ export default function MarmitaModal({
             <section className="space-y-5 animate-slide-in-bottom">
               <div className="flex items-center gap-3 mb-2">
                 <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">2</div>
-                <Label className="text-lg sm:text-xl font-bold text-slate-900">Escolha as Proteínas</Label>
+                <Label className="text-lg sm:text-xl font-bold text-slate-900">{t('marmitaModal.chooseProteins')}</Label>
               </div>
               
               <div className="space-y-3">
@@ -274,7 +274,7 @@ export default function MarmitaModal({
                             onClick={() => handleRemoveProtein(protein.id)}
                             className="text-red-600 border-red-200 hover:bg-red-50"
                           >
-                            Remover
+                            {t('marmitaModal.remove')}
                           </Button>
                         ) : (
                           <Button
@@ -283,13 +283,13 @@ export default function MarmitaModal({
                             onClick={() => handleAddProtein(protein)}
                             className="bg-green-600 hover:bg-green-700"
                           >
-                            Adicionar
+                            {t('marmitaModal.add')}
                           </Button>
                         )}
                       </div>
                       {selected && (
                         <div className="flex items-center gap-3 pt-3 border-t border-green-200">
-                          <Label className="text-sm font-medium text-slate-700">Quantidade (g):</Label>
+                          <Label className="text-sm font-medium text-slate-700">{t('marmitaModal.quantityGrams')}</Label>
                           <div className="flex items-center gap-2 flex-1">
                             <Button
                               variant="outline"
@@ -336,7 +336,7 @@ export default function MarmitaModal({
             <section className="space-y-5 animate-slide-in-bottom">
               <div className="flex items-center gap-3 mb-2">
                 <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">3</div>
-                <Label className="text-lg sm:text-xl font-bold text-slate-900">Acompanhamentos</Label>
+                <Label className="text-lg sm:text-xl font-bold text-slate-900">{t('marmitaModal.sides')}</Label>
               </div>
               
               {Object.entries(sidesByCategory).map(([category, categorySides]) => (
@@ -384,10 +384,10 @@ export default function MarmitaModal({
             <section className="space-y-4 pb-4 animate-slide-in-bottom">
               <div className="flex items-center gap-3 mb-2">
                 <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">4</div>
-                <Label className="text-lg sm:text-xl font-bold text-slate-900">Observações</Label>
+                <Label className="text-lg sm:text-xl font-bold text-slate-900">{t('marmitaModal.observations')}</Label>
               </div>
               <Textarea
-                placeholder="Ex: Sem cebola, mais molho, etc."
+                placeholder={t('marmitaModal.observationsPlaceholder')}
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
                 rows={4}
@@ -419,7 +419,7 @@ export default function MarmitaModal({
               </div>
             </div>
             <div className="text-right min-w-0 flex-shrink-0">
-              <span className="text-xs text-slate-500 block mb-1">Total</span>
+              <span className="text-xs text-slate-500 block mb-1">{t('marmitaModal.total')}</span>
               <span className="text-xl sm:text-2xl font-bold text-slate-900 whitespace-nowrap">{formatCurrency(calculatePrice() * quantity, currency)}</span>
             </div>
           </div>
@@ -429,7 +429,7 @@ export default function MarmitaModal({
             disabled={!canAddToCart}
             className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 active:from-green-800 active:to-green-700 text-white font-bold h-14 sm:h-14 rounded-2xl shadow-lg shadow-green-500/30 touch-manipulation active:scale-[0.98] text-base sm:text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Adicionar ao Carrinho
+            {t('marmitaModal.addToCart')}
           </Button>
         </div>
       </DialogContent>

@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { isWithinOpeningHours, formatCurrency } from '@/lib/utils';
+import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
+import { useTranslation } from 'react-i18next';
 import ProductCard from '@/components/public/ProductCard';
 import CartDrawer from '@/components/public/CartDrawer';
 import PizzaModal from '@/components/public/PizzaModal';
@@ -61,6 +63,7 @@ interface PublicMenuProps {
 }
 
 export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuProps = {}) {
+  const { t } = useTranslation();
   const params = useParams();
   const subdomain = getSubdomain();
   // Prioridade: prop (StoreLayout) > URL > subdomínio
@@ -110,12 +113,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
 
   // Atualizar título da página com o nome do restaurante
   useEffect(() => {
-    if (restaurant?.name) {
-      document.title = restaurant.name;
-    } else {
-      document.title = 'Cardápio';
-    }
-  }, [restaurant?.name]);
+    if (restaurant?.name) document.title = restaurant.name;
+    else document.title = t('menu.title');
+  }, [restaurant?.name, t]);
 
   const loadRestaurantData = async () => {
     if (!restaurantSlug) return;
@@ -135,6 +135,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
         setRestaurant(restaurantData);
         setCurrentRestaurant(restaurantData);
         setCartRestaurant(restaurantData.id);
+        const lang: MenuLanguage = restaurantData.language === 'es' ? 'es' : 'pt';
+        i18n.changeLanguage(lang);
+        setStoredMenuLanguage(lang);
 
         // Buscar categorias ordenadas
         const { data: categoriesData } = await supabase
@@ -284,7 +287,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
     );
   }
 
-  if (!restaurant) return <div>Restaurante não encontrado</div>;
+  if (!restaurant) return <div>{t('menu.restaurantNotFound')}</div>;
 
   const currency = restaurant.currency === 'PYG' ? 'PYG' : 'BRL';
 
@@ -319,10 +322,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
                 <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1 flex-wrap">
                   <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full ${isOpen ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
                     <span className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-red-500'} ${isOpen ? 'animate-pulse' : ''}`} />
-                    {isOpen ? 'Aberto' : 'Fechado'}
+                    {isOpen ? t('menu.open') : t('menu.closed')}
                   </span>
                   <span className="text-slate-400 text-[10px] sm:text-xs flex items-center gap-1">
-                    <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> 30–45 min
+                    <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {t('menu.estimateTime')}
                   </span>
                 </div>
               </div>
@@ -333,7 +336,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
               onClick={() => setCartOpen(true)}
             >
               <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden sm:inline">Ver Carrinho</span>
+              <span className="hidden sm:inline">{t('menu.viewCart')}</span>
             </Button>
           </div>
         </div>
@@ -346,7 +349,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
             <div className="relative">
               <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none z-10" />
               <Input
-                placeholder="Buscar no cardápio..."
+                placeholder={t('menu.searchPlaceholder')}
                 className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-3 sm:pr-4 bg-white border-slate-200/80 rounded-xl sm:rounded-2xl border shadow-sm focus-visible:border-orange-400 focus-visible:ring-2 focus-visible:ring-orange-400/20 text-base sm:text-base text-slate-900 placeholder:text-slate-400 transition-shadow touch-manipulation"
               />
             </div>
@@ -364,7 +367,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
                 <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${selectedCategory === 'all' ? 'bg-white/15' : 'bg-slate-100'}`}>
                   <Utensils className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
-                <span className="text-[10px] sm:text-xs font-semibold leading-tight">Todos</span>
+                <span className="text-[10px] sm:text-xs font-semibold leading-tight">{t('menu.all')}</span>
               </button>
               {categories.map((category) => {
                 const Icon = CATEGORY_ICONS[category] || CATEGORY_ICONS['default'];
@@ -437,7 +440,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
 
           {filteredProducts.length === 0 && (
             <div className="text-center py-12 sm:py-16 bg-white/60 rounded-xl sm:rounded-2xl border border-dashed border-slate-200 mx-1">
-              <p className="text-slate-500 text-base sm:text-sm text-sm-mobile-block">Nenhum produto nesta categoria.</p>
+              <p className="text-slate-500 text-base sm:text-sm text-sm-mobile-block">{t('menu.noProductsInCategory')}</p>
             </div>
           )}
         </section>
@@ -451,7 +454,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
             className="inline-flex flex-col items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors"
           >
             <img src="/logo-quierofood.png" alt="Quiero.food" className="h-7 w-auto object-contain opacity-80 hover:opacity-100" />
-            <span className="text-xs">desenvolvido por quiero.food</span>
+            <span className="text-xs">{t('menu.developedBy')}</span>
           </a>
         </footer>
       </main>
@@ -479,7 +482,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
                    </div>
                 </div>
                 <div className="flex flex-col items-start justify-center">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold leading-tight">Total</span>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold leading-tight">{t('menu.total')}</span>
                   <span className="text-base font-bold text-white leading-tight">{formatCurrency(getSubtotal(), currency)}</span>
                 </div>
               </div>
@@ -489,7 +492,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
 
               {/* Right Side: Action */}
               <div className="px-5 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 transition-colors h-full">
-                <span className="text-sm font-bold">Ver sacola</span>
+                <span className="text-sm font-bold">{t('menu.viewBag')}</span>
                 <ChevronRight className="h-4 w-4 opacity-70" />
               </div>
             </Button>

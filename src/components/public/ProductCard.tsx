@@ -2,6 +2,7 @@ import { Product } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -14,6 +15,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onClick, readOnly = false, currency = 'BRL' }: ProductCardProps) {
+  const { t } = useTranslation();
   const isBeverage = product.category?.toLowerCase() === 'bebidas';
   const hasNoImage = !product.image_url;
   const isSimplified = isBeverage && hasNoImage;
@@ -48,7 +50,7 @@ export default function ProductCard({ product, onClick, readOnly = false, curren
               {!readOnly && (
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                   <span className="text-slate-600 text-sm sm:text-base font-medium group-hover:text-slate-900 transition-colors text-sm-mobile-inline">
-                    Adicionar
+                    {t('productCard.add')}
                   </span>
                   <Button
                     type="button"
@@ -100,19 +102,19 @@ export default function ProductCard({ product, onClick, readOnly = false, curren
         <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex gap-1.5 sm:gap-2">
           {product.is_pizza && (
             <Badge className="bg-white/95 text-slate-700 backdrop-blur-sm border-0 font-medium text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 shadow-sm">
-              Pizza
+              {t('productCard.badgePizza')}
             </Badge>
           )}
           {product.is_marmita && (
             <Badge className="bg-white/95 text-slate-700 backdrop-blur-sm border-0 font-medium text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 shadow-sm">
-              Marmita
+              {t('productCard.badgeMarmita')}
             </Badge>
           )}
         </div>
 
         <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3">
           <div className="bg-white/95 backdrop-blur-sm rounded-full px-2 sm:px-3 py-1 sm:py-1.5 shadow-sm flex items-center gap-1 sm:gap-1.5 border border-white/50">
-            <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium uppercase tracking-wide hidden xs:inline">a partir</span>
+            <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium uppercase tracking-wide hidden xs:inline">{t('productCard.from')}</span>
             <span className="text-xs sm:text-sm font-bold text-slate-900">{formatCurrency(product.price, currency)}</span>
           </div>
         </div>
@@ -148,7 +150,7 @@ export default function ProductCard({ product, onClick, readOnly = false, curren
             }}
           >
             <span className="text-slate-600 text-base sm:text-sm font-medium group-hover:text-slate-900 transition-colors text-sm-mobile-inline">
-              {product.is_pizza || product.is_marmita ? 'Personalizar' : 'Adicionar'}
+              {product.is_pizza || product.is_marmita ? t('productCard.customize') : t('productCard.add')}
             </span>
             <Button
               type="button"
