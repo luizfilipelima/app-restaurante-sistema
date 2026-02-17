@@ -1,10 +1,23 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
-import { DollarSign, ShoppingCart, TrendingUp, Clock, ArrowUpRight } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, Clock, ArrowUpRight, RotateCcw, Loader2 } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -23,7 +36,13 @@ import { ptBR } from 'date-fns/locale';
 
 export default function AdminDashboard() {
   const restaurantId = useAdminRestaurantId();
+  const { user } = useAuthStore();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState('');
   const [metrics, setMetrics] = useState({
     totalRevenue: 0,
     totalOrders: 0,
@@ -115,6 +134,49 @@ export default function AdminDashboard() {
   };
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+
+  const handleResetData = async () => {
+    if (!restaurantId || !user?.email) return;
+    const password = resetPassword.trim();
+    if (!password) {
+      setResetError('Digite sua senha para confirmar.');
+      return;
+    }
+    setResetting(true);
+    setResetError('');
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password,
+      });
+      if (authError) {
+        setResetError('Senha incorreta. Tente novamente.');
+        setResetting(false);
+        return;
+      }
+      const { error: deleteError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('restaurant_id', restaurantId);
+      if (deleteError) throw deleteError;
+      toast({
+        title: 'Dados resetados',
+        description: 'Todos os pedidos deste restaurante foram removidos. A dashboard foi atualizada.',
+      });
+      setShowResetDialog(false);
+      setResetPassword('');
+      loadMetrics();
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: 'Erro ao resetar',
+        description: 'Não foi possível remover os dados. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const paymentMethodNames: Record<string, string> = {
     pix: 'PIX',
@@ -346,6 +408,87 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Resetar dados da dashboard */}
+        <Card className="border-dashed border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2 text-amber-900 dark:text-amber-100">
+              <RotateCcw className="h-5 w-5" />
+              Resetar dados do painel
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Remove todos os pedidos deste restaurante e zera as métricas da dashboard. É necessário informar sua senha para confirmar.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              className="border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900/40"
+              onClick={() => {
+                setShowResetDialog(true);
+                setResetPassword('');
+                setResetError('');
+              }}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Resetar dados (exige senha)
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirmar reset dos dados</DialogTitle>
+              <DialogDescription>
+                Todos os pedidos deste restaurante serão excluídos permanentemente. Digite sua senha para confirmar.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-password">Sua senha</Label>
+                <Input
+                  id="reset-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={resetPassword}
+                  onChange={(e) => {
+                    setResetPassword(e.target.value);
+                    setResetError('');
+                  }}
+                  disabled={resetting}
+                  autoComplete="current-password"
+                />
+                {resetError && (
+                  <p className="text-sm text-destructive">{resetError}</p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowResetDialog(false)}
+                disabled={resetting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleResetData}
+                disabled={resetting}
+              >
+                {resetting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Resetando...
+                  </>
+                ) : (
+                  'Resetar dados'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </div>
   );
 }

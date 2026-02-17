@@ -121,11 +121,11 @@ export default function AdminLayout({
               </h1>
             </div>
             <div className="flex-1 flex flex-col">
-              {/* Admin do restaurante: alternar para modo cozinha */}
-              {!isSuperAdminView && user?.role === 'restaurant_admin' && (
+              {/* Modo cozinha: admin do restaurante ou super_admin (com restaurant_id na URL) */}
+              {(user?.role === 'restaurant_admin' || (isSuperAdminView && restaurantId)) && (
                 <div className="px-2 pb-2">
                   <Link
-                    to="/kitchen"
+                    to={isSuperAdminView ? `/kitchen?restaurant_id=${restaurantId}` : '/kitchen'}
                     className="flex items-center px-3 py-3 text-sm font-medium rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors border border-dashed border-border/60"
                   >
                     <ChefHat className="mr-3 h-5 w-5" />
@@ -187,10 +187,10 @@ export default function AdminLayout({
               </Button>
             </div>
           )}
-          {!isSuperAdminView && user?.role === 'restaurant_admin' && (
+          {(user?.role === 'restaurant_admin' || (isSuperAdminView && restaurantId)) && (
             <div className="px-4 pb-2">
               <Link
-                to="/kitchen"
+                to={isSuperAdminView ? `/kitchen?restaurant_id=${restaurantId}` : '/kitchen'}
                 className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-dashed border-border/60 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               >
                 <ChefHat className="h-4 w-4" />

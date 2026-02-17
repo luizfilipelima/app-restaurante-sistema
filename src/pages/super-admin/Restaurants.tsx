@@ -316,7 +316,7 @@ export default function SuperAdminRestaurants() {
                           variant="outline"
                           size="sm"
                           onClick={() =>
-                            window.open(`${window.location.origin}/kitchen`, '_blank')
+                            window.open(`${window.location.origin}/kitchen?restaurant_id=${restaurant.id}`, '_blank')
                           }
                         >
                           <ChefHat className="h-4 w-4 mr-2" />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { DatabaseOrder } from '@/types';
@@ -9,41 +9,29 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Clock, AlertTriangle, ChefHat, ArrowRight, LayoutDashboard } from 'lucide-react';
 
-// MOCK DATA PARA KDS (Visualização se vazio)
-const MOCK_ORDERS: any[] = [
-  { id: '1a2b3c', customer_name: 'João Silva', created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(), status: 'preparing', delivery_type: 'delivery', order_items: [
-    { id: '1', quantity: 1, product_name: 'Pizza Margherita', pizza_size: 'Grande', pizza_flavors: ['Margherita'], pizza_dough: 'Tradicional', pizza_edge: 'Catupiry' },
-    { id: '2', quantity: 2, product_name: 'Coca-Cola 2L' }
-  ] },
-  { id: '4d5e6f', customer_name: 'Maria Oliveira', created_at: new Date(Date.now() - 1000 * 60 * 25).toISOString(), status: 'preparing', delivery_type: 'pickup', notes: 'SEM CEBOLA NA PIZZA', order_items: [
-    { id: '3', quantity: 1, product_name: 'Pizza Meio a Meio', pizza_size: 'Grande', pizza_flavors: ['Calabresa', 'Frango com Catupiry'], pizza_dough: 'Tradicional', observations: 'Bem passada' }
-  ] },
-  { id: '7g8h9i', customer_name: 'Pedro Santos', created_at: new Date(Date.now() - 1000 * 60 * 2).toISOString(), status: 'pending', delivery_type: 'delivery', order_items: [
-    { id: '4', quantity: 1, product_name: 'Hambúrguer X-Tudo' }
-  ] },
-];
-
 export default function KitchenDisplay() {
   const { user } = useAuthStore();
+  const [searchParams] = useSearchParams();
+  const restaurantIdFromUrl = searchParams.get('restaurant_id');
+  const effectiveRestaurantId = user?.restaurant_id || restaurantIdFromUrl || null;
+
   const [orders, setOrders] = useState<DatabaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [newOrderIds, setNewOrderIds] = useState<string[]>([]);
 
   useEffect(() => {
-    if (user?.restaurant_id) {
-      loadOrders();
-      subscribeToOrders();
-    } else {
-      // Se não tiver user (dev mode), carrega mocks após timeout
-      setTimeout(() => {
-        setOrders(MOCK_ORDERS as unknown as DatabaseOrder[]);
-        setLoading(false);
-      }, 1000);
+    if (!effectiveRestaurantId) {
+      setOrders([]);
+      setLoading(false);
+      return;
     }
-  }, [user]);
+    loadOrders();
+    const cleanup = subscribeToOrders();
+    return () => { cleanup?.(); };
+  }, [effectiveRestaurantId]);
 
   const loadOrders = async () => {
-    if (!user?.restaurant_id) return;
+    if (!effectiveRestaurantId) return;
 
     try {
       setLoading(true);
@@ -54,37 +42,32 @@ export default function KitchenDisplay() {
           *,
           order_items(*)
         `)
-        .eq('restaurant_id', user.restaurant_id)
-        .in('status', ['pending', 'preparing']) // Pegar pendentes e preparando para o Kanban
+        .eq('restaurant_id', effectiveRestaurantId)
+        .in('status', ['pending', 'preparing'])
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-
-      if (data && data.length > 0) {
-        setOrders(data);
-      } else {
-        setOrders(MOCK_ORDERS as unknown as DatabaseOrder[]);
-      }
+      setOrders((data as DatabaseOrder[]) || []);
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
-      setOrders(MOCK_ORDERS as unknown as DatabaseOrder[]);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
   };
 
   const subscribeToOrders = () => {
-    if (!user?.restaurant_id) return;
+    if (!effectiveRestaurantId) return;
 
     const channel = supabase
-      .channel('kitchen-orders')
+      .channel(`kitchen-orders-${effectiveRestaurantId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'orders',
-          filter: `restaurant_id=eq.${user.restaurant_id}`,
+          filter: `restaurant_id=eq.${effectiveRestaurantId}`,
         },
         (payload) => {
           console.log('Order update:', payload);
@@ -116,20 +99,36 @@ export default function KitchenDisplay() {
   };
 
   const updateStatus = async (orderId: string, newStatus: string) => {
-    // Optimistic update
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o));
 
-    if (user?.restaurant_id) {
+    if (effectiveRestaurantId) {
       try {
         await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
       } catch (e) {
         console.error(e);
-        loadOrders(); // Revert on error
+        loadOrders();
       }
-    } else {
-      toast({ title: "Modo Demonstração", description: "Status atualizado localmente." });
     }
   };
+
+  if (!effectiveRestaurantId) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4 p-6 text-slate-300">
+        <ChefHat className="h-16 w-16 text-slate-600" />
+        <h2 className="text-xl font-semibold text-white">Nenhum restaurante selecionado</h2>
+        <p className="text-center text-sm max-w-sm">
+          Abra o modo cozinha a partir do painel de restaurantes (botão Cozinha no card) ou do painel admin do restaurante.
+        </p>
+        <Link
+          to="/super-admin/restaurants"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium"
+        >
+          <LayoutDashboard className="h-4 w-4" />
+          Ir para restaurantes
+        </Link>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -170,6 +169,15 @@ export default function KitchenDisplay() {
                 >
                   <LayoutDashboard className="h-4 w-4" />
                   Modo recepcionista
+                </Link>
+              )}
+              {user?.role === 'super_admin' && (
+                <Link
+                  to="/super-admin/restaurants"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium transition-colors border border-slate-700"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Voltar ao painel
                 </Link>
               )}
               <p className="text-3xl font-black font-mono tabular-nums">
