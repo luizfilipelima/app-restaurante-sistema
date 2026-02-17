@@ -6,6 +6,16 @@ Siga **uma** das alternativas abaixo (a 1 costuma resolver sem mexer no banco).
 
 ---
 
+## Contexto: correção do bug de login (RLS)
+
+**Diagnóstico:** A tabela `public.users` tinha RLS ativado **sem políticas** que permitissem ao usuário autenticado fazer `SELECT` na própria linha. O Supabase devolvia vazio e o app interpretava como “perfil não encontrado”.
+
+**Solução temporária aplicada:** Foi executado `ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;` para desbloquear o desenvolvimento.
+
+**Ação futura:** Quando quiser proteger de novo os dados, execute **`supabase-rls-users-reativar.sql`**: ele cria as políticas corretas (ex.: `auth.uid() = id` para ler o próprio perfil) e reativa o RLS na tabela.
+
+---
+
 ## 1. Edge Function que cria o perfil no primeiro login (recomendado)
 
 O app já tenta chamar a Edge Function **`get-or-create-my-profile`**: se o perfil não existir, ela cria com `super_admin` e você entra.
@@ -88,4 +98,6 @@ Se o app apontar para outro projeto, o perfil que você criou “no Supabase” 
 | Prefere SQL                      | Rodar **supabase-fix-perfil-flxlima.sql** no projeto certo (item 2). |
 | Quer ver quem tem perfil         | Rodar os `SELECT` do item 2. |
 | Perfil existe mas não entra      | Rodar **supabase-fix-login.sql** (item 4). |
+| RLS estava desligado; reativar   | Rodar **supabase-rls-users-reativar.sql** (políticas + ENABLE RLS). |
+| Cadastro de usuários não funciona (RLS ativo) | Rodar **supabase-rls-users-insert-update.sql** (INSERT/UPDATE para super_admin). Confirme também que a Edge Function **create-restaurant-user** está publicada e com as variáveis (ex.: `SUPABASE_SERVICE_ROLE_KEY`) configuradas. |
 | Dúvida se é o projeto certo     | Conferir URL do projeto e variáveis do app (item 5). |

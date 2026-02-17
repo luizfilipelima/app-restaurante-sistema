@@ -79,8 +79,9 @@ export default function SuperAdminRestaurantUsers() {
         },
       });
 
-      if (error) throw error;
+      // Mostrar mensagem da Edge Function (ex.: 403, 400) em vez de só "non-2xx"
       if (data?.error) throw new Error(data.error);
+      if (error) throw error;
 
       toast({ title: 'Usuário criado', description: `${formData.email} foi cadastrado.` });
       setFormData({ email: '', password: '', role: UserRole.RESTAURANT_ADMIN });
