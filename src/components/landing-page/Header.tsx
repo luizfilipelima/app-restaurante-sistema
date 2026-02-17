@@ -43,11 +43,13 @@ export default function Header() {
             <Globe className="h-4 w-4 text-slate-500" />
             <span className="text-xs font-semibold text-slate-700 uppercase">{lang}</span>
           </div>
-          <Button variant="outline" className="border-slate-200 text-slate-700 hover:text-orange-600 hover:border-orange-200">
-            Entrar
+          <Button variant="outline" className="border-slate-200 text-slate-700 hover:text-orange-600 hover:border-orange-200" asChild>
+            <a href="https://app.quiero.food">Entrar</a>
           </Button>
-          <Button className="bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-600/20">
-            Testar Grátis
+          <Button className="bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-600/20" asChild>
+            <a href="https://wa.me/5575992776610?text=Hola%20Filipe%2C%20me%20gustaria%20testar%20gratis%20el%20sistema%20Quiero%20Food" target="_blank" rel="noopener noreferrer">
+              Testar Grátis
+            </a>
           </Button>
         </div>
 
@@ -80,8 +82,14 @@ export default function Header() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 pt-4">
-                <Button variant="outline" className="w-full justify-center">Entrar</Button>
-                <Button className="w-full justify-center bg-orange-600 hover:bg-orange-700 text-white">Testar Grátis</Button>
+                <Button variant="outline" className="w-full justify-center" asChild>
+                  <a href="https://app.quiero.food">Entrar</a>
+                </Button>
+                <Button className="w-full justify-center bg-orange-600 hover:bg-orange-700 text-white" asChild>
+                  <a href="https://wa.me/5575992776610?text=Hola%20Filipe%2C%20me%20gustaria%20testar%20gratis%20el%20sistema%20Quiero%20Food" target="_blank" rel="noopener noreferrer">
+                    Testar Grátis
+                  </a>
+                </Button>
               </div>
             </div>
           </motion.div>
