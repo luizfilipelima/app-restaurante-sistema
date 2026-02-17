@@ -32,12 +32,20 @@ const CATEGORY_ICONS: Record<string, any> = {
   'default': Utensils
 };
 
-export default function PublicMenu() {
+interface PublicMenuProps {
+  /** Quando renderizado dentro de StoreLayout (subdomínio), o slug é passado por prop */
+  tenantSlug?: string;
+}
+
+export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuProps = {}) {
   const params = useParams();
   const subdomain = getSubdomain();
-  // Se existir parametro na URL, usa. Se não, tenta pegar do subdomínio (desde que não seja 'app', 'www', etc)
-  const restaurantSlug = params.restaurantSlug || (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
-  
+  // Prioridade: prop (StoreLayout) > URL > subdomínio
+  const restaurantSlug =
+    tenantSlugProp ??
+    params.restaurantSlug ??
+    (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
+
   const navigate = useNavigate();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [products, setProducts] = useState<Product[]>([]);

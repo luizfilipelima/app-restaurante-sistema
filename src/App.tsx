@@ -6,25 +6,22 @@ import { PublicRoute } from './components/PublicRoute';
 import { Toaster } from './components/ui/toaster';
 import { UserRole } from './types';
 import { getSubdomain } from './lib/subdomain';
+import StoreLayout from './layouts/StoreLayout';
+import LandingPage from './pages/landing/LandingPage';
 
 import LoginPage from './pages/auth/LoginPage';
 import UnauthorizedPage from './pages/auth/UnauthorizedPage';
-
 import SuperAdminDashboard from './pages/super-admin/Dashboard';
 import SuperAdminRestaurants from './pages/super-admin/Restaurants';
-
 import AdminLayoutWrapper from './components/admin/AdminLayoutWrapper';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminMenu from './pages/admin/Menu';
 import AdminOrders from './pages/admin/Orders';
 import AdminSettings from './pages/admin/Settings';
 import AdminDeliveryZones from './pages/admin/DeliveryZones';
-
 import KitchenDisplay from './pages/kitchen/KitchenDisplay';
-
 import PublicMenu from './pages/public/Menu';
 import PublicCheckout from './pages/public/Checkout';
-import LandingPage from './pages/landing/LandingPage';
 
 const adminRoutes = (
   <>
@@ -36,38 +33,37 @@ const adminRoutes = (
   </>
 );
 
+/** Subdomínios que devem mostrar o painel admin (login, dashboard, cozinha). */
+const ADMIN_SUBDOMAINS = ['app', 'admin'];
+
 function App() {
   const initialize = useAuthStore((state) => state.initialize);
-  const [subdomain, setSubdomain] = useState<string | null>(null);
+  const [subdomain, setSubdomain] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     initialize();
     setSubdomain(getSubdomain());
   }, [initialize]);
 
-  // Tenant Router (pizzaria.quiero.food)
-  if (subdomain && !['app', 'www', 'localhost'].includes(subdomain)) {
-    return (
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<PublicMenu />} />
-          <Route path="/checkout" element={<PublicCheckout />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        <Toaster />
-      </BrowserRouter>
-    );
+  // Aguarda definir o hostname (evita flash no primeiro paint)
+  if (subdomain === undefined) {
+    return null; // ou um <Skeleton /> global se preferir
   }
 
-  // App Router (app.quiero.food)
-  if (subdomain === 'app') {
+  const isAdminSubdomain = subdomain !== null && ADMIN_SUBDOMAINS.includes(subdomain);
+
+  // 1) Subdomínio de loja (ex.: pizzaria.quiero.food) -> StoreLayout (cardápio)
+  if (subdomain !== null && !isAdminSubdomain) {
+    return <StoreLayout tenantSlug={subdomain} />;
+  }
+
+  // 2) Subdomínio app/admin -> painel (login, dashboard, cozinha)
+  if (isAdminSubdomain) {
     return (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
-
-          {/* Super Admin */}
           <Route
             path="/super-admin"
             element={
@@ -94,8 +90,6 @@ function App() {
           >
             {adminRoutes}
           </Route>
-
-          {/* Restaurant Admin */}
           <Route
             path="/admin"
             element={
@@ -106,8 +100,6 @@ function App() {
           >
             {adminRoutes}
           </Route>
-
-          {/* Kitchen */}
           <Route
             path="/kitchen"
             element={
@@ -116,7 +108,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
         <Toaster />
@@ -124,32 +115,24 @@ function App() {
     );
   }
 
-  // Landing Page Router (quiero.food / www.quiero.food)
-  // Also keeps support for old path-based routing for dev/testing
+  // 3) Domínio principal (quiero.food, localhost) -> Landing + rotas legado (path-based)
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        
-        {/* Support for path-based access (e.g. localhost:3000/pizzaria) */}
         <Route path="/:restaurantSlug" element={<PublicMenu />} />
         <Route path="/:restaurantSlug/checkout" element={<PublicCheckout />} />
-        
-        {/* Redirect /login to app subdomain in production? Or keep it accessible? */}
-        {/* For now, let's allow access to login via path if user types it manually, 
-            but in production we should redirect to app.quiero.food */}
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-        
-        {/* Admin routes accessible via path for dev/testing or if subdomain fails */}
-        <Route path="/admin/*" element={
+        <Route
+          path="/admin/*"
+          element={
             <ProtectedRoute allowedRoles={[UserRole.RESTAURANT_ADMIN]}>
               <AdminLayoutWrapper />
             </ProtectedRoute>
-          } 
+          }
         >
-           {adminRoutes}
+          {adminRoutes}
         </Route>
-
       </Routes>
       <Toaster />
     </BrowserRouter>

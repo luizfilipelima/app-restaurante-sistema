@@ -21,11 +21,19 @@ import { formatCurrency, formatGuarani, generateWhatsAppLink, normalizePhoneWith
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote, Send } from 'lucide-react';
 
-export default function PublicCheckout() {
+interface PublicCheckoutProps {
+  /** Quando renderizado dentro de StoreLayout (subdomínio), o slug é passado por prop */
+  tenantSlug?: string;
+}
+
+export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicCheckoutProps = {}) {
   const params = useParams();
   const subdomain = getSubdomain();
-  const restaurantSlug = params.restaurantSlug || (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
-  
+  const restaurantSlug =
+    tenantSlugProp ??
+    params.restaurantSlug ??
+    (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
+
   const navigate = useNavigate();
   const { items, restaurantId, updateQuantity, getSubtotal, clearCart } =
     useCartStore();
