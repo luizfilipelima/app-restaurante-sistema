@@ -38,9 +38,7 @@ import {
   Plus,
   Eye,
   EyeOff,
-  Upload,
   Loader2,
-  Clock,
   Instagram,
   Printer,
 } from 'lucide-react';
@@ -71,7 +69,6 @@ export default function SuperAdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [showNewRestaurantDialog, setShowNewRestaurantDialog] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [logoUploading, setLogoUploading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -262,9 +259,9 @@ export default function SuperAdminDashboard() {
         secondary_color: '#FFFFFF',
         is_active: true,
         always_open: false,
-        opening_hours: {},
+        opening_hours: {} as Record<DayKey, { open: string; close: string } | null>,
         print_auto_on_new_order: false,
-        print_paper_width: '80mm',
+        print_paper_width: '80mm' as PrintPaperWidth,
       });
       setShowNewRestaurantDialog(false);
       await loadData();
@@ -593,15 +590,8 @@ export default function SuperAdminDashboard() {
                         type="file"
                         accept="image/*"
                         onChange={handleLogoUpload}
-                        disabled={logoUploading}
                         className="cursor-pointer"
                       />
-                      {logoUploading && (
-                        <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Enviando...
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
