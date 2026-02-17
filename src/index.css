@@ -88,10 +88,20 @@
     padding-right: env(safe-area-inset-right);
   }
   
+  /* Prevenir zoom automático no iOS ao focar em campos de formulário */
+  input, textarea, select {
+    @apply text-base; /* Garante 16px */
+  }
+  
   /* Melhorar legibilidade em mobile */
   @media (max-width: 640px) {
     body {
       font-size: 16px; /* Prevenir zoom automático no iOS */
+    }
+    
+    /* Garantir 16px em campos de formulário no mobile */
+    input, select, textarea {
+      font-size: 16px !important;
     }
   }
 }
