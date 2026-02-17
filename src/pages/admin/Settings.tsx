@@ -16,7 +16,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
-import { Save, Plus, Trash2, Pizza, Upload, Loader2, Clock, Instagram, Printer, UtensilsCrossed } from 'lucide-react';
+import { Save, Plus, Trash2, Pizza, Upload, Loader2, Clock, Instagram, Printer } from 'lucide-react';
 
 export default function AdminSettings() {
   const restaurantId = useAdminRestaurantId();
