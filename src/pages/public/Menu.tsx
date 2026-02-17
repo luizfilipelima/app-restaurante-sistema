@@ -328,17 +328,15 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
 
         {/* Rodapé */}
         <footer className="pt-8 pb-6 text-center border-t border-slate-200/60">
-          <p className="text-slate-400 text-sm">
-            desenvolvido por{' '}
-            <a
-              href="https://quiero.food"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-slate-600 hover:text-orange-500 transition-colors"
-            >
-              quiero.food
-            </a>
-          </p>
+          <a
+            href="https://quiero.food"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex flex-col items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <img src="/logo-quierofood.png" alt="Quiero.food" className="h-7 w-auto object-contain opacity-80 hover:opacity-100" />
+            <span className="text-xs">desenvolvido por quiero.food</span>
+          </a>
         </footer>
       </main>
 
