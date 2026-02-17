@@ -10,11 +10,11 @@ export function useComandas(restaurantId: string) {
   const [loading, setLoading] = useState(true);
   const { syncNow, isOnline } = useOfflineSync(restaurantId);
 
-  const loadComandas = useCallback(async () => {
+  const loadComandas = useCallback(async (silent = false) => {
     if (!restaurantId) return;
 
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
 
       // Tentar carregar do Supabase primeiro
       if (isOnline) {
@@ -64,9 +64,9 @@ export function useComandas(restaurantId: string) {
   }, [restaurantId, isOnline, syncNow]);
 
   useEffect(() => {
-    loadComandas();
-    // Atualizar a cada 5 segundos
-    const interval = setInterval(loadComandas, 5000);
+    loadComandas(false); // carga inicial com loading
+    // Atualizar a cada 5 segundos em background (sem loading para não piscar)
+    const interval = setInterval(() => loadComandas(true), 5000);
     return () => clearInterval(interval);
   }, [loadComandas]);
 

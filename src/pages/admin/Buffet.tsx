@@ -32,7 +32,8 @@ export default function Buffet() {
   const { pendingCount, isOnline, isSyncing } = useOfflineSync(restaurantId || '');
   
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedComanda, setSelectedComanda] = useState<ComandaWithItems | null>(null);
+  const [selectedComandaId, setSelectedComandaId] = useState<string | null>(null);
+  const selectedComanda = selectedComandaId ? comandas.find(c => c.id === selectedComandaId) ?? null : null;
   const [scannerInput, setScannerInput] = useState('');
   const [weightInput, setWeightInput] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -51,7 +52,7 @@ export default function Buffet() {
     }
   }, { preventDefault: true, enableOnFormTags: true });
   useHotkeys('escape', () => {
-    setSelectedComanda(null);
+    setSelectedComandaId(null);
     setSelectedProduct(null);
     setWeightInput('');
     setScannerInput('');
@@ -69,16 +70,6 @@ export default function Buffet() {
       scannerRef.current.focus();
     }
   }, [selectedComanda]);
-
-  // Atualizar comanda selecionada quando a lista de comandas mudar
-  useEffect(() => {
-    if (selectedComanda) {
-      const updated = comandas.find(c => c.id === selectedComanda.id);
-      if (updated) {
-        setSelectedComanda(updated);
-      }
-    }
-  }, [comandas]);
 
   const loadProducts = async () => {
     if (!restaurantId) return;
@@ -100,27 +91,9 @@ export default function Buffet() {
   const handleNewComanda = async () => {
     try {
       const comandaId = await createComanda();
-      refresh();
-      // Aguardar um pouco para a comanda aparecer na lista após refresh
-      setTimeout(() => {
-        const newComanda = comandas.find(c => c.id === comandaId);
-        if (newComanda) {
-          setSelectedComanda(newComanda);
-          setScannerInput('');
-          scannerRef.current?.focus();
-        } else {
-          // Se não encontrou, tentar novamente após mais um refresh
-          refresh();
-          setTimeout(() => {
-            const found = comandas.find(c => c.id === comandaId);
-            if (found) {
-              setSelectedComanda(found);
-              setScannerInput('');
-              scannerRef.current?.focus();
-            }
-          }, 300);
-        }
-      }, 300);
+      setSelectedComandaId(comandaId);
+      setScannerInput('');
+      scannerRef.current?.focus();
     } catch (error) {
       console.error('Erro ao criar comanda:', error);
       toast({ title: 'Erro ao criar comanda', variant: 'destructive' });
@@ -135,7 +108,7 @@ export default function Buffet() {
       const comandaNumber = parseInt(value, 10);
       const comanda = comandas.find(c => c.number === comandaNumber);
       if (comanda) {
-        setSelectedComanda(comanda);
+        setSelectedComandaId(comanda.id);
         setScannerInput('');
         weightRef.current?.focus();
         toast({ title: `Comanda #${comandaNumber} selecionada` });
@@ -186,17 +159,7 @@ export default function Buffet() {
       
       setWeightInput('');
       setSelectedProduct(null);
-      
-      // Atualizar comanda selecionada após adicionar item
-      refresh();
-      setTimeout(() => {
-        const updated = comandas.find(c => c.id === selectedComanda.id);
-        if (updated) {
-          setSelectedComanda(updated);
-        }
-        weightRef.current?.focus();
-      }, 200);
-      
+      weightRef.current?.focus();
       toast({ title: `${product.name} adicionado!` });
     } catch (error) {
       console.error('Erro ao adicionar produto:', error);
@@ -233,15 +196,6 @@ export default function Buffet() {
       // Remover localmente
       await offlineDB.comandaItems.delete(itemId);
       refresh();
-      
-      // Atualizar comanda selecionada
-      setTimeout(() => {
-        const updated = comandas.find(c => c.id === selectedComanda.id);
-        if (updated) {
-          setSelectedComanda(updated);
-        }
-      }, 200);
-      
       toast({ title: 'Item removido' });
     } catch (error) {
       console.error('Erro ao remover item:', error);
@@ -270,16 +224,6 @@ export default function Buffet() {
     const mins = minutesOpen % 60;
     return `${hours}h${mins > 0 ? mins + 'min' : ''}`;
   };
-
-  // Atualizar comanda selecionada quando a lista de comandas mudar
-  useEffect(() => {
-    if (selectedComanda) {
-      const updated = comandas.find(c => c.id === selectedComanda.id);
-      if (updated) {
-        setSelectedComanda(updated);
-      }
-    }
-  }, [comandas]);
 
   if (loading && comandas.length === 0) {
     return (
@@ -401,7 +345,7 @@ export default function Buffet() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        setSelectedComanda(null);
+                        setSelectedComandaId(null);
                         setSelectedProduct(null);
                         scannerRef.current?.focus();
                       }}
@@ -456,7 +400,7 @@ export default function Buffet() {
         <div className="lg:col-span-2">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {comandas.map((comanda) => {
-              const isSelected = selectedComanda?.id === comanda.id;
+              const isSelected = selectedComandaId === comanda.id;
               return (
                 <Card
                   key={comanda.id}
@@ -465,7 +409,7 @@ export default function Buffet() {
                       ? 'ring-2 ring-primary dark:bg-slate-800' 
                       : 'dark:bg-slate-900 dark:border-slate-800'
                   }`}
-                  onClick={() => setSelectedComanda(comanda)}
+                  onClick={() => setSelectedComandaId(comanda.id)}
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
@@ -588,7 +532,7 @@ export default function Buffet() {
                       await closeComanda(closingComandaId);
                       setShowCloseDialog(false);
                       setClosingComandaId(null);
-                      setSelectedComanda(null);
+                      setSelectedComandaId(null);
                       scannerRef.current?.focus();
                     }
                   }}
