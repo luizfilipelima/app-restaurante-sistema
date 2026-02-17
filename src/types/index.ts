@@ -108,6 +108,7 @@ export interface Product {
   price: number;
   image_url?: string;
   is_pizza: boolean;
+  is_marmita?: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -148,6 +149,40 @@ export interface PizzaEdge {
   restaurant_id: string;
   name: string; // Ex: Catupiry, Cheddar, Chocolate
   price: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface MarmitaSize {
+  id: string;
+  restaurant_id: string;
+  name: string; // Ex: 300g, 500g, 700g
+  weight_grams: number; // Peso em gramas
+  base_price: number; // Preço base
+  price_per_gram: number; // Preço por grama (opcional)
+  order_index: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface MarmitaProtein {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  description?: string;
+  price_per_gram: number; // Preço por grama da proteína
+  image_url?: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface MarmitaSide {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  description?: string;
+  price_per_gram: number; // Preço por grama do acompanhamento
+  category?: string; // Ex: 'arroz', 'feijao', 'salada', 'legumes'
   is_active: boolean;
   created_at: string;
 }
@@ -224,6 +259,12 @@ export interface CartItem {
   pizzaEdge?: string;
   pizzaEdgePrice?: number;
   pizzaDoughPrice?: number;
+  // Marmita específico
+  isMarmita?: boolean;
+  marmitaSize?: string;
+  marmitaWeight?: number;
+  marmitaProteins?: string[];
+  marmitaSides?: string[];
 }
 
 export interface CheckoutData {

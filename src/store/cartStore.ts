@@ -34,7 +34,7 @@ export const useCartStore = create<CartState>()(
       addItem: (item: CartItem) => {
         const items = get().items;
         
-        // Verifica se é um item idêntico (incluindo personalizações de pizza)
+        // Verifica se é um item idêntico (incluindo personalizações de pizza e marmita)
         const existingIndex = items.findIndex((i) => {
           if (i.productId !== item.productId) return false;
           if (i.isPizza && item.isPizza) {
@@ -44,6 +44,16 @@ export const useCartStore = create<CartState>()(
               sameFlavors &&
               i.pizzaDough === item.pizzaDough &&
               i.pizzaEdge === item.pizzaEdge &&
+              i.observations === item.observations
+            );
+          }
+          if (i.isMarmita && item.isMarmita) {
+            const sameProteins = (JSON.stringify(i.marmitaProteins ?? []) === JSON.stringify(item.marmitaProteins ?? []));
+            const sameSides = (JSON.stringify(i.marmitaSides ?? []) === JSON.stringify(item.marmitaSides ?? []));
+            return (
+              i.marmitaSize === item.marmitaSize &&
+              sameProteins &&
+              sameSides &&
               i.observations === item.observations
             );
           }

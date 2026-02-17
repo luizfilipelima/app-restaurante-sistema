@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
-import { Restaurant, PizzaSize, PizzaDough, PizzaEdge, DayKey, PrintPaperWidth } from '@/types';
+import { Restaurant, PizzaSize, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide, DayKey, PrintPaperWidth } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
-import { Save, Plus, Trash2, Pizza, Upload, Loader2, Clock, Instagram, Printer } from 'lucide-react';
+import { Save, Plus, Trash2, Pizza, Upload, Loader2, Clock, Instagram, Printer, UtensilsCrossed } from 'lucide-react';
 
 export default function AdminSettings() {
   const restaurantId = useAdminRestaurantId();
@@ -61,6 +61,17 @@ export default function AdminSettings() {
   const [formSize, setFormSize] = useState({ name: '', max_flavors: 1, price_multiplier: 1, order_index: 0 });
   const [formDough, setFormDough] = useState({ name: '', extra_price: '' });
   const [formEdge, setFormEdge] = useState({ name: '', price: '' });
+
+  // Configuração do cardápio por categoria (Marmitas)
+  const [marmitaSizes, setMarmitaSizes] = useState<MarmitaSize[]>([]);
+  const [marmitaProteins, setMarmitaProteins] = useState<MarmitaProtein[]>([]);
+  const [marmitaSides, setMarmitaSides] = useState<MarmitaSide[]>([]);
+  const [showFormMarmitaSize, setShowFormMarmitaSize] = useState(false);
+  const [showFormMarmitaProtein, setShowFormMarmitaProtein] = useState(false);
+  const [showFormMarmitaSide, setShowFormMarmitaSide] = useState(false);
+  const [formMarmitaSize, setFormMarmitaSize] = useState({ name: '', weight_grams: 500, base_price: '', price_per_gram: '', order_index: 0 });
+  const [formMarmitaProtein, setFormMarmitaProtein] = useState({ name: '', description: '', price_per_gram: '' });
+  const [formMarmitaSide, setFormMarmitaSide] = useState({ name: '', description: '', price_per_gram: '', category: '' });
 
   useEffect(() => {
     if (restaurantId) {
@@ -112,14 +123,20 @@ export default function AdminSettings() {
     if (!restaurantId) return;
     setMenuConfigLoading(true);
     try {
-      const [sizesRes, doughsRes, edgesRes] = await Promise.all([
+      const [sizesRes, doughsRes, edgesRes, marmitaSizesRes, marmitaProteinsRes, marmitaSidesRes] = await Promise.all([
         supabase.from('pizza_sizes').select('*').eq('restaurant_id', restaurantId).order('order_index'),
         supabase.from('pizza_doughs').select('*').eq('restaurant_id', restaurantId).order('name'),
         supabase.from('pizza_edges').select('*').eq('restaurant_id', restaurantId).order('name'),
+        supabase.from('marmita_sizes').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('order_index'),
+        supabase.from('marmita_proteins').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('name'),
+        supabase.from('marmita_sides').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('category', { ascending: true }).order('name'),
       ]);
       if (sizesRes.data) setPizzaSizes(sizesRes.data);
       if (doughsRes.data) setPizzaDoughs(doughsRes.data);
       if (edgesRes.data) setPizzaEdges(edgesRes.data);
+      if (marmitaSizesRes.data) setMarmitaSizes(marmitaSizesRes.data);
+      if (marmitaProteinsRes.data) setMarmitaProteins(marmitaProteinsRes.data);
+      if (marmitaSidesRes.data) setMarmitaSides(marmitaSidesRes.data);
     } catch (e) {
       console.error('Erro ao carregar configuração do cardápio:', e);
     } finally {
@@ -229,6 +246,134 @@ export default function AdminSettings() {
   const toggleEdgeActive = async (id: string, isActive: boolean) => {
     try {
       await supabase.from('pizza_edges').update({ is_active: !isActive }).eq('id', id);
+      loadMenuConfig();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Funções para Marmitas
+  const handleSubmitMarmitaSize = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurantId) return;
+    const base_price = parseFloat(String(formMarmitaSize.base_price).replace(',', '.')) || 0;
+    const price_per_gram = parseFloat(String(formMarmitaSize.price_per_gram).replace(',', '.')) || 0;
+    try {
+      const { error } = await supabase.from('marmita_sizes').insert({
+        restaurant_id: restaurantId,
+        name: formMarmitaSize.name,
+        weight_grams: formMarmitaSize.weight_grams,
+        base_price,
+        price_per_gram,
+        order_index: formMarmitaSize.order_index,
+        is_active: true,
+      });
+      if (error) throw error;
+      setFormMarmitaSize({ name: '', weight_grams: 500, base_price: '', price_per_gram: '', order_index: marmitaSizes.length });
+      setShowFormMarmitaSize(false);
+      loadMenuConfig();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao salvar tamanho de marmita.');
+    }
+  };
+
+  const handleSubmitMarmitaProtein = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurantId) return;
+    const price_per_gram = parseFloat(String(formMarmitaProtein.price_per_gram).replace(',', '.')) || 0;
+    try {
+      const { error } = await supabase.from('marmita_proteins').insert({
+        restaurant_id: restaurantId,
+        name: formMarmitaProtein.name,
+        description: formMarmitaProtein.description || null,
+        price_per_gram,
+        is_active: true,
+      });
+      if (error) throw error;
+      setFormMarmitaProtein({ name: '', description: '', price_per_gram: '' });
+      setShowFormMarmitaProtein(false);
+      loadMenuConfig();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao salvar proteína.');
+    }
+  };
+
+  const handleSubmitMarmitaSide = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurantId) return;
+    const price_per_gram = parseFloat(String(formMarmitaSide.price_per_gram).replace(',', '.')) || 0;
+    try {
+      const { error } = await supabase.from('marmita_sides').insert({
+        restaurant_id: restaurantId,
+        name: formMarmitaSide.name,
+        description: formMarmitaSide.description || null,
+        price_per_gram,
+        category: formMarmitaSide.category || null,
+        is_active: true,
+      });
+      if (error) throw error;
+      setFormMarmitaSide({ name: '', description: '', price_per_gram: '', category: '' });
+      setShowFormMarmitaSide(false);
+      loadMenuConfig();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao salvar acompanhamento.');
+    }
+  };
+
+  const deleteMarmitaSize = async (id: string) => {
+    if (!confirm('Excluir este tamanho de marmita?')) return;
+    try {
+      await supabase.from('marmita_sizes').delete().eq('id', id);
+      loadMenuConfig();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteMarmitaProtein = async (id: string) => {
+    if (!confirm('Excluir esta proteína?')) return;
+    try {
+      await supabase.from('marmita_proteins').delete().eq('id', id);
+      loadMenuConfig();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteMarmitaSide = async (id: string) => {
+    if (!confirm('Excluir este acompanhamento?')) return;
+    try {
+      await supabase.from('marmita_sides').delete().eq('id', id);
+      loadMenuConfig();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const toggleMarmitaSizeActive = async (id: string, isActive: boolean) => {
+    try {
+      await supabase.from('marmita_sizes').update({ is_active: !isActive }).eq('id', id);
+      loadMenuConfig();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const toggleMarmitaProteinActive = async (id: string, isActive: boolean) => {
+    try {
+      await supabase.from('marmita_proteins').update({ is_active: !isActive }).eq('id', id);
+      loadMenuConfig();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const toggleMarmitaSideActive = async (id: string, isActive: boolean) => {
+    try {
+      await supabase.from('marmita_sides').update({ is_active: !isActive }).eq('id', id);
       loadMenuConfig();
     } catch (e) {
       console.error(e);
@@ -723,13 +868,14 @@ export default function AdminSettings() {
                 Configuração do cardápio
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Defina opções por categoria. A categoria <strong>Pizza</strong> usa tamanhos, massas e bordas para o cliente montar o pedido.
+                Defina opções por categoria. A categoria <strong>Pizza</strong> usa tamanhos, massas e bordas. A categoria <strong>Marmitas</strong> usa tamanhos (pesos), proteínas e acompanhamentos.
               </p>
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="pizza" className="w-full">
-                <TabsList className="grid w-full max-w-xs grid-cols-1">
+                <TabsList className="grid w-full max-w-md grid-cols-2">
                   <TabsTrigger value="pizza">Pizza</TabsTrigger>
+                  <TabsTrigger value="marmitas">Marmitas</TabsTrigger>
                 </TabsList>
                 <TabsContent value="pizza" className="space-y-8 mt-6">
                   {menuConfigLoading ? (
@@ -857,6 +1003,162 @@ export default function AdminSettings() {
                               <div className="flex gap-1">
                                 <Button type="button" size="sm" variant="ghost" onClick={() => toggleEdgeActive(e.id, e.is_active)}>{e.is_active ? 'Desativar' : 'Ativar'}</Button>
                                 <Button type="button" size="icon" variant="ghost" onClick={() => deleteEdge(e.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="marmitas" className="space-y-8 mt-6">
+                  {menuConfigLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+                    </div>
+                  ) : (
+                    <>
+                      {/* Tamanhos de Marmita */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-base font-semibold">Tamanhos (Pesos)</Label>
+                          <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSize(!showFormMarmitaSize)}>
+                            <Plus className="h-4 w-4 mr-1" /> Adicionar
+                          </Button>
+                        </div>
+                        {showFormMarmitaSize && (
+                          <form onSubmit={handleSubmitMarmitaSize} className="p-4 border rounded-lg space-y-3 bg-muted/30">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label>Nome</Label>
+                                <Input value={formMarmitaSize.name} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: 300g, 500g, 700g" required />
+                              </div>
+                              <div>
+                                <Label>Peso (gramas)</Label>
+                                <Input type="number" min={100} step={50} value={formMarmitaSize.weight_grams} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, weight_grams: parseInt(e.target.value, 10) || 500 }))} required />
+                              </div>
+                              <div>
+                                <Label>Preço Base (R$)</Label>
+                                <Input type="text" value={formMarmitaSize.base_price} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, base_price: e.target.value }))} placeholder="15,00" required />
+                              </div>
+                              <div>
+                                <Label>Preço por Grama (R$)</Label>
+                                <Input type="text" value={formMarmitaSize.price_per_gram} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,05" />
+                              </div>
+                              <div>
+                                <Label>Ordem</Label>
+                                <Input type="number" min={0} value={formMarmitaSize.order_index} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, order_index: parseInt(e.target.value, 10) || 0 }))} />
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button type="submit" size="sm">Salvar</Button>
+                              <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSize(false)}>Cancelar</Button>
+                            </div>
+                          </form>
+                        )}
+                        <ul className="space-y-2">
+                          {marmitaSizes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tamanho. Adicione para o cliente escolher no cardápio.</p>}
+                          {marmitaSizes.map((s) => (
+                            <li key={s.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
+                              <span><strong>{s.name}</strong> — {s.weight_grams}g — Base: {formatCurrency(Number(s.base_price))} {Number(s.price_per_gram) > 0 && `— R$ ${Number(s.price_per_gram).toFixed(4)}/g`}</span>
+                              <div className="flex gap-1">
+                                <Button type="button" size="sm" variant="ghost" onClick={() => toggleMarmitaSizeActive(s.id, s.is_active)}>{s.is_active ? 'Desativar' : 'Ativar'}</Button>
+                                <Button type="button" size="icon" variant="ghost" onClick={() => deleteMarmitaSize(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Proteínas */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-base font-semibold">Proteínas</Label>
+                          <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaProtein(!showFormMarmitaProtein)}>
+                            <Plus className="h-4 w-4 mr-1" /> Adicionar
+                          </Button>
+                        </div>
+                        {showFormMarmitaProtein && (
+                          <form onSubmit={handleSubmitMarmitaProtein} className="p-4 border rounded-lg space-y-3 bg-muted/30">
+                            <div className="space-y-3">
+                              <div>
+                                <Label>Nome</Label>
+                                <Input value={formMarmitaProtein.name} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Frango Grelhado" required />
+                              </div>
+                              <div>
+                                <Label>Descrição (opcional)</Label>
+                                <Input value={formMarmitaProtein.description} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, description: e.target.value }))} placeholder="Ex: Peito de frango temperado e grelhado" />
+                              </div>
+                              <div>
+                                <Label>Preço por Grama (R$)</Label>
+                                <Input type="text" value={formMarmitaProtein.price_per_gram} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,08" required />
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button type="submit" size="sm">Salvar</Button>
+                              <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaProtein(false)}>Cancelar</Button>
+                            </div>
+                          </form>
+                        )}
+                        <ul className="space-y-2">
+                          {marmitaProteins.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma proteína. Adicione (ex: Frango, Carne, Peixe).</p>}
+                          {marmitaProteins.map((p) => (
+                            <li key={p.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
+                              <span><strong>{p.name}</strong> — {formatCurrency(Number(p.price_per_gram))}/g{!p.is_active && ' (inativo)'}</span>
+                              <div className="flex gap-1">
+                                <Button type="button" size="sm" variant="ghost" onClick={() => toggleMarmitaProteinActive(p.id, p.is_active)}>{p.is_active ? 'Desativar' : 'Ativar'}</Button>
+                                <Button type="button" size="icon" variant="ghost" onClick={() => deleteMarmitaProtein(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Acompanhamentos */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-base font-semibold">Acompanhamentos</Label>
+                          <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSide(!showFormMarmitaSide)}>
+                            <Plus className="h-4 w-4 mr-1" /> Adicionar
+                          </Button>
+                        </div>
+                        {showFormMarmitaSide && (
+                          <form onSubmit={handleSubmitMarmitaSide} className="p-4 border rounded-lg space-y-3 bg-muted/30">
+                            <div className="space-y-3">
+                              <div>
+                                <Label>Nome</Label>
+                                <Input value={formMarmitaSide.name} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Arroz Branco" required />
+                              </div>
+                              <div>
+                                <Label>Descrição (opcional)</Label>
+                                <Input value={formMarmitaSide.description} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, description: e.target.value }))} placeholder="Ex: Arroz soltinho" />
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label>Categoria</Label>
+                                  <Input value={formMarmitaSide.category} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, category: e.target.value }))} placeholder="Ex: Arroz, Feijão, Salada" />
+                                </div>
+                                <div>
+                                  <Label>Preço por Grama (R$)</Label>
+                                  <Input type="text" value={formMarmitaSide.price_per_gram} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,02" required />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button type="submit" size="sm">Salvar</Button>
+                              <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSide(false)}>Cancelar</Button>
+                            </div>
+                          </form>
+                        )}
+                        <ul className="space-y-2">
+                          {marmitaSides.length === 0 && <p className="text-sm text-muted-foreground">Nenhum acompanhamento. Adicione (ex: Arroz, Feijão, Salada).</p>}
+                          {marmitaSides.map((s) => (
+                            <li key={s.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
+                              <span><strong>{s.name}</strong> {s.category && `(${s.category})`} — {formatCurrency(Number(s.price_per_gram))}/g{!s.is_active && ' (inativo)'}</span>
+                              <div className="flex gap-1">
+                                <Button type="button" size="sm" variant="ghost" onClick={() => toggleMarmitaSideActive(s.id, s.is_active)}>{s.is_active ? 'Desativar' : 'Ativar'}</Button>
+                                <Button type="button" size="icon" variant="ghost" onClick={() => deleteMarmitaSide(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                               </div>
                             </li>
                           ))}

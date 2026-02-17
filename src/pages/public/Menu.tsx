@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { getSubdomain } from '@/lib/subdomain';
-import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge } from '@/types';
+import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream } from 'lucide-react';
@@ -14,6 +14,7 @@ import { isWithinOpeningHours, formatCurrency } from '@/lib/utils';
 import ProductCard from '@/components/public/ProductCard';
 import CartDrawer from '@/components/public/CartDrawer';
 import PizzaModal from '@/components/public/PizzaModal';
+import MarmitaModal from '@/components/public/MarmitaModal';
 
 // MOCK DATA PARA VISUALIZAÇÃO DE DESIGN (Caso banco vazio)
 const MOCK_PRODUCTS: Product[] = [
@@ -33,6 +34,7 @@ const CATEGORY_ICONS: Record<string, any> = {
 
 // Ordem de categorias: pratos principais primeiro, bebidas por último
 const CATEGORY_ORDER: Record<string, number> = {
+  'Marmitas': 0,
   'Pizza': 1,
   'Massas': 2,
   'Lanches': 3,
@@ -81,6 +83,12 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
   const [pizzaEdges, setPizzaEdges] = useState<PizzaEdge[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [pizzaModalOpen, setPizzaModalOpen] = useState(false);
+  
+  // Estados para marmita
+  const [marmitaSizes, setMarmitaSizes] = useState<MarmitaSize[]>([]);
+  const [marmitaProteins, setMarmitaProteins] = useState<MarmitaProtein[]>([]);
+  const [marmitaSides, setMarmitaSides] = useState<MarmitaSide[]>([]);
+  const [marmitaModalOpen, setMarmitaModalOpen] = useState(false);
 
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
 
@@ -169,6 +177,17 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
         if (flavorsRes.data) setPizzaFlavors(flavorsRes.data);
         if (doughsRes.data) setPizzaDoughs(doughsRes.data);
         if (edgesRes.data) setPizzaEdges(edgesRes.data);
+
+        // Buscar dados de marmita
+        const [marmitaSizesRes, marmitaProteinsRes, marmitaSidesRes] = await Promise.all([
+          supabase.from('marmita_sizes').select('*').eq('restaurant_id', restaurantData.id).eq('is_active', true).order('order_index'),
+          supabase.from('marmita_proteins').select('*').eq('restaurant_id', restaurantData.id).eq('is_active', true).order('name'),
+          supabase.from('marmita_sides').select('*').eq('restaurant_id', restaurantData.id).eq('is_active', true).order('category', { ascending: true }).order('name'),
+        ]);
+
+        if (marmitaSizesRes.data) setMarmitaSizes(marmitaSizesRes.data);
+        if (marmitaProteinsRes.data) setMarmitaProteins(marmitaProteinsRes.data);
+        if (marmitaSidesRes.data) setMarmitaSides(marmitaSidesRes.data);
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -181,6 +200,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
     if (product.is_pizza) {
       setSelectedProduct(product);
       setPizzaModalOpen(true);
+    } else if (product.is_marmita) {
+      setSelectedProduct(product);
+      setMarmitaModalOpen(true);
     } else {
       useCartStore.getState().addItem({
         productId: product.id,
@@ -457,7 +479,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
         onCheckout={handleCheckoutNavigation}
       />
 
-      {selectedProduct && (
+      {selectedProduct && selectedProduct.is_pizza && (
         <PizzaModal
           open={pizzaModalOpen}
           onClose={() => {
@@ -469,6 +491,20 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
           flavors={pizzaFlavors}
           doughs={pizzaDoughs}
           edges={pizzaEdges}
+        />
+      )}
+
+      {selectedProduct && selectedProduct.is_marmita && (
+        <MarmitaModal
+          open={marmitaModalOpen}
+          onClose={() => {
+            setMarmitaModalOpen(false);
+            setSelectedProduct(null);
+          }}
+          product={selectedProduct}
+          sizes={marmitaSizes}
+          proteins={marmitaProteins}
+          sides={marmitaSides}
         />
       )}
     </div>

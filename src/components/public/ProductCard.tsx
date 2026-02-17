@@ -94,6 +94,11 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
               Pizza
             </Badge>
           )}
+          {product.is_marmita && (
+            <Badge className="bg-white/95 text-slate-700 backdrop-blur-sm border-0 font-medium text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 shadow-sm">
+              Marmita
+            </Badge>
+          )}
         </div>
 
         <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3">
@@ -133,7 +138,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
           }}
         >
           <span className="text-slate-600 text-base sm:text-sm font-medium group-hover:text-slate-900 transition-colors text-sm-mobile-inline">
-            {product.is_pizza ? 'Personalizar' : 'Adicionar'}
+            {product.is_pizza || product.is_marmita ? 'Personalizar' : 'Adicionar'}
           </span>
           <Button
             type="button"
