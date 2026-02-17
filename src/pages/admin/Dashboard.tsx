@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
-import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, ArrowUpRight, RotateCcw, Loader2, MapPin } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, ArrowUpRight, RotateCcw, Loader2, MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -69,6 +69,19 @@ export default function AdminDashboard() {
   const [peakHours, setPeakHours] = useState<{ hour: number; count: number }[]>([]);
   const [topProducts, setTopProducts] = useState<{ name: string; quantity: number }[]>([]);
   const [bottomProducts, setBottomProducts] = useState<{ name: string; quantity: number }[]>([]);
+  
+  // Métricas de Buffet
+  const [buffetMetrics, setBuffetMetrics] = useState({
+    totalComandas: 0,
+    openComandas: 0,
+    totalBuffetRevenue: 0,
+    averageBuffetTicket: 0,
+    realCMV: 0,
+    profit: 0,
+    profitMargin: 0,
+  });
+  const [idleComandas, setIdleComandas] = useState<{ number: number; minutesOpen: number }[]>([]);
+  const [weightByInterval, setWeightByInterval] = useState<{ interval: string; count: number }[]>([]);
 
   useEffect(() => {
     if (restaurantId) {
@@ -190,10 +203,121 @@ export default function AdminDashboard() {
         .sort((a, b) => b.quantity - a.quantity);
       setTopProducts(sorted.slice(0, 5));
       setBottomProducts(sorted.slice(-5).reverse());
+
+      // Carregar métricas de Buffet
+      await loadBuffetMetrics(startDate);
     } catch (error) {
       console.error('Erro ao carregar métricas:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadBuffetMetrics = async (startDate: Date | null) => {
+    if (!restaurantId) return;
+
+    try {
+      // Carregar comandas fechadas no período
+      let comandasQuery = supabase
+        .from('comandas')
+        .select('*, comanda_items(*, product_id)')
+        .eq('restaurant_id', restaurantId)
+        .eq('status', 'closed');
+      
+      if (startDate) {
+        comandasQuery = comandasQuery.gte('closed_at', startDate.toISOString());
+      }
+      
+      const { data: closedComandas } = await comandasQuery;
+      const closedComandasList = closedComandas || [];
+
+      // Carregar comandas abertas (para alertas de ociosidade)
+      const { data: openComandas } = await supabase
+        .from('comandas')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .eq('status', 'open');
+      
+      const openComandasList = openComandas || [];
+      const now = new Date();
+
+      // Calcular alertas de ociosidade (abertas há mais de 1 hora)
+      const idle = openComandasList
+        .map((c: any) => {
+          const openedAt = new Date(c.opened_at);
+          const minutesOpen = (now.getTime() - openedAt.getTime()) / (1000 * 60);
+          return { number: c.number, minutesOpen: Math.floor(minutesOpen) };
+        })
+        .filter((c: { minutesOpen: number }) => c.minutesOpen > 60)
+        .sort((a: { minutesOpen: number }, b: { minutesOpen: number }) => b.minutesOpen - a.minutesOpen);
+      
+      setIdleComandas(idle);
+
+      // Calcular receita total do buffet
+      const totalBuffetRevenue = closedComandasList.reduce(
+        (sum: number, c: any) => sum + (c.total_amount || 0),
+        0
+      );
+
+      // Calcular CMV Real e Lucro
+      let totalCost = 0;
+      const itemIds = closedComandasList.flatMap((c: any) => 
+        (c.comanda_items || []).map((item: any) => item.product_id).filter(Boolean)
+      );
+      
+      if (itemIds.length > 0) {
+        const { data: products } = await supabase
+          .from('products')
+          .select('id, price_cost')
+          .in('id', [...new Set(itemIds)]);
+        
+        const productsMap = new Map((products || []).map((p: any) => [p.id, p.price_cost || 0]));
+        
+        closedComandasList.forEach((c: any) => {
+          (c.comanda_items || []).forEach((item: any) => {
+            if (item.product_id) {
+              const cost = productsMap.get(item.product_id) || 0;
+              totalCost += cost * item.quantity;
+            }
+          });
+        });
+      }
+
+      const profit = totalBuffetRevenue - totalCost;
+      const profitMargin = totalBuffetRevenue > 0 ? (profit / totalBuffetRevenue) * 100 : 0;
+
+      // Calcular ticket médio
+      const averageBuffetTicket = closedComandasList.length > 0
+        ? totalBuffetRevenue / closedComandasList.length
+        : 0;
+
+      // Calcular pesagens por intervalo de 30 minutos
+      const intervalCounts: Record<string, number> = {};
+      closedComandasList.forEach((c: any) => {
+        const closedAt = new Date(c.closed_at);
+        const hour = closedAt.getHours();
+        const minute = closedAt.getMinutes();
+        const interval = `${String(hour).padStart(2, '0')}:${Math.floor(minute / 30) * 30 === 0 ? '00' : '30'}`;
+        intervalCounts[interval] = (intervalCounts[interval] || 0) + 1;
+      });
+
+      const intervals = Object.entries(intervalCounts)
+        .map(([interval, count]) => ({ interval, count }))
+        .sort((a, b) => a.interval.localeCompare(b.interval));
+
+      setWeightByInterval(intervals);
+
+      setBuffetMetrics({
+        totalComandas: closedComandasList.length,
+        openComandas: openComandasList.length,
+        totalBuffetRevenue,
+        averageBuffetTicket,
+        realCMV: totalCost,
+        profit,
+        profitMargin,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar métricas de buffet:', error);
     }
   };
 
@@ -581,6 +705,146 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Métricas de Buffet */}
+        {buffetMetrics.totalComandas > 0 && (
+          <>
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 min-w-0">
+              <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                    <Scale className="h-4 w-4 text-primary" />
+                    Comandas Buffet
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-foreground">{buffetMetrics.totalComandas}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {buffetMetrics.openComandas} aberta(s)
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                    Receita Buffet
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-foreground">
+                    {formatCurrency(buffetMetrics.totalBuffetRevenue)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Ticket médio: {formatCurrency(buffetMetrics.averageBuffetTicket)}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                    <TrendingUpIcon className="h-4 w-4 text-primary" />
+                    CMV Real
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-foreground">
+                    {formatCurrency(buffetMetrics.realCMV)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Margem: {buffetMetrics.profitMargin.toFixed(1)}%
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    Lucro Real
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-emerald-600">
+                    {formatCurrency(buffetMetrics.profit)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {buffetMetrics.profitMargin.toFixed(1)}% de margem
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Alertas de Ociosidade */}
+            {idleComandas.length > 0 && (
+              <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2 text-amber-900 dark:text-amber-100">
+                    <AlertTriangle className="h-5 w-5" />
+                    Alertas de Ociosidade
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Comandas abertas há mais de 1 hora sem fechamento
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {idleComandas.map((c) => (
+                      <div key={c.number} className="flex items-center justify-between p-2 bg-white dark:bg-slate-900 rounded">
+                        <span className="font-medium">Comanda #{c.number}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {Math.floor(c.minutesOpen / 60)}h {c.minutesOpen % 60}min aberta
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Desempenho por Horário */}
+            {weightByInterval.length > 0 && (
+              <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-xl font-bold text-foreground">
+                    Pesagens por Intervalo (30min)
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Volume de pesagens para planejamento de reposição
+                  </p>
+                </CardHeader>
+                <CardContent className="min-w-0">
+                  <div className="w-full min-h-[300px] min-w-0">
+                    <ResponsiveContainer width="100%" height={300} minWidth={0}>
+                      <BarChart data={weightByInterval}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="interval" stroke="#888" style={{ fontSize: '12px' }} />
+                        <YAxis stroke="#888" style={{ fontSize: '12px' }} />
+                        <Tooltip
+                          formatter={(value: number) => `${value} pesagem(ns)`}
+                          contentStyle={{
+                            borderRadius: '8px',
+                            border: 'none',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                          }}
+                        />
+                        <Bar dataKey="count" fill="url(#colorWeight)" radius={[8, 8, 0, 0]} />
+                        <defs>
+                          <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#10b981" stopOpacity={0.9}/>
+                            <stop offset="100%" stopColor="#059669" stopOpacity={0.9}/>
+                          </linearGradient>
+                        </defs>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
 
         {/* Resetar dados da dashboard */}
         <Card className="border-dashed border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20">

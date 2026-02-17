@@ -19,6 +19,8 @@ import {
   BookOpen,
   Copy,
   Bike,
+  Scale,
+  Package,
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -35,6 +37,8 @@ const getNavItems = (basePath: string) => {
     { name: 'Dashboard', href: base, icon: LayoutDashboard },
     { name: 'Pedidos', href: `${base}/orders`, icon: ClipboardList },
     { name: 'Cardápio', href: `${base}/menu`, icon: UtensilsCrossed },
+    { name: 'Buffet', href: `${base}/buffet`, icon: Scale },
+    { name: 'Produtos', href: `${base}/products`, icon: Package },
     { name: 'Zonas de Entrega', href: `${base}/delivery-zones`, icon: MapPin },
     { name: 'Entregadores', href: `${base}/couriers`, icon: Bike },
     { name: 'Configurações', href: `${base}/settings`, icon: Settings },

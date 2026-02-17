@@ -106,9 +106,13 @@ export interface Product {
   name: string;
   description?: string;
   price: number;
+  price_sale?: number; // Preço de venda (para buffet)
+  price_cost?: number; // Custo do produto (para cálculo de CMV)
   image_url?: string;
   is_pizza: boolean;
   is_marmita?: boolean;
+  is_by_weight?: boolean; // Se true, produto vendido por peso (buffet)
+  sku?: string; // Código SKU do produto
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -319,4 +323,38 @@ export interface RestaurantWithMetrics extends Restaurant {
   total_orders?: number;
   total_revenue?: number;
   active_orders?: number;
+}
+
+// ==================== BUFFET COMANDAS TYPES ====================
+
+export type ComandaStatus = 'open' | 'closed';
+
+export interface Comanda {
+  id: string;
+  restaurant_id: string;
+  number: number;
+  status: ComandaStatus;
+  total_amount: number;
+  opened_at: string;
+  closed_at?: string;
+  last_sync?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ComandaItem {
+  id: string;
+  comanda_id: string;
+  product_id?: string | null;
+  description: string;
+  quantity: number; // Pode ser decimal para peso (ex: 0.350 para 350g)
+  unit_price: number;
+  total_price: number;
+  is_pending_sync?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ComandaWithItems extends Comanda {
+  items?: ComandaItem[];
 }
