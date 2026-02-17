@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { DatabaseOrder } from '@/types';
@@ -6,7 +7,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Clock, AlertTriangle, ChefHat, ArrowRight } from 'lucide-react';
+import { Clock, AlertTriangle, ChefHat, ArrowRight, LayoutDashboard } from 'lucide-react';
 
 // MOCK DATA PARA KDS (Visualização se vazio)
 const MOCK_ORDERS: any[] = [
@@ -161,7 +162,16 @@ export default function KitchenDisplay() {
                 </div>
               </div>
             </div>
-            <div className="text-right">
+            <div className="flex items-center gap-4">
+              {user?.role === 'restaurant_admin' && (
+                <Link
+                  to="/admin"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium transition-colors border border-slate-700"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Modo recepcionista
+                </Link>
+              )}
               <p className="text-3xl font-black font-mono tabular-nums">
                 {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
               </p>

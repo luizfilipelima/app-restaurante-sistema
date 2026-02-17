@@ -37,8 +37,8 @@ Abra **`scripts/criar-usuarios.js`** e edite o array **`USUARIOS_CRIAR`**:
 
 - **email**: e-mail do usuário  
 - **password**: senha (troque depois no app se quiser)  
-- **role**: `super_admin` | `restaurant_admin` | `kitchen`  
-- **restaurant_id**: para `restaurant_admin` e `kitchen` use o UUID do restaurante; para **super_admin** use `null` ou omita.
+- **role**: `super_admin` | `restaurant_admin`  
+- **restaurant_id**: para **restaurant_admin** use o UUID do restaurante; para **super_admin** use `null` ou omita. O admin do restaurante pode alternar entre modo recepcionista (painel) e modo cozinha no app.
 
 ### Adicionar um novo super_admin
 
@@ -57,7 +57,7 @@ Abra **`scripts/criar-usuarios.js`** e edite o array **`USUARIOS_CRIAR`**:
 3. Salve e execute: `node --env-file=.env.script scripts/criar-usuarios.js`  
 4. A pessoa já pode fazer login no app com esse e-mail e senha.
 
-Exemplo (admin/cozinha de restaurante):
+Exemplo (admin do restaurante):
 
 ```javascript
 const USUARIOS_CRIAR = [
@@ -67,16 +67,10 @@ const USUARIOS_CRIAR = [
     role: 'restaurant_admin',
     restaurant_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', // ID real do restaurante
   },
-  {
-    email: 'cozinha@pizzaria.com',
-    password: 'SenhaSegura123!',
-    role: 'kitchen',
-    restaurant_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-  },
 ];
 ```
 
-Você pode adicionar quantos usuários quiser (sempre com `role` e `restaurant_id` corretos).
+O admin do restaurante acessa o painel (recepcionista) e pode alternar para o modo cozinha no próprio app. Você pode adicionar quantos usuários quiser (sempre com `role` e `restaurant_id` corretos).
 
 ### 3. Rodar o script
 

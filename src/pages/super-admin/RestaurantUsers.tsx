@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const ROLE_LABELS: Record<string, string> = {
   [UserRole.RESTAURANT_ADMIN]: 'Admin do restaurante',
-  [UserRole.KITCHEN]: 'Cozinha',
+  [UserRole.KITCHEN]: 'Cozinha', // legado: apenas exibição na lista
 };
 
 export default function SuperAdminRestaurantUsers() {
@@ -172,10 +172,7 @@ export default function SuperAdminRestaurantUsers() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={UserRole.RESTAURANT_ADMIN}>
-                      {ROLE_LABELS[UserRole.RESTAURANT_ADMIN]}
-                    </SelectItem>
-                    <SelectItem value={UserRole.KITCHEN}>
-                      {ROLE_LABELS[UserRole.KITCHEN]}
+                      {ROLE_LABELS[UserRole.RESTAURANT_ADMIN]} (recepcionista e cozinha)
                     </SelectItem>
                   </SelectContent>
                 </Select>

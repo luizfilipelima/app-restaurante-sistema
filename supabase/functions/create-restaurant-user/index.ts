@@ -73,10 +73,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const allowedRoles = ['restaurant_admin', 'kitchen'];
+    const allowedRoles = ['restaurant_admin'];
     if (!allowedRoles.includes(role)) {
       return new Response(
-        JSON.stringify({ error: 'role deve ser restaurant_admin ou kitchen' }),
+        JSON.stringify({ error: 'role deve ser restaurant_admin' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

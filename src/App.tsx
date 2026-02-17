@@ -94,10 +94,11 @@ function App() {
           {adminRoutes}
         </Route>
 
+        {/* Cozinha: acessível pelo admin do restaurante (modo cozinha) ou por usuário cozinha legado */}
         <Route
           path="/kitchen"
           element={
-            <ProtectedRoute allowedRoles={[UserRole.KITCHEN]}>
+            <ProtectedRoute allowedRoles={[UserRole.KITCHEN, UserRole.RESTAURANT_ADMIN]}>
               <KitchenDisplay />
             </ProtectedRoute>
           }

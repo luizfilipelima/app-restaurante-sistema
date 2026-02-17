@@ -26,9 +26,9 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 
 /**
  * Lista de usuários a criar.
- * - role: 'super_admin' | 'restaurant_admin' | 'kitchen'
+ * - role: 'super_admin' | 'restaurant_admin'
  * - super_admin: não precisa de restaurant_id (pode omitir ou usar null)
- * - restaurant_admin e kitchen: obrigatório restaurant_id (UUID do restaurante)
+ * - restaurant_admin: obrigatório restaurant_id; no painel pode usar modo recepcionista e modo cozinha
  *   Para obter: no Supabase SQL Editor: SELECT id, name FROM restaurants;
  * - login: opcional; permite entrar com usuário em vez de email na tela de login.
  */
@@ -46,13 +46,7 @@ const USUARIOS_CRIAR = [
     role: 'restaurant_admin',
     restaurant_id: 'COLE_O_RESTAURANT_ID_AQUI', // UUID do restaurante
   },
-  {
-    email: 'cozinha@meurestaurante.com',
-    password: 'TroqueEstaSenha123!',
-    role: 'kitchen',
-    restaurant_id: 'COLE_O_RESTAURANT_ID_AQUI',
-  },
-  // Adicione mais usuários conforme necessário (super_admin, restaurant_admin ou kitchen)
+  // Adicione mais usuários (super_admin ou restaurant_admin)
 ];
 
 // ========== EXECUÇÃO ==========
