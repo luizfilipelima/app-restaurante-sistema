@@ -27,10 +27,18 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 /**
  * Lista de usuários a criar.
  * - role: 'super_admin' | 'restaurant_admin' | 'kitchen'
- * - restaurant_id: obrigatório para restaurant_admin e kitchen (UUID do restaurante)
+ * - super_admin: não precisa de restaurant_id (pode omitir ou usar null)
+ * - restaurant_admin e kitchen: obrigatório restaurant_id (UUID do restaurante)
  *   Para obter: no Supabase SQL Editor: SELECT id, name FROM restaurants;
  */
 const USUARIOS_CRIAR = [
+  // Exemplo: descomente e edite para adicionar um super_admin
+  // {
+  //   email: 'novo-super-admin@exemplo.com',
+  //   password: 'TroqueEstaSenha123!',
+  //   role: 'super_admin',
+  //   restaurant_id: null, // super_admin não precisa; pode omitir
+  // },
   {
     email: 'admin@meurestaurante.com',
     password: 'TroqueEstaSenha123!',
@@ -43,13 +51,7 @@ const USUARIOS_CRIAR = [
     role: 'kitchen',
     restaurant_id: 'COLE_O_RESTAURANT_ID_AQUI',
   },
-  // Adicione mais usuários conforme necessário:
-  // {
-  //   email: 'outro@email.com',
-  //   password: 'SenhaSegura123!',
-  //   role: 'kitchen',
-  //   restaurant_id: 'uuid-do-restaurante',
-  // },
+  // Adicione mais usuários conforme necessário (super_admin, restaurant_admin ou kitchen)
 ];
 
 // ========== EXECUÇÃO ==========
@@ -59,7 +61,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 async function criarUsuario({ email, password, role, restaurant_id }) {
-  if ((role === 'restaurant_admin' || role === 'kitchen') && !restaurant_id) {
+  if ((role === 'restaurant_admin' || role === 'kitchen') && (!restaurant_id || restaurant_id === 'COLE_O_RESTAURANT_ID_AQUI')) {
     throw new Error(`Usuário ${email}: restaurant_id é obrigatório para role ${role}`);
   }
   if (restaurant_id === 'COLE_O_RESTAURANT_ID_AQUI') {

@@ -37,10 +37,27 @@ Abra **`scripts/criar-usuarios.js`** e edite o array **`USUARIOS_CRIAR`**:
 
 - **email**: e-mail do usuário  
 - **password**: senha (troque depois no app se quiser)  
-- **role**: `restaurant_admin` ou `kitchen`  
-- **restaurant_id**: UUID do restaurante (o `id` que você copiou do `SELECT id, name FROM restaurants;`)
+- **role**: `super_admin` | `restaurant_admin` | `kitchen`  
+- **restaurant_id**: para `restaurant_admin` e `kitchen` use o UUID do restaurante; para **super_admin** use `null` ou omita.
 
-Exemplo:
+### Adicionar um novo super_admin
+
+1. Edite **`scripts/criar-usuarios.js`**.
+2. No array **`USUARIOS_CRIAR`**, adicione um objeto como:
+
+```javascript
+{
+  email: 'novo-admin@sistema.com',
+  password: 'SenhaForte123!',
+  role: 'super_admin',
+  restaurant_id: null,   // super_admin não precisa; pode omitir
+}
+```
+
+3. Salve e execute: `node --env-file=.env.script scripts/criar-usuarios.js`  
+4. A pessoa já pode fazer login no app com esse e-mail e senha.
+
+Exemplo (admin/cozinha de restaurante):
 
 ```javascript
 const USUARIOS_CRIAR = [
@@ -98,9 +115,11 @@ Depois disso, os usuários já podem fazer login no app com o e-mail e a senha q
 
 ## Super Admin
 
-O **super admin** você continua criando como antes:
+Você pode criar **super_admin** de duas formas:
 
-1. **Authentication** → **Users** → **Add user** (e-mail e senha, marcar **Auto Confirm**).
+**Opção 1 – Pelo script (recomendado)**  
+Use o passo [Adicionar um novo super_admin](#adicionar-um-novo-super_admin) acima: adicione um item com `role: 'super_admin'` e `restaurant_id: null` em `USUARIOS_CRIAR` e rode o script.
+
+**Opção 2 – Manual**  
+1. **Authentication** → **Users** → **Add user** (e-mail e senha, marcar **Auto Confirm**).  
 2. **SQL Editor** → rodar o conteúdo de **`supabase-criar-super-admin.sql`** (com o e-mail e o User UID desse usuário).
-
-O script **`criar-usuarios.js`** é pensado para **restaurant_admin** e **kitchen**; o super admin é único e costuma ser configurado uma vez à mão.
