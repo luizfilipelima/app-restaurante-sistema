@@ -245,7 +245,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
         : restaurant.is_active;
 
   return (
-    <div className="min-h-screen bg-slate-100/80 pb-32 md:pb-28 font-sans antialiased safe-area-inset-bottom">
+    <div className={`min-h-screen bg-slate-100/80 font-sans antialiased ${getItemsCount() > 0 ? 'pb-24 md:pb-28' : 'pb-8 md:pb-8'} safe-area-inset-bottom`}>
       {/* Header - Mobile First */}
       <header className="bg-white/95 backdrop-blur-sm border-b border-slate-200/80 sticky top-0 z-20 safe-area-inset-top">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-6xl">
@@ -402,19 +402,42 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
 
       {/* Cart FAB (Mobile) - Mobile First */}
       {getItemsCount() > 0 && (
-        <div className="fixed bottom-4 sm:bottom-6 left-3 sm:left-4 right-3 sm:right-4 z-40 md:hidden safe-area-inset-bottom">
-          <Button
-            className="w-full h-14 rounded-xl sm:rounded-2xl bg-slate-900 text-white hover:bg-slate-800 active:bg-slate-700 flex items-center justify-between px-4 sm:px-6 transition-all active:scale-[0.98] font-semibold text-base sm:text-base border-0 shadow-2xl touch-manipulation text-sm-mobile-block"
-            onClick={() => handleCheckoutNavigation()}
-          >
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <span className="bg-white/15 px-2.5 sm:px-3 py-1 rounded-lg text-base sm:text-sm font-bold whitespace-nowrap text-sm-mobile-inline">
-                {getItemsCount()} {getItemsCount() === 1 ? 'item' : 'itens'}
-              </span>
-              <span className="truncate">Ver carrinho</span>
+        <div 
+          className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
+          style={{ 
+            paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+            paddingLeft: 'max(12px, env(safe-area-inset-left))',
+            paddingRight: 'max(12px, env(safe-area-inset-right))'
+          }}
+        >
+          <div className="bg-white/98 backdrop-blur-xl border-t border-slate-200/60 shadow-[0_-8px_24px_-4px_rgba(0,0,0,0.12)]">
+            <div className="container mx-auto px-3 sm:px-4 py-3 max-w-6xl">
+              <Button
+                className="w-full h-14 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 hover:from-slate-800 hover:via-slate-700 hover:to-slate-800 active:from-slate-700 active:via-slate-600 active:to-slate-700 text-white flex items-center justify-between px-3 sm:px-4 transition-all duration-200 active:scale-[0.98] font-semibold border-0 shadow-xl shadow-slate-900/25 hover:shadow-2xl hover:shadow-slate-900/30 touch-manipulation group"
+                onClick={() => handleCheckoutNavigation()}
+              >
+                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                  <div className="bg-white/25 backdrop-blur-sm px-3 py-1.5 rounded-xl flex items-center justify-center min-w-[56px] border border-white/20 shadow-sm">
+                    <span className="text-xs sm:text-sm font-bold text-white tabular-nums">
+                      {getItemsCount()}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-start min-w-0 flex-1">
+                    <span className="text-white font-semibold text-sm sm:text-base truncate w-full">
+                      Ver carrinho
+                    </span>
+                    <span className="text-white/70 text-[10px] sm:text-xs font-medium">
+                      {getItemsCount()} {getItemsCount() === 1 ? 'item' : 'itens'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 bg-white/15 px-3 sm:px-4 py-2 rounded-xl border border-white/20 group-hover:bg-white/20 transition-colors">
+                  <span className="font-bold text-sm sm:text-base text-white">Finalizar</span>
+                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-white flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </Button>
             </div>
-            <span className="flex items-center gap-1 flex-shrink-0">Finalizar <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" /></span>
-          </Button>
+          </div>
         </div>
       )}
 
