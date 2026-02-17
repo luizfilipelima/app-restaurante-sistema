@@ -86,29 +86,29 @@ export default function PizzaModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-2xl h-[100dvh] md:h-auto md:max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col bg-slate-50">
+      <DialogContent className="max-w-2xl h-[100dvh] md:h-auto md:max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col bg-gradient-to-b from-slate-50 to-white">
         
         {/* Header Fixo - Mobile First */}
-        <div className="pt-10 pb-4 px-5 sm:pt-6 sm:pb-4 sm:px-6 border-b border-slate-200 bg-white z-10 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-              <PizzaIcon className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+        <div className="pt-8 pb-5 px-5 sm:pt-6 sm:pb-4 sm:px-6 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm z-10 flex-shrink-0 shadow-sm">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-gradient-to-br from-orange-100 to-orange-50 flex items-center justify-center flex-shrink-0 shadow-sm ring-2 ring-orange-100/50">
+              <PizzaIcon className="h-6 w-6 sm:h-7 sm:w-7 text-orange-600" />
             </div>
             <div className="min-w-0 flex-1">
-              <DialogTitle className="text-base sm:text-lg font-bold text-slate-900 truncate">{product.name}</DialogTitle>
-              <p className="text-[10px] sm:text-xs text-slate-500">Monte sua pizza em 3 passos</p>
+              <DialogTitle className="text-lg sm:text-xl font-bold text-slate-900 truncate leading-tight">{product.name}</DialogTitle>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Monte sua pizza em 3 passos</p>
             </div>
           </div>
         </div>
 
         {/* Scrollable Content - Mobile First */}
-        <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth py-6 px-5 sm:p-6 space-y-8">
+        <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth py-6 px-5 sm:py-6 sm:px-6 space-y-8">
           
           {/* Aviso quando não há tamanhos configurados */}
           {sizes.length === 0 && (
-            <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-amber-800">
-              <p className="font-semibold mb-1">Cardápio em configuração</p>
-              <p className="text-sm">
+            <div className="rounded-2xl bg-amber-50/80 border border-amber-200/80 p-5 text-amber-800 shadow-sm">
+              <p className="font-semibold mb-2 text-base">Cardápio em configuração</p>
+              <p className="text-sm leading-relaxed">
                 Os tamanhos desta pizza ainda não foram configurados pelo restaurante.
                 Em breve você poderá personalizar aqui. Por enquanto, entre em contato pelo WhatsApp para fazer o pedido.
               </p>
@@ -116,34 +116,36 @@ export default function PizzaModal({
           )}
 
           {/* PASSO 1: Tamanho - Mobile First */}
-          <section className="space-y-2 sm:space-y-3">
-            <div className="flex items-center gap-2 mb-1 sm:mb-2">
-              <div className="bg-slate-900 text-white w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">1</div>
-              <Label className="text-base sm:text-lg font-bold text-slate-900">Escolha o Tamanho</Label>
+          <section className="space-y-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">1</div>
+              <Label className="text-lg sm:text-xl font-bold text-slate-900">Escolha o Tamanho</Label>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               {sizes.map((size) => (
                 <button
                   key={size.id}
                   onClick={() => setSelectedSize(size)}
-                  className={`group relative p-3 sm:p-4 rounded-xl text-left transition-all border-2 touch-manipulation active:scale-[0.98] ${
+                  className={`group relative p-4 sm:p-5 rounded-2xl text-left transition-all duration-200 border-2 touch-manipulation min-h-[100px] sm:min-h-[110px] ${
                     selectedSize?.id === size.id
-                      ? 'border-orange-500 bg-orange-50 shadow-sm'
-                      : 'border-slate-200 bg-white active:border-orange-200'
+                      ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-orange-100/50 shadow-md shadow-orange-500/20 scale-[1.02]'
+                      : 'border-slate-200 bg-white hover:border-orange-200 hover:bg-slate-50 active:scale-[0.98]'
                   }`}
                 >
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className={`font-bold text-base sm:text-lg ${selectedSize?.id === size.id ? 'text-orange-700' : 'text-slate-700'}`}>
+                  <div className="flex flex-col h-full justify-between">
+                    <div className="flex-1">
+                      <div className={`font-bold text-lg sm:text-xl mb-2 ${selectedSize?.id === size.id ? 'text-orange-700' : 'text-slate-800'}`}>
                         {size.name}
                       </div>
-                      <div className="text-xs text-slate-500 mt-0.5 sm:mt-1">
+                      <div className={`text-sm font-semibold ${selectedSize?.id === size.id ? 'text-orange-600' : 'text-slate-500'}`}>
                         {formatCurrency(product.price)}
                       </div>
                     </div>
                     {selectedSize?.id === size.id && (
-                      <div className="bg-orange-500 rounded-full p-1 flex-shrink-0">
-                        <Check className="h-3 w-3 text-white" />
+                      <div className="mt-3 flex justify-end">
+                        <div className="bg-orange-500 rounded-full p-1.5 flex-shrink-0 shadow-sm">
+                          <Check className="h-4 w-4 text-white" />
+                        </div>
                       </div>
                     )}
                   </div>
@@ -154,27 +156,27 @@ export default function PizzaModal({
 
           {/* PASSO 2: Massa e Borda - Mobile First */}
           {selectedSize && (
-            <section className="space-y-3 sm:space-y-4 animate-slide-in-bottom">
-              <div className="flex items-center gap-2">
-                <div className="bg-slate-900 text-white w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</div>
-                <Label className="text-base sm:text-lg font-bold text-slate-900">Massa e Borda</Label>
+            <section className="space-y-5 animate-slide-in-bottom">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">2</div>
+                <Label className="text-lg sm:text-xl font-bold text-slate-900">Massa e Borda</Label>
               </div>
               
               {doughs.length > 0 && (
-                <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 space-y-2.5 sm:space-y-3">
-                  <span className="text-xs sm:text-sm font-semibold text-slate-500 uppercase tracking-wider">Tipo de Massa</span>
-                  <div className="flex flex-wrap gap-2">
+                <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+                  <span className="text-xs sm:text-sm font-semibold text-slate-500 uppercase tracking-wider block mb-1">Tipo de Massa</span>
+                  <div className="flex flex-wrap gap-2.5 sm:gap-3">
                     {doughs.map((dough) => (
                       <button
                         key={dough.id}
                         onClick={() => setSelectedDough(dough)}
-                        className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium border transition-all touch-manipulation active:scale-95 ${
+                        className={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold border-2 transition-all duration-200 touch-manipulation min-h-[44px] ${
                           selectedDough?.id === dough.id
-                            ? 'bg-slate-800 text-white border-slate-800'
-                            : 'bg-white text-slate-600 border-slate-200 active:border-slate-400'
+                            ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white border-slate-800 shadow-md scale-105'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50 active:scale-95'
                         }`}
                       >
-                        {dough.name} {dough.extra_price > 0 && `(+${formatCurrency(dough.extra_price)})`}
+                        {dough.name} {dough.extra_price > 0 && <span className="text-xs opacity-90">(+{formatCurrency(dough.extra_price)})</span>}
                       </button>
                     ))}
                   </div>
@@ -182,28 +184,43 @@ export default function PizzaModal({
               )}
 
               {edges.length > 0 && (
-                <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 space-y-2 sm:space-y-2.5">
-                  <span className="text-xs sm:text-sm font-semibold text-slate-500 uppercase tracking-wider">Borda Recheada</span>
-                  <div className="space-y-2">
+                <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+                  <span className="text-xs sm:text-sm font-semibold text-slate-500 uppercase tracking-wider block mb-1">Borda Recheada</span>
+                  <div className="space-y-2.5">
                     <button
                       onClick={() => setSelectedEdge(null)}
-                      className={`w-full flex items-center justify-between p-2.5 sm:p-3 rounded-lg border text-left touch-manipulation active:scale-[0.98] ${
-                        !selectedEdge ? 'border-orange-500 bg-orange-50' : 'border-slate-200 active:border-slate-300'
+                      className={`w-full flex items-center justify-between p-4 rounded-xl border-2 text-left touch-manipulation min-h-[52px] transition-all duration-200 ${
+                        !selectedEdge 
+                          ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-orange-100/50 shadow-sm' 
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98]'
                       }`}
                     >
-                      <span className="font-medium text-sm sm:text-base">Sem borda</span>
-                      {!selectedEdge && <Check className="h-4 w-4 text-orange-500 flex-shrink-0" />}
+                      <span className="font-semibold text-base text-slate-800">Sem borda</span>
+                      {!selectedEdge && (
+                        <div className="bg-orange-500 rounded-full p-1.5 flex-shrink-0">
+                          <Check className="h-4 w-4 text-white" />
+                        </div>
+                      )}
                     </button>
                     {edges.map((edge) => (
                       <button
                         key={edge.id}
                         onClick={() => setSelectedEdge(edge)}
-                        className={`w-full flex items-center justify-between p-2.5 sm:p-3 rounded-lg border text-left touch-manipulation active:scale-[0.98] ${
-                          selectedEdge?.id === edge.id ? 'border-orange-500 bg-orange-50' : 'border-slate-200 active:border-slate-300'
+                        className={`w-full flex items-center justify-between p-4 rounded-xl border-2 text-left touch-manipulation min-h-[52px] transition-all duration-200 ${
+                          selectedEdge?.id === edge.id 
+                            ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-orange-100/50 shadow-sm' 
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98]'
                         }`}
                       >
-                        <span className="font-medium text-sm sm:text-base">{edge.name}</span>
-                        <span className="text-xs sm:text-sm font-semibold text-slate-600 flex-shrink-0 ml-2">+{formatCurrency(edge.price)}</span>
+                        <span className="font-semibold text-base text-slate-800">{edge.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-slate-600">+{formatCurrency(edge.price)}</span>
+                          {selectedEdge?.id === edge.id && (
+                            <div className="bg-orange-500 rounded-full p-1.5 flex-shrink-0">
+                              <Check className="h-4 w-4 text-white" />
+                            </div>
+                          )}
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -214,52 +231,53 @@ export default function PizzaModal({
 
           {/* PASSO 3: Observações - Mobile First */}
           {selectedSize && (
-            <section className="space-y-2 sm:space-y-3 pb-2 sm:pb-4 animate-slide-in-bottom">
-              <div className="flex items-center gap-2">
-                <div className="bg-slate-900 text-white w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">3</div>
-                <Label className="text-base sm:text-lg font-bold text-slate-900">Observações</Label>
+            <section className="space-y-4 pb-4 animate-slide-in-bottom">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">3</div>
+                <Label className="text-lg sm:text-xl font-bold text-slate-900">Observações</Label>
               </div>
               <Textarea
                 placeholder="Ex: Tirar a cebola, cortar em 8 pedaços, etc."
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
-                rows={3}
-                className="bg-white border-slate-200 focus:border-orange-500 text-sm sm:text-base touch-manipulation resize-none"
+                rows={4}
+                className="bg-white border-2 border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 rounded-xl text-base p-4 touch-manipulation resize-none min-h-[100px] transition-all duration-200"
               />
             </section>
           )}
         </div>
 
         {/* Footer Actions - Mobile First */}
-        <div className="pt-4 pb-8 px-5 sm:pt-5 sm:pb-6 sm:px-6 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 flex-shrink-0">
-          <div className="flex items-center justify-between mb-3 sm:mb-4 gap-3">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="flex items-center border rounded-lg overflow-hidden">
+        <div className="pt-5 pb-8 px-5 sm:pt-6 sm:pb-6 sm:px-6 bg-white/95 backdrop-blur-sm border-t border-slate-200/80 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.08)] z-20 flex-shrink-0">
+          <div className="flex items-center justify-between mb-4 gap-4">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center border-2 border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
                 <button 
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-2.5 sm:px-3 py-2 bg-slate-50 active:bg-slate-100 text-slate-600 touch-manipulation active:scale-95"
+                  className="px-4 py-3 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 touch-manipulation active:scale-95 min-w-[44px] flex items-center justify-center transition-colors"
+                  disabled={quantity <= 1}
                 >
-                  <Minus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <Minus className="h-5 w-5" />
                 </button>
-                <div className="px-2.5 sm:px-3 py-2 font-bold text-sm sm:text-base text-slate-900 bg-white min-w-[2rem] text-center">{quantity}</div>
+                <div className="px-5 py-3 font-bold text-lg text-slate-900 bg-white min-w-[3rem] text-center border-x border-slate-200">{quantity}</div>
                 <button 
                   onClick={() => setQuantity(quantity + 1)}
-                  className="px-2.5 sm:px-3 py-2 bg-slate-50 active:bg-slate-100 text-slate-600 touch-manipulation active:scale-95"
+                  className="px-4 py-3 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 touch-manipulation active:scale-95 min-w-[44px] flex items-center justify-center transition-colors"
                 >
-                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <Plus className="h-5 w-5" />
                 </button>
               </div>
             </div>
             <div className="text-right min-w-0 flex-shrink-0">
-              <span className="text-[10px] sm:text-xs text-slate-500 block">Total</span>
-              <span className="text-lg sm:text-2xl font-bold text-slate-900 whitespace-nowrap">{formatCurrency(calculatePrice() * quantity)}</span>
+              <span className="text-xs text-slate-500 block mb-1">Total</span>
+              <span className="text-xl sm:text-2xl font-bold text-slate-900 whitespace-nowrap">{formatCurrency(calculatePrice() * quantity)}</span>
             </div>
           </div>
           <Button
             size="lg"
             onClick={handleAddToCart}
             disabled={!canAddToCart}
-            className="w-full bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white font-bold h-11 sm:h-12 rounded-xl shadow-lg shadow-orange-200 touch-manipulation active:scale-[0.98] text-sm sm:text-base"
+            className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 active:from-orange-800 active:to-orange-700 text-white font-bold h-14 sm:h-14 rounded-2xl shadow-lg shadow-orange-500/30 touch-manipulation active:scale-[0.98] text-base sm:text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Adicionar ao Carrinho
           </Button>
