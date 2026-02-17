@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, Check, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer } from 'lucide-react';
 import { useCouriers } from '@/hooks/useCouriers';
 import { usePrinter } from '@/hooks/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
@@ -402,9 +402,7 @@ export default function AdminOrders() {
                     statusOrders.map((order, index) => (
                       <Card
                         key={order.id}
-                        className={`border-2 hover:shadow-premium transition-shadow ${
-                          order.is_paid ? 'border-green-500 bg-green-50/50' : config.borderColor
-                        }`}
+                        className={`border-2 hover:shadow-premium transition-shadow ${config.borderColor}`}
                         style={{ animationDelay: `${index * 50}ms` }}
                       >
                         <CardHeader className="pb-3 space-y-2">
@@ -446,12 +444,6 @@ export default function AdminOrders() {
                               >
                                 <X className="h-4 w-4" />
                               </Button>
-                              {order.is_paid && (
-                                <Badge className="bg-green-500 text-white border-0 shadow-sm">
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Pago
-                                </Badge>
-                              )}
                             </div>
                           </div>
                         </CardHeader>
