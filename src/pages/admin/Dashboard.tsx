@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
-import { DollarSign, ShoppingCart, TrendingUp, Clock, ArrowUpRight, RotateCcw, Loader2 } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, ArrowUpRight, RotateCcw, Loader2, MapPin } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -33,12 +33,26 @@ import {
 } from 'recharts';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+const PERIOD_OPTIONS = [
+  { value: '30', label: 'Últimos 30 dias' },
+  { value: '365', label: 'Último ano' },
+  { value: 'max', label: 'Máximo (todos)' },
+] as const;
+type PeriodValue = '30' | '365' | 'max';
 
 export default function AdminDashboard() {
   const restaurantId = useAdminRestaurantId();
   const { user } = useAuthStore();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<PeriodValue>('30');
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetPassword, setResetPassword] = useState('');
   const [resetting, setResetting] = useState(false);
@@ -51,12 +65,16 @@ export default function AdminDashboard() {
   });
   const [dailyRevenue, setDailyRevenue] = useState<any[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [topZone, setTopZone] = useState<{ name: string; count: number } | null>(null);
+  const [peakHours, setPeakHours] = useState<{ hour: number; count: number }[]>([]);
+  const [topProducts, setTopProducts] = useState<{ name: string; quantity: number }[]>([]);
+  const [bottomProducts, setBottomProducts] = useState<{ name: string; quantity: number }[]>([]);
 
   useEffect(() => {
     if (restaurantId) {
       loadMetrics();
     }
-  }, [restaurantId]);
+  }, [restaurantId, period]);
 
   const loadMetrics = async () => {
     if (!restaurantId) return;
@@ -64,31 +82,46 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
 
-      // Buscar pedidos dos últimos 30 dias
-      const thirtyDaysAgo = subDays(new Date(), 30);
+      let startDate: Date | null = null;
+      if (period === '30') startDate = subDays(new Date(), 30);
+      else if (period === '365') startDate = subDays(new Date(), 365);
 
-      const { data: orders, error } = await supabase
+      let query = supabase
         .from('orders')
         .select('*')
-        .eq('restaurant_id', restaurantId)
-        .gte('created_at', thirtyDaysAgo.toISOString());
+        .eq('restaurant_id', restaurantId);
+      if (startDate) query = query.gte('created_at', startDate.toISOString());
+      const { data: orders, error } = await query;
 
       if (error) throw error;
+      const orderList = orders || [];
 
-      // Calcular métricas
-      const totalRevenue = orders?.reduce((sum, order) => sum + order.total, 0) || 0;
-      const totalOrders = orders?.length || 0;
-      const averageTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-      const pendingOrders = orders?.filter((o) => o.status === 'pending').length || 0;
-
-      setMetrics({
-        totalRevenue,
-        totalOrders,
-        averageTicket,
-        pendingOrders,
+      const orderIds = orderList.map((o: { id: string }) => o.id);
+      const { data: zonesData } = await supabase
+        .from('delivery_zones')
+        .select('id, location_name')
+        .eq('restaurant_id', restaurantId);
+      const zonesMap: Record<string, string> = {};
+      (zonesData || []).forEach((z: { id: string; location_name: string }) => {
+        zonesMap[z.id] = z.location_name || 'Sem nome';
       });
 
-      // Agrupar por dia (últimos 7 dias)
+      let orderItems: { order_id: string; product_name: string; quantity: number }[] = [];
+      if (orderIds.length > 0) {
+        const { data: items } = await supabase
+          .from('order_items')
+          .select('order_id, product_name, quantity')
+          .in('order_id', orderIds);
+        orderItems = items || [];
+      }
+
+      const totalRevenue = orderList.reduce((sum: number, o: { total?: number }) => sum + (o.total || 0), 0);
+      const totalOrders = orderList.length;
+      const averageTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+      const pendingOrders = orderList.filter((o: { status: string }) => o.status === 'pending').length;
+
+      setMetrics({ totalRevenue, totalOrders, averageTicket, pendingOrders });
+
       const last7Days = Array.from({ length: 7 }, (_, i) => {
         const date = subDays(new Date(), 6 - i);
         return {
@@ -98,8 +131,7 @@ export default function AdminDashboard() {
           orders: 0,
         };
       });
-
-      orders?.forEach((order) => {
+      orderList.forEach((order: { created_at: string; total: number }) => {
         const orderDate = new Date(order.created_at);
         const dayData = last7Days.find(
           (d) =>
@@ -111,21 +143,53 @@ export default function AdminDashboard() {
           dayData.orders += 1;
         }
       });
-
       setDailyRevenue(last7Days.map(({ fullDate, ...rest }) => rest));
 
-      // Agrupar por forma de pagamento
-      const paymentData = orders?.reduce((acc: any, order) => {
+      const paymentData = orderList.reduce((acc: Record<string, { name: string; value: number }>, order: { payment_method: string; total: number }) => {
         const method = order.payment_method;
-        if (!acc[method]) {
-          acc[method] = { name: method, value: 0 };
-        }
+        if (!acc[method]) acc[method] = { name: method, value: 0 };
         acc[method].value += order.total;
         return acc;
       }, {});
+      setPaymentMethods(Object.values(paymentData));
 
-      setPaymentMethods(Object.values(paymentData || {}));
+      const zoneCounts: Record<string, number> = {};
+      orderList.forEach((o: { delivery_zone_id?: string }) => {
+        const zid = o.delivery_zone_id || 'sem_zona';
+        zoneCounts[zid] = (zoneCounts[zid] || 0) + 1;
+      });
+      const topZoneEntry = Object.entries(zoneCounts)
+        .filter(([k]) => k !== 'sem_zona')
+        .sort((a, b) => b[1] - a[1])[0];
+      setTopZone(
+        topZoneEntry
+          ? { name: zonesMap[topZoneEntry[0]] || topZoneEntry[0], count: topZoneEntry[1] }
+          : null
+      );
 
+      const hourCounts: Record<number, number> = {};
+      for (let h = 0; h < 24; h++) hourCounts[h] = 0;
+      orderList.forEach((o: { created_at: string }) => {
+        const h = new Date(o.created_at).getHours();
+        hourCounts[h]++;
+      });
+      setPeakHours(
+        Object.entries(hourCounts)
+          .map(([hour, count]) => ({ hour: Number(hour), count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 5)
+      );
+
+      const productCounts: Record<string, number> = {};
+      orderItems.forEach((item: { product_name: string; quantity: number }) => {
+        const name = item.product_name || 'Sem nome';
+        productCounts[name] = (productCounts[name] || 0) + item.quantity;
+      });
+      const sorted = Object.entries(productCounts)
+        .map(([name, qty]) => ({ name, quantity: qty }))
+        .sort((a, b) => b.quantity - a.quantity);
+      setTopProducts(sorted.slice(0, 5));
+      setBottomProducts(sorted.slice(-5).reverse());
     } catch (error) {
       console.error('Erro ao carregar métricas:', error);
     } finally {
@@ -219,13 +283,29 @@ export default function AdminDashboard() {
     );
   }
 
+  const periodLabel = period === '30' ? 'últimos 30 dias' : period === '365' ? 'último ano' : 'todo o período';
+
   return (
     <div className="space-y-8 min-w-0">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground text-base sm:text-lg">
-            Visão geral do seu negócio (últimos 30 dias)
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-foreground">Dashboard</h1>
+            <p className="text-muted-foreground text-base sm:text-lg">
+              Visão geral do seu negócio ({periodLabel})
+            </p>
+          </div>
+          <Select value={period} onValueChange={(v) => setPeriod(v as PeriodValue)}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              {PERIOD_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Cards de Métricas */}
@@ -246,7 +326,7 @@ export default function AdminDashboard() {
               </div>
               <div className="flex items-center text-white/80 text-xs">
                 <ArrowUpRight className="h-3 w-3 mr-1" />
-                <span>Últimos 30 dias</span>
+                <span>{periodLabel}</span>
               </div>
             </CardContent>
           </Card>
@@ -404,6 +484,99 @@ export default function AdminDashboard() {
                     <p>Sem dados de pagamento</p>
                   </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* BI: Região, horário pico, itens mais/menos pedidos */}
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 min-w-0">
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-primary" />
+                Região mais pedida
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {topZone ? (
+                <div>
+                  <p className="text-2xl font-bold text-foreground truncate" title={topZone.name}>
+                    {topZone.name}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{topZone.count} pedidos</p>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">Sem dados de região no período</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" />
+                Horários de pico
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {peakHours.length > 0 ? (
+                <ul className="space-y-1.5 text-sm">
+                  {peakHours.map(({ hour, count }) => (
+                    <li key={hour} className="flex justify-between">
+                      <span className="text-muted-foreground">{hour}h – {hour + 1}h</span>
+                      <span className="font-medium">{count} pedidos</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground text-sm">Sem pedidos no período</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Itens mais pedidos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {topProducts.length > 0 ? (
+                <ul className="space-y-1.5 text-sm">
+                  {topProducts.map(({ name, quantity }) => (
+                    <li key={name} className="flex justify-between gap-2">
+                      <span className="text-foreground truncate" title={name}>{name}</span>
+                      <span className="font-medium shrink-0">{quantity}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground text-sm">Sem itens no período</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                <TrendingDown className="h-4 w-4 text-primary" />
+                Itens menos pedidos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {bottomProducts.length > 0 ? (
+                <ul className="space-y-1.5 text-sm">
+                  {bottomProducts.map(({ name, quantity }) => (
+                    <li key={name} className="flex justify-between gap-2">
+                      <span className="text-foreground truncate" title={name}>{name}</span>
+                      <span className="font-medium shrink-0">{quantity}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground text-sm">Sem itens no período</p>
               )}
             </CardContent>
           </Card>

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Restaurant } from '@/types';
 import { AdminRestaurantContext } from '@/contexts/AdminRestaurantContext';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import {
   LayoutDashboard,
   UtensilsCrossed,
@@ -14,6 +15,8 @@ import {
   LogOut,
   ArrowLeft,
   ChefHat,
+  BookOpen,
+  Copy,
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -43,6 +46,7 @@ export default function AdminLayout({
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuthStore();
+  const { toast } = useToast();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loadingRestaurant, setLoadingRestaurant] = useState(!!managedRestaurantId);
 
@@ -74,6 +78,17 @@ export default function AdminLayout({
 
   const handleBackToRestaurants = () => {
     navigate('/super-admin/restaurants');
+  };
+
+  const cardapioUrl = restaurant?.slug
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${restaurant.slug}`
+    : '';
+  const copyCardapioLink = () => {
+    if (!cardapioUrl) return;
+    navigator.clipboard.writeText(cardapioUrl).then(
+      () => toast({ title: 'Link copiado', description: 'Link do cardápio copiado para a área de transferência.' }),
+      () => toast({ title: 'Erro', description: 'Não foi possível copiar o link.', variant: 'destructive' })
+    );
   };
 
   if (!restaurantId) {
@@ -123,7 +138,7 @@ export default function AdminLayout({
             <div className="flex-1 flex flex-col">
               {/* Modo cozinha: admin do restaurante ou super_admin (com restaurant_id na URL) */}
               {(user?.role === 'restaurant_admin' || (isSuperAdminView && restaurantId)) && (
-                <div className="px-2 pb-2">
+                <div className="px-2 pb-2 space-y-2">
                   <Link
                     to={isSuperAdminView ? `/kitchen?restaurant_id=${restaurantId}` : '/kitchen'}
                     className="flex items-center px-3 py-3 text-sm font-medium rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors border border-dashed border-border/60"
@@ -131,6 +146,28 @@ export default function AdminLayout({
                     <ChefHat className="mr-3 h-5 w-5" />
                     Modo cozinha
                   </Link>
+                  {cardapioUrl && (
+                    <div className="flex items-center gap-1 px-3 py-2 rounded-md border border-dashed border-border/60 bg-muted/30">
+                      <a
+                        href={cardapioUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 min-w-0 flex items-center gap-2 text-sm font-medium text-primary truncate hover:underline"
+                      >
+                        <BookOpen className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">Cardápio</span>
+                      </a>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 flex-shrink-0"
+                        onClick={copyCardapioLink}
+                        title="Copiar link do cardápio"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
               <nav className="flex-1 px-2 space-y-1 pt-2">
@@ -188,7 +225,7 @@ export default function AdminLayout({
             </div>
           )}
           {(user?.role === 'restaurant_admin' || (isSuperAdminView && restaurantId)) && (
-            <div className="px-4 pb-2">
+            <div className="px-4 pb-2 space-y-2">
               <Link
                 to={isSuperAdminView ? `/kitchen?restaurant_id=${restaurantId}` : '/kitchen'}
                 className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-dashed border-border/60 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -196,6 +233,22 @@ export default function AdminLayout({
                 <ChefHat className="h-4 w-4" />
                 Modo cozinha
               </Link>
+              {cardapioUrl && (
+                <div className="flex items-center gap-2">
+                  <a
+                    href={cardapioUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-dashed border-border/60 text-primary hover:bg-accent flex-1 min-w-0 truncate"
+                  >
+                    <BookOpen className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">Cardápio</span>
+                  </a>
+                  <Button variant="outline" size="icon" className="h-9 w-9 flex-shrink-0" onClick={copyCardapioLink} title="Copiar link">
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           )}
           <div className="overflow-x-auto px-4 pb-3">
