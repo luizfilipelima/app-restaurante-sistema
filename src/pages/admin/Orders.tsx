@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { DatabaseOrder, OrderStatus } from '@/types';
@@ -18,7 +18,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, Check, ChevronRight, Package, Truck, CheckCircle2, X, Loader2 } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard, Check, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer } from 'lucide-react';
+import { useCouriers } from '@/hooks/useCouriers';
+import { usePrinter } from '@/hooks/usePrinter';
+import { OrderReceipt } from '@/components/receipt/OrderReceipt';
+import type { PrintPaperWidth } from '@/types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const statusConfig = {
   [OrderStatus.PENDING]: {
@@ -111,6 +122,13 @@ export default function AdminOrders() {
   const [orderToRemove, setOrderToRemove] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const { couriers } = useCouriers(restaurantId);
+  const { printOrder, receiptData } = usePrinter();
+
+  type PrintSettings = { name: string; print_auto_on_new_order: boolean; print_paper_width: PrintPaperWidth };
+  const [printSettings, setPrintSettings] = useState<PrintSettings | null>(null);
+  const printSettingsRef = useRef<PrintSettings | null>(null);
+  printSettingsRef.current = printSettings;
 
   const loadOrders = async (silent = false) => {
     if (!restaurantId) return;
@@ -123,7 +141,8 @@ export default function AdminOrders() {
         .select(`
           *,
           delivery_zone:delivery_zones(*),
-          order_items(*)
+          order_items(*),
+          courier:couriers(id, name, phone)
         `)
         .eq('restaurant_id', restaurantId)
         .in('status', ORDER_TAB_STATUSES)
@@ -153,8 +172,30 @@ export default function AdminOrders() {
           table: 'orders',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        () => {
+        async (payload) => {
           loadOrders(true);
+          if (payload.eventType === 'INSERT' && payload.new?.restaurant_id === restaurantId) {
+            const orderId = (payload.new as { id: string }).id;
+            const settings = printSettingsRef.current;
+            if (!settings?.print_auto_on_new_order || !orderId) return;
+            try {
+              const { data: fullOrder, error } = await supabase
+                .from('orders')
+                .select(`
+                  *,
+                  delivery_zone:delivery_zones(*),
+                  order_items(*),
+                  courier:couriers(id, name, phone)
+                `)
+                .eq('id', orderId)
+                .single();
+              if (!error && fullOrder) {
+                printOrder(fullOrder as DatabaseOrder, settings.name, settings.print_paper_width || '80mm');
+              }
+            } catch (e) {
+              console.error('Erro ao imprimir pedido novo:', e);
+            }
+          }
         }
       )
       .subscribe();
@@ -169,7 +210,45 @@ export default function AdminOrders() {
       supabase.removeChannel(channel);
       clearInterval(pollInterval);
     };
+  }, [restaurantId, printOrder]);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('restaurants')
+          .select('name, print_auto_on_new_order, print_paper_width')
+          .eq('id', restaurantId)
+          .single();
+        if (data) {
+          const next: PrintSettings = {
+            name: data.name || '',
+            print_auto_on_new_order: !!data.print_auto_on_new_order,
+            print_paper_width: (data.print_paper_width === '58mm' ? '58mm' : '80mm') as PrintPaperWidth,
+          };
+          setPrintSettings(next);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar config impressão:', err);
+      }
+    })();
   }, [restaurantId]);
+
+  const updateOrderCourier = async (orderId: string, courierId: string | null) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ courier_id: courierId })
+        .eq('id', orderId);
+      if (error) throw error;
+      await loadOrders(true);
+      toast({ title: 'Entregador atribuído', variant: 'default' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao atribuir entregador', variant: 'destructive' });
+    }
+  };
 
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     setUpdatingOrderId(orderId);
@@ -288,8 +367,15 @@ export default function AdminOrders() {
     );
   }
 
+  const handlePrintOrder = (order: DatabaseOrder) => {
+    const name = printSettings?.name ?? '';
+    const width = printSettings?.print_paper_width ?? '80mm';
+    printOrder(order, name, width);
+  };
+
   return (
     <>
+      <OrderReceipt data={receiptData} />
       <div className="space-y-8 min-w-0">
         <div>
           <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-foreground">Gestão de Pedidos</h1>
@@ -366,6 +452,17 @@ export default function AdminOrders() {
                               </div>
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
+                                onClick={() => handlePrintOrder(order)}
+                                title="Imprimir cupom"
+                                aria-label="Imprimir cupom"
+                              >
+                                <Printer className="h-4 w-4" />
+                              </Button>
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -463,6 +560,33 @@ export default function AdminOrders() {
                               {formatCurrency(order.total)}
                             </span>
                           </div>
+
+                          {/* Entregador */}
+                          {couriers.length > 0 && (
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-medium flex items-center gap-1.5">
+                                <Bike className="h-3.5 w-3.5 text-muted-foreground" />
+                                Entregador
+                              </label>
+                              <Select
+                                value={order.courier_id ?? 'none'}
+                                onValueChange={(v) => updateOrderCourier(order.id, v === 'none' ? null : v)}
+                              >
+                                <SelectTrigger className="h-9 text-xs">
+                                  <SelectValue placeholder="Atribuir motoboy" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Nenhum</SelectItem>
+                                  {couriers.filter((c) => c.active).map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                      {c.name}
+                                      {c.phone ? ` (${c.phone})` : ''}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
 
                           {/* Botão de Ação */}
                           {config.nextStatus && config.nextIcon && (

@@ -1,0 +1,135 @@
+import { DatabaseOrder } from '@/types';
+import { formatCurrency } from '@/lib/utils';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+const SEP = '--------------------------------';
+
+export interface OrderReceiptData {
+  order: DatabaseOrder;
+  restaurantName: string;
+  paperWidth: '58mm' | '80mm';
+}
+
+interface OrderReceiptProps {
+  data: OrderReceiptData | null;
+  /** Classe do container para impressão (ex: receipt-print-area) */
+  className?: string;
+}
+
+export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderReceiptProps) {
+  if (!data) {
+    return <div className={className} aria-hidden />;
+  }
+
+  const { order, restaurantName, paperWidth } = data;
+  const items = order.order_items ?? [];
+  const subtotal = Number(order.subtotal);
+  const deliveryFee = Number(order.delivery_fee ?? 0);
+  const total = Number(order.total);
+  const zoneName = order.delivery_zone?.location_name;
+  const paymentLabel =
+    order.payment_method === 'pix'
+      ? 'PIX'
+      : order.payment_method === 'card'
+        ? 'Cartão'
+        : 'Dinheiro';
+
+  const widthClass = paperWidth === '58mm' ? 'receipt-width-58' : 'receipt-width-80';
+
+  return (
+    <div
+      className={`receipt-root ${widthClass} ${className}`}
+      data-receipt
+      role="document"
+      aria-label="Cupom do pedido"
+    >
+      <div className="receipt-inner">
+        <header className="receipt-header">
+          <h1 className="receipt-title">{restaurantName}</h1>
+        </header>
+
+        <div className="receipt-line">{SEP}</div>
+
+        <section className="receipt-section">
+          <div className="receipt-row">
+            <strong>Cliente:</strong> {order.customer_name}
+          </div>
+          <div className="receipt-row">
+            <strong>Tel:</strong> {order.customer_phone}
+          </div>
+          <div className="receipt-row">
+            <strong>Entrega:</strong>{' '}
+            {order.delivery_type === 'delivery' ? `Delivery${zoneName ? ` - ${zoneName}` : ''}` : 'Retirada'}
+          </div>
+          {order.delivery_address && (
+            <div className="receipt-row receipt-address">{order.delivery_address}</div>
+          )}
+          <div className="receipt-row">
+            <strong>Pagamento:</strong> {paymentLabel}
+            {order.payment_method === 'cash' && order.payment_change_for != null && (
+              <> (Troco p/ {formatCurrency(Number(order.payment_change_for))})</>
+            )}
+          </div>
+          <div className="receipt-row receipt-date">
+            {format(new Date(order.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+          </div>
+        </section>
+
+        <div className="receipt-line">{SEP}</div>
+
+        <section className="receipt-section">
+          <div className="receipt-row receipt-row-header">
+            <span>Qtd</span>
+            <span>Item</span>
+            <span>Total</span>
+          </div>
+          {items.map((item) => (
+            <div key={item.id} className="receipt-row receipt-row-item">
+              <span>{item.quantity}x</span>
+              <span className="receipt-item-name">
+                {item.product_name}
+                {item.observations ? ` (${item.observations})` : ''}
+              </span>
+              <span>{formatCurrency(Number(item.total_price))}</span>
+            </div>
+          ))}
+        </section>
+
+        <div className="receipt-line">{SEP}</div>
+
+        <section className="receipt-section receipt-totals">
+          <div className="receipt-row">
+            <span>Subtotal</span>
+            <span>{formatCurrency(subtotal)}</span>
+          </div>
+          {deliveryFee > 0 && (
+            <div className="receipt-row">
+              <span>Taxa de entrega</span>
+              <span>{formatCurrency(deliveryFee)}</span>
+            </div>
+          )}
+          <div className="receipt-row receipt-total">
+            <span>TOTAL</span>
+            <span>{formatCurrency(total)}</span>
+          </div>
+        </section>
+
+        {order.notes && (
+          <>
+            <div className="receipt-line">{SEP}</div>
+            <div className="receipt-row receipt-obs">
+              <strong>Obs:</strong> {order.notes}
+            </div>
+          </>
+        )}
+
+        <div className="receipt-line">{SEP}</div>
+
+        <footer className="receipt-footer">
+          <div className="receipt-row">Sistema Quiero - Pedido #{order.id.slice(0, 8).toUpperCase()}</div>
+        </footer>
+      </div>
+    </div>
+  );
+}

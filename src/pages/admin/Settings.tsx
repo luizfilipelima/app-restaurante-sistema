@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
-import { Restaurant, PizzaSize, PizzaDough, PizzaEdge, DayKey } from '@/types';
+import { Restaurant, PizzaSize, PizzaDough, PizzaEdge, DayKey, PrintPaperWidth } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
-import { Save, Plus, Trash2, Pizza, Upload, Loader2, Clock, Instagram } from 'lucide-react';
+import { Save, Plus, Trash2, Pizza, Upload, Loader2, Clock, Instagram, Printer } from 'lucide-react';
 
 export default function AdminSettings() {
   const restaurantId = useAdminRestaurantId();
@@ -44,6 +44,8 @@ export default function AdminSettings() {
     secondary_color: '#ffffff',
     is_manually_closed: false,
     opening_hours: {} as Record<DayKey, { open: string; close: string } | null>,
+    print_auto_on_new_order: false,
+    print_paper_width: '80mm' as PrintPaperWidth,
   });
   const [logoUploading, setLogoUploading] = useState(false);
 
@@ -94,6 +96,8 @@ export default function AdminSettings() {
         secondary_color: data.secondary_color || '#ffffff',
         is_manually_closed: !!data.is_manually_closed,
         opening_hours: DAYS.reduce((acc, d) => ({ ...acc, [d.key]: hours[d.key] || null }), {} as Record<DayKey, { open: string; close: string } | null>),
+        print_auto_on_new_order: !!data.print_auto_on_new_order,
+        print_paper_width: (data.print_paper_width === '58mm' ? '58mm' : '80mm') as PrintPaperWidth,
       });
     } catch (error) {
       console.error('Erro ao carregar restaurante:', error);
@@ -256,6 +260,8 @@ export default function AdminSettings() {
           secondary_color: formData.secondary_color,
           is_manually_closed: formData.is_manually_closed,
           opening_hours: formData.opening_hours,
+          print_auto_on_new_order: formData.print_auto_on_new_order,
+          print_paper_width: formData.print_paper_width,
           updated_at: new Date().toISOString(),
         })
         .eq('id', restaurantId);
@@ -536,6 +542,47 @@ export default function AdminSettings() {
                     );
                   })}
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Printer className="h-5 w-5" /> Impressão de pedidos (cupom)
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Cupom não fiscal para impressoras térmicas. Ao receber um novo pedido, o navegador abrirá o diálogo de impressão (não é possível imprimir silenciosamente na web).
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <Label className="font-medium">Impressão automática ao receber pedido</Label>
+                  <p className="text-xs text-muted-foreground">Se ativo, ao chegar um novo pedido será aberta a janela de impressão para o cupom.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={formData.print_auto_on_new_order}
+                  onChange={(e) => setFormData({ ...formData, print_auto_on_new_order: e.target.checked })}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+              </div>
+              <div>
+                <Label>Largura do papel</Label>
+                <Select
+                  value={formData.print_paper_width}
+                  onValueChange={(v) => setFormData({ ...formData, print_paper_width: v as PrintPaperWidth })}
+                >
+                  <SelectTrigger className="w-full max-w-[200px] mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="58mm">58 mm (bobina estreita)</SelectItem>
+                    <SelectItem value="80mm">80 mm (bobina padrão)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Ajuste conforme a impressora térmica.</p>
               </div>
             </CardContent>
           </Card>

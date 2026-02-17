@@ -46,6 +46,23 @@ export interface OpeningHoursSlot {
 
 export type PhoneCountry = 'BR' | 'PY';
 
+export type CourierStatus = 'available' | 'busy' | 'offline';
+
+export interface Courier {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  phone?: string;
+  status: CourierStatus;
+  vehicle_plate?: string;
+  active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+/** Largura do papel para cupom térmico */
+export type PrintPaperWidth = '58mm' | '80mm';
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -61,6 +78,10 @@ export interface Restaurant {
   is_active: boolean;
   opening_hours?: Record<DayKey, OpeningHoursSlot | null>;
   is_manually_closed?: boolean;
+  /** Impressão automática ao receber novo pedido */
+  print_auto_on_new_order?: boolean;
+  /** Largura do papel: 58mm ou 80mm */
+  print_paper_width?: PrintPaperWidth;
   created_at: string;
   updated_at: string;
 }
@@ -163,6 +184,7 @@ export interface Order {
   status: OrderStatus;
   notes?: string;
   is_paid: boolean; // Se pagamento foi confirmado (para priorização na cozinha)
+  courier_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -247,6 +269,7 @@ export interface DashboardMetrics {
 export interface DatabaseOrder extends Order {
   delivery_zone?: DeliveryZone;
   order_items?: OrderItem[];
+  courier?: Courier | null;
 }
 
 export interface RestaurantWithMetrics extends Restaurant {

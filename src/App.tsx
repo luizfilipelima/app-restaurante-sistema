@@ -19,6 +19,7 @@ import AdminMenu from './pages/admin/Menu';
 import AdminOrders from './pages/admin/Orders';
 import AdminSettings from './pages/admin/Settings';
 import AdminDeliveryZones from './pages/admin/DeliveryZones';
+import AdminCouriers from './pages/admin/Couriers';
 import KitchenDisplay from './pages/kitchen/KitchenDisplay';
 import PublicMenu from './pages/public/Menu';
 import PublicCheckout from './pages/public/Checkout';
@@ -29,6 +30,7 @@ const adminRoutes = (
     <Route path="orders" element={<AdminOrders />} />
     <Route path="menu" element={<AdminMenu />} />
     <Route path="delivery-zones" element={<AdminDeliveryZones />} />
+    <Route path="couriers" element={<AdminCouriers />} />
     <Route path="settings" element={<AdminSettings />} />
   </>
 );

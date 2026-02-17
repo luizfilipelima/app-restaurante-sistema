@@ -157,3 +157,73 @@
   @apply bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%];
   animation: shimmer 1.5s linear infinite;
 }
+
+/* ========== Cupom térmico (impressão) ========== */
+.receipt-root {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  width: 80mm;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  color: #000;
+  background: #fff;
+}
+.receipt-width-58 { width: 58mm; }
+.receipt-width-80 { width: 80mm; }
+.receipt-inner { padding: 2mm; }
+.receipt-header { text-align: center; margin-bottom: 4px; }
+.receipt-title { font-size: 14px; font-weight: bold; margin: 0; }
+.receipt-line { margin: 4px 0; white-space: pre; }
+.receipt-section { margin: 6px 0; }
+.receipt-row { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.receipt-row-header { font-weight: bold; margin-bottom: 2px; }
+.receipt-row-item .receipt-item-name { flex: 1; text-align: left; min-width: 0; }
+.receipt-address { word-break: break-word; }
+.receipt-date { font-size: 11px; }
+.receipt-totals { margin-top: 8px; }
+.receipt-total { font-weight: bold; font-size: 13px; margin-top: 4px; }
+.receipt-obs { font-size: 11px; }
+.receipt-footer { text-align: center; font-size: 10px; margin-top: 8px; }
+
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+  body.print-receipt.receipt-paper-58 .receipt-print-area {
+    width: 58mm !important;
+    max-width: 58mm !important;
+  }
+  body.print-receipt.receipt-paper-58 .receipt-print-area .receipt-inner {
+    max-width: 58mm;
+  }
+  body.print-receipt * {
+    visibility: hidden;
+  }
+  body.print-receipt .receipt-print-area,
+  body.print-receipt .receipt-print-area * {
+    visibility: visible;
+  }
+  body.print-receipt .receipt-print-area {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  body.print-receipt .receipt-width-58.receipt-print-area {
+    width: 58mm !important;
+    max-width: 58mm !important;
+  }
+  body.print-receipt .receipt-width-58 .receipt-inner {
+    max-width: 58mm;
+  }
+}
