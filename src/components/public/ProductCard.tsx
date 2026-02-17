@@ -11,6 +11,78 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onClick }: ProductCardProps) {
+  const isBeverage = product.category?.toLowerCase() === 'bebidas';
+
+  // Layout especial para bebidas
+  if (isBeverage) {
+    return (
+      <Card
+        className="group cursor-pointer bg-white border border-slate-200/80 overflow-hidden rounded-xl sm:rounded-2xl w-full min-w-0 shadow-sm hover:shadow-lg active:shadow-md hover:border-slate-300/80 active:border-slate-300 transition-all duration-300 touch-manipulation"
+        onClick={onClick}
+      >
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex items-start gap-3 sm:gap-4">
+            {/* Imagem pequena quadrada (1x1) */}
+            <div className="flex-shrink-0">
+              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm group-hover:shadow-md transition-shadow">
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full h-full object-cover object-center transition-transform duration-300 ease-out group-hover:scale-110"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+                    <span className="text-2xl sm:text-3xl opacity-60">🥤</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Conteúdo */}
+            <div className="flex-1 min-w-0 flex flex-col justify-between">
+              <div className="space-y-1 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-semibold text-slate-900 text-base sm:text-lg leading-tight group-hover:text-slate-700 transition-colors line-clamp-2 text-sm-mobile-block flex-1">
+                    {product.name}
+                  </h3>
+                  <div className="flex-shrink-0">
+                    <div className="bg-slate-900 text-white rounded-lg px-2.5 sm:px-3 py-1 shadow-sm">
+                      <span className="text-xs sm:text-sm font-bold">{formatCurrency(product.price)}</span>
+                    </div>
+                  </div>
+                </div>
+                {product.description && (
+                  <p className="text-sm sm:text-base text-slate-500 line-clamp-2 leading-relaxed mt-0.5 text-sm-mobile-block">
+                    {product.description}
+                  </p>
+                )}
+              </div>
+
+              {/* Botão de ação */}
+              <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-slate-100">
+                <Button
+                  type="button"
+                  className="w-full h-10 sm:h-11 rounded-lg sm:rounded-xl bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-white shadow-sm transition-all touch-manipulation active:scale-95 flex items-center justify-center gap-2"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onClick();
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="text-sm sm:text-base font-semibold">Adicionar</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Layout padrão para outros produtos
   return (
     <Card
       className="group cursor-pointer bg-white border border-slate-200/80 overflow-hidden rounded-xl sm:rounded-2xl w-full min-w-0 shadow-sm hover:shadow-lg active:shadow-md hover:border-slate-300/80 active:border-slate-300 transition-all duration-300 touch-manipulation"

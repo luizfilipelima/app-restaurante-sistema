@@ -486,7 +486,7 @@ export default function AdminMenu() {
                 <label className="cursor-pointer">
                   <input
                     type="file"
-                    accept="image/png,image/jpeg,image/jpg,image/gif"
+                    accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
                     className="sr-only"
                     disabled={imageUploading || !restaurantId}
                     onChange={async (e) => {

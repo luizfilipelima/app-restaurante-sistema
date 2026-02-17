@@ -43,19 +43,26 @@ export function convertToWebP(file: File, quality: number = WEBP_QUALITY): Promi
  * Faz upload de uma imagem para o Supabase Storage: converte para WebP 80%,
  * envia para o bucket e retorna a URL pública.
  * @param restaurantId ID do restaurante (pasta no bucket)
- * @param file Arquivo de imagem (PNG, JPG, JPEG ou GIF)
+ * @param file Arquivo de imagem (PNG, JPG, JPEG, GIF ou WebP)
  * @returns URL pública da imagem ou erro
  */
 export async function uploadProductImage(
   restaurantId: string,
   file: File
 ): Promise<string> {
-  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
   if (!allowedTypes.includes(file.type)) {
-    throw new Error('Formato não suportado. Use PNG, JPG ou GIF.');
+    throw new Error('Formato não suportado. Use PNG, JPG, GIF ou WebP.');
   }
 
-  const blob = await convertToWebP(file);
+  // Se já for WebP, usa diretamente; caso contrário, converte
+  let blob: Blob;
+  if (file.type === 'image/webp') {
+    blob = file;
+  } else {
+    blob = await convertToWebP(file);
+  }
+  
   const ext = 'webp';
   const fileName = `${crypto.randomUUID()}.${ext}`;
   const path = `${restaurantId}/${fileName}`;
@@ -75,17 +82,27 @@ export async function uploadProductImage(
 /**
  * Faz upload da logo do restaurante: converte para WebP 80% e envia para o bucket.
  * Substitui a logo anterior (upsert) no path {restaurantId}/logo.webp.
+ * @param restaurantId ID do restaurante
+ * @param file Arquivo de imagem (PNG, JPG, JPEG, GIF ou WebP)
+ * @returns URL pública da logo ou erro
  */
 export async function uploadRestaurantLogo(
   restaurantId: string,
   file: File
 ): Promise<string> {
-  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
   if (!allowedTypes.includes(file.type)) {
-    throw new Error('Formato não suportado. Use PNG, JPG ou GIF.');
+    throw new Error('Formato não suportado. Use PNG, JPG, GIF ou WebP.');
   }
 
-  const blob = await convertToWebP(file);
+  // Se já for WebP, usa diretamente; caso contrário, converte
+  let blob: Blob;
+  if (file.type === 'image/webp') {
+    blob = file;
+  } else {
+    blob = await convertToWebP(file);
+  }
+  
   const path = `${restaurantId}/logo.webp`;
 
   const { error } = await supabase.storage

@@ -393,7 +393,7 @@ export default function AdminSettings() {
                   <label className="cursor-pointer">
                     <input
                       type="file"
-                      accept="image/png,image/jpeg,image/jpg,image/gif"
+                      accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
                       className="sr-only"
                       disabled={logoUploading || !restaurantId}
                       onChange={async (e) => {
