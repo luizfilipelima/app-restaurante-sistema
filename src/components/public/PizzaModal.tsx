@@ -49,10 +49,11 @@ export default function PizzaModal({
   }, [open, sizes, doughs]);
 
   // Preço fixo do produto + adicionais (massa e borda)
+  // Todos os preços vêm do banco como INTEGER (centavos para BRL, inteiro para PYG)
   const calculatePrice = () => {
-    const basePrice = product.price;
-    const doughExtra = selectedDough?.extra_price ?? 0;
-    const edgePrice = selectedEdge?.price ?? 0;
+    const basePrice = currency === 'BRL' ? product.price / 100 : product.price;
+    const doughExtra = currency === 'BRL' ? (selectedDough?.extra_price ?? 0) / 100 : (selectedDough?.extra_price ?? 0);
+    const edgePrice = currency === 'BRL' ? (selectedEdge?.price ?? 0) / 100 : (selectedEdge?.price ?? 0);
     return basePrice + doughExtra + edgePrice;
   };
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { convertPriceToStorage, convertPriceFromStorage } from '@/lib/priceHelper';
 import { Product, Restaurant, PizzaSize, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -213,7 +214,7 @@ export default function AdminMenu() {
       name: product.name,
       category: (config.id as CategoryId) || 'Outros',
       description: description?.trim() || '',
-      price: String(product.price),
+      price: convertPriceFromStorage(Number(product.price), currency),
       is_pizza: config.isPizza || false,
       is_marmita: config.isMarmita || false,
       image_url: product.image_url || '',
@@ -267,7 +268,8 @@ export default function AdminMenu() {
 
     const name = form.name.trim();
     const category = form.category.trim();
-    const price = parseFloat(form.price.replace(',', '.'));
+    const priceInput = form.price.replace(/[^\d,.-]/g, '').replace(',', '.');
+    const priceValue = parseFloat(priceInput);
 
     if (!name) {
       toast({ title: 'Nome obrigatório', variant: 'destructive' });
@@ -277,10 +279,13 @@ export default function AdminMenu() {
       toast({ title: 'Categoria obrigatória', variant: 'destructive' });
       return;
     }
-    if (isNaN(price) || price < 0) {
+    if (isNaN(priceValue) || priceValue < 0) {
       toast({ title: 'Preço inválido', variant: 'destructive' });
       return;
     }
+
+    // Converter preço para formato de armazenamento (centavos para BRL, inteiro para PYG)
+    const price = convertPriceToStorage(priceValue, currency);
 
     const config = getCategoryConfig(category);
     const isPizza = config.isPizza || false;
@@ -421,7 +426,9 @@ export default function AdminMenu() {
   const handleSubmitDough = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId) return;
-    const extra_price = parseFloat(String(formDough.extra_price).replace(',', '.')) || 0;
+    const extraPriceInput = String(formDough.extra_price).replace(/[^\d,.-]/g, '').replace(',', '.');
+    const extraPriceValue = parseFloat(extraPriceInput) || 0;
+    const extra_price = convertPriceToStorage(extraPriceValue, currency);
     try {
       const { error } = await supabase.from('pizza_doughs').insert({
         restaurant_id: restaurantId,
@@ -443,7 +450,9 @@ export default function AdminMenu() {
   const handleSubmitEdge = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId) return;
-    const price = parseFloat(String(formEdge.price).replace(',', '.')) || 0;
+    const priceInput = String(formEdge.price).replace(/[^\d,.-]/g, '').replace(',', '.');
+    const priceValue = parseFloat(priceInput) || 0;
+    const price = convertPriceToStorage(priceValue, currency);
     try {
       const { error } = await supabase.from('pizza_edges').insert({
         restaurant_id: restaurantId,
@@ -520,7 +529,10 @@ export default function AdminMenu() {
   const handleSubmitMarmitaSize = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId) return;
-    const base_price = parseFloat(String(formMarmitaSize.base_price).replace(',', '.')) || 0;
+    const basePriceInput = String(formMarmitaSize.base_price).replace(/[^\d,.-]/g, '').replace(',', '.');
+    const basePriceValue = parseFloat(basePriceInput) || 0;
+    const base_price = convertPriceToStorage(basePriceValue, currency);
+    // price_per_gram: manter como decimal por enquanto (valor muito pequeno)
     const price_per_gram = parseFloat(String(formMarmitaSize.price_per_gram).replace(',', '.')) || 0;
     try {
       const { error } = await supabase.from('marmita_sizes').insert({

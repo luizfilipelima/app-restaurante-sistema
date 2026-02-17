@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { convertPriceToStorage, convertPriceFromStorage } from '@/lib/priceHelper';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/types';
 import { formatCurrency } from '@/lib/utils';
@@ -68,9 +69,9 @@ export default function ProductsInventory() {
       setFormData({
         name: product.name,
         category: product.category,
-        price: product.price.toString(),
-        price_sale: (product.price_sale || product.price).toString(),
-        price_cost: (product.price_cost || '').toString(),
+        price: convertPriceFromStorage(Number(product.price), currency),
+        price_sale: convertPriceFromStorage(Number(product.price_sale || product.price), currency),
+        price_cost: product.price_cost ? convertPriceFromStorage(Number(product.price_cost), currency) : '',
         sku: product.sku || '',
         description: product.description || '',
         is_by_weight: product.is_by_weight || false,
@@ -97,13 +98,17 @@ export default function ProductsInventory() {
     if (!restaurantId) return;
 
     try {
+      const priceInput = formData.price.replace(/[^\d,.-]/g, '').replace(',', '.');
+      const priceSaleInput = formData.price_sale.replace(/[^\d,.-]/g, '').replace(',', '.');
+      const priceCostInput = formData.price_cost.replace(/[^\d,.-]/g, '').replace(',', '.');
+      
       const productData = {
         restaurant_id: restaurantId,
         name: formData.name.trim(),
         category: formData.category.trim(),
-        price: parseFloat(formData.price) || 0,
-        price_sale: parseFloat(formData.price_sale) || parseFloat(formData.price) || 0,
-        price_cost: parseFloat(formData.price_cost) || null,
+        price: convertPriceToStorage(parseFloat(priceInput) || 0, currency),
+        price_sale: convertPriceToStorage(parseFloat(priceSaleInput) || parseFloat(priceInput) || 0, currency),
+        price_cost: formData.price_cost ? convertPriceToStorage(parseFloat(priceCostInput) || 0, currency) : null,
         sku: formData.sku.trim() || null,
         description: formData.description.trim() || null,
         is_by_weight: formData.is_by_weight,

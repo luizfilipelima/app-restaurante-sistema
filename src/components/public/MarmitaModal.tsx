@@ -57,9 +57,12 @@ export default function MarmitaModal({
   const calculatePrice = () => {
     if (!selectedSize) return 0;
 
-    let total = selectedSize.base_price;
+    // base_price vem do banco como INTEGER (centavos para BRL, inteiro para PYG)
+    // Para BRL, precisa dividir por 100; para PYG, usa direto
+    let total = currency === 'BRL' ? selectedSize.base_price / 100 : selectedSize.base_price;
 
     // Adicionar preço das proteínas (preço por grama * gramas selecionadas)
+    // price_per_gram ainda é DECIMAL, então usa direto
     selectedProteins.forEach((sp) => {
       total += sp.protein.price_per_gram * sp.grams;
     });

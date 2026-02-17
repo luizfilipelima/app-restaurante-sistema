@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { formatPrice } from './priceHelper';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -7,19 +8,16 @@ export function cn(...inputs: ClassValue[]) {
 
 export type CurrencyCode = 'BRL' | 'PYG';
 
-/** Formata valor na moeda informada. Sem segundo parâmetro, usa Real (BRL). */
+/** 
+ * Formata valor na moeda informada usando a estratégia de armazenamento:
+ * - BRL: valor vem em centavos do banco, divide por 100
+ * - PYG: valor vem inteiro do banco, usa direto
+ * 
+ * @deprecated Use formatPrice de priceHelper.ts diretamente para melhor performance
+ * Mantido para compatibilidade durante migração
+ */
 export function formatCurrency(value: number, currency: CurrencyCode = 'BRL'): string {
-  if (currency === 'PYG') {
-    return new Intl.NumberFormat('es-PY', {
-      style: 'decimal',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(Math.round(value)) + ' Gs.';
-  }
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
+  return formatPrice(value, currency);
 }
 
 export function formatPhone(phone: string): string {
