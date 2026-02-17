@@ -261,15 +261,15 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
-            <Store className="h-10 w-10 text-orange-500" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 safe-area-inset-bottom">
+        <div className="text-center space-y-4 sm:space-y-6">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
+            <Store className="h-8 w-8 sm:h-10 sm:w-10 text-orange-500" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Seu carrinho está vazio</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Seu carrinho está vazio</h2>
           <Button 
             onClick={handleBackToMenu}
-            className="bg-orange-600 hover:bg-orange-700 text-white rounded-xl"
+            className="bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white rounded-xl h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base touch-manipulation active:scale-95"
           >
             Voltar ao Cardápio
           </Button>
@@ -279,47 +279,52 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="-ml-2">
-            <ArrowLeft className="h-6 w-6 text-slate-600" />
+    <div className="min-h-screen bg-slate-50 pb-28 sm:pb-24 safe-area-inset-bottom">
+      {/* Header - Mobile First */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-30 safe-area-inset-top">
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center gap-3 sm:gap-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => navigate(-1)} 
+            className="-ml-1 sm:-ml-2 h-10 w-10 sm:h-11 sm:w-11 touch-manipulation active:scale-95"
+          >
+            <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6 text-slate-600" />
           </Button>
-          <h1 className="text-xl font-bold text-slate-900">Finalizar Pedido</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900">Finalizar Pedido</h1>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 mt-6 max-w-2xl space-y-6">
+      <div className="container mx-auto px-3 sm:px-4 mt-4 sm:mt-6 max-w-2xl space-y-4 sm:space-y-6">
         
-        {/* Lista de Itens */}
-        <Card className="border-0 shadow-sm bg-white rounded-xl overflow-hidden">
-          <CardHeader className="pb-2 bg-slate-50/50 border-b border-slate-100">
-            <CardTitle className="text-lg text-slate-800">Itens do Pedido</CardTitle>
+        {/* Lista de Itens - Mobile First */}
+        <Card className="border-0 shadow-sm bg-white rounded-xl sm:rounded-2xl overflow-hidden">
+          <CardHeader className="pb-2 sm:pb-3 bg-slate-50/50 border-b border-slate-100 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-base sm:text-lg text-slate-800">Itens do Pedido</CardTitle>
           </CardHeader>
-          <CardContent className="pt-4 space-y-4">
+          <CardContent className="pt-3 sm:pt-4 space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
             {items.map((item, index) => (
-              <div key={index} className="flex gap-4">
-                <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 font-bold text-sm flex-shrink-0">
+              <div key={index} className="flex gap-3 sm:gap-4">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 font-bold text-xs sm:text-sm flex-shrink-0">
                   {item.quantity}x
                 </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-semibold text-slate-900">{item.productName}</h3>
-                    <span className="font-bold text-slate-700">{formatCurrency(item.unitPrice * item.quantity)}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start gap-2">
+                    <h3 className="font-semibold text-slate-900 text-sm sm:text-base leading-tight flex-1 min-w-0">{item.productName}</h3>
+                    <span className="font-bold text-slate-700 text-sm sm:text-base flex-shrink-0">{formatCurrency(item.unitPrice * item.quantity)}</span>
                   </div>
                   {(item.pizzaSize || item.pizzaFlavors) && (
-                    <p className="text-sm text-slate-500 mt-1">
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1 line-clamp-2">
                       {item.pizzaSize} - {item.pizzaFlavors?.join(', ')}
                     </p>
                   )}
                   {item.observations && (
-                    <p className="text-xs text-orange-600 mt-1 italic">Obs: {item.observations}</p>
+                    <p className="text-xs text-orange-600 mt-1 italic line-clamp-2">Obs: {item.observations}</p>
                   )}
                   <div className="mt-2 flex gap-3">
                     <button 
                       onClick={() => updateQuantity(index, Math.max(0, item.quantity - 1))}
-                      className="text-xs text-slate-400 hover:text-orange-500 font-medium"
+                      className="text-xs text-slate-400 hover:text-orange-500 active:text-orange-600 font-medium touch-manipulation"
                     >
                       Remover
                     </button>
@@ -330,43 +335,49 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </CardContent>
         </Card>
 
-        {/* Tipo de Entrega */}
-        <div className="grid grid-cols-2 gap-3 p-1 bg-slate-200/50 rounded-xl">
+        {/* Tipo de Entrega - Mobile First */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 p-1 bg-slate-200/50 rounded-xl">
           <button
             onClick={() => setDeliveryType(DeliveryType.DELIVERY)}
-            className={`flex items-center justify-center gap-2 py-3 rounded-lg font-bold transition-all ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 rounded-lg font-bold text-sm sm:text-base transition-all touch-manipulation active:scale-95 ${
               deliveryType === DeliveryType.DELIVERY
                 ? 'bg-white text-orange-600 shadow-sm ring-1 ring-orange-100'
-                : 'text-slate-500 hover:bg-white/50'
+                : 'text-slate-500 active:bg-white/50'
             }`}
           >
-            <Bike className="h-5 w-5" /> Entrega
+            <Bike className="h-4 w-4 sm:h-5 sm:w-5" /> <span className="hidden xs:inline">Entrega</span><span className="xs:hidden">Ent.</span>
           </button>
           <button
             onClick={() => setDeliveryType(DeliveryType.PICKUP)}
-            className={`flex items-center justify-center gap-2 py-3 rounded-lg font-bold transition-all ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 rounded-lg font-bold text-sm sm:text-base transition-all touch-manipulation active:scale-95 ${
               deliveryType === DeliveryType.PICKUP
                 ? 'bg-white text-orange-600 shadow-sm ring-1 ring-orange-100'
-                : 'text-slate-500 hover:bg-white/50'
+                : 'text-slate-500 active:bg-white/50'
             }`}
           >
-            <Store className="h-5 w-5" /> Retirada
+            <Store className="h-4 w-4 sm:h-5 sm:w-5" /> <span className="hidden xs:inline">Retirada</span><span className="xs:hidden">Ret.</span>
           </button>
         </div>
 
-        {/* Formulário de Entrega */}
-        <Card className="border-0 shadow-sm bg-white rounded-xl">
-          <CardContent className="pt-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Seu Nome</Label>
-                <Input id="name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Como te chamamos?" className="bg-slate-50 border-slate-200" />
+        {/* Formulário de Entrega - Mobile First */}
+        <Card className="border-0 shadow-sm bg-white rounded-xl sm:rounded-2xl">
+          <CardContent className="pt-4 sm:pt-6 space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="name" className="text-sm sm:text-base">Seu Nome</Label>
+                <Input 
+                  id="name" 
+                  value={customerName} 
+                  onChange={(e) => setCustomerName(e.target.value)} 
+                  placeholder="Como te chamamos?" 
+                  className="bg-slate-50 border-slate-200 h-11 sm:h-12 text-sm sm:text-base touch-manipulation" 
+                />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Celular / WhatsApp</Label>
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="phone" className="text-sm sm:text-base">Celular / WhatsApp</Label>
                 <div className="flex gap-2">
                   <Select value={phoneCountry} onValueChange={(v) => setPhoneCountry(v as 'BR' | 'PY')}>
-                    <SelectTrigger className="w-[100px] bg-slate-50 border-slate-200 shrink-0">
+                    <SelectTrigger className="w-[90px] sm:w-[100px] bg-slate-50 border-slate-200 shrink-0 h-11 sm:h-12 text-sm sm:text-base">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -379,37 +390,38 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     placeholder={phoneCountry === 'BR' ? '(11) 99999-9999' : '981 123 456'}
-                    className="bg-slate-50 border-slate-200 flex-1"
+                    className="bg-slate-50 border-slate-200 flex-1 h-11 sm:h-12 text-sm sm:text-base touch-manipulation"
+                    type="tel"
                   />
                 </div>
               </div>
             </div>
 
             {deliveryType === DeliveryType.DELIVERY && (
-              <div className="space-y-4 pt-2 border-t border-slate-100">
-                <div className="space-y-2">
-                  <Label>Bairro / Região de Entrega</Label>
+              <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-slate-100">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label className="text-sm sm:text-base">Bairro / Região de Entrega</Label>
                   <Select value={selectedZoneId} onValueChange={setSelectedZoneId}>
-                    <SelectTrigger className="bg-slate-50 border-slate-200">
+                    <SelectTrigger className="bg-slate-50 border-slate-200 h-11 sm:h-12 text-sm sm:text-base touch-manipulation">
                       <SelectValue placeholder="Selecione seu bairro" />
                     </SelectTrigger>
                     <SelectContent>
                       {zones.map((zone) => (
-                        <SelectItem key={zone.id} value={zone.id}>
+                        <SelectItem key={zone.id} value={zone.id} className="text-sm sm:text-base">
                           {zone.location_name} ({formatCurrency(zone.fee)})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="address">Endereço completo (opcional)</Label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="address" className="text-sm sm:text-base">Endereço completo (opcional)</Label>
                   <Input 
                     id="address" 
                     value={address} 
                     onChange={(e) => setAddress(e.target.value)} 
                     placeholder="Rua, número, complemento — ou envie a localização no WhatsApp" 
-                    className="bg-slate-50 border-slate-200"
+                    className="bg-slate-50 border-slate-200 h-11 sm:h-12 text-sm sm:text-base touch-manipulation"
                   />
                 </div>
               </div>
@@ -417,40 +429,40 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </CardContent>
         </Card>
 
-        {/* Pagamento */}
-        <Card className="border-0 shadow-sm bg-white rounded-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg text-slate-800">Pagamento</CardTitle>
+        {/* Pagamento - Mobile First */}
+        <Card className="border-0 shadow-sm bg-white rounded-xl sm:rounded-2xl">
+          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-4 sm:pt-6">
+            <CardTitle className="text-base sm:text-lg text-slate-800">Pagamento</CardTitle>
           </CardHeader>
-          <CardContent className="pt-2">
-            <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="gap-3">
-              <div className={`flex items-center space-x-3 border p-4 rounded-xl transition-all ${paymentMethod === PaymentMethod.PIX ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200'}`}>
-                <RadioGroupItem value={PaymentMethod.PIX} id="pix" />
-                <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer w-full font-bold">
-                  <Smartphone className="h-5 w-5 text-emerald-500" /> PIX
+          <CardContent className="pt-2 px-3 sm:px-6 pb-4 sm:pb-6">
+            <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="gap-2.5 sm:gap-3">
+              <div className={`flex items-center space-x-2 sm:space-x-3 border p-3 sm:p-4 rounded-xl transition-all touch-manipulation active:scale-[0.98] ${paymentMethod === PaymentMethod.PIX ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200 active:bg-slate-50'}`}>
+                <RadioGroupItem value={PaymentMethod.PIX} id="pix" className="h-5 w-5 sm:h-6 sm:w-6" />
+                <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer w-full font-bold text-sm sm:text-base">
+                  <Smartphone className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500 flex-shrink-0" /> PIX
                 </Label>
               </div>
-              <div className={`flex items-center space-x-3 border p-4 rounded-xl transition-all ${paymentMethod === PaymentMethod.CARD ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200'}`}>
-                <RadioGroupItem value={PaymentMethod.CARD} id="card" />
-                <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer w-full font-bold">
-                  <CreditCard className="h-5 w-5 text-blue-500" /> Cartão na Entrega
+              <div className={`flex items-center space-x-2 sm:space-x-3 border p-3 sm:p-4 rounded-xl transition-all touch-manipulation active:scale-[0.98] ${paymentMethod === PaymentMethod.CARD ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200 active:bg-slate-50'}`}>
+                <RadioGroupItem value={PaymentMethod.CARD} id="card" className="h-5 w-5 sm:h-6 sm:w-6" />
+                <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer w-full font-bold text-sm sm:text-base">
+                  <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 flex-shrink-0" /> <span className="hidden xs:inline">Cartão na Entrega</span><span className="xs:hidden">Cartão</span>
                 </Label>
               </div>
-              <div className={`flex flex-col space-y-3 border p-4 rounded-xl transition-all ${paymentMethod === PaymentMethod.CASH ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200'}`}>
-                <div className="flex items-center space-x-3">
-                  <RadioGroupItem value={PaymentMethod.CASH} id="cash" />
-                  <Label htmlFor="cash" className="flex items-center gap-2 cursor-pointer w-full font-bold">
-                    <Banknote className="h-5 w-5 text-green-600" /> Dinheiro
+              <div className={`flex flex-col space-y-2.5 sm:space-y-3 border p-3 sm:p-4 rounded-xl transition-all ${paymentMethod === PaymentMethod.CASH ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200'}`}>
+                <div className="flex items-center space-x-2 sm:space-x-3 touch-manipulation active:scale-[0.98]">
+                  <RadioGroupItem value={PaymentMethod.CASH} id="cash" className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <Label htmlFor="cash" className="flex items-center gap-2 cursor-pointer w-full font-bold text-sm sm:text-base">
+                    <Banknote className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" /> Dinheiro
                   </Label>
                 </div>
                 {paymentMethod === PaymentMethod.CASH && (
-                  <div className="pl-7">
-                    <Label className="text-xs text-slate-500">Troco para quanto? (em Guaranies)</Label>
+                  <div className="pl-7 sm:pl-9">
+                    <Label className="text-xs sm:text-sm text-slate-500">Troco para quanto? (em Guaranies)</Label>
                     <Input 
                       placeholder="Ex: 50.000" 
                       value={changeFor}
                       onChange={(e) => setChangeFor(e.target.value)}
-                      className="mt-1 bg-white"
+                      className="mt-1.5 sm:mt-2 bg-white h-10 sm:h-11 text-sm sm:text-base touch-manipulation"
                     />
                   </div>
                 )}
@@ -459,46 +471,53 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </CardContent>
         </Card>
 
-        <div className="space-y-2">
-          <Label htmlFor="notes">Observações Gerais</Label>
+        <div className="space-y-1.5 sm:space-y-2 px-1">
+          <Label htmlFor="notes" className="text-sm sm:text-base">Observações Gerais</Label>
           <Input 
             id="notes" 
             value={notes} 
             onChange={(e) => setNotes(e.target.value)} 
             placeholder="Ex: Campainha quebrada, deixar na portaria..." 
-            className="bg-white border-slate-200"
+            className="bg-white border-slate-200 h-11 sm:h-12 text-sm sm:text-base touch-manipulation"
           />
         </div>
 
       </div>
 
-      {/* Footer Fixo */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <div className="container mx-auto max-w-2xl space-y-3">
-          <div className="flex justify-between items-center text-sm">
+      {/* Footer Fixo - Mobile First */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 sm:p-4 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] safe-area-inset-bottom">
+        <div className="container mx-auto max-w-2xl space-y-2 sm:space-y-3">
+          <div className="flex justify-between items-center text-xs sm:text-sm">
             <span className="text-slate-500">Subtotal</span>
             <span className="font-semibold">{formatCurrency(subtotal)}</span>
           </div>
           {deliveryType === DeliveryType.DELIVERY && (
-            <div className="flex justify-between items-center text-sm">
+            <div className="flex justify-between items-center text-xs sm:text-sm">
               <span className="text-slate-500">Taxa de Entrega</span>
               <span className="font-semibold text-red-600">{formatCurrency(deliveryFee)}</span>
             </div>
           )}
-          <div className="flex justify-between items-center text-xl font-bold border-t border-slate-100 pt-2 mb-2">
+          <div className="flex justify-between items-center text-lg sm:text-xl font-bold border-t border-slate-100 pt-2 mb-1 sm:mb-2">
             <span>Total</span>
             <span className="text-slate-900">{formatCurrency(total)}</span>
           </div>
           
           <Button 
             size="lg" 
-            className="w-full bg-[#25D366] hover:bg-[#1ebc57] text-white font-bold h-14 rounded-xl shadow-lg flex items-center justify-center gap-2 text-lg"
+            className="w-full bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white font-bold h-12 sm:h-14 rounded-xl sm:rounded-2xl shadow-lg flex items-center justify-center gap-2 text-sm sm:text-base sm:text-lg touch-manipulation active:scale-[0.98]"
             onClick={handleCheckout}
             disabled={loading}
           >
-            {loading ? 'Enviando...' : (
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                Enviando...
+              </span>
+            ) : (
               <>
-                Enviar Pedido no WhatsApp <Send className="h-5 w-5" />
+                <span className="hidden xs:inline">Enviar Pedido no WhatsApp</span>
+                <span className="xs:hidden">Enviar no WhatsApp</span>
+                <Send className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               </>
             )}
           </Button>
