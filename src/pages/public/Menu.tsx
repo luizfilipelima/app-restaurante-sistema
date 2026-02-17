@@ -238,7 +238,7 @@ export default function PublicMenu() {
                 onClick={() => setSelectedCategory('all')}
                 className={`flex flex-col items-center justify-center gap-1 min-w-[72px] h-[80px] p-3 rounded-xl transition-all flex-shrink-0 box-border ${
                   selectedCategory === 'all'
-                    ? 'bg-orange-500 text-white border-2 border-orange-500 shadow-[0_4px_12px_rgba(249,115,22,0.35)]'
+                    ? 'bg-orange-500 text-white border-2 border-orange-500'
                     : 'bg-slate-100 text-slate-600 border-2 border-slate-200 hover:bg-orange-50 hover:border-orange-200'
                 }`}
               >
@@ -256,7 +256,7 @@ export default function PublicMenu() {
                     onClick={() => setSelectedCategory(category)}
                     className={`flex flex-col items-center justify-center gap-1 min-w-[72px] h-[80px] p-3 rounded-xl transition-all flex-shrink-0 box-border ${
                       selectedCategory === category
-                        ? 'bg-orange-500 text-white border-2 border-orange-500 shadow-[0_4px_12px_rgba(249,115,22,0.35)]'
+                        ? 'bg-orange-500 text-white border-2 border-orange-500'
                         : 'bg-slate-100 text-slate-600 border-2 border-slate-200 hover:bg-orange-50 hover:border-orange-200'
                     }`}
                   >
