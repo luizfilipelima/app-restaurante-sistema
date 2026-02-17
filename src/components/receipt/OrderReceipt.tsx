@@ -1,5 +1,5 @@
 import { DatabaseOrder } from '@/types';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -9,6 +9,7 @@ export interface OrderReceiptData {
   order: DatabaseOrder;
   restaurantName: string;
   paperWidth: '58mm' | '80mm';
+  currency?: CurrencyCode;
 }
 
 interface OrderReceiptProps {
@@ -22,7 +23,7 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
     return <div className={className} aria-hidden />;
   }
 
-  const { order, restaurantName, paperWidth } = data;
+  const { order, restaurantName, paperWidth, currency = 'BRL' } = data;
   const items = order.order_items ?? [];
   const subtotal = Number(order.subtotal);
   const deliveryFee = Number(order.delivery_fee ?? 0);
@@ -68,7 +69,7 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
           <div className="receipt-row">
             <strong>Pagamento:</strong> {paymentLabel}
             {order.payment_method === 'cash' && order.payment_change_for != null && (
-              <> (Troco p/ {formatCurrency(Number(order.payment_change_for))})</>
+              <> (Troco p/ {formatCurrency(Number(order.payment_change_for), currency)})</>
             )}
           </div>
           <div className="receipt-row receipt-date">
@@ -91,7 +92,7 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
                 {item.product_name}
                 {item.observations ? ` (${item.observations})` : ''}
               </span>
-              <span>{formatCurrency(Number(item.total_price))}</span>
+              <span>{formatCurrency(Number(item.total_price), currency)}</span>
             </div>
           ))}
         </section>
@@ -101,17 +102,17 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
         <section className="receipt-section receipt-totals">
           <div className="receipt-row">
             <span>Subtotal</span>
-            <span>{formatCurrency(subtotal)}</span>
+            <span>{formatCurrency(subtotal, currency)}</span>
           </div>
           {deliveryFee > 0 && (
             <div className="receipt-row">
               <span>Taxa de entrega</span>
-              <span>{formatCurrency(deliveryFee)}</span>
+              <span>{formatCurrency(deliveryFee, currency)}</span>
             </div>
           )}
           <div className="receipt-row receipt-total">
             <span>TOTAL</span>
-            <span>{formatCurrency(total)}</span>
+            <span>{formatCurrency(total, currency)}</span>
           </div>
         </section>
 

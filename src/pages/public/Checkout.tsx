@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useRestaurantStore } from '@/store/restaurantStore';
-import { formatCurrency, formatGuarani, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours } from '@/lib/utils';
+import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote, Send } from 'lucide-react';
 
@@ -38,6 +38,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const { items, restaurantId, updateQuantity, getSubtotal, clearCart } =
     useCartStore();
   const { currentRestaurant } = useRestaurantStore();
+  const currency = (currentRestaurant as { currency?: 'BRL' | 'PYG' })?.currency === 'PYG' ? 'PYG' : 'BRL';
 
   const [loading, setLoading] = useState(false);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
@@ -204,7 +205,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       const itemsText = items
         .map(
           (i) =>
-            `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''} — ${formatCurrency(i.unitPrice * i.quantity)}`
+            `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''} — ${formatCurrency(i.unitPrice * i.quantity, currency)}`
         )
         .join('\n');
       const sections: string[] = [
@@ -225,13 +226,13 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       sections.push('💳 *Pagamento:* ' + (paymentMethod === 'pix' ? 'PIX' : paymentMethod === 'card' ? 'Cartão na entrega' : 'Dinheiro'));
       if (paymentMethod === PaymentMethod.CASH && changeFor) {
         const gs = changeFor.replace(/\D/g, '');
-        sections.push('🔄 *Troco para:* ' + (gs ? formatGuarani(parseInt(gs, 10)) : changeFor));
+        sections.push('🔄 *Troco para:* ' + (gs ? formatCurrency(parseInt(gs, 10), currency) : changeFor));
       }
       sections.push('');
       sections.push('📋 *Resumo:*');
-      sections.push('  Subtotal: ' + formatCurrency(subtotal));
-      if (deliveryFee > 0) sections.push('  Taxa entrega: ' + formatCurrency(deliveryFee));
-      sections.push('  *Total: ' + formatCurrency(total) + '*' + '\n');
+      sections.push('  Subtotal: ' + formatCurrency(subtotal, currency));
+      if (deliveryFee > 0) sections.push('  Taxa entrega: ' + formatCurrency(deliveryFee, currency));
+      sections.push('  *Total: ' + formatCurrency(total, currency) + '*' + '\n');
       sections.push('🍽️ *Itens:*');
       sections.push(itemsText);
       if (notes) sections.push('\n📝 *Obs:* ' + notes);
@@ -364,7 +365,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start gap-2">
                     <h3 className="font-semibold text-slate-900 text-sm sm:text-base leading-tight flex-1 min-w-0">{item.productName}</h3>
-                    <span className="font-bold text-slate-700 text-sm sm:text-base flex-shrink-0">{formatCurrency(item.unitPrice * item.quantity)}</span>
+                    <span className="font-bold text-slate-700 text-sm sm:text-base flex-shrink-0">{formatCurrency(item.unitPrice * item.quantity, currency)}</span>
                   </div>
                   {(item.pizzaSize || item.pizzaFlavors) && (
                     <p className="text-xs sm:text-sm text-slate-500 mt-1 line-clamp-2">
@@ -461,7 +462,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     <SelectContent>
                       {zones.map((zone) => (
                         <SelectItem key={zone.id} value={zone.id} className="text-sm sm:text-base">
-                          {zone.location_name} ({formatCurrency(zone.fee)})
+                          {zone.location_name} ({formatCurrency(zone.fee, currency)})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -510,7 +511,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 </div>
                 {paymentMethod === PaymentMethod.CASH && (
                   <div className="pl-7 sm:pl-9">
-                    <Label className="text-xs sm:text-sm text-slate-500">Troco para quanto? (em Guaranies)</Label>
+                    <Label className="text-xs sm:text-sm text-slate-500">Troco para quanto? ({currency === 'PYG' ? 'em Guaranies' : 'em Reais'})</Label>
                     <Input 
                       placeholder="Ex: 50.000" 
                       value={changeFor}
@@ -541,17 +542,17 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             <div className="space-y-2 sm:space-y-2.5">
               <div className="flex justify-between items-center text-sm sm:text-base">
                 <span className="text-slate-500">Subtotal</span>
-                <span className="font-semibold text-slate-900">{formatCurrency(subtotal)}</span>
+                <span className="font-semibold text-slate-900">{formatCurrency(subtotal, currency)}</span>
               </div>
               {deliveryType === DeliveryType.DELIVERY && (
                 <div className="flex justify-between items-center text-sm sm:text-base">
                   <span className="text-slate-500">Taxa de Entrega</span>
-                  <span className="font-semibold text-red-600">{formatCurrency(deliveryFee)}</span>
+                  <span className="font-semibold text-red-600">{formatCurrency(deliveryFee, currency)}</span>
                 </div>
               )}
               <div className="flex justify-between items-center text-lg sm:text-xl font-bold border-t border-slate-200 pt-3">
                 <span className="text-slate-900">Total</span>
-                <span className="text-slate-900">{formatCurrency(total)}</span>
+                <span className="text-slate-900">{formatCurrency(total, currency)}</span>
               </div>
             </div>
             

@@ -1,7 +1,7 @@
 import { Product } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -9,9 +9,11 @@ interface ProductCardProps {
   product: Product;
   onClick?: () => void;
   readOnly?: boolean;
+  /** Moeda para exibição do preço (BRL ou PYG). Default: BRL */
+  currency?: CurrencyCode;
 }
 
-export default function ProductCard({ product, onClick, readOnly = false }: ProductCardProps) {
+export default function ProductCard({ product, onClick, readOnly = false, currency = 'BRL' }: ProductCardProps) {
   const isBeverage = product.category?.toLowerCase() === 'bebidas';
   const hasNoImage = !product.image_url;
   const isSimplified = isBeverage && hasNoImage;
@@ -34,7 +36,7 @@ export default function ProductCard({ product, onClick, readOnly = false }: Prod
                 </h3>
                 <div className="flex-shrink-0">
                   <span className="text-base sm:text-lg font-bold text-slate-900 whitespace-nowrap">
-                    {formatCurrency(product.price)}
+                    {formatCurrency(product.price, currency)}
                   </span>
                 </div>
               </div>
@@ -111,7 +113,7 @@ export default function ProductCard({ product, onClick, readOnly = false }: Prod
         <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3">
           <div className="bg-white/95 backdrop-blur-sm rounded-full px-2 sm:px-3 py-1 sm:py-1.5 shadow-sm flex items-center gap-1 sm:gap-1.5 border border-white/50">
             <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium uppercase tracking-wide hidden xs:inline">a partir</span>
-            <span className="text-xs sm:text-sm font-bold text-slate-900">{formatCurrency(product.price)}</span>
+            <span className="text-xs sm:text-sm font-bold text-slate-900">{formatCurrency(product.price, currency)}</span>
           </div>
         </div>
       </div>

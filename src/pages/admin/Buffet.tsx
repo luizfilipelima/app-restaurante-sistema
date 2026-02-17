@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { useComandas } from '@/hooks/useComandas';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { supabase } from '@/lib/supabase';
@@ -28,6 +28,7 @@ import {
 
 export default function Buffet() {
   const restaurantId = useAdminRestaurantId();
+  const currency = useAdminCurrency();
   const { comandas, loading, createComanda, addItemToComanda, closeComanda, refresh } = useComandas(restaurantId || '');
   const { pendingCount, isOnline, isSyncing } = useOfflineSync(restaurantId || '');
   
@@ -332,7 +333,7 @@ export default function Buffet() {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {selectedProduct.name} - {formatCurrency(selectedProduct.price_sale || selectedProduct.price)}/kg
+                    {selectedProduct.name} - {formatCurrency(selectedProduct.price_sale || selectedProduct.price, currency)}/kg
                   </p>
                 </div>
               )}
@@ -354,7 +355,7 @@ export default function Buffet() {
                     </Button>
                   </div>
                   <div className="text-2xl font-bold">
-                    {formatCurrency(selectedComanda.total_amount)}
+                    {formatCurrency(selectedComanda.total_amount, currency)}
                   </div>
                 </div>
               )}
@@ -385,7 +386,7 @@ export default function Buffet() {
                     <div className="flex-1 text-left">
                       <div className="font-medium">{product.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {formatCurrency(product.price_sale || product.price)}
+                        {formatCurrency(product.price_sale || product.price, currency)}
                         {product.is_by_weight && '/kg'}
                       </div>
                     </div>
@@ -426,7 +427,7 @@ export default function Buffet() {
                   <CardContent>
                     <div className="space-y-2">
                       <div className="text-2xl font-bold">
-                        {formatCurrency(comanda.total_amount)}
+                        {formatCurrency(comanda.total_amount, currency)}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {comanda.items?.length || 0} item(s)
@@ -441,12 +442,12 @@ export default function Buffet() {
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium truncate">{item.description}</div>
                                 <div className="text-xs text-muted-foreground">
-                                  {item.quantity} x {formatCurrency(item.unit_price)}
+                                  {item.quantity} x {formatCurrency(item.unit_price, currency)}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="font-bold">
-                                  {formatCurrency(item.total_price)}
+                                  {formatCurrency(item.total_price, currency)}
                                 </span>
                                 <Button
                                   variant="ghost"
@@ -509,7 +510,8 @@ export default function Buffet() {
               <div className="text-center">
                 <div className="text-3xl font-bold mb-2">
                   {formatCurrency(
-                    comandas.find(c => c.id === closingComandaId)?.total_amount || 0
+                    comandas.find(c => c.id === closingComandaId)?.total_amount || 0,
+                    currency
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">

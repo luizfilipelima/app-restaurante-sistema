@@ -286,6 +286,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
 
   if (!restaurant) return <div>Restaurante não encontrado</div>;
 
+  const currency = restaurant.currency === 'PYG' ? 'PYG' : 'BRL';
+
   const hasHours = restaurant.opening_hours && Object.keys(restaurant.opening_hours).length > 0;
   const alwaysOpen = !!restaurant.always_open;
   const isOpen = restaurant.is_manually_closed
@@ -407,6 +409,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
                         key={product.id}
                         product={product}
                         onClick={() => handleProductClick(product)}
+                        currency={currency}
                       />
                     ))}
                   </div>
@@ -425,6 +428,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
                     key={product.id}
                     product={product}
                     onClick={() => handleProductClick(product)}
+                    currency={currency}
                   />
                 ))}
               </div>
@@ -476,7 +480,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
                 </div>
                 <div className="flex flex-col items-start justify-center">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold leading-tight">Total</span>
-                  <span className="text-base font-bold text-white leading-tight">{formatCurrency(getSubtotal())}</span>
+                  <span className="text-base font-bold text-white leading-tight">{formatCurrency(getSubtotal(), currency)}</span>
                 </div>
               </div>
 
@@ -498,6 +502,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
         open={cartOpen}
         onClose={() => setCartOpen(false)}
         onCheckout={handleCheckoutNavigation}
+        currency={currency}
       />
 
       {selectedProduct && selectedProduct.is_pizza && (
@@ -512,6 +517,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
           flavors={pizzaFlavors}
           doughs={pizzaDoughs}
           edges={pizzaEdges}
+          currency={currency}
         />
       )}
 
@@ -526,6 +532,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
           sizes={marmitaSizes}
           proteins={marmitaProteins}
           sides={marmitaSides}
+          currency={currency}
         />
       )}
     </div>

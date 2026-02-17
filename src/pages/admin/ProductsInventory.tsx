@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/types';
 import { formatCurrency } from '@/lib/utils';
@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 export default function ProductsInventory() {
   const restaurantId = useAdminRestaurantId();
+  const currency = useAdminCurrency();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -315,12 +316,12 @@ export default function ProductsInventory() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Preço de Venda</span>
-                    <span className="font-bold">{formatCurrency(product.price_sale || product.price)}</span>
+                    <span className="font-bold">{formatCurrency(product.price_sale || product.price, currency)}</span>
                   </div>
                   {product.price_cost && (
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Custo</span>
-                      <span className="text-sm">{formatCurrency(product.price_cost)}</span>
+                      <span className="text-sm">{formatCurrency(product.price_cost, currency)}</span>
                     </div>
                   )}
                   {product.sku && (
@@ -483,6 +484,7 @@ export default function ProductsInventory() {
                 name,category,price,price_sale,price_cost,sku,description,is_by_weight<br />
                 Refrigerante,Bebidas,5.00,6.00,3.50,REF001,Refrigerante gelado,false
               </code>
+              <span className="block mt-2 text-muted-foreground">Os valores (price, price_sale, price_cost) devem estar na moeda configurada do restaurante ({currency === 'PYG' ? 'Guaraní' : 'Real'}).</span>
             </p>
             <div>
               <Label>Arquivo CSV</Label>

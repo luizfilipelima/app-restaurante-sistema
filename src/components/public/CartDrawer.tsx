@@ -1,6 +1,6 @@
 import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/button';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { Plus, Minus, Trash2, MessageCircle } from 'lucide-react';
 import {
   Dialog,
@@ -14,9 +14,10 @@ interface CartDrawerProps {
   open: boolean;
   onClose: () => void;
   onCheckout: () => void;
+  currency?: CurrencyCode;
 }
 
-export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProps) {
+export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL' }: CartDrawerProps) {
   const { items, updateQuantity, removeItem, getSubtotal } = useCartStore();
 
   const handleCheckout = () => {
@@ -100,7 +101,7 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
                         </Button>
                       </div>
                       <span className="font-semibold text-sm sm:text-base">
-                        {formatCurrency(itemTotal)}
+                        {formatCurrency(itemTotal, currency)}
                       </span>
                     </div>
                   </div>
@@ -121,7 +122,7 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
             </div>
             <div className="flex justify-between items-center text-base sm:text-lg font-bold w-full">
               <span>Subtotal:</span>
-              <span>{formatCurrency(getSubtotal())}</span>
+              <span>{formatCurrency(getSubtotal(), currency)}</span>
             </div>
             <Button 
               size="lg" 

@@ -5,7 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(value: number): string {
+export type CurrencyCode = 'BRL' | 'PYG';
+
+/** Formata valor na moeda informada. Sem segundo parâmetro, usa Real (BRL). */
+export function formatCurrency(value: number, currency: CurrencyCode = 'BRL'): string {
+  if (currency === 'PYG') {
+    return new Intl.NumberFormat('es-PY', {
+      style: 'decimal',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(Math.round(value)) + ' Gs.';
+  }
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -54,13 +64,9 @@ export function generateWhatsAppLink(phone: string, message: string): string {
   return `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
 }
 
-/** Formata valor em Guaranies (Paraguai). */
+/** Formata valor em Guaranies (Paraguai). Prefira formatCurrency(value, 'PYG'). */
 export function formatGuarani(value: number): string {
-  return new Intl.NumberFormat('es-PY', {
-    style: 'decimal',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value) + ' Gs.';
+  return formatCurrency(value, 'PYG');
 }
 
 /** Normaliza telefone para número internacional (apenas dígitos). BR: +55, PY: +595. */

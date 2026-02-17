@@ -182,6 +182,8 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
 
   if (!restaurant) return <div className="min-h-screen flex items-center justify-center">Restaurante não encontrado</div>;
 
+  const currency = restaurant.currency === 'PYG' ? 'PYG' : 'BRL';
+
   const hasHours = restaurant.opening_hours && Object.keys(restaurant.opening_hours).length > 0;
   const alwaysOpen = !!restaurant.always_open;
   const isOpen = restaurant.is_manually_closed
@@ -296,6 +298,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                         product={product}
                         onClick={undefined}
                         readOnly={true}
+                        currency={currency}
                       />
                     ))}
                   </div>
@@ -315,6 +318,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                     product={product}
                     onClick={undefined}
                     readOnly={true}
+                    currency={currency}
                   />
                 ))}
               </div>

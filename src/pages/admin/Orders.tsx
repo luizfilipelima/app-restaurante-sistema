@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { DatabaseOrder, OrderStatus } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -117,6 +117,7 @@ const ORDER_TAB_STATUSES = [
 
 export default function AdminOrders() {
   const restaurantId = useAdminRestaurantId();
+  const currency = useAdminCurrency();
   const [orders, setOrders] = useState<DatabaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [orderToRemove, setOrderToRemove] = useState<string | null>(null);
@@ -190,7 +191,7 @@ export default function AdminOrders() {
                 .eq('id', orderId)
                 .single();
               if (!error && fullOrder) {
-                printOrder(fullOrder as DatabaseOrder, settings.name, settings.print_paper_width || '80mm');
+                printOrder(fullOrder as DatabaseOrder, settings.name, settings.print_paper_width || '80mm', currency);
               }
             } catch (e) {
               console.error('Erro ao imprimir pedido novo:', e);
@@ -342,7 +343,7 @@ export default function AdminOrders() {
   const handlePrintOrder = (order: DatabaseOrder) => {
     const name = printSettings?.name ?? '';
     const width = printSettings?.print_paper_width ?? '80mm';
-    printOrder(order, name, width);
+    printOrder(order, name, width, currency);
   };
 
   return (
@@ -505,7 +506,7 @@ export default function AdminOrders() {
                               </span>
                             </div>
                             <span className="font-bold text-lg text-gradient">
-                              {formatCurrency(order.total)}
+                              {formatCurrency(order.total, currency)}
                             </span>
                           </div>
 

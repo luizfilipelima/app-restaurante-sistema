@@ -34,6 +34,7 @@ export default function AdminSettings() {
     phone: '',
     whatsapp: '',
     phone_country: 'BR' as 'BR' | 'PY',
+    currency: 'BRL' as 'BRL' | 'PYG',
     instagram_url: '',
     logo: '',
     primary_color: '#000000',
@@ -73,6 +74,7 @@ export default function AdminSettings() {
         phone: data.phone || '',
         whatsapp: data.whatsapp || '',
         phone_country: (data.phone_country === 'PY' ? 'PY' : 'BR') as 'BR' | 'PY',
+        currency: (data.currency === 'PYG' ? 'PYG' : 'BRL') as 'BRL' | 'PYG',
         instagram_url: data.instagram_url || '',
         logo: data.logo || '',
         primary_color: data.primary_color || '#000000',
@@ -105,6 +107,7 @@ export default function AdminSettings() {
           phone: formData.phone,
           whatsapp: formData.whatsapp,
           phone_country: formData.phone_country,
+          currency: formData.currency,
           instagram_url: formData.instagram_url || null,
           logo: formData.logo,
           primary_color: formData.primary_color,
@@ -162,6 +165,25 @@ export default function AdminSettings() {
                   }
                   required
                 />
+              </div>
+
+              <div>
+                <Label>Moeda do cardápio</Label>
+                <Select
+                  value={formData.currency}
+                  onValueChange={(v) => setFormData({ ...formData, currency: v as 'BRL' | 'PYG' })}
+                >
+                  <SelectTrigger className="w-full max-w-[200px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BRL">🇧🇷 Real (R$)</SelectItem>
+                    <SelectItem value="PYG">🇵🇾 Guaraní (Gs.)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Valores do cardápio, produtos e pedidos serão exibidos nesta moeda
+                </p>
               </div>
 
               <div>

@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import { Restaurant } from '@/types';
+import type { CurrencyCode } from '@/lib/utils';
 
 interface AdminRestaurantContextType {
   /** ID do restaurante sendo gerenciado (do user ou do super-admin) */
@@ -24,6 +25,12 @@ export function useAdminRestaurant() {
 /** Retorna o restaurantId a usar nas queries (do contexto) */
 export function useAdminRestaurantId(): string | null {
   return useContext(AdminRestaurantContext).restaurantId;
+}
+
+/** Moeda do restaurante para formatação de valores (BRL ou PYG) */
+export function useAdminCurrency(): CurrencyCode {
+  const { restaurant } = useContext(AdminRestaurantContext);
+  return restaurant?.currency === 'PYG' ? 'PYG' : 'BRL';
 }
 
 export { AdminRestaurantContext };

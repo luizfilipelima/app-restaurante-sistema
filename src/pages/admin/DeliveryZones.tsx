@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { DeliveryZone } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
 
 export default function AdminDeliveryZones() {
   const restaurantId = useAdminRestaurantId();
+  const currency = useAdminCurrency();
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -217,7 +218,7 @@ export default function AdminDeliveryZones() {
                     <p className="text-2xl font-bold text-primary">
                       {zone.fee === 0
                         ? 'Grátis'
-                        : formatCurrency(zone.fee)}
+                        : formatCurrency(zone.fee, currency)}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Taxa de entrega

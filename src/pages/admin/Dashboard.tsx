@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +49,7 @@ type PeriodValue = '30' | '365' | 'max';
 
 export default function AdminDashboard() {
   const restaurantId = useAdminRestaurantId();
+  const currency = useAdminCurrency();
   const { user } = useAuthStore();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -446,7 +447,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent className="relative">
               <div className="text-3xl font-bold text-white mb-1">
-                {formatCurrency(metrics.totalRevenue)}
+                {formatCurrency(metrics.totalRevenue, currency)}
               </div>
               <div className="flex items-center text-white/80 text-xs">
                 <ArrowUpRight className="h-3 w-3 mr-1" />
@@ -487,7 +488,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent className="relative">
               <div className="text-3xl font-bold text-white mb-1">
-                {formatCurrency(metrics.averageTicket)}
+                {formatCurrency(metrics.averageTicket, currency)}
               </div>
               <div className="flex items-center text-white/80 text-xs">
                 <span>Valor médio por pedido</span>
@@ -535,7 +536,7 @@ export default function AdminDashboard() {
                   <XAxis dataKey="date" stroke="#888" style={{ fontSize: '12px' }} />
                   <YAxis stroke="#888" style={{ fontSize: '12px' }} />
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value: number) => formatCurrency(value, currency)}
                     contentStyle={{
                       borderRadius: '8px',
                       border: 'none',
@@ -587,7 +588,7 @@ export default function AdminDashboard() {
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value: number) => formatCurrency(value)}
+                      formatter={(value: number) => formatCurrency(value, currency)}
                       contentStyle={{
                         borderRadius: '8px',
                         border: 'none',
@@ -734,10 +735,10 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-2xl font-bold text-foreground">
-                    {formatCurrency(buffetMetrics.totalBuffetRevenue)}
+                    {formatCurrency(buffetMetrics.totalBuffetRevenue, currency)}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Ticket médio: {formatCurrency(buffetMetrics.averageBuffetTicket)}
+                    Ticket médio: {formatCurrency(buffetMetrics.averageBuffetTicket, currency)}
                   </p>
                 </CardContent>
               </Card>
@@ -751,7 +752,7 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-2xl font-bold text-foreground">
-                    {formatCurrency(buffetMetrics.realCMV)}
+                    {formatCurrency(buffetMetrics.realCMV, currency)}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Margem: {buffetMetrics.profitMargin.toFixed(1)}%
@@ -768,7 +769,7 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-2xl font-bold text-emerald-600">
-                    {formatCurrency(buffetMetrics.profit)}
+                    {formatCurrency(buffetMetrics.profit, currency)}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {buffetMetrics.profitMargin.toFixed(1)}% de margem

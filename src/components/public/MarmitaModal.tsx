@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Check, UtensilsCrossed, Minus, Plus, X } from 'lucide-react';
 
@@ -17,6 +17,7 @@ interface MarmitaModalProps {
   sizes: MarmitaSize[];
   proteins: MarmitaProtein[];
   sides: MarmitaSide[];
+  currency?: CurrencyCode;
 }
 
 interface SelectedProtein {
@@ -31,6 +32,7 @@ export default function MarmitaModal({
   sizes,
   proteins,
   sides,
+  currency = 'BRL',
 }: MarmitaModalProps) {
   const [selectedSize, setSelectedSize] = useState<MarmitaSize | null>(null);
   const [selectedProteins, setSelectedProteins] = useState<SelectedProtein[]>([]);
@@ -217,7 +219,7 @@ export default function MarmitaModal({
                         {size.weight_grams}g
                       </div>
                       <div className={`text-sm font-semibold ${selectedSize?.id === size.id ? 'text-green-600' : 'text-slate-500'}`}>
-                        {formatCurrency(size.base_price)}
+                        {formatCurrency(size.base_price, currency)}
                       </div>
                     </div>
                     {selectedSize?.id === size.id && (
@@ -262,7 +264,7 @@ export default function MarmitaModal({
                             <p className="text-xs sm:text-sm text-slate-500">{protein.description}</p>
                           )}
                           <div className="text-xs sm:text-sm text-slate-600 mt-1">
-                            {formatCurrency(protein.price_per_gram)}/g
+                            {formatCurrency(protein.price_per_gram, currency)}/g
                           </div>
                         </div>
                         {selected ? (
@@ -317,7 +319,7 @@ export default function MarmitaModal({
                               <Plus className="h-4 w-4" />
                             </Button>
                             <span className="text-sm text-slate-500 ml-auto">
-                              {formatCurrency(protein.price_per_gram * selected.grams)}
+                              {formatCurrency(protein.price_per_gram * selected.grams, currency)}
                             </span>
                           </div>
                         </div>
@@ -365,7 +367,7 @@ export default function MarmitaModal({
                           </div>
                           {side.price_per_gram > 0 && (
                             <div className="text-xs text-slate-500 mt-1">
-                              +{formatCurrency(side.price_per_gram * selectedSize.weight_grams)}
+                              +{formatCurrency(side.price_per_gram * selectedSize.weight_grams, currency)}
                             </div>
                           )}
                         </button>
@@ -418,7 +420,7 @@ export default function MarmitaModal({
             </div>
             <div className="text-right min-w-0 flex-shrink-0">
               <span className="text-xs text-slate-500 block mb-1">Total</span>
-              <span className="text-xl sm:text-2xl font-bold text-slate-900 whitespace-nowrap">{formatCurrency(calculatePrice() * quantity)}</span>
+              <span className="text-xl sm:text-2xl font-bold text-slate-900 whitespace-nowrap">{formatCurrency(calculatePrice() * quantity, currency)}</span>
             </div>
           </div>
           <Button

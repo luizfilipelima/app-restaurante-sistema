@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { Product, Restaurant, PizzaSize, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,6 +72,7 @@ const formDefaults = {
 
 export default function AdminMenu() {
   const restaurantId = useAdminRestaurantId();
+  const currency = useAdminCurrency();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -804,7 +805,7 @@ export default function AdminMenu() {
                           )}
                           <div className="flex items-center justify-between mb-4">
                             <span className="text-lg font-bold text-primary">
-                              {formatCurrency(product.price)}
+                              {formatCurrency(product.price, currency)}
                             </span>
                           </div>
                           <div className="flex flex-col sm:flex-row gap-2">
@@ -960,7 +961,7 @@ export default function AdminMenu() {
                         {pizzaDoughs.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tipo. Adicione (ex: Tradicional, Integral).</p>}
                         {pizzaDoughs.map((d) => (
                           <li key={d.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
-                            <span className="text-sm"><strong>{d.name}</strong> {Number(d.extra_price) > 0 ? `+ ${formatCurrency(Number(d.extra_price))}` : '(sem acréscimo)'}{!d.is_active && ' (inativo)'}</span>
+                            <span className="text-sm"><strong>{d.name}</strong> {Number(d.extra_price) > 0 ? `+ ${formatCurrency(Number(d.extra_price), currency)}` : '(sem acréscimo)'}{!d.is_active && ' (inativo)'}</span>
                             <div className="flex gap-1">
                               <Button type="button" size="sm" variant="ghost" onClick={() => toggleDoughActive(d.id, d.is_active)}>{d.is_active ? 'Desativar' : 'Ativar'}</Button>
                               <Button type="button" size="sm" variant="ghost" onClick={() => deleteDough(d.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
@@ -1004,7 +1005,7 @@ export default function AdminMenu() {
                         {pizzaEdges.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma borda. Adicione (ex: Catupiry, Cheddar).</p>}
                         {pizzaEdges.map((e) => (
                           <li key={e.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
-                            <span className="text-sm"><strong>{e.name}</strong> — {formatCurrency(Number(e.price))}{!e.is_active && ' (inativo)'}</span>
+                            <span className="text-sm"><strong>{e.name}</strong> — {formatCurrency(Number(e.price), currency)}{!e.is_active && ' (inativo)'}</span>
                             <div className="flex gap-1">
                               <Button type="button" size="sm" variant="ghost" onClick={() => toggleEdgeActive(e.id, e.is_active)}>{e.is_active ? 'Desativar' : 'Ativar'}</Button>
                               <Button type="button" size="sm" variant="ghost" onClick={() => deleteEdge(e.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
@@ -1071,7 +1072,7 @@ export default function AdminMenu() {
                         {marmitaSizes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tamanho. Adicione para o cliente escolher no cardápio.</p>}
                         {marmitaSizes.map((s) => (
                           <li key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
-                            <span className="text-sm"><strong>{s.name}</strong> — {s.weight_grams}g — Base: {formatCurrency(Number(s.base_price))} {Number(s.price_per_gram) > 0 && `— R$ ${Number(s.price_per_gram).toFixed(4)}/g`}</span>
+                            <span className="text-sm"><strong>{s.name}</strong> — {s.weight_grams}g — Base: {formatCurrency(Number(s.base_price), currency)} {Number(s.price_per_gram) > 0 && `— ${formatCurrency(Number(s.price_per_gram), currency)}/g`}</span>
                             <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSize(s.id)} className="text-destructive"><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>
                           </li>
                         ))}
@@ -1116,7 +1117,7 @@ export default function AdminMenu() {
                         {marmitaProteins.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma proteína. Adicione (ex: Frango, Carne, Peixe).</p>}
                         {marmitaProteins.map((p) => (
                           <li key={p.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
-                            <span className="text-sm"><strong>{p.name}</strong> — {formatCurrency(Number(p.price_per_gram))}/g{!p.is_active && ' (inativo)'}</span>
+                            <span className="text-sm"><strong>{p.name}</strong> — {formatCurrency(Number(p.price_per_gram), currency)}/g{!p.is_active && ' (inativo)'}</span>
                             <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaProtein(p.id)} className="text-destructive"><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>
                           </li>
                         ))}
@@ -1167,7 +1168,7 @@ export default function AdminMenu() {
                         {marmitaSides.length === 0 && <p className="text-sm text-muted-foreground">Nenhum acompanhamento. Adicione (ex: Arroz, Feijão, Salada).</p>}
                         {marmitaSides.map((s) => (
                           <li key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
-                            <span className="text-sm"><strong>{s.name}</strong> {s.category && `(${s.category})`} — {formatCurrency(Number(s.price_per_gram))}/g{!s.is_active && ' (inativo)'}</span>
+                            <span className="text-sm"><strong>{s.name}</strong> {s.category && `(${s.category})`} — {formatCurrency(Number(s.price_per_gram), currency)}/g{!s.is_active && ' (inativo)'}</span>
                             <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSide(s.id)} className="text-destructive"><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>
                           </li>
                         ))}
