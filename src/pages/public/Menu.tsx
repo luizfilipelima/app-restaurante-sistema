@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { isWithinOpeningHours } from '@/lib/utils';
+import { isWithinOpeningHours, formatCurrency } from '@/lib/utils';
 import ProductCard from '@/components/public/ProductCard';
 import CartDrawer from '@/components/public/CartDrawer';
 import PizzaModal from '@/components/public/PizzaModal';
@@ -92,7 +92,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
     }
   };
 
-  const { getItemsCount, setRestaurant: setCartRestaurant } = useCartStore();
+  const { getItemsCount, getSubtotal, setRestaurant: setCartRestaurant } = useCartStore();
   const { setCurrentRestaurant } = useRestaurantStore();
 
   useEffect(() => {
@@ -410,33 +410,33 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
             paddingRight: 'max(12px, env(safe-area-inset-right))'
           }}
         >
-          <div className="bg-white/98 backdrop-blur-xl border-t border-slate-200/60 shadow-[0_-8px_24px_-4px_rgba(0,0,0,0.12)]">
-            <div className="container mx-auto px-3 sm:px-4 py-3 max-w-6xl">
-              <Button
-                className="w-full h-14 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 hover:from-slate-800 hover:via-slate-700 hover:to-slate-800 active:from-slate-700 active:via-slate-600 active:to-slate-700 text-white flex items-center justify-between px-3 sm:px-4 transition-all duration-200 active:scale-[0.98] font-semibold border-0 shadow-xl shadow-slate-900/25 hover:shadow-2xl hover:shadow-slate-900/30 touch-manipulation group"
-                onClick={() => handleCheckoutNavigation()}
-              >
-                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                  <div className="bg-white/25 backdrop-blur-sm px-3 py-1.5 rounded-xl flex items-center justify-center min-w-[56px] border border-white/20 shadow-sm">
-                    <span className="text-xs sm:text-sm font-bold text-white tabular-nums">
-                      {getItemsCount()}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-start min-w-0 flex-1">
-                    <span className="text-white font-semibold text-sm sm:text-base truncate w-full">
-                      Ver carrinho
-                    </span>
-                    <span className="text-white/70 text-[10px] sm:text-xs font-medium">
-                      {getItemsCount()} {getItemsCount() === 1 ? 'item' : 'itens'}
-                    </span>
-                  </div>
+          <div className="bg-white/80 backdrop-blur-xl border-t border-slate-200/50 p-3 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]">
+            <Button
+              className="w-full h-14 rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch"
+              onClick={() => setCartOpen(true)}
+            >
+              {/* Left Side: Info */}
+              <div className="flex-1 flex items-center justify-start px-4 gap-3.5">
+                <div className="relative">
+                   <div className="bg-white/20 h-9 w-9 rounded-full flex items-center justify-center border border-white/10 shadow-inner">
+                      <span className="text-sm font-bold">{getItemsCount()}</span>
+                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 bg-white/15 px-3 sm:px-4 py-2 rounded-xl border border-white/20 group-hover:bg-white/20 transition-colors">
-                  <span className="font-bold text-sm sm:text-base text-white">Finalizar</span>
-                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-white flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                <div className="flex flex-col items-start justify-center">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold leading-tight">Total</span>
+                  <span className="text-base font-bold text-white leading-tight">{formatCurrency(getSubtotal())}</span>
                 </div>
-              </Button>
-            </div>
+              </div>
+
+              {/* Divider */}
+              <div className="w-[1px] bg-white/10 my-3"></div>
+
+              {/* Right Side: Action */}
+              <div className="px-5 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 transition-colors h-full">
+                <span className="text-sm font-bold">Ver sacola</span>
+                <ChevronRight className="h-4 w-4 opacity-70" />
+              </div>
+            </Button>
           </div>
         </div>
       )}
