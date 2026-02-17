@@ -323,7 +323,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-44 sm:pb-36 safe-area-inset-bottom">
+    <div className="min-h-screen bg-slate-50 pb-6 sm:pb-8 safe-area-inset-bottom">
       {/* Header - Mobile First */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30 safe-area-inset-top">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center gap-3 sm:gap-4">
@@ -339,7 +339,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         </div>
       </div>
 
-      <div className="container mx-auto px-3 sm:px-4 mt-4 sm:mt-6 max-w-2xl space-y-4 sm:space-y-6">
+      <div className="container mx-auto px-3 sm:px-4 mt-4 sm:mt-6 mb-6 sm:mb-8 max-w-2xl space-y-4 sm:space-y-6">
         
         {/* Lista de Itens - Mobile First */}
         <Card className="border-0 shadow-sm bg-white rounded-xl sm:rounded-2xl overflow-hidden">
@@ -515,7 +515,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </CardContent>
         </Card>
 
-        <div className="space-y-1.5 sm:space-y-2 px-1">
+        <div className="space-y-1.5 sm:space-y-2">
           <Label htmlFor="notes" className="text-sm sm:text-base">Observações Gerais</Label>
           <Input 
             id="notes" 
@@ -526,46 +526,48 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           />
         </div>
 
-      </div>
-
-      {/* Footer Fixo - Mobile First */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 sm:p-4 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] safe-area-inset-bottom" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
-        <div className="container mx-auto max-w-2xl space-y-2 sm:space-y-3">
-          <div className="flex justify-between items-center text-xs sm:text-sm">
-            <span className="text-slate-500">Subtotal</span>
-            <span className="font-semibold">{formatCurrency(subtotal)}</span>
-          </div>
-          {deliveryType === DeliveryType.DELIVERY && (
-            <div className="flex justify-between items-center text-xs sm:text-sm">
-              <span className="text-slate-500">Taxa de Entrega</span>
-              <span className="font-semibold text-red-600">{formatCurrency(deliveryFee)}</span>
+        {/* Resumo e Botão Finalizar - Integrado ao conteúdo */}
+        <Card className="border-0 shadow-lg bg-white rounded-xl sm:rounded-2xl sticky bottom-0 sm:static">
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6 pb-4 sm:pb-6 space-y-3 sm:space-y-4">
+            <div className="space-y-2 sm:space-y-2.5">
+              <div className="flex justify-between items-center text-sm sm:text-base">
+                <span className="text-slate-500">Subtotal</span>
+                <span className="font-semibold text-slate-900">{formatCurrency(subtotal)}</span>
+              </div>
+              {deliveryType === DeliveryType.DELIVERY && (
+                <div className="flex justify-between items-center text-sm sm:text-base">
+                  <span className="text-slate-500">Taxa de Entrega</span>
+                  <span className="font-semibold text-red-600">{formatCurrency(deliveryFee)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center text-lg sm:text-xl font-bold border-t border-slate-200 pt-3">
+                <span className="text-slate-900">Total</span>
+                <span className="text-slate-900">{formatCurrency(total)}</span>
+              </div>
             </div>
-          )}
-          <div className="flex justify-between items-center text-lg sm:text-xl font-bold border-t border-slate-100 pt-2 mb-1 sm:mb-2">
-            <span>Total</span>
-            <span className="text-slate-900">{formatCurrency(total)}</span>
-          </div>
-          
-          <Button 
-            size="lg" 
-            className="w-full bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white font-bold h-12 sm:h-14 rounded-xl sm:rounded-2xl shadow-lg flex items-center justify-center gap-2 text-sm sm:text-base sm:text-lg touch-manipulation active:scale-[0.98]"
-            onClick={handleCheckout}
-            disabled={loading}
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                Enviando...
-              </span>
-            ) : (
-              <>
-                <span className="hidden xs:inline">Enviar Pedido no WhatsApp</span>
-                <span className="xs:hidden">Enviar no WhatsApp</span>
-                <Send className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-              </>
-            )}
-          </Button>
-        </div>
+            
+            <Button 
+              size="lg" 
+              className="w-full bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white font-bold h-12 sm:h-14 rounded-xl sm:rounded-2xl shadow-lg flex items-center justify-center gap-2 text-sm sm:text-base sm:text-lg touch-manipulation active:scale-[0.98]"
+              onClick={handleCheckout}
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                  Enviando...
+                </span>
+              ) : (
+                <>
+                  <span className="hidden xs:inline">Enviar Pedido no WhatsApp</span>
+                  <span className="xs:hidden">Enviar no WhatsApp</span>
+                  <Send className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
       </div>
     </div>
   );
