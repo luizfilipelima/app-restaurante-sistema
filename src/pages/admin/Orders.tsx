@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, Check, ChevronRight, Package, Truck, CheckCircle2, X } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard, Check, ChevronRight, Package, Truck, CheckCircle2, X, Loader2 } from 'lucide-react';
 
 const statusConfig = {
   [OrderStatus.PENDING]: {
@@ -117,19 +117,13 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [orderToRemove, setOrderToRemove] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (restaurantId) {
-      loadOrders();
-      subscribeToOrders();
-    }
-  }, [restaurantId]);
-
-  const loadOrders = async () => {
+  const loadOrders = async (silent = false) => {
     if (!restaurantId) return;
 
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
 
       const { data, error } = await supabase
         .from('orders')
@@ -139,7 +133,7 @@ export default function AdminOrders() {
           order_items(*)
         `)
         .eq('restaurant_id', restaurantId)
-        .in('status', ACTIVE_STATUSES)
+        .in('status', ORDER_TAB_STATUSES)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -148,12 +142,13 @@ export default function AdminOrders() {
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
-  const subscribeToOrders = () => {
+  useEffect(() => {
     if (!restaurantId) return;
+    loadOrders();
 
     const channel = supabase
       .channel('orders-changes')
@@ -166,17 +161,25 @@ export default function AdminOrders() {
           filter: `restaurant_id=eq.${restaurantId}`,
         },
         () => {
-          loadOrders();
+          loadOrders(true);
         }
       )
       .subscribe();
 
+    const pollInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        loadOrders(true);
+      }
+    }, 30000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
-  };
+  }, [restaurantId]);
 
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    setUpdatingOrderId(orderId);
     try {
       const { error } = await supabase
         .from('orders')
@@ -185,12 +188,7 @@ export default function AdminOrders() {
 
       if (error) throw error;
 
-      // Atualizar localmente
-      setOrders((prev) =>
-        prev.map((order) =>
-          order.id === orderId ? { ...order, status: newStatus } : order
-        )
-      );
+      await loadOrders(true);
 
       toast({
         title: "✅ Status atualizado!",
@@ -204,10 +202,13 @@ export default function AdminOrders() {
         description: "Não foi possível atualizar o status do pedido",
         variant: "destructive",
       });
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
   const markAsPaid = async (orderId: string) => {
+    setUpdatingOrderId(orderId);
     try {
       const { error } = await supabase
         .from('orders')
@@ -216,11 +217,7 @@ export default function AdminOrders() {
 
       if (error) throw error;
 
-      setOrders((prev) =>
-        prev.map((order) =>
-          order.id === orderId ? { ...order, is_paid: true } : order
-        )
-      );
+      await loadOrders(true);
 
       toast({
         title: "💰 Pagamento confirmado!",
@@ -234,6 +231,8 @@ export default function AdminOrders() {
         description: "Não foi possível confirmar o pagamento",
         variant: "destructive",
       });
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -396,9 +395,14 @@ export default function AdminOrders() {
                                     size="sm"
                                     variant="outline"
                                     onClick={() => markAsPaid(order.id)}
+                                    disabled={updatingOrderId === order.id}
                                     className="h-7 text-xs hover:bg-green-50 hover:border-green-500 hover:text-green-600"
                                   >
-                                    Confirmar
+                                    {updatingOrderId === order.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      'Confirmar'
+                                    )}
                                   </Button>
                                 )
                               )}
@@ -471,12 +475,17 @@ export default function AdminOrders() {
                           {config.nextStatus && config.nextIcon && (
                             <Button
                               size="sm"
+                              disabled={updatingOrderId === order.id}
                               className={`w-full bg-gradient-to-r ${config.gradient} text-white border-0 shadow-md hover:shadow-lg transition-all hover:scale-[1.02] font-semibold`}
                               onClick={() =>
                                 updateOrderStatus(order.id, config.nextStatus!)
                               }
                             >
-                              {React.createElement(config.nextIcon, { className: "h-4 w-4 mr-2" })}
+                              {updatingOrderId === order.id ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                React.createElement(config.nextIcon, { className: "h-4 w-4 mr-2" })
+                              )}
                               {config.nextLabel}
                             </Button>
                           )}
