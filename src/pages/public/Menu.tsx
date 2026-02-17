@@ -275,7 +275,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
             </div>
             <Button
               size="lg"
-              className="rounded-xl sm:rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 active:scale-95 text-white border-0 px-3 sm:px-5 py-3 sm:py-6 h-auto gap-1.5 sm:gap-2 font-semibold text-xs sm:text-sm shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-200 min-w-[44px] sm:min-w-[130px] flex-shrink-0 touch-manipulation"
+              className="rounded-xl sm:rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 active:scale-95 text-white border-0 px-3 sm:px-5 py-3 sm:py-6 h-auto gap-1.5 sm:gap-2 font-semibold text-base sm:text-sm shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-200 min-w-[44px] sm:min-w-[130px] flex-shrink-0 touch-manipulation text-sm-mobile-inline"
               onClick={() => setCartOpen(true)}
             >
               <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -293,7 +293,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
               <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none z-10" />
               <Input
                 placeholder="Buscar no cardápio..."
-                className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-3 sm:pr-4 bg-white border-slate-200/80 rounded-xl sm:rounded-2xl border shadow-sm focus-visible:border-orange-400 focus-visible:ring-2 focus-visible:ring-orange-400/20 text-sm sm:text-base text-slate-900 placeholder:text-slate-400 transition-shadow touch-manipulation"
+                className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-3 sm:pr-4 bg-white border-slate-200/80 rounded-xl sm:rounded-2xl border shadow-sm focus-visible:border-orange-400 focus-visible:ring-2 focus-visible:ring-orange-400/20 text-base sm:text-base text-slate-900 placeholder:text-slate-400 transition-shadow touch-manipulation"
               />
             </div>
 
@@ -346,7 +346,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
               
               return (
                 <div key={category} className="space-y-3 sm:space-y-5">
-                  <h2 className="text-sm sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
+                  <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
                     {category}
                   </h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
@@ -364,7 +364,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
           ) : (
             // Exibir apenas produtos da categoria selecionada
             <>
-              <h2 className="text-sm sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
+              <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
                 {selectedCategory}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
@@ -381,7 +381,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
 
           {filteredProducts.length === 0 && (
             <div className="text-center py-12 sm:py-16 bg-white/60 rounded-xl sm:rounded-2xl border border-dashed border-slate-200 mx-1">
-              <p className="text-slate-500 text-xs sm:text-sm">Nenhum produto nesta categoria.</p>
+              <p className="text-slate-500 text-base sm:text-sm text-sm-mobile-block">Nenhum produto nesta categoria.</p>
             </div>
           )}
         </section>
@@ -404,11 +404,11 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
       {getItemsCount() > 0 && (
         <div className="fixed bottom-4 sm:bottom-6 left-3 sm:left-4 right-3 sm:right-4 z-40 md:hidden safe-area-inset-bottom">
           <Button
-            className="w-full h-14 rounded-xl sm:rounded-2xl bg-slate-900 text-white hover:bg-slate-800 active:bg-slate-700 flex items-center justify-between px-4 sm:px-6 transition-all active:scale-[0.98] font-semibold text-sm sm:text-base border-0 shadow-2xl touch-manipulation"
+            className="w-full h-14 rounded-xl sm:rounded-2xl bg-slate-900 text-white hover:bg-slate-800 active:bg-slate-700 flex items-center justify-between px-4 sm:px-6 transition-all active:scale-[0.98] font-semibold text-base sm:text-base border-0 shadow-2xl touch-manipulation text-sm-mobile-block"
             onClick={() => handleCheckoutNavigation()}
           >
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <span className="bg-white/15 px-2.5 sm:px-3 py-1 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap">
+              <span className="bg-white/15 px-2.5 sm:px-3 py-1 rounded-lg text-base sm:text-sm font-bold whitespace-nowrap text-sm-mobile-inline">
                 {getItemsCount()} {getItemsCount() === 1 ? 'item' : 'itens'}
               </span>
               <span className="truncate">Ver carrinho</span>

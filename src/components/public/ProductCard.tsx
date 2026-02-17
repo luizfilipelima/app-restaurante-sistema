@@ -52,11 +52,11 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
 
       <CardContent className="p-3 sm:p-4">
         <div className="space-y-1 flex-1">
-          <h3 className="font-semibold text-slate-900 text-sm sm:text-base leading-tight group-hover:text-slate-700 transition-colors line-clamp-2">
+          <h3 className="font-semibold text-slate-900 text-base sm:text-base leading-tight group-hover:text-slate-700 transition-colors line-clamp-2 text-sm-mobile-block">
             {product.name}
           </h3>
           {product.description && (
-            <p className="text-xs sm:text-sm text-slate-500 line-clamp-2 leading-relaxed mt-0.5">
+            <p className="text-base sm:text-sm text-slate-500 line-clamp-2 leading-relaxed mt-0.5 text-sm-mobile-block">
               {product.description}
             </p>
           )}
@@ -78,7 +78,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
             }
           }}
         >
-          <span className="text-slate-600 text-xs sm:text-sm font-medium group-hover:text-slate-900 transition-colors">
+          <span className="text-slate-600 text-base sm:text-sm font-medium group-hover:text-slate-900 transition-colors text-sm-mobile-inline">
             {product.is_pizza ? 'Personalizar' : 'Adicionar'}
           </span>
           <Button

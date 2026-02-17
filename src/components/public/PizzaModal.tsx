@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { Check, Pizza as PizzaIcon, Minus, Plus } from 'lucide-react';
+import { Check, Pizza as PizzaIcon, Minus, Plus, X } from 'lucide-react';
 
 interface PizzaModalProps {
   open: boolean;
@@ -98,6 +98,15 @@ export default function PizzaModal({
               <DialogTitle className="text-lg sm:text-xl font-bold text-slate-900 truncate leading-tight">{product.name}</DialogTitle>
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Monte sua pizza em 3 passos</p>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 touch-manipulation active:scale-95 flex-shrink-0"
+              aria-label="Fechar"
+            >
+              <X className="h-5 w-5 sm:h-6 sm:w-6" />
+            </Button>
           </div>
         </div>
 

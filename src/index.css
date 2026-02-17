@@ -103,6 +103,38 @@
     input, select, textarea {
       font-size: 16px !important;
     }
+    
+    /* Classe para elementos que devem ter 16px (prevenir zoom) mas parecer 14px visualmente */
+    /* Usa scale(0.875) que é 14/16 = 0.875 */
+    .text-sm-mobile {
+      font-size: 16px !important;
+      display: inline-block;
+      transform: scale(0.875);
+      transform-origin: left center;
+    }
+    
+    /* Para elementos de bloco (h2, p, etc) - versão simplificada */
+    .text-sm-mobile-block {
+      font-size: 16px !important;
+      transform: scale(0.875);
+      transform-origin: top left;
+    }
+    
+    /* Para elementos que já são inline-block ou inline */
+    .text-sm-mobile-inline {
+      font-size: 16px !important;
+      transform: scale(0.875);
+      transform-origin: left center;
+    }
+    
+    /* Remover transform no desktop */
+    @media (min-width: 640px) {
+      .text-sm-mobile,
+      .text-sm-mobile-block,
+      .text-sm-mobile-inline {
+        transform: none !important;
+      }
+    }
   }
 }
 
