@@ -89,7 +89,7 @@ export default function PizzaModal({
       <DialogContent className="max-w-2xl h-[90vh] md:h-auto md:max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col bg-slate-50 safe-area-inset-bottom">
         
         {/* Header Fixo - Mobile First */}
-        <div className="p-3 sm:p-4 border-b border-slate-200 bg-white z-10 flex-shrink-0 safe-area-inset-top">
+        <div className="pt-4 pb-3 px-4 sm:pt-5 sm:pb-4 sm:px-6 border-b border-slate-200 bg-white z-10 flex-shrink-0 safe-area-inset-top">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
               <PizzaIcon className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
@@ -231,7 +231,7 @@ export default function PizzaModal({
         </div>
 
         {/* Footer Actions - Mobile First */}
-        <div className="p-3 sm:p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 flex-shrink-0 safe-area-inset-bottom">
+        <div className="pt-4 pb-5 px-4 sm:pt-5 sm:pb-6 sm:px-6 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 flex-shrink-0 safe-area-inset-bottom">
           <div className="flex items-center justify-between mb-3 sm:mb-4 gap-3">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="flex items-center border rounded-lg overflow-hidden">
