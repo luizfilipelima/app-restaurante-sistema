@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCartStore } from '@/store/cartStore';
 import { supabase } from '@/lib/supabase';
+import { getSubdomain } from '@/lib/subdomain';
 import { DeliveryZone, PaymentMethod, DeliveryType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +22,10 @@ import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote, Send } from 'lucide-react';
 
 export default function PublicCheckout() {
-  const { restaurantSlug } = useParams();
+  const params = useParams();
+  const subdomain = getSubdomain();
+  const restaurantSlug = params.restaurantSlug || (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
+  
   const navigate = useNavigate();
   const { items, restaurantId, updateQuantity, getSubtotal, clearCart } =
     useCartStore();
@@ -41,7 +45,15 @@ export default function PublicCheckout() {
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.PIX);
   const [changeFor, setChangeFor] = useState('');
-  const [notes, setNotes] = useState('');
+  const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
+
+  const handleBackToMenu = () => {
+    if (isSubdomain) {
+      navigate('/');
+    } else {
+      navigate(`/${restaurantSlug}`);
+    }
+  };
 
   useEffect(() => {
     if (restaurantId) {
@@ -186,7 +198,7 @@ export default function PublicCheckout() {
         description: 'Seu pedido foi enviado para o WhatsApp.',
         className: 'bg-green-50 border-green-200'
       });
-      navigate(`/${restaurantSlug}`);
+      handleBackToMenu();
     } catch (error) {
       console.error('Erro ao finalizar:', error);
       toast({ 
@@ -208,7 +220,7 @@ export default function PublicCheckout() {
           </div>
           <h2 className="text-2xl font-bold text-slate-900">Seu carrinho está vazio</h2>
           <Button 
-            onClick={() => navigate(`/${restaurantSlug}`)}
+            onClick={handleBackToMenu}
             className="bg-orange-600 hover:bg-orange-700 text-white rounded-xl"
           >
             Voltar ao Cardápio

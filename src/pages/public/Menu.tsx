@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { getSubdomain } from '@/lib/subdomain';
 import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
@@ -32,7 +33,11 @@ const CATEGORY_ICONS: Record<string, any> = {
 };
 
 export default function PublicMenu() {
-  const { restaurantSlug } = useParams();
+  const params = useParams();
+  const subdomain = getSubdomain();
+  // Se existir parametro na URL, usa. Se não, tenta pegar do subdomínio (desde que não seja 'app', 'www', etc)
+  const restaurantSlug = params.restaurantSlug || (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
+  
   const navigate = useNavigate();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -49,7 +54,15 @@ export default function PublicMenu() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [pizzaModalOpen, setPizzaModalOpen] = useState(false);
 
-  const { getItemsCount, setRestaurant: setCartRestaurant } = useCartStore();
+  const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
+
+  const handleCheckoutNavigation = () => {
+    if (isSubdomain) {
+      navigate('/checkout');
+    } else {
+      navigate(`/${restaurantSlug}/checkout`);
+    }
+  };
   const { setCurrentRestaurant } = useRestaurantStore();
 
   useEffect(() => {
@@ -324,9 +337,9 @@ export default function PublicMenu() {
         <div className="fixed bottom-6 left-4 right-4 z-40 md:hidden">
           <Button
             className="w-full h-14 rounded-2xl bg-slate-900 text-white hover:bg-slate-800 flex items-center justify-between px-6 transition-all active:scale-[0.98] font-semibold text-base border-0 shadow-xl"
-            onClick={() => navigate(`/${restaurantSlug}/checkout`)}
-          >
-            <div className="flex items-center gap-3">
+              onClick={() => handleCheckoutNavigation()}
+            >
+              <div className="flex items-center gap-3">
               <span className="bg-white/15 px-3 py-1 rounded-lg text-sm font-bold">
                 {getItemsCount()} {getItemsCount() === 1 ? 'item' : 'itens'}
               </span>
@@ -341,7 +354,7 @@ export default function PublicMenu() {
       <CartDrawer
         open={cartOpen}
         onClose={() => setCartOpen(false)}
-        onCheckout={() => navigate(`/${restaurantSlug}/checkout`)}
+        onCheckout={handleCheckoutNavigation}
       />
 
       {selectedProduct && (
