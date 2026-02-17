@@ -37,7 +37,7 @@ export default function Hero() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-lg md:text-xl text-slate-500 max-w-2xl leading-relaxed"
           >
-            Chega de perder pedidos no chat. Cardápio digital, impressão automática na cozinha e gestão inteligente para Ciudad del Este.
+            Cardápio digital, pedidos em tempo real, zonas de entrega, motoboys, cupom térmico e impressão automática. Tudo em um só lugar.
           </motion.p>
 
           {/* CTA + Input */}

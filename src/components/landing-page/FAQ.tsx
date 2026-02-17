@@ -10,19 +10,23 @@ export default function FAQ() {
   const items = [
     {
       question: "Preciso de cartão de crédito para testar?",
-      answer: "Não. Você pode criar sua conta gratuita e testar por 7 dias sem compromisso. Só pedimos o cartão se você decidir assinar o plano Pro."
+      answer: "Não. Você pode criar sua conta e testar o plano Pro por 7 dias grátis. Só pedimos o cartão se decidir continuar após o período de teste."
     },
     {
       question: "Funciona em celular e tablet?",
       answer: "Sim! O sistema é 100% responsivo e funciona em qualquer dispositivo com navegador (Chrome, Safari, etc). O painel do restaurante é otimizado para tablets e computadores."
     },
     {
-      question: "Posso usar meu próprio domínio .com?",
-      answer: "Sim, no plano Pro você pode conectar seu domínio (ex: suapizzaria.com) para fortalecer sua marca."
+      question: "O que está incluso nos $100/mês?",
+      answer: "Tudo: cardápio digital com seu link, pedidos em tempo real (Kanban + Modo Cozinha), zonas de entrega, gestão de motoboys, impressão de cupom térmico (inclusive automática), horário de funcionamento, multi-moeda, dashboard com métricas e até 3 usuários. Sem custos escondidos."
     },
     {
       question: "Como funciona a impressão automática?",
-      answer: "Você instala nosso pequeno programa no computador do caixa (Windows). Ele detecta novos pedidos e envia para a impressora térmica configurada em segundos."
+      answer: "No painel você ativa a opção 'Impressão automática ao receber pedido' e escolhe a largura do papel (58mm ou 80mm). Quando um novo pedido chega, o navegador abre a janela de impressão e você seleciona a impressora térmica. O cupom sai com itens, totais e endereço."
+    },
+    {
+      question: "Posso usar meu próprio domínio .com?",
+      answer: "No plano Pro você usa seu link no formato sualoja.quiero.food. Domínio próprio (.com) pode ser disponibilizado em versões Enterprise; consulte-nos."
     }
   ];
 
