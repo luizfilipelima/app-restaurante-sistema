@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu, X, ChevronDown, Globe } from 'lucide-react';
+import { Menu, X, Globe } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export default function Header() {

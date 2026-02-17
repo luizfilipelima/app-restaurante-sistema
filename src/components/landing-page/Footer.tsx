@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Facebook, Instagram, Twitter } from 'lucide-react';
 
 export default function Footer() {

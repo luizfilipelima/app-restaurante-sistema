@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { BadgeCheck, Printer, QrCode, BarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 export default function ProblemSolution() {
   const container = {

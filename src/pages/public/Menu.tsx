@@ -63,6 +63,8 @@ export default function PublicMenu() {
       navigate(`/${restaurantSlug}/checkout`);
     }
   };
+
+  const { getItemsCount, setRestaurant: setCartRestaurant } = useCartStore();
   const { setCurrentRestaurant } = useRestaurantStore();
 
   useEffect(() => {

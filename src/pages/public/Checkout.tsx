@@ -45,6 +45,7 @@ export default function PublicCheckout() {
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.PIX);
   const [changeFor, setChangeFor] = useState('');
+  const [notes, setNotes] = useState('');
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
 
   const handleBackToMenu = () => {
