@@ -95,13 +95,6 @@ const statusConfig = {
   },
 };
 
-const ACTIVE_STATUSES = [
-  OrderStatus.PENDING,
-  OrderStatus.PREPARING,
-  OrderStatus.READY,
-  OrderStatus.DELIVERING,
-];
-
 /** Statuses exibidos nas abas do Kanban (exclui CANCELLED) */
 const ORDER_TAB_STATUSES = [
   OrderStatus.PENDING,
