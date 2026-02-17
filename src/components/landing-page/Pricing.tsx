@@ -1,7 +1,21 @@
 import { motion } from 'framer-motion';
-import { Check } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+
+const comparisonFeatures: { name: string; basic: boolean; pro: boolean; enterprise: boolean }[] = [
+  { name: 'Cardápio Digital', basic: true, pro: true, enterprise: true },
+  { name: 'Pedidos via WhatsApp', basic: true, pro: true, enterprise: true },
+  { name: 'Zonas de entrega (taxa por bairro)', basic: false, pro: true, enterprise: true },
+  { name: 'Gestão de motoboys', basic: false, pro: true, enterprise: true },
+  { name: 'Impressão automática (cupom térmico)', basic: false, pro: true, enterprise: true },
+  { name: 'Pedidos em tempo real (Kanban + Cozinha)', basic: false, pro: true, enterprise: true },
+  { name: 'Dashboard e BI (métricas)', basic: false, pro: true, enterprise: true },
+  { name: 'BI avançado e relatórios custom', basic: false, pro: false, enterprise: true },
+  { name: 'Domínio próprio (.com)', basic: false, pro: false, enterprise: true },
+];
+
+const planPrices = { basic: '$15', pro: '$100', enterprise: '$70+' };
 
 const plans = [
   {
@@ -144,6 +158,77 @@ export default function Pricing() {
             </motion.div>
           ))}
         </div>
+
+        {/* Tabela de comparação */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-20 max-w-4xl mx-auto"
+        >
+          <h3 className="text-xl font-bold text-slate-900 text-center mb-6">
+            Compare os planos
+          </h3>
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <th className="text-left py-4 px-4 font-semibold text-slate-900">
+                    Funcionalidade
+                  </th>
+                  <th className="text-center py-4 px-4 font-semibold text-slate-600 w-[22%]">
+                    Basic
+                  </th>
+                  <th className="text-center py-4 px-4 font-semibold text-orange-600 w-[22%] bg-orange-50/50">
+                    Pro
+                  </th>
+                  <th className="text-center py-4 px-4 font-semibold text-slate-600 w-[22%]">
+                    Enterprise
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonFeatures.map((row, i) => (
+                  <tr
+                    key={i}
+                    className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
+                  >
+                    <td className="py-3 px-4 text-slate-700">{row.name}</td>
+                    <td className="py-3 px-4 text-center">
+                      {row.basic ? (
+                        <Check className="h-5 w-5 text-emerald-500 mx-auto" />
+                      ) : (
+                        <X className="h-5 w-5 text-slate-300 mx-auto" />
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-center bg-orange-50/30">
+                      {row.pro ? (
+                        <Check className="h-5 w-5 text-orange-500 mx-auto" />
+                      ) : (
+                        <X className="h-5 w-5 text-slate-300 mx-auto" />
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {row.enterprise ? (
+                        <Check className="h-5 w-5 text-emerald-500 mx-auto" />
+                      ) : (
+                        <X className="h-5 w-5 text-slate-300 mx-auto" />
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-slate-50 font-semibold">
+                  <td className="py-4 px-4 text-slate-900">Taxa mensal (CDE)</td>
+                  <td className="py-4 px-4 text-center text-slate-900">{planPrices.basic}</td>
+                  <td className="py-4 px-4 text-center text-orange-600 bg-orange-50/30">
+                    {planPrices.pro}
+                  </td>
+                  <td className="py-4 px-4 text-center text-slate-900">{planPrices.enterprise}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
