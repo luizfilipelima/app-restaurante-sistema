@@ -13,7 +13,6 @@ import {
   Settings,
   LogOut,
   ArrowLeft,
-  Users,
   ChefHat,
 } from 'lucide-react';
 
@@ -25,19 +24,15 @@ interface AdminLayoutProps {
   basePath?: string;
 }
 
-const getNavItems = (basePath: string, isSuperAdminView?: boolean) => {
+const getNavItems = (basePath: string) => {
   const base = basePath || '/admin';
-  const items = [
+  return [
     { name: 'Dashboard', href: base, icon: LayoutDashboard },
     { name: 'Pedidos', href: `${base}/orders`, icon: ClipboardList },
     { name: 'Cardápio', href: `${base}/menu`, icon: UtensilsCrossed },
     { name: 'Zonas de Entrega', href: `${base}/delivery-zones`, icon: MapPin },
     { name: 'Configurações', href: `${base}/settings`, icon: Settings },
   ];
-  if (isSuperAdminView) {
-    items.push({ name: 'Usuários', href: `${base}/users`, icon: Users });
-  }
-  return items;
 };
 
 export default function AdminLayout({
@@ -53,7 +48,7 @@ export default function AdminLayout({
 
   const restaurantId = managedRestaurantId || user?.restaurant_id || null;
   const isSuperAdminView = !!managedRestaurantId;
-  const navItems = getNavItems(basePath || '/admin', isSuperAdminView);
+  const navItems = getNavItems(basePath || '/admin');
 
   useEffect(() => {
     if (!restaurantId) {

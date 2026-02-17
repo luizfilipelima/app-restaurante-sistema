@@ -19,7 +19,6 @@ import {
   BookOpen,
   ChefHat,
   Layout,
-  Users,
 } from 'lucide-react';
 
 export default function SuperAdminRestaurants() {
@@ -322,16 +321,6 @@ export default function SuperAdminRestaurants() {
                         >
                           <ChefHat className="h-4 w-4 mr-2" />
                           Cozinha
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            navigate(`/super-admin/restaurants/${restaurant.id}/users`)
-                          }
-                        >
-                          <Users className="h-4 w-4 mr-2" />
-                          Usuários
                         </Button>
                       </div>
                       <div className="flex gap-2">
