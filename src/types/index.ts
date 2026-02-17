@@ -118,6 +118,8 @@ export interface Product {
   is_by_weight?: boolean; // Se true, produto vendido por peso (buffet)
   sku?: string; // Código SKU do produto
   is_active: boolean;
+  /** Ordem de exibição dentro da categoria (admin e cardápio público) */
+  order_index?: number;
   created_at: string;
   updated_at: string;
 }

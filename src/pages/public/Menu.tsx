@@ -154,23 +154,23 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
           });
         }
 
-        // Buscar produtos
+        // Buscar produtos (ordem do admin via order_index)
         const { data: productsData } = await supabase
           .from('products')
           .select('*')
           .eq('restaurant_id', restaurantData.id)
           .eq('is_active', true)
-          .order('name', { ascending: true });
+          .order('order_index', { ascending: true });
 
         if (productsData && productsData.length > 0) {
-          // Ordenar produtos: primeiro por categoria (usando order_index do banco), depois por nome
+          // Ordenar produtos: primeiro por categoria (order_index do banco), depois por order_index do produto
           const sortedProducts = [...productsData].sort((a, b) => {
             const orderA = categoryOrderMap.get(a.category) ?? CATEGORY_ORDER[a.category] ?? 999;
             const orderB = categoryOrderMap.get(b.category) ?? CATEGORY_ORDER[b.category] ?? 999;
             if (orderA !== orderB) {
               return orderA - orderB;
             }
-            return a.name.localeCompare(b.name);
+            return (a.order_index ?? 0) - (b.order_index ?? 0);
           });
           
           setProducts(sortedProducts);

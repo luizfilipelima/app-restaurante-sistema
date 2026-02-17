@@ -5,7 +5,6 @@ import { convertPriceToStorage, convertPriceFromStorage } from '@/lib/priceHelpe
 import { Product, Restaurant, PizzaSize, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,9 +26,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
 import { uploadProductImage } from '@/lib/imageUpload';
-import { Plus, Edit, Trash2, Pizza, Loader2, Info, Upload, Copy, Check } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { Plus, Trash2, Loader2, Info, Upload, Copy, Check } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
 import CategoryReorder from '@/components/admin/CategoryReorder';
+import ProductRow from '@/components/admin/ProductRow';
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 // Categorias fixas do cardápio com configurações específicas por tipo
 interface CategoryConfig {
@@ -245,6 +262,7 @@ export default function AdminMenu() {
         .select('*')
         .eq('restaurant_id', restaurantId)
         .order('category', { ascending: true })
+        .order('order_index', { ascending: true })
         .order('name', { ascending: true });
 
       if (error) throw error;
@@ -343,7 +361,12 @@ export default function AdminMenu() {
         if (error) throw error;
         toast({ title: 'Produto atualizado!', variant: 'success' });
       } else {
-        const { error } = await supabase.from('products').insert(payload);
+        const { data: nextOrder } = await supabase.rpc('get_next_product_order_index', {
+          p_restaurant_id: restaurantId,
+          p_category: category,
+        });
+        const order_index = nextOrder ?? 0;
+        const { error } = await supabase.from('products').insert({ ...payload, order_index });
 
         if (error) throw error;
         toast({ title: 'Produto adicionado ao cardápio!', variant: 'success' });
@@ -398,6 +421,94 @@ export default function AdminMenu() {
     } catch (error) {
       console.error('Erro ao excluir produto:', error);
     }
+  };
+
+  const duplicateProduct = async (product: Product) => {
+    if (!restaurantId) return;
+    try {
+      const { data: nextOrder } = await supabase.rpc('get_next_product_order_index', {
+        p_restaurant_id: restaurantId,
+        p_category: product.category,
+      });
+      const order_index = nextOrder ?? 0;
+      const { data: newProduct, error } = await supabase
+        .from('products')
+        .insert({
+          restaurant_id: product.restaurant_id,
+          category: product.category,
+          name: `${product.name} (Cópia)`,
+          description: product.description ?? null,
+          price: product.price,
+          price_sale: product.price_sale ?? null,
+          price_cost: product.price_cost ?? null,
+          image_url: product.image_url ?? null,
+          is_pizza: product.is_pizza,
+          is_marmita: product.is_marmita ?? false,
+          is_active: product.is_active,
+          order_index,
+        })
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      setProducts((prev) =>
+        [...prev, { ...newProduct, order_index }].sort((a, b) => {
+          if (a.category !== b.category) return a.category.localeCompare(b.category);
+          return (a.order_index ?? 0) - (b.order_index ?? 0);
+        })
+      );
+      toast({ title: 'Produto duplicado!', description: `${newProduct.name} adicionado ao final da categoria.` });
+      openEdit(newProduct);
+      setModalOpen(true);
+    } catch (err) {
+      console.error('Erro ao duplicar:', err);
+      toast({
+        title: 'Erro ao duplicar produto',
+        description: err instanceof Error ? err.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleProductsDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    const activeProduct = products.find((p) => p.id === activeId);
+    const overProduct = products.find((p) => p.id === overId);
+    if (!activeProduct || !overProduct || activeProduct.category !== overProduct.category) return;
+
+    const categoryProducts = products.filter((p) => p.category === activeProduct.category);
+    const oldIndex = categoryProducts.findIndex((p) => p.id === activeId);
+    const newIndex = categoryProducts.findIndex((p) => p.id === overId);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = [...categoryProducts];
+    const [moved] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+    const withNewOrder = reordered.map((p, i) => ({ ...p, order_index: i }));
+
+    setProducts((prev) => {
+      const others = prev.filter((p) => p.category !== activeProduct.category);
+      return [...others, ...withNewOrder].sort((a, b) => {
+        if (a.category !== b.category) return a.category.localeCompare(b.category);
+        return (a.order_index ?? 0) - (b.order_index ?? 0);
+      });
+    });
+
+    (async () => {
+      const updatePromises = withNewOrder.map((p) =>
+        supabase.from('products').update({ order_index: p.order_index }).eq('id', p.id)
+      );
+      const results = await Promise.all(updatePromises);
+      const err = results.find((r) => r.error);
+      if (err?.error) {
+        toast({ title: 'Erro ao salvar ordem', variant: 'destructive' });
+        loadProducts();
+      }
+    })();
   };
 
   // Funções CRUD para Pizza
@@ -639,7 +750,7 @@ export default function AdminMenu() {
   };
 
 
-  // Agrupar produtos por categoria
+  // Agrupar produtos por categoria (ordenados por order_index)
   const groupedProducts = products.reduce((acc, product) => {
     if (!acc[product.category]) {
       acc[product.category] = [];
@@ -647,6 +758,14 @@ export default function AdminMenu() {
     acc[product.category].push(product);
     return acc;
   }, {} as Record<string, Product[]>);
+  Object.keys(groupedProducts).forEach((cat) => {
+    groupedProducts[cat].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   if (loading) {
     return (
@@ -780,83 +899,51 @@ export default function AdminMenu() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-8">
-              {Object.entries(groupedProducts).map(([category, categoryProducts]) => (
-                <div key={category} className="space-y-4">
-                  <h3 className="text-xl font-semibold capitalize">{category}</h3>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {categoryProducts.map((product) => (
-                      <Card key={product.id} className="overflow-hidden">
-                        <div className="relative">
-                          {product.image_url ? (
-                            <img
-                              src={product.image_url}
-                              alt={product.name}
-                              className="w-full h-48 object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-48 bg-muted flex items-center justify-center">
-                              <Pizza className="h-12 w-12 text-muted-foreground" />
-                            </div>
-                          )}
-                          {product.is_pizza && (
-                            <Badge className="absolute top-2 right-2">Pizza</Badge>
-                          )}
-                          {product.is_marmita && (
-                            <Badge className="absolute top-2 right-2">Marmita</Badge>
-                          )}
-                          {!product.is_active && (
-                            <Badge variant="destructive" className="absolute top-2 left-2">
-                              Inativo
-                            </Badge>
-                          )}
-                        </div>
-                        <CardContent className="p-4">
-                          <h4 className="font-semibold text-lg mb-1">{product.name}</h4>
-                          {product.description && (
-                            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                              {product.description}
-                            </p>
-                          )}
-                          <div className="flex items-center justify-between mb-4">
-                            <span className="text-lg font-bold text-primary">
-                              {formatCurrency(product.price, currency)}
-                            </span>
-                          </div>
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => toggleProductStatus(product.id, product.is_active)}
-                            >
-                              {product.is_active ? 'Desativar' : 'Ativar'}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => openEdit(product)}
-                            >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Editar
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => deleteProduct(product.id)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleProductsDragEnd}
+            >
+              <div className="space-y-8">
+                {Object.entries(groupedProducts).map(([category, categoryProducts]) => (
+                  <div key={category} className="space-y-2">
+                    <h3 className="text-xl font-semibold capitalize">{category}</h3>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="w-10" />
+                            <TableHead className="w-[52px]" />
+                            <TableHead>Nome</TableHead>
+                            <TableHead className="text-right">Preço</TableHead>
+                            <TableHead className="w-20 text-center">Status</TableHead>
+                            <TableHead className="w-[180px] text-right">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <SortableContext
+                            items={categoryProducts.map((p) => p.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {categoryProducts.map((product) => (
+                              <ProductRow
+                                key={product.id}
+                                product={product}
+                                currency={currency}
+                                onEdit={openEdit}
+                                onDuplicate={duplicateProduct}
+                                onDelete={deleteProduct}
+                                onToggleActive={toggleProductStatus}
+                              />
+                            ))}
+                          </SortableContext>
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </DndContext>
           )}
         </TabsContent>
 
