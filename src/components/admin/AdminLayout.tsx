@@ -13,10 +13,6 @@ import {
   Settings,
   LogOut,
   ArrowLeft,
-  ExternalLink,
-  ChefHat,
-  BookOpen,
-  Layout,
   Users,
 } from 'lucide-react';
 
@@ -106,11 +102,6 @@ export default function AdminLayout({
     isSuperAdminView,
   };
 
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-  const cardapioUrl = restaurant?.slug ? `${baseUrl}/${restaurant.slug}` : '';
-  const kitchenUrl = `${baseUrl}/kitchen`;
-  const adminPanelUrl = basePath ? `${baseUrl}${basePath}` : `${baseUrl}/admin`;
-
   return (
     <AdminRestaurantContext.Provider value={contextValue}>
       <div className="min-h-screen bg-background overflow-x-hidden">
@@ -132,50 +123,7 @@ export default function AdminLayout({
               <h1 className="text-xl font-bold text-primary leading-tight whitespace-nowrap truncate" title="Painel Admin">
                 Painel Admin
               </h1>
-              {restaurant && (
-                <p className="text-sm text-muted-foreground mt-1.5 truncate w-full min-w-0" title={restaurant.name}>
-                  {restaurant.name}
-                </p>
-              )}
             </div>
-            {/* Acesso Rápido */}
-            {restaurant?.slug && (
-              <div className="px-2 pb-3 border-b border-border/50">
-                <p className="px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">Acesso rápido</p>
-                <div className="space-y-1">
-                  <a
-                    href={cardapioUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                  >
-                    <BookOpen className="h-4 w-4 shrink-0" />
-                    Cardápio digital
-                    <ExternalLink className="h-3 w-3 ml-auto shrink-0" />
-                  </a>
-                  <a
-                    href={kitchenUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                  >
-                    <ChefHat className="h-4 w-4 shrink-0" />
-                    Painel da cozinha
-                    <ExternalLink className="h-3 w-3 ml-auto shrink-0" />
-                  </a>
-                  <a
-                    href={adminPanelUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                  >
-                    <Layout className="h-4 w-4 shrink-0" />
-                    Painel admin
-                    <ExternalLink className="h-3 w-3 ml-auto shrink-0" />
-                  </a>
-                </div>
-              </div>
-            )}
             <div className="flex-1 flex flex-col">
               <nav className="flex-1 px-2 space-y-1 pt-2">
                 {navItems.map((item) => {
@@ -229,19 +177,6 @@ export default function AdminLayout({
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar aos restaurantes
               </Button>
-            </div>
-          )}
-          {restaurant?.slug && (
-            <div className="px-4 pb-2 flex flex-wrap gap-2">
-              <a href={cardapioUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                <BookOpen className="h-3 w-3" /> Cardápio
-              </a>
-              <a href={kitchenUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                <ChefHat className="h-3 w-3" /> Cozinha
-              </a>
-              <a href={adminPanelUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                <Layout className="h-3 w-3" /> Admin
-              </a>
             </div>
           )}
           <div className="overflow-x-auto px-4 pb-3">
