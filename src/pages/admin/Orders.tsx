@@ -54,7 +54,7 @@ const statusConfig = {
     borderColor: 'border-blue-200',
     nextStatus: OrderStatus.READY,
     nextLabel: 'Marcar como Pronto',
-    nextIcon: Check,
+    nextIcon: CheckCircle2,
   },
   [OrderStatus.READY]: {
     label: 'Prontos',
