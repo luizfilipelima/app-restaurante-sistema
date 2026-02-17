@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
-import { convertPriceToStorage, convertPriceFromStorage } from '@/lib/priceHelper';
+import { convertPriceToStorage, convertPriceFromStorage, formatPriceInputPyG } from '@/lib/priceHelper';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/types';
 import { formatCurrency } from '@/lib/utils';
@@ -98,17 +98,17 @@ export default function ProductsInventory() {
     if (!restaurantId) return;
 
     try {
-      const priceInput = formData.price.replace(/[^\d,.-]/g, '').replace(',', '.');
-      const priceSaleInput = formData.price_sale.replace(/[^\d,.-]/g, '').replace(',', '.');
-      const priceCostInput = formData.price_cost.replace(/[^\d,.-]/g, '').replace(',', '.');
-      
+      const price = convertPriceToStorage(formData.price, currency);
+      const priceSale = convertPriceToStorage(formData.price_sale || formData.price, currency);
+      const priceCost = formData.price_cost ? convertPriceToStorage(formData.price_cost, currency) : null;
+
       const productData = {
         restaurant_id: restaurantId,
         name: formData.name.trim(),
         category: formData.category.trim(),
-        price: convertPriceToStorage(parseFloat(priceInput) || 0, currency),
-        price_sale: convertPriceToStorage(parseFloat(priceSaleInput) || parseFloat(priceInput) || 0, currency),
-        price_cost: formData.price_cost ? convertPriceToStorage(parseFloat(priceCostInput) || 0, currency) : null,
+        price,
+        price_sale: priceSale,
+        price_cost: priceCost,
         sku: formData.sku.trim() || null,
         description: formData.description.trim() || null,
         is_by_weight: formData.is_by_weight,
@@ -390,31 +390,46 @@ export default function ProductsInventory() {
               <div>
                 <Label>Preço Base *</Label>
                 <Input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  placeholder="0.00"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
+                    })
+                  }
+                  placeholder={currency === 'PYG' ? '25.000' : '0,00'}
                 />
               </div>
               <div>
                 <Label>Preço de Venda</Label>
                 <Input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={formData.price_sale}
-                  onChange={(e) => setFormData({ ...formData, price_sale: e.target.value })}
-                  placeholder="0.00"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price_sale: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
+                    })
+                  }
+                  placeholder={currency === 'PYG' ? '25.000' : '0,00'}
                 />
               </div>
               <div>
                 <Label>Custo (CMV)</Label>
                 <Input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={formData.price_cost}
-                  onChange={(e) => setFormData({ ...formData, price_cost: e.target.value })}
-                  placeholder="0.00"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price_cost: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
+                    })
+                  }
+                  placeholder={currency === 'PYG' ? '25.000' : '0,00'}
                 />
               </div>
             </div>

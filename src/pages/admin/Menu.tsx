@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
-import { convertPriceToStorage, convertPriceFromStorage } from '@/lib/priceHelper';
+import { convertPriceToStorage, convertPriceFromStorage, formatPriceInputPyG, getCurrencySymbol } from '@/lib/priceHelper';
 import { Product, Restaurant, PizzaSize, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -77,8 +77,6 @@ type CategoryId = (typeof CATEGORIAS_CARDAPIO)[number]['id'];
 const getCategoryConfig = (categoryId: string): CategoryConfig =>
   CATEGORIAS_CARDAPIO.find((c) => c.id === categoryId) ?? CATEGORIAS_CARDAPIO[CATEGORIAS_CARDAPIO.length - 1];
 
-/** Símbolo da moeda para labels (R$ ou Gs.) conforme configuração do restaurante */
-const getCurrencySymbol = (currency: 'BRL' | 'PYG') => (currency === 'PYG' ? 'Gs.' : 'R$');
 
 const formDefaults = {
   name: '',
@@ -286,8 +284,7 @@ export default function AdminMenu() {
 
     const name = form.name.trim();
     const category = form.category.trim();
-    const priceInput = form.price.replace(/[^\d,.-]/g, '').replace(',', '.');
-    const priceValue = parseFloat(priceInput);
+    const price = convertPriceToStorage(form.price, currency);
 
     if (!name) {
       toast({ title: 'Nome obrigatório', variant: 'destructive' });
@@ -297,13 +294,10 @@ export default function AdminMenu() {
       toast({ title: 'Categoria obrigatória', variant: 'destructive' });
       return;
     }
-    if (isNaN(priceValue) || priceValue < 0) {
+    if (Number.isNaN(price) || price < 0) {
       toast({ title: 'Preço inválido', variant: 'destructive' });
       return;
     }
-
-    // Converter preço para formato de armazenamento (centavos para BRL, inteiro para PYG)
-    const price = convertPriceToStorage(priceValue, currency);
 
     const config = getCategoryConfig(category);
     const isPizza = config.isPizza || false;
@@ -537,9 +531,7 @@ export default function AdminMenu() {
   const handleSubmitDough = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId) return;
-    const extraPriceInput = String(formDough.extra_price).replace(/[^\d,.-]/g, '').replace(',', '.');
-    const extraPriceValue = parseFloat(extraPriceInput) || 0;
-    const extra_price = convertPriceToStorage(extraPriceValue, currency);
+    const extra_price = convertPriceToStorage(String(formDough.extra_price), currency);
     try {
       const { error } = await supabase.from('pizza_doughs').insert({
         restaurant_id: restaurantId,
@@ -561,9 +553,7 @@ export default function AdminMenu() {
   const handleSubmitEdge = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId) return;
-    const priceInput = String(formEdge.price).replace(/[^\d,.-]/g, '').replace(',', '.');
-    const priceValue = parseFloat(priceInput) || 0;
-    const price = convertPriceToStorage(priceValue, currency);
+    const price = convertPriceToStorage(String(formEdge.price), currency);
     try {
       const { error } = await supabase.from('pizza_edges').insert({
         restaurant_id: restaurantId,
@@ -640,9 +630,7 @@ export default function AdminMenu() {
   const handleSubmitMarmitaSize = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId) return;
-    const basePriceInput = String(formMarmitaSize.base_price).replace(/[^\d,.-]/g, '').replace(',', '.');
-    const basePriceValue = parseFloat(basePriceInput) || 0;
-    const base_price = convertPriceToStorage(basePriceValue, currency);
+    const base_price = convertPriceToStorage(String(formMarmitaSize.base_price), currency);
     // price_per_gram: manter como decimal por enquanto (valor muito pequeno)
     const price_per_gram = parseFloat(String(formMarmitaSize.price_per_gram).replace(',', '.')) || 0;
     try {
@@ -1050,7 +1038,7 @@ export default function AdminMenu() {
                             </div>
                             <div>
                               <Label>Acréscimo ({getCurrencySymbol(currency)})</Label>
-                              <Input type="text" value={formDough.extra_price} onChange={(e) => setFormDough((f) => ({ ...f, extra_price: e.target.value }))} placeholder="0" />
+                              <Input type="text" value={formDough.extra_price} onChange={(e) => setFormDough((f) => ({ ...f, extra_price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))} placeholder={currency === 'PYG' ? '0' : '0'} />
                             </div>
                           </div>
                           <div className="flex flex-col sm:flex-row gap-2">
@@ -1094,7 +1082,7 @@ export default function AdminMenu() {
                             </div>
                             <div>
                               <Label>Preço ({getCurrencySymbol(currency)})</Label>
-                              <Input type="text" value={formEdge.price} onChange={(e) => setFormEdge((f) => ({ ...f, price: e.target.value }))} placeholder="8,00" required />
+                              <Input type="text" value={formEdge.price} onChange={(e) => setFormEdge((f) => ({ ...f, price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))} placeholder={currency === 'PYG' ? '8.000' : '8,00'} required />
                             </div>
                           </div>
                           <div className="flex flex-col sm:flex-row gap-2">
@@ -1153,7 +1141,7 @@ export default function AdminMenu() {
                             </div>
                             <div>
                               <Label>Preço Base ({getCurrencySymbol(currency)})</Label>
-                              <Input type="text" value={formMarmitaSize.base_price} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, base_price: e.target.value }))} placeholder="15,00" required />
+                              <Input type="text" value={formMarmitaSize.base_price} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, base_price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))} placeholder={currency === 'PYG' ? '15.000' : '15,00'} required />
                             </div>
                             <div>
                               <Label>Preço por Grama ({getCurrencySymbol(currency)})</Label>
@@ -1381,8 +1369,13 @@ export default function AdminMenu() {
                   type="text"
                   inputMode="decimal"
                   value={form.price}
-                  onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-                  placeholder="0,00"
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
+                    }))
+                  }
+                  placeholder={currency === 'PYG' ? '25.000' : '0,00'}
                   className="text-base"
                   required
                 />
