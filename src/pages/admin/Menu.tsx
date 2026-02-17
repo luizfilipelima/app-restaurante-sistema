@@ -27,6 +27,7 @@ import { toast } from '@/hooks/use-toast';
 import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
 import { uploadProductImage } from '@/lib/imageUpload';
 import { Plus, Edit, Trash2, Pizza, Loader2, Info, Upload, Copy, Check } from 'lucide-react';
+import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
 
 // Categorias fixas do cardápio com configurações específicas por tipo
 interface CategoryConfig {
@@ -670,6 +671,9 @@ export default function AdminMenu() {
           )}
         </CardContent>
       </Card>
+
+      {/* QR Code do Cardápio */}
+      <MenuQRCodeCard slug={slug || restaurant?.slug || ''} />
 
       {/* Tabs: Produtos e Configurações */}
       <Tabs defaultValue="produtos" className="w-full">
