@@ -12,7 +12,6 @@ import LandingPage from './pages/landing/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import UnauthorizedPage from './pages/auth/UnauthorizedPage';
 import SuperAdminDashboard from './pages/super-admin/Dashboard';
-import SuperAdminRestaurants from './pages/super-admin/Restaurants';
 import AdminLayoutWrapper from './components/admin/AdminLayoutWrapper';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminMenu from './pages/admin/Menu';
@@ -71,14 +70,6 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
                 <SuperAdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/super-admin/restaurants"
-            element={
-              <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
-                <SuperAdminRestaurants />
               </ProtectedRoute>
             }
           />

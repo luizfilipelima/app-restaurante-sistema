@@ -6,7 +6,26 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { formatCurrency, generateSlug } from '@/lib/utils';
+import { uploadRestaurantLogo } from '@/lib/imageUpload';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Store,
   DollarSign,
@@ -19,8 +38,24 @@ import {
   Plus,
   Eye,
   EyeOff,
+  Upload,
+  Loader2,
+  Clock,
+  Instagram,
+  Printer,
 } from 'lucide-react';
-import { Restaurant } from '@/types';
+import { Restaurant, DayKey, PrintPaperWidth } from '@/types';
+import { toast } from '@/hooks/use-toast';
+
+const DAYS: { key: DayKey; label: string }[] = [
+  { key: 'mon', label: 'Segunda' },
+  { key: 'tue', label: 'Terça' },
+  { key: 'wed', label: 'Quarta' },
+  { key: 'thu', label: 'Quinta' },
+  { key: 'fri', label: 'Sexta' },
+  { key: 'sat', label: 'Sábado' },
+  { key: 'sun', label: 'Domingo' },
+];
 
 export default function SuperAdminDashboard() {
   const { signOut } = useAuthStore();
@@ -34,6 +69,25 @@ export default function SuperAdminDashboard() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [ordersByRestaurant, setOrdersByRestaurant] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [showNewRestaurantDialog, setShowNewRestaurantDialog] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    slug: '',
+    phone: '',
+    whatsapp: '',
+    phone_country: 'BR' as 'BR' | 'PY',
+    instagram_url: '',
+    logo: '',
+    primary_color: '#FF6B35',
+    secondary_color: '#FFFFFF',
+    is_active: true,
+    always_open: false,
+    opening_hours: {} as Record<DayKey, { open: string; close: string } | null>,
+    print_auto_on_new_order: false,
+    print_paper_width: '80mm' as PrintPaperWidth,
+  });
 
   useEffect(() => {
     loadData();
@@ -94,14 +148,140 @@ export default function SuperAdminDashboard() {
         ...m,
         activeRestaurants: m.activeRestaurants + (isActive ? -1 : 1),
       }));
+      toast({
+        title: 'Status atualizado',
+        description: `Restaurante ${!isActive ? 'ativado' : 'desativado'} com sucesso.`,
+      });
     } catch (err) {
       console.error(err);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível atualizar o status do restaurante.',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Para novo restaurante, vamos armazenar o arquivo e fazer upload após criar
+    // Por enquanto, vamos usar uma URL temporária ou permitir URL manual
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData({ ...formData, logo: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+    
+    toast({
+      title: 'Logo selecionado',
+      description: 'O logo será salvo ao criar o restaurante.',
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const slug = formData.slug.trim() || generateSlug(formData.name);
+    if (!slug) {
+      toast({
+        title: 'Nome inválido',
+        description: 'Digite um nome para o restaurante.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const restaurantData: any = {
+        name: formData.name.trim(),
+        slug,
+        phone: formData.phone.trim(),
+        whatsapp: formData.whatsapp.trim(),
+        phone_country: formData.phone_country,
+        instagram_url: formData.instagram_url.trim() || null,
+        logo: formData.logo || null,
+        primary_color: formData.primary_color,
+        secondary_color: formData.secondary_color,
+        is_active: formData.is_active,
+        always_open: formData.always_open,
+        opening_hours: formData.opening_hours,
+        print_auto_on_new_order: formData.print_auto_on_new_order,
+        print_paper_width: formData.print_paper_width,
+      };
+
+      const { data, error } = await supabase.from('restaurants').insert(restaurantData).select().single();
+
+      if (error) throw error;
+
+      // Se há logo como data URL, fazer upload para storage
+      if (formData.logo && formData.logo.startsWith('data:')) {
+        try {
+          // Converter data URL para File
+          const response = await fetch(formData.logo);
+          const blob = await response.blob();
+          const file = new File([blob], 'logo.png', { type: blob.type });
+          
+          // Fazer upload do logo
+          const logoUrl = await uploadRestaurantLogo(data.id, file);
+          
+          // Atualizar restaurante com URL do logo
+          await supabase
+            .from('restaurants')
+            .update({ logo: logoUrl })
+            .eq('id', data.id);
+        } catch (logoError) {
+          console.error('Erro ao fazer upload do logo:', logoError);
+          // Não falhar a criação se o logo falhar
+        }
+      }
+
+      toast({
+        title: 'Restaurante criado',
+        description: `${formData.name} foi adicionado com sucesso.`,
+      });
+
+      // Reset form
+      setFormData({
+        name: '',
+        slug: '',
+        phone: '',
+        whatsapp: '',
+        phone_country: 'BR',
+        instagram_url: '',
+        logo: '',
+        primary_color: '#FF6B35',
+        secondary_color: '#FFFFFF',
+        is_active: true,
+        always_open: false,
+        opening_hours: {},
+        print_auto_on_new_order: false,
+        print_paper_width: '80mm',
+      });
+      setShowNewRestaurantDialog(false);
+      await loadData();
+    } catch (err: unknown) {
+      console.error('Erro ao criar restaurante:', err);
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: string }).message)
+          : 'Verifique se o slug não está em uso.';
+      toast({
+        title: 'Erro ao criar restaurante',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -156,7 +336,7 @@ export default function SuperAdminDashboard() {
             <div className="flex gap-2 flex-shrink-0">
               <Button
                 variant="default"
-                onClick={() => navigate('/super-admin/restaurants')}
+                onClick={() => setShowNewRestaurantDialog(true)}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Novo restaurante
@@ -240,18 +420,9 @@ export default function SuperAdminDashboard() {
 
         {/* Lista de restaurantes */}
         <div>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-            <h2 className="text-lg font-semibold text-foreground">
-              Restaurantes ({restaurants.length})
-            </h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/super-admin/restaurants')}
-            >
-              Gerenciar todos
-            </Button>
-          </div>
+          <h2 className="text-lg font-semibold text-foreground mb-4">
+            Restaurantes ({restaurants.length})
+          </h2>
 
           {restaurants.length === 0 ? (
             <Card className="border-dashed">
@@ -261,7 +432,7 @@ export default function SuperAdminDashboard() {
                 <p className="text-sm text-muted-foreground mt-1 mb-4">
                   Crie o primeiro restaurante para começar
                 </p>
-                <Button onClick={() => navigate('/super-admin/restaurants')}>
+                <Button onClick={() => setShowNewRestaurantDialog(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Criar restaurante
                 </Button>
@@ -352,6 +523,349 @@ export default function SuperAdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* Dialog de Novo Restaurante */}
+      <Dialog open={showNewRestaurantDialog} onOpenChange={setShowNewRestaurantDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Novo Restaurante</DialogTitle>
+            <DialogDescription>
+              Preencha todas as informações do restaurante. Você poderá editar depois nas configurações.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <Tabs defaultValue="basic" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="basic">Básico</TabsTrigger>
+                <TabsTrigger value="contact">Contato</TabsTrigger>
+                <TabsTrigger value="hours">Horários</TabsTrigger>
+                <TabsTrigger value="settings">Configurações</TabsTrigger>
+              </TabsList>
+
+              {/* Aba Básico */}
+              <TabsContent value="basic" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome do Restaurante *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        setFormData({
+                          ...formData,
+                          name,
+                          slug: formData.slug || generateSlug(name),
+                        });
+                      }}
+                      placeholder="Ex: Pizzaria do João"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="slug">Slug (URL) *</Label>
+                    <Input
+                      id="slug"
+                      value={formData.slug}
+                      onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                      placeholder="pizzaria-do-joao"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      URL: {window.location.origin}/{formData.slug || 'slug'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="logo">Logo</Label>
+                  <div className="flex items-center gap-4">
+                    {formData.logo && (
+                      <img
+                        src={formData.logo}
+                        alt="Logo"
+                        className="h-20 w-20 rounded-lg object-cover border"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <Input
+                        id="logo"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        disabled={logoUploading}
+                        className="cursor-pointer"
+                      />
+                      {logoUploading && (
+                        <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Enviando...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="primary_color">Cor Primária</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="primary_color"
+                        type="color"
+                        value={formData.primary_color}
+                        onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
+                        className="h-10 w-20"
+                      />
+                      <Input
+                        value={formData.primary_color}
+                        onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
+                        placeholder="#FF6B35"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="secondary_color">Cor Secundária</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="secondary_color"
+                        type="color"
+                        value={formData.secondary_color}
+                        onChange={(e) => setFormData({ ...formData, secondary_color: e.target.value })}
+                        className="h-10 w-20"
+                      />
+                      <Input
+                        value={formData.secondary_color}
+                        onChange={(e) => setFormData({ ...formData, secondary_color: e.target.value })}
+                        placeholder="#FFFFFF"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="is_active"
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                    className="rounded"
+                  />
+                  <Label htmlFor="is_active" className="cursor-pointer">
+                    Restaurante ativo (visível no cardápio público)
+                  </Label>
+                </div>
+              </TabsContent>
+
+              {/* Aba Contato */}
+              <TabsContent value="contact" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone_country">País</Label>
+                  <Select
+                    value={formData.phone_country}
+                    onValueChange={(value: 'BR' | 'PY') => setFormData({ ...formData, phone_country: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BR">Brasil</SelectItem>
+                      <SelectItem value="PY">Paraguai</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Telefone *</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="(00) 00000-0000"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="whatsapp">WhatsApp (apenas números) *</Label>
+                    <Input
+                      id="whatsapp"
+                      type="tel"
+                      value={formData.whatsapp}
+                      onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                      placeholder="11999999999"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="instagram_url">
+                    <Instagram className="h-4 w-4 inline mr-1" />
+                    Instagram URL
+                  </Label>
+                  <Input
+                    id="instagram_url"
+                    type="url"
+                    value={formData.instagram_url}
+                    onChange={(e) => setFormData({ ...formData, instagram_url: e.target.value })}
+                    placeholder="https://instagram.com/restaurante"
+                  />
+                </div>
+              </TabsContent>
+
+              {/* Aba Horários */}
+              <TabsContent value="hours" className="space-y-4 mt-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <input
+                    type="checkbox"
+                    id="always_open"
+                    checked={formData.always_open}
+                    onChange={(e) => setFormData({ ...formData, always_open: e.target.checked })}
+                    className="rounded"
+                  />
+                  <Label htmlFor="always_open" className="cursor-pointer">
+                    Sempre aberto (24 horas)
+                  </Label>
+                </div>
+
+                {!formData.always_open && (
+                  <div className="space-y-4">
+                    {DAYS.map((day) => (
+                      <div key={day.key} className="flex items-center gap-4">
+                        <div className="w-24 flex-shrink-0">
+                          <Label>{day.label}</Label>
+                        </div>
+                        <div className="flex-1 grid grid-cols-2 gap-2">
+                          <Input
+                            type="time"
+                            value={formData.opening_hours[day.key]?.open || ''}
+                            onChange={(e) => {
+                              const open = e.target.value;
+                              const close = formData.opening_hours[day.key]?.close || '';
+                              setFormData({
+                                ...formData,
+                                opening_hours: {
+                                  ...formData.opening_hours,
+                                  [day.key]: open && close ? { open, close } : null,
+                                },
+                              });
+                            }}
+                            placeholder="Abertura"
+                          />
+                          <Input
+                            type="time"
+                            value={formData.opening_hours[day.key]?.close || ''}
+                            onChange={(e) => {
+                              const open = formData.opening_hours[day.key]?.open || '';
+                              const close = e.target.value;
+                              setFormData({
+                                ...formData,
+                                opening_hours: {
+                                  ...formData.opening_hours,
+                                  [day.key]: open && close ? { open, close } : null,
+                                },
+                              });
+                            }}
+                            placeholder="Fechamento"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              opening_hours: {
+                                ...formData.opening_hours,
+                                [day.key]: null,
+                              },
+                            });
+                          }}
+                        >
+                          Fechado
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Aba Configurações */}
+              <TabsContent value="settings" className="space-y-4 mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Printer className="h-5 w-5" />
+                      Impressão
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="print_auto"
+                        checked={formData.print_auto_on_new_order}
+                        onChange={(e) =>
+                          setFormData({ ...formData, print_auto_on_new_order: e.target.checked })
+                        }
+                        className="rounded"
+                      />
+                      <Label htmlFor="print_auto" className="cursor-pointer">
+                        Impressão automática ao receber novo pedido
+                      </Label>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="print_paper_width">Largura do papel</Label>
+                      <Select
+                        value={formData.print_paper_width}
+                        onValueChange={(value: PrintPaperWidth) =>
+                          setFormData({ ...formData, print_paper_width: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="58mm">58mm</SelectItem>
+                          <SelectItem value="80mm">80mm</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+
+            <DialogFooter className="mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowNewRestaurantDialog(false)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Criando...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Restaurante
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

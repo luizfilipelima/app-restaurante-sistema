@@ -154,6 +154,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         payment_change_for: changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null,
         status: 'pending',
         notes: notes || null,
+        is_paid: true, // Todos os pedidos são considerados pagos por padrão
       };
 
       const { data: order, error } = await supabase

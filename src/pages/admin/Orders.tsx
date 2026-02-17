@@ -279,34 +279,6 @@ export default function AdminOrders() {
     }
   };
 
-  const markAsPaid = async (orderId: string) => {
-    setUpdatingOrderId(orderId);
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ is_paid: true })
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      await loadOrders(true);
-
-      toast({
-        title: "💰 Pagamento confirmado!",
-        description: "Pedido marcado como pago",
-        variant: "success",
-      });
-    } catch (error) {
-      console.error('Erro ao marcar como pago:', error);
-      toast({
-        title: "❌ Erro",
-        description: "Não foi possível confirmar o pagamento",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdatingOrderId(null);
-    }
-  };
 
   const removeOrder = async (orderId: string) => {
     if (!orderId) return;
@@ -474,27 +446,11 @@ export default function AdminOrders() {
                               >
                                 <X className="h-4 w-4" />
                               </Button>
-                              {order.is_paid ? (
+                              {order.is_paid && (
                                 <Badge className="bg-green-500 text-white border-0 shadow-sm">
                                   <Check className="h-3 w-3 mr-1" />
                                   Pago
                                 </Badge>
-                              ) : (
-                                status === OrderStatus.PENDING && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => markAsPaid(order.id)}
-                                    disabled={updatingOrderId === order.id}
-                                    className="h-7 text-xs hover:bg-green-50 hover:border-green-500 hover:text-green-600"
-                                  >
-                                    {updatingOrderId === order.id ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      'Confirmar'
-                                    )}
-                                  </Button>
-                                )
                               )}
                             </div>
                           </div>

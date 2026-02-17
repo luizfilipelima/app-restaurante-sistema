@@ -32,6 +32,27 @@ const CATEGORY_ICONS: Record<string, any> = {
   'default': Utensils
 };
 
+// Ordem de categorias: pratos principais primeiro, bebidas por último
+const CATEGORY_ORDER: Record<string, number> = {
+  'Pizza': 1,
+  'Massas': 2,
+  'Lanches': 3,
+  'Aperitivos': 4,
+  'Combos': 5,
+  'Sobremesas': 6,
+  'Bebidas': 7,
+  'Outros': 8,
+};
+
+// Função para ordenar categorias
+const sortCategories = (categories: string[]): string[] => {
+  return [...categories].sort((a, b) => {
+    const orderA = CATEGORY_ORDER[a] || 999; // Categorias não listadas vão para o final
+    const orderB = CATEGORY_ORDER[b] || 999;
+    return orderA - orderB;
+  });
+};
+
 interface PublicMenuProps {
   /** Quando renderizado dentro de StoreLayout (subdomínio), o slug é passado por prop */
   tenantSlug?: string;
@@ -108,13 +129,24 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
           .order('name', { ascending: true });
 
         if (productsData && productsData.length > 0) {
-          setProducts(productsData);
+          // Ordenar produtos: primeiro por categoria (usando ordem definida), depois por nome
+          const sortedProducts = [...productsData].sort((a, b) => {
+            const orderA = CATEGORY_ORDER[a.category] || 999;
+            const orderB = CATEGORY_ORDER[b.category] || 999;
+            if (orderA !== orderB) {
+              return orderA - orderB;
+            }
+            return a.name.localeCompare(b.name);
+          });
+          
+          setProducts(sortedProducts);
           const uniqueCategories = Array.from(new Set(productsData.map((p) => p.category)));
-          setCategories(uniqueCategories);
+          const sortedCategories = sortCategories(uniqueCategories);
+          setCategories(sortedCategories);
         } else {
           // Fallback para Mock Data se não houver produtos no banco
           setProducts(MOCK_PRODUCTS);
-          setCategories(['Pizza', 'Bebidas', 'Sobremesas']);
+          setCategories(sortCategories(['Pizza', 'Bebidas', 'Sobremesas']));
         }
 
         // Buscar dados de pizza
@@ -157,9 +189,12 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
     }
   };
 
+  // Filtrar e ordenar produtos
   const filteredProducts = selectedCategory === 'all'
-    ? products
-    : products.filter((p) => p.category === selectedCategory);
+    ? products // Já estão ordenados
+    : products
+        .filter((p) => p.category === selectedCategory)
+        .sort((a, b) => a.name.localeCompare(b.name)); // Ordenar por nome dentro da categoria
 
   if (loading) {
     return (
@@ -308,19 +343,47 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
         </div>
 
         {/* Lista de produtos */}
-        <section className="space-y-5">
-          <h2 className="text-base font-semibold text-slate-500 uppercase tracking-wider">
-            {selectedCategory === 'all' ? 'Cardápio completo' : selectedCategory}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onClick={() => handleProductClick(product)}
-              />
-            ))}
-          </div>
+        <section className="space-y-8">
+          {selectedCategory === 'all' ? (
+            // Exibir agrupado por categoria quando "Todos" está selecionado
+            categories.map((category) => {
+              const categoryProducts = products.filter((p) => p.category === category);
+              if (categoryProducts.length === 0) return null;
+              
+              return (
+                <div key={category} className="space-y-5">
+                  <h2 className="text-base font-semibold text-slate-500 uppercase tracking-wider">
+                    {category}
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {categoryProducts.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        onClick={() => handleProductClick(product)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            // Exibir apenas produtos da categoria selecionada
+            <>
+              <h2 className="text-base font-semibold text-slate-500 uppercase tracking-wider">
+                {selectedCategory}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onClick={() => handleProductClick(product)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
 
           {filteredProducts.length === 0 && (
             <div className="text-center py-16 bg-white/60 rounded-2xl border border-dashed border-slate-200">
