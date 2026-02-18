@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { getSubdomain } from '@/lib/subdomain';
-import { Restaurant, Product } from '@/types';
+import { Restaurant, Product, Category, Subcategory } from '@/types';
 import { Clock, Search, Utensils, Coffee, IceCream, UtensilsCrossed } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -51,6 +51,8 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [categoriesFromDb, setCategoriesFromDb] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,14 +96,22 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
           .select('*')
           .eq('restaurant_id', restaurantData.id)
           .order('order_index', { ascending: true });
+        const categoriesList = categoriesData ?? [];
+        setCategoriesFromDb(categoriesList);
+        let subcategoriesData: Subcategory[] = [];
+        try {
+          const { data: subData } = await supabase.from('subcategories').select('*').eq('restaurant_id', restaurantData.id).order('order_index', { ascending: true });
+          subcategoriesData = subData ?? [];
+        } catch {
+          // ignorar se tabela subcategories não existir
+        }
+        setSubcategories(subcategoriesData);
 
         // Criar mapa de ordem de categorias
         const categoryOrderMap = new Map<string, number>();
-        if (categoriesData && categoriesData.length > 0) {
-          categoriesData.forEach((cat) => {
-            categoryOrderMap.set(cat.name, cat.order_index);
-          });
-        }
+        categoriesList.forEach((cat) => {
+          categoryOrderMap.set(cat.name, cat.order_index);
+        });
 
         // Buscar produtos (ordem do admin via order_index)
         const { data: productsData } = await supabase
@@ -286,25 +296,51 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
         {/* Lista de produtos - Mobile First */}
         <section className="space-y-6 sm:space-y-8">
           {selectedCategory === 'all' ? (
-            // Exibir agrupado por categoria quando "Todos" está selecionado
-            categories.map((category) => {
-              const categoryProducts = filteredProducts.filter((p) => p.category === category);
+            // Exibir agrupado por categoria (e subcategoria quando houver)
+            categories.map((categoryName) => {
+              const categoryProducts = filteredProducts.filter((p) => p.category === categoryName);
               if (categoryProducts.length === 0) return null;
-              
+              const catFromDb = categoriesFromDb.find((c) => c.name === categoryName);
+              const subcatsForCategory = (catFromDb ? subcategories.filter((s) => s.category_id === catFromDb.id) : []).sort((a, b) => a.order_index - b.order_index);
+              const hasSubs = subcatsForCategory.length > 0 && categoryProducts.some((p) => p.subcategory_id);
+              const productsWithoutSub = categoryProducts.filter((p) => !p.subcategory_id);
+
               return (
-                <div key={category} className="space-y-3 sm:space-y-5">
+                <div key={categoryName} className="space-y-3 sm:space-y-5">
                   <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
-                    {category}
+                    {categoryName}
                   </h2>
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                    {categoryProducts.map((product) => (
-                      <ProductCardViewOnly
-                        key={product.id}
-                        product={product}
-                        currency={currency}
-                      />
-                    ))}
-                  </div>
+                  {hasSubs ? (
+                    <>
+                      {subcatsForCategory.map((sub) => {
+                        const subProducts = categoryProducts.filter((p) => p.subcategory_id === sub.id);
+                        if (subProducts.length === 0) return null;
+                        return (
+                          <div key={sub.id} className="space-y-2">
+                            <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                              {subProducts.map((product) => (
+                                <ProductCardViewOnly key={product.id} product={product} currency={currency} />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {productsWithoutSub.length > 0 && (
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                          {productsWithoutSub.map((product) => (
+                            <ProductCardViewOnly key={product.id} product={product} currency={currency} />
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                      {categoryProducts.map((product) => (
+                        <ProductCardViewOnly key={product.id} product={product} currency={currency} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })

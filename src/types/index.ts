@@ -120,6 +120,8 @@ export interface Product {
   is_active: boolean;
   /** Ordem de exibição dentro da categoria (admin e cardápio público) */
   order_index?: number;
+  /** Subcategoria opcional (ex: agrupamento dentro da categoria) */
+  subcategory_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -336,6 +338,21 @@ export interface RestaurantWithMetrics extends Restaurant {
 export interface Category {
   id: string;
   restaurant_id: string;
+  name: string;
+  order_index: number;
+  is_pizza?: boolean;
+  is_marmita?: boolean;
+  extra_field?: string | null;
+  extra_label?: string | null;
+  extra_placeholder?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Subcategory {
+  id: string;
+  restaurant_id: string;
+  category_id: string;
   name: string;
   order_index: number;
   created_at: string;

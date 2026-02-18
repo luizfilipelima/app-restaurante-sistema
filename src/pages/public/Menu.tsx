@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { getSubdomain } from '@/lib/subdomain';
-import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide } from '@/types';
+import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide, Category, Subcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed } from 'lucide-react';
@@ -76,6 +76,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [categoriesFromDb, setCategoriesFromDb] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
@@ -145,14 +147,23 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
           .select('*')
           .eq('restaurant_id', restaurantData.id)
           .order('order_index', { ascending: true });
+        const categoriesList = categoriesData ?? [];
+        setCategoriesFromDb(categoriesList);
+        // Subcategorias (opcional; tabela pode não existir antes da migration)
+        let subcategoriesData: Subcategory[] = [];
+        try {
+          const { data: subData } = await supabase.from('subcategories').select('*').eq('restaurant_id', restaurantData.id).order('order_index', { ascending: true });
+          subcategoriesData = subData ?? [];
+        } catch {
+          // ignorar se tabela subcategories não existir
+        }
+        setSubcategories(subcategoriesData);
 
         // Criar mapa de ordem de categorias
         const categoryOrderMap = new Map<string, number>();
-        if (categoriesData && categoriesData.length > 0) {
-          categoriesData.forEach((cat) => {
-            categoryOrderMap.set(cat.name, cat.order_index);
-          });
-        }
+        categoriesList.forEach((cat) => {
+          categoryOrderMap.set(cat.name, cat.order_index);
+        });
 
         // Buscar produtos (ordem do admin via order_index)
         const { data: productsData } = await supabase
@@ -396,26 +407,67 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
         {/* Lista de produtos - Mobile First */}
         <section className="space-y-6 sm:space-y-8">
           {selectedCategory === 'all' ? (
-            // Exibir agrupado por categoria quando "Todos" está selecionado
-            categories.map((category) => {
-              const categoryProducts = products.filter((p) => p.category === category);
+            // Exibir agrupado por categoria (e subcategoria quando houver) quando "Todos" está selecionado
+            categories.map((categoryName) => {
+              const categoryProducts = products.filter((p) => p.category === categoryName);
               if (categoryProducts.length === 0) return null;
-              
+              const catFromDb = categoriesFromDb.find((c) => c.name === categoryName);
+              const subcatsForCategory = (catFromDb ? subcategories.filter((s) => s.category_id === catFromDb.id) : []).sort((a, b) => a.order_index - b.order_index);
+              const productsWithSub = categoryProducts.filter((p) => p.subcategory_id);
+              const productsWithoutSub = categoryProducts.filter((p) => !p.subcategory_id);
+              const hasSubs = subcatsForCategory.length > 0 && productsWithSub.length > 0;
+
               return (
-                <div key={category} className="space-y-3 sm:space-y-5">
+                <div key={categoryName} className="space-y-3 sm:space-y-5">
                   <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
-                    {category}
+                    {categoryName}
                   </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
-                    {categoryProducts.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onClick={() => handleProductClick(product)}
-                        currency={currency}
-                      />
-                    ))}
-                  </div>
+                  {hasSubs ? (
+                    <>
+                      {subcatsForCategory.map((sub) => {
+                        const subProducts = categoryProducts.filter((p) => p.subcategory_id === sub.id);
+                        if (subProducts.length === 0) return null;
+                        return (
+                          <div key={sub.id} className="space-y-2">
+                            <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+                              {subProducts.map((product) => (
+                                <ProductCard
+                                  key={product.id}
+                                  product={product}
+                                  onClick={() => handleProductClick(product)}
+                                  currency={currency}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {productsWithoutSub.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+                          {productsWithoutSub.map((product) => (
+                            <ProductCard
+                              key={product.id}
+                              product={product}
+                              onClick={() => handleProductClick(product)}
+                              currency={currency}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+                      {categoryProducts.map((product) => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          onClick={() => handleProductClick(product)}
+                          currency={currency}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })

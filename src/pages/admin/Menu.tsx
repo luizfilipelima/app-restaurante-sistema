@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { convertPriceToStorage, convertPriceFromStorage, formatPriceInputPyG, getCurrencySymbol } from '@/lib/priceHelper';
-import { Product, Restaurant, PizzaSize, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide } from '@/types';
+import { Product, Restaurant, PizzaSize, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide, Category, Subcategory } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,7 @@ import {
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Plus, Trash2, Loader2, Info, Upload, Copy, Check } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
-import CategoryReorder from '@/components/admin/CategoryReorder';
+import CategoryManager from '@/components/admin/CategoryManager';
 import ProductRow from '@/components/admin/ProductRow';
 import {
   Table,
@@ -48,45 +48,29 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-// Categorias fixas do cardápio com configurações específicas por tipo
-interface CategoryConfig {
-  id: string;
-  label: string;
-  isPizza: boolean;
-  isMarmita?: boolean;
-  priceLabel?: string;
-  extraField?: string;
-  extraLabel?: string;
-  extraPlaceholder?: string;
-}
-
-const CATEGORIAS_CARDAPIO: CategoryConfig[] = [
-  { id: 'Marmitas', label: 'Marmitas', isPizza: false, isMarmita: true, priceLabel: 'Preço base' },
-  { id: 'Pizza', label: 'Pizza', isPizza: true, priceLabel: 'Preço base (por sabor)' },
-  { id: 'Bebidas', label: 'Bebidas', isPizza: false, extraField: 'volume', extraLabel: 'Volume ou medida', extraPlaceholder: 'Ex: 350ml, 1L, 2L' },
-  { id: 'Sobremesas', label: 'Sobremesas', isPizza: false, extraField: 'portion', extraLabel: 'Porção', extraPlaceholder: 'Ex: individual, fatia, 500g' },
-  { id: 'Aperitivos', label: 'Aperitivos', isPizza: false },
-  { id: 'Massas', label: 'Massas', isPizza: false },
-  { id: 'Lanches', label: 'Lanches', isPizza: false },
-  { id: 'Combos', label: 'Combos', isPizza: false, extraField: 'detail', extraLabel: 'Detalhe do combo', extraPlaceholder: 'Ex: Pizza + Refrigerante' },
-  { id: 'Outros', label: 'Outros', isPizza: false },
-];
-
-type CategoryId = (typeof CATEGORIAS_CARDAPIO)[number]['id'];
-
-const getCategoryConfig = (categoryId: string): CategoryConfig =>
-  CATEGORIAS_CARDAPIO.find((c) => c.id === categoryId) ?? CATEGORIAS_CARDAPIO[CATEGORIAS_CARDAPIO.length - 1];
-
+// Helper: config do produto a partir da categoria do BD
+const getCategoryConfigFromCategory = (cat: Category | null) => {
+  if (!cat) return { isPizza: false, isMarmita: false, priceLabel: 'Preço' as string, extraField: undefined as string | undefined, extraLabel: undefined as string | undefined, extraPlaceholder: undefined as string | undefined };
+  return {
+    isPizza: cat.is_pizza ?? false,
+    isMarmita: cat.is_marmita ?? false,
+    priceLabel: cat.is_pizza ? 'Preço base (por sabor)' : cat.is_marmita ? 'Preço base' : 'Preço',
+    extraField: cat.extra_field ?? undefined,
+    extraLabel: cat.extra_label ?? undefined,
+    extraPlaceholder: cat.extra_placeholder ?? undefined,
+  };
+};
 
 const formDefaults = {
   name: '',
-  category: 'Marmitas' as CategoryId,
+  categoryId: '' as string,
   description: '',
   price: '',
   is_pizza: false,
-  is_marmita: true, // Marmitas é padrão na primeira categoria
+  is_marmita: false,
   image_url: '',
-  categoryDetail: '', // Campo extra conforme categoria (volume, porção, etc.)
+  categoryDetail: '',
+  subcategoryId: '' as string | null,
 };
 
 export default function AdminMenu() {
@@ -100,7 +84,9 @@ export default function AdminMenu() {
   const [saving, setSaving] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [form, setForm] = useState(formDefaults);
-  
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategoriesByCategory, setSubcategoriesByCategory] = useState<Record<string, Subcategory[]>>({});
+
   // Estados para Cardápio Digital
   const [slug, setSlug] = useState('');
   const [slugSaving, setSlugSaving] = useState(false);
@@ -134,8 +120,30 @@ export default function AdminMenu() {
       loadRestaurant();
       loadProducts();
       loadMenuConfig();
+      loadCategoriesAndSubcategories();
     }
   }, [restaurantId]);
+
+  const loadCategoriesAndSubcategories = async () => {
+    if (!restaurantId) return;
+    try {
+      const catRes = await supabase.from('categories').select('*').eq('restaurant_id', restaurantId).order('order_index', { ascending: true });
+      if (catRes.data) setCategories(catRes.data);
+      try {
+        const subRes = await supabase.from('subcategories').select('*').eq('restaurant_id', restaurantId).order('order_index', { ascending: true });
+        const byCat: Record<string, Subcategory[]> = {};
+        (subRes.data || []).forEach((s) => {
+          if (!byCat[s.category_id]) byCat[s.category_id] = [];
+          byCat[s.category_id].push(s);
+        });
+        setSubcategoriesByCategory(byCat);
+      } catch {
+        setSubcategoriesByCategory({});
+      }
+    } catch (e) {
+      console.error('Erro ao carregar categorias:', e);
+    }
+  };
 
   const loadRestaurant = async () => {
     if (!restaurantId) return;
@@ -211,41 +219,55 @@ export default function AdminMenu() {
     });
   };
 
+  const selectedCategory = categories.find((c) => c.id === form.categoryId) ?? null;
+  const categoryConfig = getCategoryConfigFromCategory(selectedCategory);
+  const subcategoriesOfSelected = (form.categoryId && subcategoriesByCategory[form.categoryId]) || [];
+
   const openNew = () => {
     setEditingProduct(null);
-    setForm(formDefaults);
+    const firstCatId = categories[0]?.id ?? '';
+    const firstCat = categories[0];
+    setForm({
+      ...formDefaults,
+      categoryId: firstCatId,
+      is_pizza: firstCat?.is_pizza ?? false,
+      is_marmita: firstCat?.is_marmita ?? false,
+      subcategoryId: null,
+    });
     setModalOpen(true);
   };
 
   const openEdit = (product: Product) => {
     setEditingProduct(product);
-    const config = getCategoryConfig(product.category);
+    const cat = categories.find((c) => c.name === product.category);
     const desc = product.description || '';
-    const hasDetail = config.extraField && desc.includes(' - ');
+    const hasDetail = cat?.extra_field && desc.includes(' - ');
     const [categoryDetail, description] = hasDetail
       ? (desc.split(/ - (.+)/).slice(0, 2) as [string, string])
       : ['', desc];
     setForm({
       name: product.name,
-      category: (config.id as CategoryId) || 'Outros',
+      categoryId: cat?.id ?? '',
       description: description?.trim() || '',
       price: convertPriceFromStorage(Number(product.price), currency),
-      is_pizza: config.isPizza || false,
-      is_marmita: config.isMarmita || false,
+      is_pizza: cat?.is_pizza ?? false,
+      is_marmita: cat?.is_marmita ?? false,
       image_url: product.image_url || '',
       categoryDetail: categoryDetail?.trim() || '',
+      subcategoryId: product.subcategory_id ?? null,
     });
     setModalOpen(true);
   };
 
   const handleCategoryChange = (categoryId: string) => {
-    const config = getCategoryConfig(categoryId);
+    const cat = categories.find((c) => c.id === categoryId) ?? null;
     setForm((f) => ({
       ...f,
-      category: categoryId as CategoryId,
-      is_pizza: config.isPizza || false,
-      is_marmita: config.isMarmita || false,
-      categoryDetail: config.extraField != null ? f.categoryDetail : '',
+      categoryId: categoryId,
+      is_pizza: cat?.is_pizza ?? false,
+      is_marmita: cat?.is_marmita ?? false,
+      categoryDetail: cat?.extra_field != null ? f.categoryDetail : '',
+      subcategoryId: null,
     }));
   };
 
@@ -283,15 +305,15 @@ export default function AdminMenu() {
     if (!restaurantId) return;
 
     const name = form.name.trim();
-    const category = form.category.trim();
+    const categoryName = selectedCategory?.name ?? '';
     const price = convertPriceToStorage(form.price, currency);
 
     if (!name) {
       toast({ title: 'Nome obrigatório', variant: 'destructive' });
       return;
     }
-    if (!category) {
-      toast({ title: 'Categoria obrigatória', variant: 'destructive' });
+    if (!form.categoryId || !categoryName) {
+      toast({ title: 'Selecione uma categoria. Crie uma na aba Categorias se necessário.', variant: 'destructive' });
       return;
     }
     if (Number.isNaN(price) || price < 0) {
@@ -299,9 +321,8 @@ export default function AdminMenu() {
       return;
     }
 
-    const config = getCategoryConfig(category);
-    const isPizza = config.isPizza || false;
-    const isMarmita = config.isMarmita || false;
+    const isPizza = categoryConfig.isPizza || false;
+    const isMarmita = categoryConfig.isMarmita || false;
     const descriptionFinal =
       form.categoryDetail.trim()
         ? form.description.trim()
@@ -309,41 +330,19 @@ export default function AdminMenu() {
           : form.categoryDetail.trim()
         : form.description.trim() || null;
 
-      setSaving(true);
+    setSaving(true);
     try {
-      // Garantir que a categoria existe na tabela categories
-      if (restaurantId) {
-        const { data: existingCategory } = await supabase
-          .from('categories')
-          .select('id')
-          .eq('restaurant_id', restaurantId)
-          .eq('name', category)
-          .single();
-
-        if (!existingCategory) {
-          // Criar categoria se não existir
-          const { data: nextOrderIndex } = await supabase.rpc('get_next_category_order_index', {
-            restaurant_uuid: restaurantId,
-          });
-
-          await supabase.from('categories').insert({
-            restaurant_id: restaurantId,
-            name: category,
-            order_index: nextOrderIndex ?? 0,
-          });
-        }
-      }
-
       const payload = {
         restaurant_id: restaurantId,
         name,
-        category,
+        category: categoryName,
         description: descriptionFinal,
         price,
         is_pizza: isPizza,
         is_marmita: isMarmita,
         image_url: form.image_url.trim() || null,
         is_active: true,
+        subcategory_id: form.subcategoryId || null,
       };
 
       if (editingProduct) {
@@ -357,7 +356,7 @@ export default function AdminMenu() {
       } else {
         const { data: nextOrder } = await supabase.rpc('get_next_product_order_index', {
           p_restaurant_id: restaurantId,
-          p_category: category,
+          p_category: categoryName,
         });
         const order_index = nextOrder ?? 0;
         const { error } = await supabase.from('products').insert({ ...payload, order_index });
@@ -368,6 +367,7 @@ export default function AdminMenu() {
 
       setModalOpen(false);
       loadProducts();
+      loadCategoriesAndSubcategories();
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
       const msg = error instanceof Error ? error.message : 'Verifique as permissões no Supabase.';
@@ -430,6 +430,7 @@ export default function AdminMenu() {
         .insert({
           restaurant_id: product.restaurant_id,
           category: product.category,
+          subcategory_id: product.subcategory_id ?? null,
           name: `${product.name} (Cópia)`,
           description: product.description ?? null,
           price: product.price,
@@ -738,7 +739,7 @@ export default function AdminMenu() {
   };
 
 
-  // Agrupar produtos por categoria (ordenados por order_index)
+  // Agrupar produtos por categoria (ordem da tabela categories)
   const groupedProducts = products.reduce((acc, product) => {
     if (!acc[product.category]) {
       acc[product.category] = [];
@@ -749,6 +750,10 @@ export default function AdminMenu() {
   Object.keys(groupedProducts).forEach((cat) => {
     groupedProducts[cat].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
   });
+  const categoryOrder = categories.map((c) => c.name);
+  const sortedCategoryNames = categoryOrder.length > 0
+    ? categoryOrder.filter((name) => groupedProducts[name]?.length)
+    : Object.keys(groupedProducts);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -893,7 +898,9 @@ export default function AdminMenu() {
               onDragEnd={handleProductsDragEnd}
             >
               <div className="space-y-8">
-                {Object.entries(groupedProducts).map(([category, categoryProducts]) => (
+                {sortedCategoryNames.map((category) => {
+                  const categoryProducts = groupedProducts[category] ?? [];
+                  return (
                   <div key={category} className="space-y-2">
                     <h3 className="text-xl font-semibold capitalize">{category}</h3>
                     <div className="rounded-md border">
@@ -929,7 +936,8 @@ export default function AdminMenu() {
                       </Table>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </DndContext>
           )}
@@ -938,12 +946,14 @@ export default function AdminMenu() {
         {/* Aba Categorias */}
         <TabsContent value="categorias" className="space-y-6 mt-6">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Reordenar Categorias</h2>
+            <h2 className="text-2xl font-bold text-foreground">Categorias e Subcategorias</h2>
             <p className="text-muted-foreground text-sm">
-              Arraste as categorias para definir a ordem de exibição no cardápio público.
+              Adicione, remova ou reordene categorias. Expanda uma categoria para gerenciar subcategorias (ex.: configurações de pizza).
             </p>
           </div>
-          {restaurantId && <CategoryReorder restaurantId={restaurantId} />}
+          {restaurantId && (
+            <CategoryManager restaurantId={restaurantId} onCategoriesChange={loadCategoriesAndSubcategories} />
+          )}
         </TabsContent>
 
         {/* Aba Configurações */}
@@ -1290,9 +1300,9 @@ export default function AdminMenu() {
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder={
-                    form.category === 'Pizza'
+                    categoryConfig.isPizza
                       ? 'Ex: Margherita, Calabresa'
-                      : form.category === 'Bebidas'
+                      : categoryConfig.extraField === 'volume'
                       ? 'Ex: Refrigerante, Suco'
                       : 'Ex: nome do produto'
                   }
@@ -1304,19 +1314,19 @@ export default function AdminMenu() {
               <div className="space-y-2">
                 <Label>Categoria *</Label>
                 <Select
-                  value={form.category}
+                  value={form.categoryId}
                   onValueChange={handleCategoryChange}
                   required
                 >
                   <SelectTrigger className="text-base">
-                    <SelectValue placeholder="Selecione" />
+                    <SelectValue placeholder={categories.length ? 'Selecione' : 'Crie uma categoria na aba Categorias'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIAS_CARDAPIO.map((cat) => (
+                    {categories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
-                        {cat.label}
-                        {cat.isPizza && ' (tamanhos e sabores)'}
-                        {cat.isMarmita && ' (monte sua marmita)'}
+                        {cat.name}
+                        {cat.is_pizza && ' (tamanhos e sabores)'}
+                        {cat.is_marmita && ' (monte sua marmita)'}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1324,8 +1334,28 @@ export default function AdminMenu() {
               </div>
             </div>
 
+            {subcategoriesOfSelected.length > 0 && (
+              <div className="space-y-2">
+                <Label>Subcategoria (opcional)</Label>
+                <Select
+                  value={form.subcategoryId ?? 'none'}
+                  onValueChange={(v) => setForm((f) => ({ ...f, subcategoryId: v === 'none' ? null : v }))}
+                >
+                  <SelectTrigger className="text-base">
+                    <SelectValue placeholder="Nenhuma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma</SelectItem>
+                    {subcategoriesOfSelected.map((sub) => (
+                      <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Mensagens informativas */}
-            {getCategoryConfig(form.category).isPizza && (
+            {categoryConfig.isPizza && (
               <div className="flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
                 <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
                 <span>
@@ -1334,7 +1364,7 @@ export default function AdminMenu() {
               </div>
             )}
 
-            {getCategoryConfig(form.category).isMarmita && (
+            {categoryConfig.isMarmita && (
               <div className="flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
                 <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
                 <span>
@@ -1345,16 +1375,16 @@ export default function AdminMenu() {
 
             {/* Campo extra e Descrição em Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {getCategoryConfig(form.category).extraField && (
+              {categoryConfig.extraField && (
                 <div className="space-y-2">
                   <Label htmlFor="categoryDetail">
-                    {getCategoryConfig(form.category).extraLabel}
+                    {categoryConfig.extraLabel}
                   </Label>
                   <Input
                     id="categoryDetail"
                     value={form.categoryDetail}
                     onChange={(e) => setForm((f) => ({ ...f, categoryDetail: e.target.value }))}
-                    placeholder={getCategoryConfig(form.category).extraPlaceholder}
+                    placeholder={categoryConfig.extraPlaceholder}
                     className="text-base"
                   />
                 </div>
@@ -1362,7 +1392,7 @@ export default function AdminMenu() {
 
               <div className="space-y-2">
                 <Label htmlFor="price">
-                  {getCategoryConfig(form.category).priceLabel ? `${getCategoryConfig(form.category).priceLabel} (${getCurrencySymbol(currency)}) *` : `Preço (${getCurrencySymbol(currency)}) *`}
+                  {categoryConfig.priceLabel ? `${categoryConfig.priceLabel} (${getCurrencySymbol(currency)}) *` : `Preço (${getCurrencySymbol(currency)}) *`}
                 </Label>
                 <Input
                   id="price"
@@ -1389,7 +1419,7 @@ export default function AdminMenu() {
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder={
-                  form.category === 'Pizza'
+                  categoryConfig.isPizza
                     ? 'Ex: Molho de tomate, mussarela e manjericão'
                     : 'Descrição opcional do produto'
                 }
