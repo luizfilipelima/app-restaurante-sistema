@@ -27,7 +27,7 @@ export default function Header() {
       <div className="container mx-auto px-4 h-16 md:h-20 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <img src="/logo-quierofood.png" alt="Quiero.food" className="h-8 md:h-9 w-auto object-contain" />
+          <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="h-8 md:h-9 w-auto object-contain" />
         </div>
 
         {/* Desktop Menu */}

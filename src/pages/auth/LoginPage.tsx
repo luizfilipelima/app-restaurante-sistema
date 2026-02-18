@@ -3,8 +3,7 @@ import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogIn, Pizza, AlertCircle, Loader2 } from 'lucide-react';
+import { LogIn, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const [loginOrEmail, setLoginOrEmail] = useState('');
@@ -18,57 +17,73 @@ export default function LoginPage() {
 
     try {
       await signIn(loginOrEmail, password);
-    } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login. Verifique suas credenciais.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao fazer login. Verifique suas credenciais.');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-red-50 to-orange-100 p-4">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute inset-0" style={{
-          backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(0,0,0,0.15) 1px, transparent 0)',
-          backgroundSize: '40px 40px'
-        }} />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4 sm:p-6">
+      {/* Fundo sutil */}
+      <div
+        className="absolute inset-0 overflow-hidden pointer-events-none"
+        aria-hidden
+      >
+        <div
+          className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-orange-100/60 blur-3xl"
+        />
+        <div
+          className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-slate-200/40 blur-3xl"
+        />
       </div>
 
-      <Card className="w-full max-w-md relative shadow-premium-lg border-0">
-        <CardHeader className="space-y-4 pb-8">
-          <div className="flex items-center justify-center mb-2">
-            <div className="h-20 w-20 rounded-2xl gradient-primary flex items-center justify-center shadow-premium-lg">
-              <Pizza className="h-10 w-10 text-white" />
-            </div>
+      <div className="w-full max-w-[400px] relative">
+        {/* Logo */}
+        <div className="flex justify-center mb-10">
+          <a
+            href="https://quiero.food"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 rounded-lg"
+          >
+            <img
+              src="/quierofood-logo-f.svg"
+              alt="Quiero.food"
+              className="h-10 sm:h-11 w-auto object-contain"
+            />
+          </a>
+        </div>
+
+        {/* Card de login */}
+        <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-8 sm:p-10">
+          <div className="text-center mb-8">
+            <h1 className="text-xl font-semibold text-slate-800">
+              Acessar o sistema
+            </h1>
+            <p className="text-slate-500 text-sm mt-1.5">
+              Use seu e-mail ou usuário e senha para entrar
+            </p>
           </div>
-          <div className="space-y-2">
-            <CardTitle className="text-3xl text-center font-bold">
-              Sistema de Gestão
-            </CardTitle>
-            <CardDescription className="text-center text-base">
-              Entre com suas credenciais para acessar o sistema
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="pb-8">
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="loginOrEmail" className="text-sm font-semibold">
-                Email ou usuário
+              <Label htmlFor="loginOrEmail" className="text-slate-700 font-medium">
+                E-mail ou usuário
               </Label>
               <Input
                 id="loginOrEmail"
                 type="text"
-                placeholder="seu@email.com ou seu usuário"
+                placeholder="seu@email.com"
                 value={loginOrEmail}
                 onChange={(e) => setLoginOrEmail(e.target.value)}
                 required
                 disabled={loading}
                 autoComplete="username"
-                className="h-11 text-base"
+                className="h-11 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white transition-colors"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-semibold">
+              <Label htmlFor="password" className="text-slate-700 font-medium">
                 Senha
               </Label>
               <Input
@@ -79,18 +94,22 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
-                className="h-11 text-base"
+                autoComplete="current-password"
+                className="h-11 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white transition-colors"
               />
             </div>
             {error && (
-              <div className="bg-red-50 border-2 border-red-200 text-red-800 text-sm p-4 rounded-xl flex items-start gap-3 animate-slide-in-bottom">
-                <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+              <div
+                className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-100 text-red-800 text-sm"
+                role="alert"
+              >
+                <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5 text-red-500" />
                 <span className="font-medium">{error}</span>
               </div>
             )}
-            <Button 
-              type="submit" 
-              className="w-full h-12 text-base font-semibold gradient-primary hover:shadow-premium-lg transition-all hover:scale-[1.02]" 
+            <Button
+              type="submit"
+              className="w-full h-12 rounded-xl text-base font-semibold bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-600/25 hover:shadow-orange-600/30 transition-all"
               disabled={loading}
             >
               {loading ? (
@@ -106,19 +125,12 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
+        </div>
 
-          {/* Demonstração de Credenciais */}
-          <div className="mt-6 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-100">
-            <p className="text-xs font-semibold text-blue-900 mb-2 uppercase tracking-wide">
-              💡 Credenciais de Demonstração
-            </p>
-            <div className="space-y-1 text-xs text-blue-700">
-              <p><span className="font-semibold">Super Admin:</span> admin@sistema.com</p>
-              <p><span className="font-semibold">Senha:</span> senha123</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <p className="text-center text-slate-400 text-xs mt-8">
+          Sistema de gestão para restaurantes · Quiero.food
+        </p>
+      </div>
     </div>
   );
 }

@@ -280,7 +280,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
               <Skeleton key={i} className="h-[74px] w-[70px] rounded-2xl flex-shrink-0" />
             ))}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
                 <Skeleton className="aspect-[4/3] w-full" />
@@ -430,7 +430,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
                         return (
                           <div key={sub.id} className="space-y-2">
                             <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
                               {subProducts.map((product) => (
                                 <ProductCard
                                   key={product.id}
@@ -444,7 +444,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
                         );
                       })}
                       {productsWithoutSub.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
                           {productsWithoutSub.map((product) => (
                             <ProductCard
                               key={product.id}
@@ -457,7 +457,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
                       )}
                     </>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
                       {categoryProducts.map((product) => (
                         <ProductCard
                           key={product.id}
@@ -477,7 +477,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
               <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
                 {selectedCategory}
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
                 {filteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -505,7 +505,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
             rel="noopener noreferrer"
             className="inline-flex flex-col items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors"
           >
-            <img src="/logo-quierofood.png" alt="Quiero.food" className="h-7 w-auto object-contain opacity-80 hover:opacity-100" />
+            <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="h-7 w-auto object-contain opacity-80 hover:opacity-100" />
             <span className="text-xs">{t('menu.developedBy')}</span>
           </a>
         </footer>

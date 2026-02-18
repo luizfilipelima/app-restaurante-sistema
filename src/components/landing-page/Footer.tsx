@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           <div className="md:col-span-1 space-y-6">
             <a href="/" className="inline-block">
-              <img src="/logo-quierofood.png" alt="Quiero.food" className="h-9 w-auto object-contain" />
+              <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="h-9 w-auto object-contain" />
             </a>
             <p className="text-sm text-slate-400 max-w-xs leading-relaxed">
               O sistema de delivery mais amado da fronteira. Feito para quem tem fome de crescer.

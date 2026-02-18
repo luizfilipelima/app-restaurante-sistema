@@ -136,9 +136,10 @@ export default function AdminLayout({
                   Voltar
                 </Button>
               )}
-              <h1 className="text-xl font-bold text-primary leading-tight whitespace-nowrap truncate" title="Painel Admin">
-                Painel Admin
-              </h1>
+              <a href="/admin" className="flex items-center gap-2 min-w-0" title="Quiero.food - Painel Admin">
+                <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="h-8 w-auto object-contain flex-shrink-0" />
+                <span className="text-sm font-semibold text-muted-foreground truncate">Painel Admin</span>
+              </a>
             </div>
             <div className="flex-1 flex flex-col">
               {/* Modo cozinha: admin do restaurante ou super_admin (com restaurant_id na URL) */}
@@ -211,11 +212,14 @@ export default function AdminLayout({
         {/* Mobile Header */}
         <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b">
           <div className="flex items-center justify-between gap-3 px-4 py-3 min-w-0">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold text-primary leading-tight">Painel Admin</h1>
-              {restaurant && (
-                <p className="text-xs text-muted-foreground truncate mt-0.5" title={restaurant.name}>{restaurant.name}</p>
-              )}
+            <div className="min-w-0 flex-1 flex items-center gap-2">
+              <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="h-7 w-auto object-contain flex-shrink-0" />
+              <div className="min-w-0">
+                <span className="text-sm font-semibold text-foreground block">Painel Admin</span>
+                {restaurant && (
+                  <p className="text-xs text-muted-foreground truncate" title={restaurant.name}>{restaurant.name}</p>
+                )}
+              </div>
             </div>
             <Button variant="ghost" size="icon" onClick={handleSignOut}>
               <LogOut className="h-5 w-5" />

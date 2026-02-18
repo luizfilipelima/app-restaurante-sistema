@@ -179,7 +179,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
               <Skeleton key={i} className="h-[74px] w-[70px] rounded-2xl flex-shrink-0" />
             ))}
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
                 <Skeleton className="aspect-square w-full" />
@@ -318,7 +318,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                         return (
                           <div key={sub.id} className="space-y-2">
                             <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
-                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                               {subProducts.map((product) => (
                                 <ProductCardViewOnly key={product.id} product={product} currency={currency} />
                               ))}
@@ -327,7 +327,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                         );
                       })}
                       {productsWithoutSub.length > 0 && (
-                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                           {productsWithoutSub.map((product) => (
                             <ProductCardViewOnly key={product.id} product={product} currency={currency} />
                           ))}
@@ -335,7 +335,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                       )}
                     </>
                   ) : (
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                       {categoryProducts.map((product) => (
                         <ProductCardViewOnly key={product.id} product={product} currency={currency} />
                       ))}
@@ -350,7 +350,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
               <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
                 {selectedCategory}
               </h2>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {filteredProducts.map((product) => (
                   <ProductCardViewOnly
                     key={product.id}
@@ -379,7 +379,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
             rel="noopener noreferrer"
             className="inline-flex flex-col items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors"
           >
-            <img src="/logo-quierofood.png" alt="Quiero.food" className="h-7 w-auto object-contain opacity-80 hover:opacity-100" />
+            <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="h-7 w-auto object-contain opacity-80 hover:opacity-100" />
             <span className="text-xs">{t('menu.developedBy')}</span>
           </a>
         </footer>
