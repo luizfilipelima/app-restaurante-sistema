@@ -6,6 +6,7 @@ import { Restaurant } from '@/types';
 import { AdminRestaurantContext } from '@/contexts/AdminRestaurantContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useSessionManager } from '@/hooks/useSessionManager';
 import { getCardapioPublicUrl } from '@/lib/utils';
 import {
   LayoutDashboard,
@@ -77,6 +78,9 @@ export default function AdminLayout({
     };
     load();
   }, [restaurantId]);
+
+  // Gerenciar sessões simultâneas (máximo 3 por restaurante)
+  useSessionManager(user?.id || null, restaurantId);
 
   const handleSignOut = async () => {
     await signOut();

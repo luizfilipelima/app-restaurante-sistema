@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
+import { useSessionManager } from '@/hooks/useSessionManager';
 import { DatabaseOrder } from '@/types';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,9 @@ export default function KitchenDisplay() {
     const tick = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(tick);
   }, []);
+
+  // Gerenciar sessões simultâneas (máximo 3 por restaurante)
+  useSessionManager(user?.id || null, effectiveRestaurantId);
 
   useEffect(() => {
     if (!effectiveRestaurantId) {
