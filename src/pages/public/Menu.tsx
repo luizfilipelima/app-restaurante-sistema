@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
+import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { isWithinOpeningHours, formatCurrency } from '@/lib/utils';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
@@ -113,11 +114,12 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuPro
     loadRestaurantData();
   }, [restaurantSlug]);
 
-  // Atualizar título da página com o nome do restaurante
+  // Atualizar título e meta tags de compartilhamento (logo do restaurante como imagem destacada)
   useEffect(() => {
     if (restaurant?.name) document.title = restaurant.name;
     else document.title = t('menu.title');
   }, [restaurant?.name, t]);
+  useSharingMeta(restaurant ? { name: restaurant.name, logo: restaurant.logo } : null);
 
   const loadRestaurantData = async () => {
     if (!restaurantSlug) return;

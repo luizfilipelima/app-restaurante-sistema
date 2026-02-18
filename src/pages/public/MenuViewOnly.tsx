@@ -6,6 +6,7 @@ import { Restaurant, Product, Category, Subcategory } from '@/types';
 import { Clock, Search, Utensils, Coffee, IceCream, UtensilsCrossed } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { isWithinOpeningHours } from '@/lib/utils';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
@@ -61,7 +62,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
     loadRestaurantData();
   }, [restaurantSlug]);
 
-  // Atualizar título da página com o nome do restaurante
+  // Atualizar título e meta tags de compartilhamento (logo do restaurante como imagem destacada)
   useEffect(() => {
     if (restaurant?.name) {
       document.title = `${restaurant.name} - ${t('menu.title')}`;
@@ -69,6 +70,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
       document.title = t('menu.title');
     }
   }, [restaurant?.name, t]);
+  useSharingMeta(restaurant ? { name: restaurant.name, logo: restaurant.logo } : null);
 
   const loadRestaurantData = async () => {
     if (!restaurantSlug) return;

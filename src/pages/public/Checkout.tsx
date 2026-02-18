@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useRestaurantStore } from '@/store/restaurantStore';
+import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours } from '@/lib/utils';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
@@ -89,7 +90,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     loadRestaurant();
   }, [restaurantId, currentRestaurant?.id]);
 
-  // Atualizar título da página com o nome do restaurante
+  // Atualizar título e meta tags de compartilhamento (logo do restaurante como imagem destacada)
   useEffect(() => {
     if (currentRestaurant?.name) {
       document.title = `${currentRestaurant.name} - ${t('checkout.title')}`;
@@ -97,6 +98,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       document.title = t('checkout.title');
     }
   }, [currentRestaurant?.name, t]);
+  useSharingMeta(currentRestaurant ? { name: currentRestaurant.name, logo: currentRestaurant.logo } : null);
 
   const loadZones = async () => {
     if (!restaurantId) return;

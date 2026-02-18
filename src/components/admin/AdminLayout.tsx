@@ -136,10 +136,9 @@ export default function AdminLayout({
                   Voltar
                 </Button>
               )}
-              <a href="/admin" className="flex items-center gap-2 min-w-0" title="Quiero.food - Painel Admin">
-                <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="h-8 w-auto object-contain flex-shrink-0" />
-                <span className="text-sm font-semibold text-muted-foreground truncate">Painel Admin</span>
-              </a>
+              <div className="flex items-center min-w-0">
+                <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="h-8 w-auto object-contain" />
+              </div>
             </div>
             <div className="flex-1 flex flex-col">
               {/* Modo cozinha: admin do restaurante ou super_admin (com restaurant_id na URL) */}
