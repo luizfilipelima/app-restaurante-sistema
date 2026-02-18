@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const DEFAULT_FAVICON = '/favicon.svg';
+const DEFAULT_FAVICON = '/favicon-quierofood-logo-orange.svg';
 
 /**
  * Atualiza o favicon da página com o logo do restaurante.
