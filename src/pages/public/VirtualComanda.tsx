@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Barcode from 'react-barcode';
 import { supabase } from '@/lib/supabase';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { ShoppingBag, RefreshCw, AlertCircle, Loader2, ChefHat, Receipt } from 'lucide-react';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -253,7 +253,7 @@ export default function VirtualComanda() {
     navigate(`/${restaurantSlug}?comanda_id=${comanda.id}`);
   };
 
-  const currency = restaurant?.currency ?? 'BRL';
+  const currency = (restaurant?.currency ?? 'BRL') as CurrencyCode;
   const total = items.reduce((sum, i) => sum + Number(i.total_price), 0);
 
   // ─────────────────────────────────────────────────────────────────────────────
