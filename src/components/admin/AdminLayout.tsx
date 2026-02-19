@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { getCardapioPublicUrl } from '@/lib/utils';
 import RestaurantUsersPanel from '@/components/admin/RestaurantUsersPanel';
+import { supabase } from '@/lib/supabase';
 import {
   LayoutDashboard,
   UtensilsCrossed,
@@ -249,10 +250,31 @@ function NavLinkItem({ item, isActive }: { item: NavLeaf; isActive: boolean }) {
       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-transparent'
   }`;
 
-  // Links externos (ex: KDS) abrem em nova aba sem usar o React Router
+  // Links externos (ex: KDS) abrem em nova aba.
+  // Injetamos o token da sessão atual no hash da URL para que o KDS
+  // (subdomínio diferente, localStorage separado) não exija login novamente.
   if (item.external) {
+    const handleExternalClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      let url = item.href;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          url += `#access_token=${session.access_token}&refresh_token=${session.refresh_token}&expires_in=${session.expires_in}&token_type=bearer&type=recovery`;
+        }
+      } catch {
+        // Se falhar, abre sem token (o KDS pedirá login normalmente)
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    };
+
     return (
-      <a href={item.href} target="_blank" rel="noopener noreferrer" className={className}>
+      <a
+        href={item.href}
+        onClick={handleExternalClick}
+        rel="noopener noreferrer"
+        className={className}
+      >
         <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
         <span className="truncate">{item.name}</span>
         <ExternalLink className="h-3 w-3 ml-auto opacity-40 group-hover:opacity-70" />
