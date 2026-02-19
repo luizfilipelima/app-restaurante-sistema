@@ -50,6 +50,7 @@ const PublicMenu            = lazy(() => import('./pages/public/Menu'));
 const PublicCheckout        = lazy(() => import('./pages/public/Checkout'));
 const MenuViewOnly          = lazy(() => import('./pages/public/MenuViewOnly'));
 const MenuTable             = lazy(() => import('./pages/public/MenuTable'));
+const VirtualComanda        = lazy(() => import('./pages/public/VirtualComanda'));
 
 // ─── Fallback de carregamento ─────────────────────────────────────────────────
 
@@ -291,6 +292,8 @@ function App() {
         <Route path="/:restaurantSlug/menu" element={<MenuViewOnly />} />
         <Route path="/:restaurantSlug/cardapio/:tableNumber" element={<MenuTable />} />
         <Route path="/:restaurantSlug/checkout" element={<PublicCheckout />} />
+        {/* Comanda Digital (Enterprise): cliente abre e acompanha a sua comanda */}
+        <Route path="/:restaurantSlug/comanda" element={<VirtualComanda />} />
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route
           path="/admin/*"
