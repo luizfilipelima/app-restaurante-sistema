@@ -441,20 +441,20 @@ export default function AdminLayout({
                 </Button>
               )}
               {/*
-               * Logo do restaurante em formato 1:1 com bordas arredondadas.
-               * Quando o restaurante não tem logo, exibe um avatar com a inicial.
-               * O nome em texto foi removido — a identidade visual é suficiente.
+               * Logo do restaurante em formato 1:1, ocupando toda a largura da sidebar.
+               * O aspect-square garante proporção quadrada independente do tamanho.
+               * Quando não há logo, exibe avatar com a inicial do restaurante.
                */}
-              <Link to={base} className="flex items-center gap-3 min-w-0">
+              <Link to={base} className="block w-full">
                 {restaurant?.logo ? (
                   <img
                     src={restaurant.logo}
                     alt={restaurant?.name ?? 'Restaurante'}
-                    className="h-14 w-14 rounded-2xl object-cover flex-shrink-0 border border-slate-200 shadow-sm"
+                    className="w-full aspect-square rounded-2xl object-cover border border-slate-200 shadow-sm"
                   />
                 ) : (
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center flex-shrink-0 shadow-sm border border-orange-200">
-                    <span className="text-xl font-bold text-white select-none">
+                  <div className="w-full aspect-square rounded-2xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center shadow-sm border border-orange-200">
+                    <span className="text-5xl font-bold text-white select-none">
                       {restaurant?.name?.charAt(0)?.toUpperCase() ?? '?'}
                     </span>
                   </div>
