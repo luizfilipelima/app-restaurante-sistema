@@ -3,17 +3,32 @@
 -- Data: 2026-02-19
 -- =============================================================================
 --
--- Problema: Clientes anônimos (cardápio público) inseriam order mas falhavam ao inserir
--- order_items porque a policy de order_items faz EXISTS (SELECT FROM orders). O SELECT
--- em orders está sujeito a RLS, e anon não pode ler orders (só staff/super_admin).
--- Resultado: "new row violates row-level security policy for table order_items"
+-- Problema: "new row violates row-level security policy for table orders"
+-- Clientes anônimos (cardápio público) falham ao criar pedidos porque:
+-- 1) orders INSERT usa EXISTS (SELECT FROM restaurants) - anon pode não conseguir ler restaurants
+-- 2) order_items INSERT usa EXISTS (SELECT FROM orders) - anon não pode ler orders
 --
--- Solução: Usar função SECURITY DEFINER para validar order_id sem RLS.
+-- Solução: Funções SECURITY DEFINER que bypassam RLS ao validar.
 --
 -- =============================================================================
 
--- Função auxiliar: verifica se order existe e pertence a restaurante ativo
--- SECURITY DEFINER = roda com privilégios do owner, bypassa RLS na leitura de orders
+-- 1) orders: validar que restaurant existe e está ativo (SECURITY DEFINER bypassa RLS em restaurants)
+CREATE OR REPLACE FUNCTION public.restaurant_is_active(p_restaurant_id uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.restaurants r
+    WHERE r.id = p_restaurant_id
+      AND r.is_active = true
+      AND r.deleted_at IS NULL
+  );
+$$;
+
+-- 2) order_items: validar que order existe e pertence a restaurante ativo (SECURITY DEFINER bypassa RLS)
 CREATE OR REPLACE FUNCTION public.order_exists_and_restaurant_active(p_order_id uuid)
 RETURNS boolean
 LANGUAGE sql
@@ -30,21 +45,16 @@ AS $$
   );
 $$;
 
--- Garantir policies de INSERT para cardápio público
+-- orders INSERT: usar função SECURITY DEFINER (não subquery em restaurants)
 DROP POLICY IF EXISTS "Anyone can create orders" ON public.orders;
 CREATE POLICY "Anyone can create orders"
   ON public.orders FOR INSERT
   WITH CHECK (
     restaurant_id IS NOT NULL
-    AND EXISTS (
-      SELECT 1 FROM public.restaurants r
-      WHERE r.id = restaurant_id
-        AND r.is_active = true
-        AND r.deleted_at IS NULL
-    )
+    AND public.restaurant_is_active(restaurant_id)
   );
 
--- order_items: usar função SECURITY DEFINER para evitar RLS no SELECT de orders
+-- order_items INSERT: usar função SECURITY DEFINER (não subquery em orders)
 DROP POLICY IF EXISTS "Anyone can create order items" ON public.order_items;
 CREATE POLICY "Anyone can create order items"
   ON public.order_items FOR INSERT
@@ -53,5 +63,7 @@ CREATE POLICY "Anyone can create order items"
     AND public.order_exists_and_restaurant_active(order_id)
   );
 
+COMMENT ON FUNCTION public.restaurant_is_active(uuid) IS
+  'RLS orders INSERT. SECURITY DEFINER para anon poder criar pedidos (subquery em restaurants pode falhar para anon).';
 COMMENT ON FUNCTION public.order_exists_and_restaurant_active(uuid) IS
-  'Usado em RLS de order_items INSERT. SECURITY DEFINER para que anon possa inserir itens após criar order (o SELECT em orders exigiria permissão que anon não tem).';
+  'RLS order_items INSERT. SECURITY DEFINER para anon inserir itens após criar order (anon não pode ler orders).';
