@@ -78,6 +78,8 @@ import {
   CreditCard,
   Trash2,
   AlertTriangle,
+  UserPlus,
+  ShieldCheck,
 } from 'lucide-react';
 import { Restaurant, DayKey, PrintPaperWidth } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -111,6 +113,19 @@ export default function SuperAdminDashboard() {
   const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
   // Campo de confirmação: o usuário deve digitar o nome exato para habilitar o botão
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
+
+  // ── Dados do admin a ser criado junto com o restaurante ─────────────────
+  const [adminData, setAdminData] = useState({
+    email: '',
+    login: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [showAdminConfirmPassword, setShowAdminConfirmPassword] = useState(false);
+
+  const INITIAL_ADMIN_DATA = { email: '', login: '', password: '', confirmPassword: '' };
+
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -200,96 +215,141 @@ export default function SuperAdminDashboard() {
     });
   };
 
+  const INITIAL_FORM_DATA = {
+    name: '',
+    slug: '',
+    phone: '',
+    whatsapp: '',
+    phone_country: 'BR' as 'BR' | 'PY',
+    instagram_url: '',
+    logo: '',
+    is_active: true,
+    always_open: false,
+    opening_hours: {} as Record<DayKey, { open: string; close: string } | null>,
+    print_auto_on_new_order: false,
+    print_paper_width: '80mm' as PrintPaperWidth,
+  };
+
+  const handleCloseDialog = () => {
+    setShowNewRestaurantDialog(false);
+    setFormData(INITIAL_FORM_DATA);
+    setAdminData(INITIAL_ADMIN_DATA);
+    setShowAdminPassword(false);
+    setShowAdminConfirmPassword(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const slug = formData.slug.trim() || generateSlug(formData.name);
     if (!slug) {
-      toast({
-        title: 'Nome inválido',
-        description: 'Digite um nome para o restaurante.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Nome inválido', description: 'Digite um nome para o restaurante.', variant: 'destructive' });
       return;
+    }
+
+    const hasAdmin = adminData.email.trim() !== '';
+    if (hasAdmin) {
+      if (adminData.password.length < 6) {
+        toast({ title: 'Senha muito curta', description: 'A senha do admin deve ter pelo menos 6 caracteres.', variant: 'destructive' });
+        return;
+      }
+      if (adminData.password !== adminData.confirmPassword) {
+        toast({ title: 'Senhas não conferem', description: 'A senha e a confirmação devem ser iguais.', variant: 'destructive' });
+        return;
+      }
     }
 
     try {
       setSaving(true);
 
-      const restaurantData: any = {
-        name: formData.name.trim(),
-        slug,
-        phone: formData.phone.trim(),
-        whatsapp: formData.whatsapp.trim(),
-        phone_country: formData.phone_country,
-        instagram_url: formData.instagram_url.trim() || null,
-        logo: formData.logo || null,
-        is_active: formData.is_active,
-        always_open: formData.always_open,
-        opening_hours: formData.opening_hours,
-        print_auto_on_new_order: formData.print_auto_on_new_order,
-        print_paper_width: formData.print_paper_width,
-      };
+      if (hasAdmin) {
+        // ── Criação atômica: restaurante + usuário admin via RPC ─────────
+        const { data: rpcData, error: rpcError } = await supabase.rpc(
+          'super_admin_create_restaurant_with_admin',
+          {
+            p_restaurant_name: formData.name.trim(),
+            p_slug:            slug,
+            p_phone:           formData.phone.trim() || null,
+            p_whatsapp:        formData.whatsapp.trim() || null,
+            p_admin_email:     adminData.email.trim(),
+            p_admin_password:  adminData.password,
+            p_admin_login:     adminData.login.trim() || null,
+          }
+        );
+        if (rpcError) throw rpcError;
 
-      const { data, error } = await supabase.from('restaurants').insert(restaurantData).select().single();
+        // Atualizar campos extras não cobertos pela RPC (logo, instagram, etc.)
+        const extras: Record<string, unknown> = {};
+        if (formData.instagram_url) extras.instagram_url = formData.instagram_url.trim();
+        if (formData.logo && !formData.logo.startsWith('data:')) extras.logo = formData.logo;
+        extras.phone_country = formData.phone_country;
+        extras.always_open = formData.always_open;
+        extras.opening_hours = formData.opening_hours;
+        extras.print_auto_on_new_order = formData.print_auto_on_new_order;
+        extras.print_paper_width = formData.print_paper_width;
 
-      if (error) throw error;
+        const restaurantId = (rpcData as { restaurant_id: string }).restaurant_id;
+        await supabase.from('restaurants').update(extras).eq('id', restaurantId);
 
-      // Se há logo como data URL, fazer upload para storage
-      if (formData.logo && formData.logo.startsWith('data:')) {
-        try {
-          // Converter data URL para File
-          const response = await fetch(formData.logo);
-          const blob = await response.blob();
-          const file = new File([blob], 'logo.png', { type: blob.type });
-          
-          // Fazer upload do logo
-          const logoUrl = await uploadRestaurantLogo(data.id, file);
-          
-          // Atualizar restaurante com URL do logo
-          await supabase
-            .from('restaurants')
-            .update({ logo: logoUrl })
-            .eq('id', data.id);
-        } catch (logoError) {
-          console.error('Erro ao fazer upload do logo:', logoError);
-          // Não falhar a criação se o logo falhar
+        // Logo upload
+        if (formData.logo?.startsWith('data:')) {
+          try {
+            const blob = await (await fetch(formData.logo)).blob();
+            const file = new File([blob], 'logo.png', { type: blob.type });
+            const logoUrl = await uploadRestaurantLogo(restaurantId, file);
+            await supabase.from('restaurants').update({ logo: logoUrl }).eq('id', restaurantId);
+          } catch (logoError) {
+            console.error('Erro no upload do logo:', logoError);
+          }
         }
+
+        toast({
+          title: 'Restaurante e admin criados',
+          description: `${formData.name} e o usuário ${adminData.email} foram criados com sucesso.`,
+        });
+      } else {
+        // ── Criação simples: apenas restaurante (comportamento original) ──
+        const restaurantPayload: Record<string, unknown> = {
+          name: formData.name.trim(),
+          slug,
+          phone: formData.phone.trim(),
+          whatsapp: formData.whatsapp.trim(),
+          phone_country: formData.phone_country,
+          instagram_url: formData.instagram_url.trim() || null,
+          logo: formData.logo || null,
+          is_active: formData.is_active,
+          always_open: formData.always_open,
+          opening_hours: formData.opening_hours,
+          print_auto_on_new_order: formData.print_auto_on_new_order,
+          print_paper_width: formData.print_paper_width,
+        };
+
+        const { data: inserted, error } = await supabase.from('restaurants').insert(restaurantPayload).select().single();
+        if (error) throw error;
+
+        if (formData.logo?.startsWith('data:')) {
+          try {
+            const blob = await (await fetch(formData.logo)).blob();
+            const file = new File([blob], 'logo.png', { type: blob.type });
+            const logoUrl = await uploadRestaurantLogo(inserted.id, file);
+            await supabase.from('restaurants').update({ logo: logoUrl }).eq('id', inserted.id);
+          } catch (logoError) {
+            console.error('Erro no upload do logo:', logoError);
+          }
+        }
+
+        toast({ title: 'Restaurante criado', description: `${formData.name} foi adicionado com sucesso.` });
       }
 
-      toast({
-        title: 'Restaurante criado',
-        description: `${formData.name} foi adicionado com sucesso.`,
-      });
-
-      // Reset form
-      setFormData({
-        name: '',
-        slug: '',
-        phone: '',
-        whatsapp: '',
-        phone_country: 'BR',
-        instagram_url: '',
-        logo: '',
-        is_active: true,
-        always_open: false,
-        opening_hours: {} as Record<DayKey, { open: string; close: string } | null>,
-        print_auto_on_new_order: false,
-        print_paper_width: '80mm' as PrintPaperWidth,
-      });
-      setShowNewRestaurantDialog(false);
+      handleCloseDialog();
       invalidate();
     } catch (err: unknown) {
       console.error('Erro ao criar restaurante:', err);
       const message =
         err && typeof err === 'object' && 'message' in err
           ? String((err as { message: string }).message)
-          : 'Verifique se o slug não está em uso.';
-      toast({
-        title: 'Erro ao criar restaurante',
-        description: message,
-        variant: 'destructive',
-      });
+          : 'Verifique os dados e tente novamente.';
+      toast({ title: 'Erro ao criar restaurante', description: message, variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -716,11 +776,15 @@ export default function SuperAdminDashboard() {
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <Tabs defaultValue="basic" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="basic">Básico</TabsTrigger>
                 <TabsTrigger value="contact">Contato</TabsTrigger>
                 <TabsTrigger value="hours">Horários</TabsTrigger>
-                <TabsTrigger value="settings">Configurações</TabsTrigger>
+                <TabsTrigger value="settings">Config.</TabsTrigger>
+                <TabsTrigger value="admin" className="flex items-center gap-1">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Admin
+                </TabsTrigger>
               </TabsList>
 
               {/* Aba Básico */}
@@ -974,14 +1038,118 @@ export default function SuperAdminDashboard() {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {/* Aba Acesso Admin ───────────────────────────────────────── */}
+              <TabsContent value="admin" className="space-y-5 mt-4">
+                <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 flex items-start gap-2.5">
+                  <ShieldCheck className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-700">
+                    <p className="font-semibold mb-0.5">Acesso do Administrador (opcional)</p>
+                    <p className="text-blue-600 text-xs">
+                      Se preencher o e-mail, o sistema cria o usuário administrador
+                      automaticamente junto com o restaurante. O login pode ser feito
+                      com o e-mail ou com o username.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="admin_email">
+                    <UserPlus className="h-3.5 w-3.5 inline mr-1" />
+                    E-mail do Admin
+                  </Label>
+                  <Input
+                    id="admin_email"
+                    type="email"
+                    value={adminData.email}
+                    onChange={(e) => setAdminData({ ...adminData, email: e.target.value })}
+                    placeholder="admin@restaurante.com"
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="admin_login">Username (login alternativo)</Label>
+                  <Input
+                    id="admin_login"
+                    type="text"
+                    value={adminData.login}
+                    onChange={(e) =>
+                      setAdminData({
+                        ...adminData,
+                        login: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''),
+                      })
+                    }
+                    placeholder="admin.pizzaria"
+                    autoComplete="off"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Permite entrar com username + senha além do e-mail. Apenas letras, números, pontos e hifens.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="admin_password">Senha</Label>
+                    <div className="relative">
+                      <Input
+                        id="admin_password"
+                        type={showAdminPassword ? 'text' : 'password'}
+                        value={adminData.password}
+                        onChange={(e) => setAdminData({ ...adminData, password: e.target.value })}
+                        placeholder="Mín. 6 caracteres"
+                        autoComplete="new-password"
+                        className="pr-10"
+                        disabled={!adminData.email.trim()}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        onClick={() => setShowAdminPassword((v) => !v)}
+                        tabIndex={-1}
+                      >
+                        {showAdminPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="admin_confirm_password">Confirmar Senha</Label>
+                    <div className="relative">
+                      <Input
+                        id="admin_confirm_password"
+                        type={showAdminConfirmPassword ? 'text' : 'password'}
+                        value={adminData.confirmPassword}
+                        onChange={(e) => setAdminData({ ...adminData, confirmPassword: e.target.value })}
+                        placeholder="Repita a senha"
+                        autoComplete="new-password"
+                        className={`pr-10 ${
+                          adminData.confirmPassword && adminData.password !== adminData.confirmPassword
+                            ? 'border-red-400 focus-visible:ring-red-400'
+                            : ''
+                        }`}
+                        disabled={!adminData.email.trim()}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        onClick={() => setShowAdminConfirmPassword((v) => !v)}
+                        tabIndex={-1}
+                      >
+                        {showAdminConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {adminData.confirmPassword && adminData.password !== adminData.confirmPassword && (
+                      <p className="text-xs text-red-500">As senhas não conferem.</p>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
             </Tabs>
 
             <DialogFooter className="mt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowNewRestaurantDialog(false)}
-              >
+              <Button type="button" variant="outline" onClick={handleCloseDialog}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={saving}>
@@ -989,6 +1157,11 @@ export default function SuperAdminDashboard() {
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Criando...
+                  </>
+                ) : adminData.email.trim() ? (
+                  <>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Criar Restaurante + Admin
                   </>
                 ) : (
                   <>
