@@ -1,13 +1,12 @@
 /**
  * ComandaQRCode — Admin page
  * Gera o QR Code que o restaurante exibe na entrada / em cada mesa.
- * O cliente escaneia → abre quiero.food/:slug/comanda → comanda + cardápio integrados.
+ * O cliente escaneia → abre slug.quiero.food/comanda (subdomínio do restaurante).
  * Protegida por FeatureGuard (plano Enterprise — feature_virtual_comanda).
  *
- * Correções:
- * - URL aponta para domínio público (quiero.food) onde a rota /:slug/comanda existe
+ * - URL: subdomínio (ex: talitacumis.quiero.food/comanda)
  * - Download em PNG com fundo transparente
- * - Impressão via janela dedicada (funciona corretamente)
+ * - Impressão via janela dedicada
  */
 
 import { useRef, useState } from 'react';
@@ -17,25 +16,10 @@ import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
 import { FeatureGuard } from '@/components/auth/FeatureGuard';
 import { Button } from '@/components/ui/button';
+import { getComandaPublicUrl } from '@/lib/utils';
 import { Download, Printer, QrCode, ExternalLink, Info, Loader2 } from 'lucide-react';
 
-// ─── URL pública da comanda ───────────────────────────────────────────────────
-// A rota /:restaurantSlug/comanda está no domínio principal (quiero.food), não no app.
-// app.quiero.food = painel admin | quiero.food = landing + cardápio + comanda pública
-const getPublicBaseUrl = () => {
-  if (typeof window === 'undefined') return 'https://quiero.food';
-  const host = window.location.hostname;
-  if (host.includes('localhost') || host.includes('127.0.0.1')) {
-    return `${window.location.protocol}//${host}:${window.location.port || '5173'}`;
-  }
-  // app.quiero.food -> quiero.food
-  if (host.startsWith('app.')) {
-    return `https://${host.replace(/^app\./, '')}`;
-  }
-  return `https://${host}`;
-};
-
-const getComandaUrl = (slug: string) => `${getPublicBaseUrl()}/${slug}/comanda`;
+// URL da comanda: slug.quiero.food/comanda (subdomínio)
 
 // ─── Sub-componente: Card QR ─────────────────────────────────────────────────
 
@@ -245,7 +229,7 @@ export default function ComandaQRCode() {
   const { data: restaurant } = useRestaurant(restaurantId);
 
   const slug = restaurant?.slug;
-  const url = slug ? getComandaUrl(slug) : null;
+  const url = slug ? getComandaPublicUrl(slug) : null;
 
   return (
     <FeatureGuard feature="feature_virtual_comanda">

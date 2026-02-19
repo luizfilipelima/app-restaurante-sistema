@@ -55,6 +55,13 @@ export function getCardapioPublicUrl(slug: string): string {
   return `${origin}/${slug}`;
 }
 
+/** URL pública da comanda digital: slug.quiero.food/comanda (subdomínio) ou origin/slug/comanda (dev). */
+export function getComandaPublicUrl(slug: string): string {
+  if (!slug) return '';
+  const base = getCardapioPublicUrl(slug);
+  return base ? `${base.replace(/\/$/, '')}/comanda` : '';
+}
+
 /** Gera link do WhatsApp. O número deve vir com código do país (ex: 5511999999999 ou 595981123456). */
 export function generateWhatsAppLink(phone: string, message: string): string {
   const cleanPhone = phone.replace(/\D/g, '');

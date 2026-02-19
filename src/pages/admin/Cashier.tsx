@@ -45,6 +45,8 @@ interface ActiveComanda {
   table_number: string | null;
   total_amount: number;
   created_at: string;
+  /** Fallback: soma dos itens quando total_amount está incorreto (ex: trigger falhou) */
+  virtual_comanda_items?: { total_price: number }[];
 }
 
 interface SelectedComanda extends ActiveComanda {
@@ -60,6 +62,16 @@ const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: typeof Bankn
 ];
 
 const SCANNER_PATTERN = /^CMD-[A-Z0-9]{4}$/i;
+
+/** Total exibido: usa total_amount ou soma dos itens (quando total_amount está incorreto) */
+function getDisplayTotal(
+  totalAmount: number,
+  items?: { total_price: number }[] | ComandaItem[]
+): number {
+  if (totalAmount != null && totalAmount > 0) return totalAmount;
+  const list = items ?? [];
+  return list.reduce((s, i) => s + Number(i.total_price), 0);
+}
 
 // ─── Componente: Card de comanda ativa ────────────────────────────────────────
 
@@ -111,7 +123,7 @@ function ComandaCard({
           </div>
           <div className="flex-shrink-0 text-right">
             <p className="text-sm font-bold text-foreground">
-              {formatCurrency(comanda.total_amount, currency)}
+              {formatCurrency(getDisplayTotal(comanda.total_amount, comanda.virtual_comanda_items), currency)}
             </p>
             <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 justify-end mt-0.5">
               <Clock className="h-2.5 w-2.5" />
@@ -168,7 +180,7 @@ function CashierContent() {
     if (!restaurantId) return;
     const { data } = await supabase
       .from('virtual_comandas')
-      .select('id, short_code, customer_name, table_number, total_amount, created_at')
+      .select('id, short_code, customer_name, table_number, total_amount, created_at, virtual_comanda_items(total_price)')
       .eq('restaurant_id', restaurantId)
       .eq('status', 'open')
       .order('created_at', { ascending: true });
@@ -304,9 +316,10 @@ function CashierContent() {
       if (error) throw error;
 
       const label = PAYMENT_OPTIONS.find(p => p.value === paymentMethod)?.label ?? paymentMethod;
+      const displayTotal = getDisplayTotal(selected.total_amount, selected.items);
       toast({
         title: 'Comanda concluída!',
-        description: `${selected.short_code} — ${formatCurrency(selected.total_amount, currency)} via ${label}`,
+        description: `${selected.short_code} — ${formatCurrency(displayTotal, currency)} via ${label}`,
       });
 
       setSelected(null);
@@ -355,7 +368,7 @@ function CashierContent() {
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
 
-  const total = selected?.total_amount ?? 0;
+  const total = getDisplayTotal(selected?.total_amount ?? 0, selected?.items);
   const hasItems = (selected?.items?.length ?? 0) > 0;
 
   return (

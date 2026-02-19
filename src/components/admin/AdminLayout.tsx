@@ -143,14 +143,6 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
         featureFlag: 'feature_virtual_comanda',
         featureLabel: 'Plano Enterprise',
       },
-      {
-        kind: 'leaf',
-        name: 'QR Code da Comanda',
-        href: `${base}/comanda-qr`,
-        icon: QrCode,
-        featureFlag: 'feature_virtual_comanda',
-        featureLabel: 'Plano Enterprise',
-      },
     ],
   },
   {
@@ -188,6 +180,14 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
         icon: LayoutGrid,
         featureFlag: 'feature_tables',
         featureLabel: 'Plano Standard',
+      },
+      {
+        kind: 'leaf',
+        name: 'QR Code da Comanda',
+        href: `${base}/comanda-qr`,
+        icon: QrCode,
+        featureFlag: 'feature_virtual_comanda',
+        featureLabel: 'Plano Enterprise',
       },
       {
         kind: 'submenu',
@@ -445,8 +445,8 @@ export default function AdminLayout({
         <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col md:flex-shrink-0 admin-sidebar">
           <div className="flex flex-col h-full overflow-y-auto">
 
-            {/* Logo + Voltar */}
-            <div className="flex flex-col flex-shrink-0 px-5 pt-6 pb-4 border-b border-slate-100">
+            {/* Logo + Nome do restaurante — layout compacto */}
+            <div className="flex flex-col flex-shrink-0 px-4 pt-5 pb-4 border-b border-slate-100">
               {isSuperAdminView && (
                 <Button
                   variant="ghost"
@@ -458,25 +458,28 @@ export default function AdminLayout({
                   Voltar
                 </Button>
               )}
-              {/*
-               * Logo do restaurante em formato 1:1, ocupando toda a largura da sidebar.
-               * O aspect-square garante proporção quadrada independente do tamanho.
-               * Quando não há logo, exibe avatar com a inicial do restaurante.
-               */}
-              <Link to={base} className="flex justify-center">
+              <Link to={base} className="flex items-center gap-3 min-w-0 group">
                 {restaurant?.logo ? (
                   <img
                     src={restaurant.logo}
                     alt={restaurant?.name ?? 'Restaurante'}
-                    className="w-4/5 aspect-square rounded-2xl object-cover border border-slate-200 shadow-sm"
+                    className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl object-cover border border-slate-200 shadow-sm flex-shrink-0 group-hover:ring-2 group-hover:ring-orange-200 transition-all"
                   />
                 ) : (
-                  <div className="w-4/5 aspect-square rounded-2xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center shadow-sm border border-orange-200">
-                    <span className="text-4xl font-bold text-white select-none">
+                  <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center flex-shrink-0 shadow-sm border border-orange-200">
+                    <span className="text-lg font-bold text-white select-none">
                       {restaurant?.name?.charAt(0)?.toUpperCase() ?? '?'}
                     </span>
                   </div>
                 )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-slate-900 truncate leading-tight">
+                    {restaurant?.name ?? 'Painel Admin'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    Painel administrativo
+                  </p>
+                </div>
               </Link>
             </div>
 

@@ -651,8 +651,14 @@ function ComandaTab({ comanda, items, currency, onSaveCustomerName }: ComandaTab
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export default function VirtualComanda() {
-  const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
+interface VirtualComandaProps {
+  /** Slug vindo do subdomínio (slug.quiero.food/comanda) — sobrescreve useParams */
+  tenantSlug?: string;
+}
+
+export default function VirtualComanda({ tenantSlug: slugFromSubdomain }: VirtualComandaProps = {}) {
+  const { restaurantSlug: slugFromParams } = useParams<{ restaurantSlug: string }>();
+  const restaurantSlug = slugFromSubdomain ?? slugFromParams;
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [comanda, setComanda] = useState<VirtualComandaData | null>(null);
