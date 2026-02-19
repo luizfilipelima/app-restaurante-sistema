@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useSessionManager } from '@/hooks/useSessionManager';
@@ -12,20 +12,23 @@ import { Clock, AlertTriangle, ChefHat, ArrowRight, LayoutDashboard, UtensilsCro
 
 export default function KitchenDisplay() {
   const { user } = useAuthStore();
-  const [searchParams] = useSearchParams();
 
-  const slugFromUrl       = searchParams.get('slug');
+  // slug via path param (subdomínio kds: kds.quiero.food/:slug)
+  const { slug: slugFromPath } = useParams<{ slug?: string }>();
+
+  // slug / restaurant_id via query params (legado: app.quiero.food/kitchen?slug=...)
+  const [searchParams] = useSearchParams();
+  const slugFromQuery       = searchParams.get('slug');
   const restaurantIdFromUrl = searchParams.get('restaurant_id');
 
-  // Quando o link vem via slug (/kitchen?slug=pizzaria-do-joao),
-  // resolve o UUID fazendo uma query direta na tabela restaurants.
-  // Quando não há slug, usa o restaurant_id da URL ou do perfil do usuário.
+  // Prioridade: path param (kds subdomain) > query param > restaurant_id na URL > perfil do usuário
+  const slug = slugFromPath || slugFromQuery;
+
   const [resolvedId, setResolvedId] = useState<string | null>(null);
-  const [resolving, setResolving]   = useState(!!slugFromUrl);
+  const [resolving, setResolving]   = useState(!!slug);
 
   useEffect(() => {
-    if (!slugFromUrl) {
-      // Sem slug → usa o fallback direto
+    if (!slug) {
       setResolvedId(user?.restaurant_id || restaurantIdFromUrl || null);
       setResolving(false);
       return;
@@ -34,18 +37,17 @@ export default function KitchenDisplay() {
     supabase
       .from('restaurants')
       .select('id')
-      .eq('slug', slugFromUrl)
+      .eq('slug', slug)
       .single()
       .then(({ data, error }) => {
         if (!error && data?.id) {
           setResolvedId(data.id);
         } else {
-          // Slug não encontrado: tenta o fallback
           setResolvedId(user?.restaurant_id || restaurantIdFromUrl || null);
         }
         setResolving(false);
       });
-  }, [slugFromUrl, restaurantIdFromUrl, user?.restaurant_id]);
+  }, [slug, restaurantIdFromUrl, user?.restaurant_id]);
 
   const effectiveRestaurantId = resolvedId;
 

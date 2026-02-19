@@ -102,6 +102,9 @@ const adminRoutes = (
 /** Subdomínios que devem mostrar o painel admin (login, dashboard, cozinha). */
 const ADMIN_SUBDOMAINS = ['app', 'admin'];
 
+/** Roles com acesso ao Display de Cozinha */
+const KDS_ROLES = [UserRole.KITCHEN, UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN];
+
 function App() {
   const initialize = useAuthStore((state) => state.initialize);
   const [subdomain, setSubdomain] = useState<string | null | undefined>(undefined);
@@ -113,17 +116,48 @@ function App() {
 
   // Aguarda definir o hostname (evita flash no primeiro paint)
   if (subdomain === undefined) {
-    return null; // ou um <Skeleton /> global se preferir
+    return null;
   }
 
   const isAdminSubdomain = subdomain !== null && ADMIN_SUBDOMAINS.includes(subdomain);
 
-  // 1) Subdomínio de loja (ex.: pizzaria.quiero.food) -> StoreLayout (cardápio)
+  // 1) Subdomínio kds (kds.quiero.food) → Display de Cozinha por slug
+  //    kds.quiero.food/pizzaria-da-vitoria  →  KitchenDisplay com slug = "pizzaria-da-vitoria"
+  if (subdomain === 'kds') {
+    return (
+      <BrowserRouter>
+        <Routes>
+          {/* Login no próprio subdomínio kds para redirecionar de volta após autenticação */}
+          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+
+          {/*
+           * Rota principal do KDS: /:slug
+           * O componente KitchenDisplay lê o slug via useParams(),
+           * resolve o restaurant_id e se inscreve no canal Realtime correto.
+           */}
+          <Route
+            path="/:slug"
+            element={
+              <ProtectedRoute allowedRoles={KDS_ROLES}>
+                <KitchenDisplay />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Raiz sem slug → redireciona para login */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+        </Routes>
+        <Toaster />
+      </BrowserRouter>
+    );
+  }
+
+  // 2) Subdomínio de loja (ex.: pizzaria.quiero.food) -> StoreLayout (cardápio)
   if (subdomain !== null && !isAdminSubdomain) {
     return <StoreLayout tenantSlug={subdomain} />;
   }
 
-  // 2) Subdomínio app/admin -> painel (login, dashboard, cozinha)
+  // 3) Subdomínio app/admin -> painel (login, dashboard, cozinha)
   if (isAdminSubdomain) {
     return (
       <BrowserRouter>
