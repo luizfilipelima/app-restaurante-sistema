@@ -14,6 +14,8 @@ import { ReactNode } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
+import { motion, AnimatePresence } from 'framer-motion';
+import { PageTransition } from '@/components/ui/PageTransition';
 import {
   LayoutDashboard,
   Store,
@@ -22,6 +24,22 @@ import {
   ChevronRight,
   ShieldCheck,
 } from 'lucide-react';
+
+// ─── Variantes de animação do sidebar ─────────────────────────────────────────
+
+const navContainerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+};
+
+const navItemVariants = {
+  hidden:  { opacity: 0, x: -10 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.25, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] },
+  },
+};
 
 // ─── Itens de navegação ───────────────────────────────────────────────────────
 
@@ -85,31 +103,40 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
           </div>
 
           {/* Navegação principal */}
-          <nav className="flex-1 px-3 py-4 space-y-0.5">
-            <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400 select-none">
+          <motion.nav
+            className="flex-1 px-3 py-4 space-y-0.5"
+            variants={navContainerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.p
+              variants={navItemVariants}
+              className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400 select-none"
+            >
               Gestão
-            </p>
+            </motion.p>
             {NAV_ITEMS.map((item) => {
               const active = isActive(item);
               return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors border-l-[3px] ${
-                    active
-                      ? 'bg-orange-50 text-[#F87116] border-l-[#F87116]'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-transparent'
-                  }`}
-                >
-                  <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
-                  <span className="flex-1 truncate">{item.label}</span>
-                  {active && (
-                    <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-[#F87116]/60" />
-                  )}
-                </Link>
+                <motion.div key={item.href} variants={navItemVariants}>
+                  <Link
+                    to={item.href}
+                    className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors border-l-[3px] ${
+                      active
+                        ? 'bg-orange-50 text-[#F87116] border-l-[#F87116]'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-transparent'
+                    }`}
+                  >
+                    <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {active && (
+                      <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-[#F87116]/60" />
+                    )}
+                  </Link>
+                </motion.div>
               );
             })}
-          </nav>
+          </motion.nav>
 
           {/* Footer: e-mail do usuário + Sair */}
           <div className="flex-shrink-0 px-3 py-4 border-t border-slate-100 space-y-1">
@@ -135,7 +162,11 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
 
       {/* ── Conteúdo principal ────────────────────────────────────────────── */}
       <div className="md:pl-64 flex-1 overflow-y-auto">
-        {children ?? <Outlet />}
+        <AnimatePresence mode="wait">
+          <PageTransition key={location.pathname}>
+            {children ?? <Outlet />}
+          </PageTransition>
+        </AnimatePresence>
       </div>
     </div>
   );

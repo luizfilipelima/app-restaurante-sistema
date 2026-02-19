@@ -6,7 +6,7 @@
  * Recomendado: chamar apenas em páginas com role = 'super_admin'.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
 // ─── Tipos de retorno da RPC ──────────────────────────────────────────────────
@@ -42,5 +42,8 @@ export function useSaasMetrics() {
     // 5 min — métricas financeiras não mudam segundo a segundo
     staleTime: 1000 * 60 * 5,
     gcTime:    1000 * 60 * 15,
+    // Mantém os dados anteriores visíveis enquanto refetch ocorre em background,
+    // evitando que o layout pisque ou fique em branco ao invalidar a query.
+    placeholderData: keepPreviousData,
   });
 }

@@ -10,6 +10,37 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatCurrency, generateSlug } from '@/lib/utils';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
+import { motion } from 'framer-motion';
+
+// ─── Variantes de animação ─────────────────────────────────────────────────────
+
+const metricContainerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.09, delayChildren: 0.05 } },
+};
+
+const metricCardVariants = {
+  hidden:  { opacity: 0, y: 24 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] },
+  },
+};
+
+const restaurantListVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.1 } },
+};
+
+const restaurantCardVariants = {
+  hidden:  { opacity: 0, y: 18 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] },
+  },
+};
 import {
   Dialog,
   DialogContent,
@@ -328,36 +359,62 @@ export default function SuperAdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="border-b bg-card">
-          <div className="container mx-auto px-4 py-6">
-            <Skeleton className="h-9 w-48 mb-1" />
-            <Skeleton className="h-5 w-64" />
+      <div className="p-8 space-y-8">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-1.5">
+            <Skeleton className="h-7 w-44" />
+            <Skeleton className="h-4 w-52" />
           </div>
+          <Skeleton className="h-9 w-36 rounded-lg" />
         </div>
-        <div className="container mx-auto px-4 py-8 space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i}>
-                <CardHeader className="pb-2">
-                  <Skeleton className="h-4 w-28" />
-                </CardHeader>
-                <CardContent>
+
+        {/* 4 metric cards skeleton */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            'bg-orange-50',
+            'bg-emerald-50',
+            'bg-sky-50',
+            'bg-violet-50',
+          ].map((bg, i) => (
+            <div key={i} className="rounded-2xl border border-slate-100 bg-white p-5 space-y-2">
+              <div className="flex justify-between items-start">
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-3 w-28" />
                   <Skeleton className="h-8 w-20" />
-                </CardContent>
-              </Card>
+                  <Skeleton className="h-3 w-16" />
+                </div>
+                <div className={`h-9 w-9 rounded-xl ${bg} animate-pulse flex-shrink-0`} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Restaurant list skeleton */}
+        <div className="space-y-3">
+          <Skeleton className="h-5 w-48" />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="rounded-2xl border border-slate-100 bg-white overflow-hidden">
+                <div className="p-4 flex items-start gap-3">
+                  <Skeleton className="h-11 w-11 rounded-xl flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                  <Skeleton className="h-5 w-14 rounded-full" />
+                </div>
+                <div className="mx-4 h-px bg-slate-100" />
+                <div className="px-4 py-3 flex gap-2">
+                  <Skeleton className="h-8 flex-1 rounded-lg" />
+                  <Skeleton className="h-8 flex-1 rounded-lg" />
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                </div>
+              </div>
             ))}
           </div>
-          <Card>
-            <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <Skeleton key={i} className="h-32 w-full rounded-lg" />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     );
@@ -381,9 +438,14 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* ── Cards de métricas ─────────────────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <motion.div
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        variants={metricContainerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {/* Restaurantes */}
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <motion.div variants={metricCardVariants} className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
@@ -400,10 +462,10 @@ export default function SuperAdminDashboard() {
               <Store className="h-4 w-4 text-[#F87116]" />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Faturamento */}
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <motion.div variants={metricCardVariants} className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
@@ -418,10 +480,10 @@ export default function SuperAdminDashboard() {
               <DollarSign className="h-4 w-4 text-emerald-600" />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Pedidos */}
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <motion.div variants={metricCardVariants} className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
@@ -436,10 +498,10 @@ export default function SuperAdminDashboard() {
               <ShoppingCart className="h-4 w-4 text-sky-600" />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Ticket médio */}
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <motion.div variants={metricCardVariants} className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
@@ -456,8 +518,8 @@ export default function SuperAdminDashboard() {
               <TrendingUp className="h-4 w-4 text-violet-600" />
             </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* ── Lista de restaurantes ─────────────────────────────────────────── */}
       <div className="space-y-4">
@@ -483,10 +545,17 @@ export default function SuperAdminDashboard() {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <motion.div
+            className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+            variants={restaurantListVariants}
+            initial="hidden"
+            animate="visible"
+          >
             {restaurants.map((restaurant) => (
-              <div
+              <motion.div
                 key={restaurant.id}
+                variants={restaurantCardVariants}
+                whileHover={{ scale: 1.018, y: -2, transition: { duration: 0.18 } }}
                 className="rounded-2xl border border-slate-200 bg-white overflow-hidden hover:shadow-md transition-shadow"
               >
                 <div className="p-4 flex items-start justify-between gap-3">
@@ -614,9 +683,9 @@ export default function SuperAdminDashboard() {
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
 

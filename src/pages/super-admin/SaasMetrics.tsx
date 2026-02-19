@@ -22,6 +22,32 @@ import {
   DollarSign,
   Zap,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+// ─── Variantes de animação ─────────────────────────────────────────────────────
+
+const kpiContainerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
+};
+
+const kpiCardVariants = {
+  hidden:  { opacity: 0, y: 22 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.32, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] },
+  },
+};
+
+const sectionVariants = {
+  hidden:  { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] as [number, number, number, number], delay: 0.32 },
+  },
+};
 
 // ─── Paleta de cores por plano ─────────────────────────────────────────────────
 
@@ -75,13 +101,33 @@ export default function SaasMetrics() {
     return (
       <div className="p-8 space-y-6">
         <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-9 w-28" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-7 w-36" />
+            <Skeleton className="h-4 w-56" />
+          </div>
+          <Skeleton className="h-9 w-28 rounded-lg" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}
+          {/* MRR card skeleton com gradiente */}
+          <div className="rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 p-6 animate-pulse h-28" />
+          {/* Outros cards */}
+          {[2, 3].map((i) => (
+            <div key={i} className="rounded-2xl border border-slate-100 bg-white p-6 space-y-3 h-28">
+              <div className="flex justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="h-3 w-32" />
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="h-10 w-10 rounded-xl" />
+              </div>
+            </div>
+          ))}
         </div>
-        <Skeleton className="h-72 rounded-2xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <Skeleton className="lg:col-span-3 h-72 rounded-2xl" />
+          <Skeleton className="lg:col-span-2 h-72 rounded-2xl" />
+        </div>
       </div>
     );
   }
@@ -123,10 +169,18 @@ export default function SaasMetrics() {
       </div>
 
       {/* ── KPI Cards ────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <motion.div
+        className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+        variants={kpiContainerVariants}
+        initial="hidden"
+        animate="visible"
+      >
 
         {/* MRR */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F87116] to-[#c2410c] p-6 text-white shadow-lg shadow-orange-200">
+        <motion.div
+          variants={kpiCardVariants}
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F87116] to-[#c2410c] p-6 text-white shadow-lg shadow-orange-200"
+        >
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-orange-100">
@@ -144,12 +198,14 @@ export default function SaasMetrics() {
               <DollarSign className="h-5 w-5 text-white" />
             </div>
           </div>
-          {/* Decoração sutil */}
           <div className="absolute -bottom-4 -right-4 h-24 w-24 rounded-full bg-white/5" />
-        </div>
+        </motion.div>
 
         {/* Total de Restaurantes */}
-        <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+        <motion.div
+          variants={kpiCardVariants}
+          className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow"
+        >
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
@@ -166,10 +222,13 @@ export default function SaasMetrics() {
               <Store className="h-5 w-5 text-slate-500" />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Novos (7 dias) */}
-        <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+        <motion.div
+          variants={kpiCardVariants}
+          className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow"
+        >
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
@@ -193,11 +252,16 @@ export default function SaasMetrics() {
               <UserPlus className={`h-5 w-5 ${metrics.new_tenants_7d > 0 ? 'text-emerald-600' : 'text-slate-400'}`} />
             </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* ── Distribuição por plano ─────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-5 gap-6"
+        variants={sectionVariants}
+        initial="hidden"
+        animate="visible"
+      >
 
         {/* Gráfico */}
         <div className="lg:col-span-3 rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
@@ -306,7 +370,7 @@ export default function SaasMetrics() {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
     </div>
   );
