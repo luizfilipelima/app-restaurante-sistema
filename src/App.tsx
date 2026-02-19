@@ -11,6 +11,7 @@ import StoreLayout from './layouts/StoreLayout';
 import LandingPage from './pages/landing/LandingPage';
 
 import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/Register';
 import UnauthorizedPage from './pages/auth/UnauthorizedPage';
 import SuperAdminLayout from './components/super-admin/SuperAdminLayout';
 import SaasMetrics from './pages/super-admin/SaasMetrics';
@@ -127,7 +128,8 @@ function App() {
     return (
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+          <Route path="/login"    element={<PublicRoute><LoginPage />    </PublicRoute>} />
+          <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
           {/*
            * ── Super Admin Shell ───────────────────────────────────────────

@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LogIn, AlertCircle, Loader2 } from 'lucide-react';
+import { LogIn, AlertCircle, Loader2, UserPlus } from 'lucide-react';
 
 export default function LoginPage() {
   const [loginOrEmail, setLoginOrEmail] = useState('');
@@ -127,7 +128,21 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-slate-400 text-xs mt-8">
+        {/* Link para criar conta */}
+        <div className="mt-6 text-center space-y-3">
+          <p className="text-sm text-slate-500">
+            Ainda não tem uma conta?
+          </p>
+          <Link
+            to="/register"
+            className="inline-flex items-center gap-2 w-full justify-center h-11 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
+          >
+            <UserPlus className="h-4 w-4 text-[#F87116]" />
+            Criar nova conta grátis
+          </Link>
+        </div>
+
+        <p className="text-center text-slate-400 text-xs mt-6">
           Sistema de gestão para restaurantes · Quiero.food
         </p>
       </div>
