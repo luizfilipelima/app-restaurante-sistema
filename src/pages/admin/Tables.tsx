@@ -1,46 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '@/lib/supabase';
-import { useAdminRestaurantId, useAdminRestaurant, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
 import { useTables, useWaiterCalls } from '@/hooks/queries';
 import { Table } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { formatCurrency, getCardapioPublicUrl } from '@/lib/utils';
+import { getCardapioPublicUrl } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Trash2, Utensils, Bell, Copy, Check, Loader2, ClipboardList, X, Clock, Package, CheckCircle2 } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-
-const statusLabels: Record<string, string> = {
-  pending: 'Pendente',
-  preparing: 'Em preparo',
-  ready: 'Pronto',
-  delivering: 'Saiu para entrega',
-  completed: 'Concluído',
-  cancelled: 'Cancelado',
-};
-
-interface TableOrder {
-  id: string;
-  total: number;
-  status: string;
-  created_at: string;
-  order_items?: { product_name: string; quantity: number; unit_price: number; total_price: number }[];
-}
+import { Plus, Trash2, Utensils, Bell, Copy, Check, Loader2, QrCode, Download } from 'lucide-react';
 
 export default function AdminTables() {
   const restaurantId = useAdminRestaurantId();
   const queryClient = useQueryClient();
   const { restaurant } = useAdminRestaurant();
-  const currency = useAdminCurrency();
   const { data: tablesData, isLoading: loading, refetch: refetchTables } = useTables(restaurantId);
   const { data: waiterCallsData } = useWaiterCalls(restaurantId);
   const tables = tablesData ?? [];
@@ -48,11 +29,9 @@ export default function AdminTables() {
   const [showForm, setShowForm] = useState(false);
   const [formNumber, setFormNumber] = useState('');
   const [attendingCallId, setAttendingCallId] = useState<string | null>(null);
-  const [ordersModalTable, setOrdersModalTable] = useState<Table | null>(null);
-  const [tableOrders, setTableOrders] = useState<TableOrder[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
-  /** Mesas com pedidos novos (dot de notificação). Limpa ao visualizar. */
-  const [tablesWithNewOrders, setTablesWithNewOrders] = useState<Set<string>>(new Set());
+  const [qrModalTable, setQrModalTable] = useState<Table | null>(null);
+  const qrCodeRef = useRef<HTMLDivElement>(null);
+  const [downloadingQr, setDownloadingQr] = useState(false);
 
   // Realtime: chamados de garçom aparecem sem atualizar a página
   useEffect(() => {
@@ -76,63 +55,6 @@ export default function AdminTables() {
       supabase.removeChannel(channel);
     };
   }, [restaurantId, queryClient]);
-
-  // Realtime: novos pedidos em mesas -> mostrar dot de notificação
-  useEffect(() => {
-    if (!restaurantId) return;
-    const channel = supabase
-      .channel('orders-table-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'orders',
-          filter: `restaurant_id=eq.${restaurantId}`,
-        },
-        (payload) => {
-          const tableId = (payload.new as { table_id?: string | null }).table_id;
-          if (tableId) {
-            setTablesWithNewOrders((prev) => new Set(prev).add(tableId));
-          }
-        }
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [restaurantId]);
-
-  const loadTableOrders = async (tableId: string) => {
-    setLoadingOrders(true);
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          total,
-          status,
-          created_at,
-          order_items (
-            product_name,
-            quantity,
-            unit_price,
-            total_price
-          )
-        `)
-        .eq('restaurant_id', restaurantId!)
-        .eq('table_id', tableId)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      setTableOrders((data || []) as TableOrder[]);
-    } catch (e) {
-      console.error(e);
-      toast({ title: 'Erro ao carregar pedidos', variant: 'destructive' });
-      setTableOrders([]);
-    } finally {
-      setLoadingOrders(false);
-    }
-  };
 
   const handleAddTable = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,6 +100,59 @@ export default function AdminTables() {
     }
   };
 
+  const downloadTableQRCode = async () => {
+    if (!qrModalTable || !qrCodeRef.current || !restaurant?.slug) return;
+    const slug = restaurant.slug;
+    setDownloadingQr(true);
+    try {
+      const svgElement = qrCodeRef.current.querySelector('svg');
+      if (!svgElement) throw new Error('SVG não encontrado');
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Não foi possível criar contexto do canvas');
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const svgUrl = URL.createObjectURL(svgBlob);
+      const img = new Image();
+      img.onload = () => {
+        const padding = 40;
+        const size = Math.max(img.width, img.height) + padding * 2;
+        canvas.width = size;
+        canvas.height = size;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, size, size);
+        ctx.drawImage(img, padding, padding, img.width, img.height);
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            setDownloadingQr(false);
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${slug}-qrcode-mesa-${String(qrModalTable.number).padStart(2, '0')}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          URL.revokeObjectURL(svgUrl);
+          toast({ title: 'QR Code baixado com sucesso!' });
+          setDownloadingQr(false);
+        }, 'image/png');
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(svgUrl);
+        setDownloadingQr(false);
+        toast({ title: 'Erro ao baixar QR Code', variant: 'destructive' });
+      };
+      img.src = svgUrl;
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Erro ao baixar QR Code', variant: 'destructive' });
+      setDownloadingQr(false);
+    }
+  };
+
   const markCallAttended = async (callId: string) => {
     try {
       setAttendingCallId(callId);
@@ -193,16 +168,6 @@ export default function AdminTables() {
     } finally {
       setAttendingCallId(null);
     }
-  };
-
-  const openOrdersModal = (table: Table) => {
-    setOrdersModalTable(table);
-    loadTableOrders(table.id);
-    setTablesWithNewOrders((prev) => {
-      const next = new Set(prev);
-      next.delete(table.id);
-      return next;
-    });
   };
 
   const copyTableLink = (tableNumber: number) => {
@@ -344,17 +309,10 @@ export default function AdminTables() {
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => openOrdersModal(table)}
-                      title="Ver pedidos da mesa"
-                      className="relative"
+                      onClick={() => setQrModalTable(table)}
+                      title="Visualizar e baixar QR Code do cardápio"
                     >
-                      <ClipboardList className="h-4 w-4" />
-                      {tablesWithNewOrders.has(table.id) && (
-                        <span
-                          className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background"
-                          aria-label="Novos pedidos"
-                        />
-                      )}
+                      <QrCode className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
@@ -397,73 +355,57 @@ export default function AdminTables() {
         </div>
       </div>
 
-      {/* Modal Pedidos da Mesa */}
-      <Dialog open={!!ordersModalTable} onOpenChange={(open) => !open && setOrdersModalTable(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+      {/* Modal QR Code da Mesa */}
+      <Dialog open={!!qrModalTable} onOpenChange={(open) => !open && setQrModalTable(null)}>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-blue-500" />
-              Pedidos — Mesa {ordersModalTable?.number}
+              <QrCode className="h-5 w-5" />
+              QR Code — Mesa {qrModalTable?.number}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto -mx-6 px-6">
-            {loadingOrders ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+          {qrModalTable && restaurant?.slug && (
+            <div className="flex flex-col items-center gap-4 py-4">
+              <div
+                ref={qrCodeRef}
+                className="p-4 bg-white rounded-lg border-2 border-slate-200"
+                style={{ display: 'inline-block' }}
+              >
+                <QRCodeSVG
+                  value={
+                    getCardapioPublicUrl(restaurant.slug).endsWith('/')
+                      ? `${getCardapioPublicUrl(restaurant.slug)}cardapio/${qrModalTable.number}`
+                      : `${getCardapioPublicUrl(restaurant.slug)}/cardapio/${qrModalTable.number}`
+                  }
+                  size={220}
+                  level="H"
+                  includeMargin
+                  fgColor="#000000"
+                  bgColor="#ffffff"
+                />
               </div>
-            ) : tableOrders.length === 0 ? (
-              <p className="text-center text-slate-500 py-8">
-                Nenhum pedido feito por esta mesa ainda.
+              <p className="text-xs text-muted-foreground text-center">
+                Cardápio interativo da Mesa {qrModalTable.number}
               </p>
-            ) : (
-              <div className="space-y-4">
-                {tableOrders.map((order) => {
-                  const statusConfig: Record<string, { bg: string; text: string; icon: typeof Clock }> = {
-                    pending: { bg: 'bg-amber-50', text: 'text-amber-700', icon: Clock },
-                    preparing: { bg: 'bg-blue-50', text: 'text-blue-700', icon: Package },
-                    ready: { bg: 'bg-violet-50', text: 'text-violet-700', icon: CheckCircle2 },
-                    delivering: { bg: 'bg-orange-50', text: 'text-orange-700', icon: CheckCircle2 },
-                    completed: { bg: 'bg-emerald-50', text: 'text-emerald-700', icon: CheckCircle2 },
-                    cancelled: { bg: 'bg-slate-100', text: 'text-slate-600', icon: X },
-                  };
-                  const sc = statusConfig[order.status] || statusConfig.pending;
-                  const StatusIcon = sc.icon;
-                  return (
-                    <div
-                      key={order.id}
-                      className="admin-card p-4 space-y-3"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">
-                          {format(new Date(order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </span>
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${sc.bg} ${sc.text}`}>
-                          <StatusIcon className="h-3.5 w-3.5" />
-                          {statusLabels[order.status] || order.status}
-                        </span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {(order.order_items || []).map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-sm">
-                            <span className="text-slate-700">
-                              {item.quantity}x {item.product_name}
-                            </span>
-                            <span className="font-medium text-slate-900">
-                              {formatCurrency(item.total_price, currency)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
-                        <span className="text-sm font-medium text-slate-600">Total</span>
-                        <span className="font-bold text-slate-900">{formatCurrency(order.total, currency)}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+              <Button
+                onClick={downloadTableQRCode}
+                disabled={downloadingQr}
+                className="w-full"
+              >
+                {downloadingQr ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Gerando...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Baixar QR Code (PNG)
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

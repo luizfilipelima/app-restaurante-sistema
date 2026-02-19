@@ -193,11 +193,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         delivery_fee: finalDeliveryFee,
         subtotal,
         total: finalTotal,
-        payment_method: paymentMethod,
-        payment_change_for: changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null,
+        payment_method: isTableOrder ? PaymentMethod.TABLE : paymentMethod,
+        payment_change_for: isTableOrder ? null : (changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null),
         status: 'pending',
         notes: notes || null,
-        is_paid: true,
+        is_paid: isTableOrder ? false : true,
       };
       if (isTableOrder && tableId) {
         orderData.order_source = 'table';

@@ -30,11 +30,13 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
   const total = Number(order.total);
   const zoneName = order.delivery_zone?.location_name;
   const paymentLabel =
-    order.payment_method === 'pix'
-      ? 'PIX'
-      : order.payment_method === 'card'
-        ? 'Cartão'
-        : 'Dinheiro';
+    order.payment_method === 'table' || order.order_source === 'table' || order.table_id
+      ? 'Pagar na mesa'
+      : order.payment_method === 'pix'
+        ? 'PIX'
+        : order.payment_method === 'card'
+          ? 'Cartão'
+          : 'Dinheiro';
 
   const widthClass = paperWidth === '58mm' ? 'receipt-width-58' : 'receipt-width-80';
 
@@ -68,7 +70,7 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
           )}
           <div className="receipt-row">
             <strong>Pagamento:</strong> {paymentLabel}
-            {order.payment_method === 'cash' && order.payment_change_for != null && (
+            {order.payment_method === 'cash' && order.payment_change_for != null && paymentLabel === 'Dinheiro' && (
               <> (Troco p/ {formatCurrency(Number(order.payment_change_for), currency)})</>
             )}
           </div>

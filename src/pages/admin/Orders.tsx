@@ -268,6 +268,7 @@ export default function AdminOrders() {
     pix: 'PIX',
     card: 'Cartão',
     cash: 'Dinheiro',
+    table: 'Pagar na mesa',
   };
 
   if (loading) {
@@ -462,7 +463,9 @@ export default function AdminOrders() {
                             <div className="flex items-center gap-1.5">
                               <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
                               <span className="text-xs font-medium">
-                                {paymentMethodLabels[order.payment_method]}
+                                {(order.order_source === 'table' || order.table_id)
+                                  ? 'Pagar na mesa'
+                                  : paymentMethodLabels[order.payment_method] ?? order.payment_method}
                               </span>
                             </div>
                             <span className="font-bold text-lg text-gradient">

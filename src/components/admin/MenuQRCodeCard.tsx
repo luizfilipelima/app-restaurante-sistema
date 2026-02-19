@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Copy, Check, Download, QrCode, ShoppingCart, Eye } from 'lucide-react';
 import { getCardapioPublicUrl } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -16,10 +15,9 @@ interface MenuQRCodeCardProps {
 type QRCodeType = 'interactive' | 'view-only';
 
 export default function MenuQRCodeCard({ slug }: MenuQRCodeCardProps) {
-  const [qrCodeType, setQrCodeType] = useState<QRCodeType>('interactive');
   const qrCodeRefInteractive = useRef<HTMLDivElement>(null);
   const qrCodeRefViewOnly = useRef<HTMLDivElement>(null);
-  const [linkCopied, setLinkCopied] = useState(false);
+  const [linkCopiedType, setLinkCopiedType] = useState<QRCodeType | null>(null);
   const [downloading, setDownloading] = useState(false);
 
   const cardapioUrl = getCardapioPublicUrl(slug);
@@ -47,11 +45,11 @@ export default function MenuQRCodeCard({ slug }: MenuQRCodeCardProps) {
     );
   }
 
-  const handleCopyLink = (url: string) => {
+  const handleCopyLink = (url: string, type: QRCodeType) => {
     navigator.clipboard.writeText(url).then(() => {
-      setLinkCopied(true);
+      setLinkCopiedType(type);
       toast({ title: 'Link copiado!' });
-      setTimeout(() => setLinkCopied(false), 2000);
+      setTimeout(() => setLinkCopiedType(null), 2000);
     }).catch(() => {
       toast({ title: 'Erro ao copiar link', variant: 'destructive' });
     });
@@ -146,21 +144,14 @@ export default function MenuQRCodeCard({ slug }: MenuQRCodeCardProps) {
           Escaneie o QR Code para acessar o cardápio digital. Ideal para imprimir nas mesas.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <Tabs value={qrCodeType} onValueChange={(v) => setQrCodeType(v as QRCodeType)} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="interactive" className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4" />
-              Interativo
-            </TabsTrigger>
-            <TabsTrigger value="view-only" className="flex items-center gap-2">
-              <Eye className="h-4 w-4" />
-              Visualização
-            </TabsTrigger>
-          </TabsList>
-
+      <CardContent>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* QR Code Interativo */}
-          <TabsContent value="interactive" className="space-y-6 mt-6">
+          <div className="space-y-4 p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4 text-primary" />
+              <h3 className="font-semibold text-foreground">Interativo</h3>
+            </div>
             <div className="flex flex-col items-center">
               <div
                 ref={qrCodeRefInteractive}
@@ -169,7 +160,7 @@ export default function MenuQRCodeCard({ slug }: MenuQRCodeCardProps) {
               >
                 <QRCodeSVG
                   value={cardapioUrl}
-                  size={256}
+                  size={200}
                   level="H"
                   includeMargin={true}
                   fgColor="#000000"
@@ -180,22 +171,22 @@ export default function MenuQRCodeCard({ slug }: MenuQRCodeCardProps) {
                 Cardápio com opção de pedidos e checkout
               </p>
             </div>
-
             <div className="space-y-2">
-              <Label>Link do cardápio interativo:</Label>
+              <Label className="text-xs">Link do cardápio interativo</Label>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   readOnly
                   value={cardapioUrl}
-                  className="flex-1 font-mono text-sm"
+                  className="flex-1 font-mono text-xs h-9"
                 />
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleCopyLink(cardapioUrl)}
-                  className="w-full sm:w-auto"
+                  size="sm"
+                  onClick={() => handleCopyLink(cardapioUrl, 'interactive')}
+                  className="w-full sm:w-auto shrink-0"
                 >
-                  {linkCopied ? (
+                  {linkCopiedType === 'interactive' ? (
                     <>
                       <Check className="h-4 w-4 mr-2" />
                       Copiado!
@@ -209,32 +200,33 @@ export default function MenuQRCodeCard({ slug }: MenuQRCodeCardProps) {
                 </Button>
               </div>
             </div>
-
-            <div className="pt-2 border-t">
-              <Button
-                type="button"
-                onClick={() => handleDownloadQRCode('interactive')}
-                disabled={downloading}
-                className="w-full"
-                variant="default"
-              >
-                {downloading ? (
-                  <>
-                    <Download className="h-4 w-4 mr-2 animate-pulse" />
-                    Gerando imagem...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4 mr-2" />
-                    Baixar QR Code (PNG)
-                  </>
-                )}
-              </Button>
-            </div>
-          </TabsContent>
+            <Button
+              type="button"
+              onClick={() => handleDownloadQRCode('interactive')}
+              disabled={downloading}
+              className="w-full"
+              size="sm"
+            >
+              {downloading ? (
+                <>
+                  <Download className="h-4 w-4 mr-2 animate-pulse" />
+                  Gerando imagem...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Baixar QR Code (PNG)
+                </>
+              )}
+            </Button>
+          </div>
 
           {/* QR Code Somente Visualização */}
-          <TabsContent value="view-only" className="space-y-6 mt-6">
+          <div className="space-y-4 p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" />
+              <h3 className="font-semibold text-foreground">Visualização</h3>
+            </div>
             <div className="flex flex-col items-center">
               <div
                 ref={qrCodeRefViewOnly}
@@ -243,7 +235,7 @@ export default function MenuQRCodeCard({ slug }: MenuQRCodeCardProps) {
               >
                 <QRCodeSVG
                   value={cardapioViewOnlyUrl}
-                  size={256}
+                  size={200}
                   level="H"
                   includeMargin={true}
                   fgColor="#000000"
@@ -254,22 +246,22 @@ export default function MenuQRCodeCard({ slug }: MenuQRCodeCardProps) {
                 Cardápio sem opção de pedidos, ideal para substituir cardápio físico
               </p>
             </div>
-
             <div className="space-y-2">
-              <Label>Link do cardápio (somente visualização):</Label>
+              <Label className="text-xs">Link do cardápio (somente visualização)</Label>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   readOnly
                   value={cardapioViewOnlyUrl}
-                  className="flex-1 font-mono text-sm"
+                  className="flex-1 font-mono text-xs h-9"
                 />
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleCopyLink(cardapioViewOnlyUrl)}
-                  className="w-full sm:w-auto"
+                  size="sm"
+                  onClick={() => handleCopyLink(cardapioViewOnlyUrl, 'view-only')}
+                  className="w-full sm:w-auto shrink-0"
                 >
-                  {linkCopied ? (
+                  {linkCopiedType === 'view-only' ? (
                     <>
                       <Check className="h-4 w-4 mr-2" />
                       Copiado!
@@ -283,30 +275,27 @@ export default function MenuQRCodeCard({ slug }: MenuQRCodeCardProps) {
                 </Button>
               </div>
             </div>
-
-            <div className="pt-2 border-t">
-              <Button
-                type="button"
-                onClick={() => handleDownloadQRCode('view-only')}
-                disabled={downloading}
-                className="w-full"
-                variant="default"
-              >
-                {downloading ? (
-                  <>
-                    <Download className="h-4 w-4 mr-2 animate-pulse" />
-                    Gerando imagem...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4 mr-2" />
-                    Baixar QR Code (PNG)
-                  </>
-                )}
-              </Button>
-            </div>
-          </TabsContent>
-        </Tabs>
+            <Button
+              type="button"
+              onClick={() => handleDownloadQRCode('view-only')}
+              disabled={downloading}
+              className="w-full"
+              size="sm"
+            >
+              {downloading ? (
+                <>
+                  <Download className="h-4 w-4 mr-2 animate-pulse" />
+                  Gerando imagem...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Baixar QR Code (PNG)
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

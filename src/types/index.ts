@@ -19,6 +19,8 @@ export enum PaymentMethod {
   PIX = 'pix',
   CARD = 'card',
   CASH = 'cash',
+  /** Pedido de mesa: cliente paga posteriormente no local */
+  TABLE = 'table',
 }
 
 export enum DeliveryType {
