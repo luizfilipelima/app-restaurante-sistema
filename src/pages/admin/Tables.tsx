@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
 import { Table, WaiterCall } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
@@ -173,17 +172,15 @@ export default function AdminTables() {
 
       {/* Chamados de Garçom */}
       {pendingCalls.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5 text-amber-600" />
-              Chamados de Garçom ({pendingCalls.length})
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Mesas que solicitaram atendimento no cardápio digital
-            </p>
-          </CardHeader>
-          <CardContent>
+        <div className="admin-card p-6 border-amber-200 bg-amber-50/30">
+          <h3 className="text-lg font-semibold text-amber-900 flex items-center gap-2 mb-2">
+            <Bell className="h-5 w-5 text-amber-600" />
+            Chamados de Garçom ({pendingCalls.length})
+          </h3>
+          <p className="text-sm text-slate-500 mb-4">
+            Mesas que solicitaram atendimento no cardápio digital
+          </p>
+          <div>
             <div className="flex flex-wrap gap-3">
               {pendingCalls.map((call) => (
                 <div
@@ -206,17 +203,17 @@ export default function AdminTables() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Lista de Mesas */}
-      <Card>
-        <CardHeader>
+      <div className="admin-card overflow-hidden">
+        <div className="p-6 pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <CardTitle>Mesas cadastradas</CardTitle>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="text-lg font-semibold text-slate-900">Mesas cadastradas</h3>
+              <p className="text-sm text-slate-500 mt-0.5">
                 Adicione mesas e compartilhe o link do cardápio para cada uma
               </p>
             </div>
@@ -225,8 +222,8 @@ export default function AdminTables() {
               Nova mesa
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        </div>
+        <div className="px-6 pb-6 space-y-4">
           {showForm && (
             <form onSubmit={handleAddTable} className="flex gap-2 p-4 rounded-lg border bg-muted/30">
               <div className="flex-1">
@@ -306,8 +303,8 @@ export default function AdminTables() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

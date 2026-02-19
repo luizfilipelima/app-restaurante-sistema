@@ -163,6 +163,23 @@
     @apply bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent;
   }
 
+  /* ========== Admin Panel (estilo Shopeers/moderno) ========== */
+  .admin-sidebar {
+    @apply bg-white border-r border-slate-200/80;
+  }
+  .admin-sidebar .nav-item-active {
+    @apply bg-slate-100 text-slate-900 border-l-4 border-l-blue-500;
+  }
+  .admin-sidebar .nav-item {
+    @apply text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-4 border-l-transparent;
+  }
+  .admin-card {
+    @apply bg-white rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow;
+  }
+  .admin-metric-card {
+    @apply bg-white rounded-xl border border-slate-200/80 p-5 shadow-sm;
+  }
+
   /* Esconder scrollbar mas permitir scroll */
   .scrollbar-hide::-webkit-scrollbar {
     display: none;

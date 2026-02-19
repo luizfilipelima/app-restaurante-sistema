@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
-import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, ArrowUpRight, RotateCcw, Loader2, MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2, MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -74,6 +73,7 @@ export default function AdminDashboard() {
     averageTicket: 0,
     pendingOrders: 0,
   });
+  const [prevMetrics, setPrevMetrics] = useState({ totalRevenue: 0, totalOrders: 0 });
   const [dailyRevenue, setDailyRevenue] = useState<any[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [topZone, setTopZone] = useState<{ name: string; count: number } | null>(null);
@@ -161,6 +161,27 @@ export default function AdminDashboard() {
       const pendingOrders = orderList.filter((o: { status: string }) => o.status === 'pending').length;
 
       setMetrics({ totalRevenue, totalOrders, averageTicket, pendingOrders });
+
+      // Período anterior para comparação "vs last period"
+      let prevRevenue = 0;
+      let prevOrders = 0;
+      if (startDate && period !== 'max' && areaFilter !== 'buffet') {
+        const prevStart = subDays(startDate, period === '30' ? 30 : 365);
+        let prevQuery = supabase
+          .from('orders')
+          .select('id, total, order_source, delivery_type, delivery_zone_id')
+          .eq('restaurant_id', restaurantId)
+          .gte('created_at', prevStart.toISOString())
+          .lt('created_at', startDate.toISOString());
+        const { data: prevOrdersData } = await prevQuery;
+        let prevList = prevOrdersData || [];
+        if (areaFilter === 'delivery') prevList = prevList.filter((o: any) => o.order_source === 'delivery' || (!o.order_source && o.delivery_type === 'delivery'));
+        else if (areaFilter === 'table') prevList = prevList.filter((o: any) => o.order_source === 'table');
+        else if (areaFilter === 'pickup') prevList = prevList.filter((o: any) => o.order_source === 'pickup' || (!o.order_source && o.delivery_type === 'pickup'));
+        prevOrders = prevList.length;
+        prevRevenue = prevList.reduce((s: number, o: { total?: number }) => s + (o.total || 0), 0);
+      }
+      setPrevMetrics({ totalRevenue: prevRevenue, totalOrders: prevOrders });
 
       const last7Days = Array.from({ length: 7 }, (_, i) => {
         const date = subDays(new Date(), 6 - i);
@@ -399,35 +420,30 @@ export default function AdminDashboard() {
     cash: 'Dinheiro',
   };
 
+  const pctChange = (curr: number, prev: number) =>
+    prev > 0 ? (((curr - prev) / prev) * 100).toFixed(1) : curr > 0 ? '100' : '0';
+
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="space-y-2">
-          <Skeleton className="h-9 w-48" />
-          <Skeleton className="h-5 w-96" />
+          <Skeleton className="h-8 w-48 bg-slate-200" />
+          <Skeleton className="h-4 w-64 bg-slate-200" />
         </div>
-        
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardHeader className="space-y-2">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-8 w-24" />
-              </CardHeader>
-            </Card>
+            <div key={i} className="admin-metric-card">
+              <Skeleton className="h-4 w-24 bg-slate-200" />
+              <Skeleton className="h-8 w-32 mt-3 bg-slate-200" />
+            </div>
           ))}
         </div>
-        
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
           {[1, 2].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-48" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-[300px] w-full" />
-              </CardContent>
-            </Card>
+            <div key={i} className="admin-card p-6">
+              <Skeleton className="h-5 w-48 bg-slate-200" />
+              <Skeleton className="h-[300px] w-full mt-4 bg-slate-200 rounded-lg" />
+            </div>
           ))}
         </div>
       </div>
@@ -437,18 +453,22 @@ export default function AdminDashboard() {
   const periodLabel = period === '30' ? 'últimos 30 dias' : period === '365' ? 'último ano' : 'todo o período';
   const areaLabel = AREA_OPTIONS.find((o) => o.value === areaFilter)?.label ?? 'Todos';
 
+  const revPct = pctChange(metrics.totalRevenue, prevMetrics.totalRevenue);
+  const ordPct = pctChange(metrics.totalOrders, prevMetrics.totalOrders);
+
   return (
-    <div className="space-y-8 min-w-0">
+    <div className="space-y-6 min-w-0">
+        {/* Header + Filtros - Estilo Shopeers */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-foreground">Dashboard</h1>
-            <p className="text-muted-foreground text-base sm:text-lg">
-              Visão geral do seu negócio ({periodLabel}{areaFilter !== 'all' ? ` · ${areaLabel}` : ''})
+            <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+            <p className="text-slate-500 text-sm mt-0.5">
+              {periodLabel}{areaFilter !== 'all' ? ` · ${areaLabel}` : ''}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Select value={areaFilter} onValueChange={(v) => setAreaFilter(v as AreaValue)}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className="w-full sm:w-[160px] h-10 bg-white border-slate-200">
                 <SelectValue placeholder="Área" />
               </SelectTrigger>
               <SelectContent>
@@ -460,7 +480,7 @@ export default function AdminDashboard() {
               </SelectContent>
             </Select>
             <Select value={period} onValueChange={(v) => setPeriod(v as PeriodValue)}>
-              <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white border-slate-200">
                 <SelectValue placeholder="Período" />
               </SelectTrigger>
               <SelectContent>
@@ -474,102 +494,79 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Cards de Métricas */}
-        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 min-w-0">
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow overflow-hidden group">
-            <div className="absolute inset-0 gradient-primary opacity-90 group-hover:opacity-100 transition-opacity rounded-lg" />
-            <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-white/90">
-                Faturamento Total
-              </CardTitle>
-              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-white" />
+        {/* Cards de Métricas - Estilo Shopeers (brancos, limpos, trend) */}
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 min-w-0">
+          <div className="admin-metric-card">
+            <div className="flex items-start justify-between">
+              <p className="text-sm font-medium text-slate-500">Faturamento</p>
+              <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
+                <DollarSign className="h-4 w-4 text-blue-600" />
               </div>
-            </CardHeader>
-            <CardContent className="relative">
-              <div className="text-3xl font-bold text-white mb-1">
-                {formatCurrency(metrics.totalRevenue, currency)}
-              </div>
-              <div className="flex items-center text-white/80 text-xs">
-                <ArrowUpRight className="h-3 w-3 mr-1" />
-                <span>{periodLabel}</span>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 mt-2">
+              {formatCurrency(metrics.totalRevenue, currency)}
+            </p>
+            {prevMetrics.totalRevenue > 0 && (
+              <p className={`text-xs font-medium mt-1 flex items-center gap-1 ${Number(revPct) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {Number(revPct) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {revPct}% vs. período anterior
+              </p>
+            )}
+          </div>
 
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow overflow-hidden group">
-            <div className="absolute inset-0 gradient-secondary opacity-90 group-hover:opacity-100 transition-opacity rounded-lg" />
-            <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-white/90">
-                Total de Pedidos
-              </CardTitle>
-              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <ShoppingCart className="h-5 w-5 text-white" />
+          <div className="admin-metric-card">
+            <div className="flex items-start justify-between">
+              <p className="text-sm font-medium text-slate-500">Pedidos</p>
+              <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <ShoppingCart className="h-4 w-4 text-emerald-600" />
               </div>
-            </CardHeader>
-            <CardContent className="relative">
-              <div className="text-3xl font-bold text-white mb-1">
-                {metrics.totalOrders}
-              </div>
-              <div className="flex items-center text-white/80 text-xs">
-                <span>Pedidos realizados</span>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.totalOrders}</p>
+            {prevMetrics.totalOrders > 0 && (
+              <p className={`text-xs font-medium mt-1 flex items-center gap-1 ${Number(ordPct) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {Number(ordPct) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {ordPct}% vs. período anterior
+              </p>
+            )}
+          </div>
 
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-600 opacity-90 group-hover:opacity-100 transition-opacity rounded-lg" />
-            <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-white/90">
-                Ticket Médio
-              </CardTitle>
-              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-white" />
+          <div className="admin-metric-card">
+            <div className="flex items-start justify-between">
+              <p className="text-sm font-medium text-slate-500">Ticket Médio</p>
+              <div className="h-9 w-9 rounded-lg bg-violet-50 flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-violet-600" />
               </div>
-            </CardHeader>
-            <CardContent className="relative">
-              <div className="text-3xl font-bold text-white mb-1">
-                {formatCurrency(metrics.averageTicket, currency)}
-              </div>
-              <div className="flex items-center text-white/80 text-xs">
-                <span>Valor médio por pedido</span>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 mt-2">
+              {formatCurrency(metrics.averageTicket, currency)}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">Valor médio por pedido</p>
+          </div>
 
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-600 opacity-90 group-hover:opacity-100 transition-opacity rounded-lg" />
-            <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-white/90">
-                Pedidos Pendentes
-              </CardTitle>
-              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-white" />
+          <div className="admin-metric-card">
+            <div className="flex items-start justify-between">
+              <p className="text-sm font-medium text-slate-500">Pendentes</p>
+              <div className="h-9 w-9 rounded-lg bg-amber-50 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-amber-600" />
               </div>
-            </CardHeader>
-            <CardContent className="relative">
-              <div className="text-3xl font-bold text-white mb-1">
-                {metrics.pendingOrders}
-              </div>
-              <div className="flex items-center text-white/80 text-xs">
-                <span>Aguardando preparo</span>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.pendingOrders}</p>
+            <p className="text-xs text-slate-400 mt-1">Aguardando preparo</p>
+          </div>
         </div>
 
-        {/* Gráficos */}
-        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2 min-w-0">
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-bold text-foreground">
+        {/* Gráficos - Cards brancos estilo Shopeers */}
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">
+          <div className="admin-card p-6 min-w-0 overflow-hidden">
+            <div className="pb-4">
+              <h3 className="text-lg font-semibold text-slate-900">
                 Faturamento Diário (Últimos 7 dias)
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
+              </h3>
+              <p className="text-sm text-slate-500 mt-0.5">
                 Acompanhe o desempenho diário das vendas
               </p>
-            </CardHeader>
-            <CardContent className="min-w-0">
+            </div>
+            <div className="min-w-0">
               <div className="w-full min-h-[300px] min-w-0">
               <ResponsiveContainer width="100%" height={300} minWidth={0}>
                 <BarChart data={dailyRevenue}>
@@ -594,19 +591,19 @@ export default function AdminDashboard() {
                 </BarChart>
               </ResponsiveContainer>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-bold text-foreground">
+          <div className="admin-card p-6 min-w-0 overflow-hidden">
+            <div className="pb-4">
+              <h3 className="text-lg font-semibold text-slate-900">
                 Formas de Pagamento
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
+              </h3>
+              <p className="text-sm text-slate-500 mt-0.5">
                 Distribuição dos métodos de pagamento
               </p>
-            </CardHeader>
-            <CardContent className="min-w-0">
+            </div>
+            <div className="min-w-0">
               {paymentMethods.length > 0 ? (
                 <div className="w-full min-h-[300px] min-w-0">
                 <ResponsiveContainer width="100%" height={300} minWidth={0}>
@@ -644,220 +641,182 @@ export default function AdminDashboard() {
                 </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                <div className="flex items-center justify-center h-[300px] text-slate-400">
                   <div className="text-center">
                     <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-20" />
                     <p>Sem dados de pagamento</p>
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* BI: Região, horário pico, itens mais/menos pedidos */}
-        <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 min-w-0">
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-primary" />
-                Região mais pedida
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {topZone ? (
-                <div>
-                  <p className="text-2xl font-bold text-foreground truncate" title={topZone.name}>
-                    {topZone.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{topZone.count} pedidos</p>
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-sm">Sem dados de região no período</p>
-              )}
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 min-w-0">
+          <div className="admin-card p-6 min-w-0 overflow-hidden">
+            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-3">
+              <MapPin className="h-4 w-4 text-blue-500" />
+              Região mais pedida
+            </h3>
+            {topZone ? (
+              <div>
+                <p className="text-xl font-bold text-slate-900 truncate" title={topZone.name}>
+                  {topZone.name}
+                </p>
+                <p className="text-sm text-slate-500">{topZone.count} pedidos</p>
+              </div>
+            ) : (
+              <p className="text-slate-500 text-sm">Sem dados de região no período</p>
+            )}
+          </div>
 
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />
-                Horários de pico
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {peakHours.length > 0 ? (
-                <ul className="space-y-1.5 text-sm">
-                  {peakHours.map(({ hour, count }) => (
-                    <li key={hour} className="flex justify-between">
-                      <span className="text-muted-foreground">{hour}h – {hour + 1}h</span>
-                      <span className="font-medium">{count} pedidos</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground text-sm">Sem pedidos no período</p>
-              )}
-            </CardContent>
-          </Card>
+          <div className="admin-card p-6 min-w-0 overflow-hidden">
+            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-3">
+              <Clock className="h-4 w-4 text-blue-500" />
+              Horários de pico
+            </h3>
+            {peakHours.length > 0 ? (
+              <ul className="space-y-2 text-sm">
+                {peakHours.map(({ hour, count }) => (
+                  <li key={hour} className="flex justify-between">
+                    <span className="text-slate-500">{hour}h – {hour + 1}h</span>
+                    <span className="font-medium text-slate-900">{count} pedidos</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-slate-500 text-sm">Sem pedidos no período</p>
+            )}
+          </div>
 
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                Itens mais pedidos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {topProducts.length > 0 ? (
-                <ul className="space-y-1.5 text-sm">
-                  {topProducts.map(({ name, quantity }) => (
-                    <li key={name} className="flex justify-between gap-2">
-                      <span className="text-foreground truncate" title={name}>{name}</span>
-                      <span className="font-medium shrink-0">{quantity}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground text-sm">Sem itens no período</p>
-              )}
-            </CardContent>
-          </Card>
+          <div className="admin-card p-6 min-w-0 overflow-hidden">
+            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-3">
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              Itens mais pedidos
+            </h3>
+            {topProducts.length > 0 ? (
+              <ul className="space-y-2 text-sm">
+                {topProducts.map(({ name, quantity }) => (
+                  <li key={name} className="flex justify-between gap-2">
+                    <span className="text-slate-700 truncate" title={name}>{name}</span>
+                    <span className="font-medium text-slate-900 shrink-0">{quantity}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-slate-500 text-sm">Sem itens no período</p>
+            )}
+          </div>
 
-          <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-primary" />
-                Itens menos pedidos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {bottomProducts.length > 0 ? (
-                <ul className="space-y-1.5 text-sm">
-                  {bottomProducts.map(({ name, quantity }) => (
-                    <li key={name} className="flex justify-between gap-2">
-                      <span className="text-foreground truncate" title={name}>{name}</span>
-                      <span className="font-medium shrink-0">{quantity}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground text-sm">Sem itens no período</p>
-              )}
-            </CardContent>
-          </Card>
+          <div className="admin-card p-6 min-w-0 overflow-hidden">
+            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-3">
+              <TrendingDown className="h-4 w-4 text-amber-500" />
+              Itens menos pedidos
+            </h3>
+            {bottomProducts.length > 0 ? (
+              <ul className="space-y-2 text-sm">
+                {bottomProducts.map(({ name, quantity }) => (
+                  <li key={name} className="flex justify-between gap-2">
+                    <span className="text-slate-700 truncate" title={name}>{name}</span>
+                    <span className="font-medium text-slate-900 shrink-0">{quantity}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-slate-500 text-sm">Sem itens no período</p>
+            )}
+          </div>
         </div>
 
         {/* Métricas de Buffet - exibir quando filtro Buffet ou quando há comandas */}
         {(areaFilter === 'buffet' || buffetMetrics.totalComandas > 0) && (
           <>
             <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 min-w-0">
-              <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-                    <Scale className="h-4 w-4 text-primary" />
-                    Comandas Buffet
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-foreground">{buffetMetrics.totalComandas}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {buffetMetrics.openComandas} aberta(s)
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="admin-card p-6">
+                <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-3">
+                  <Scale className="h-4 w-4 text-blue-500" />
+                  Comandas Buffet
+                </h3>
+                <p className="text-2xl font-bold text-slate-900">{buffetMetrics.totalComandas}</p>
+                <p className="text-sm text-slate-500">
+                  {buffetMetrics.openComandas} aberta(s)
+                </p>
+              </div>
 
-              <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-primary" />
-                    Receita Buffet
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-foreground">
-                    {formatCurrency(buffetMetrics.totalBuffetRevenue, currency)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Ticket médio: {formatCurrency(buffetMetrics.averageBuffetTicket, currency)}
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="admin-card p-6">
+                <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-3">
+                  <DollarSign className="h-4 w-4 text-blue-500" />
+                  Receita Buffet
+                </h3>
+                <p className="text-2xl font-bold text-slate-900">
+                  {formatCurrency(buffetMetrics.totalBuffetRevenue, currency)}
+                </p>
+                <p className="text-sm text-slate-500">
+                  Ticket médio: {formatCurrency(buffetMetrics.averageBuffetTicket, currency)}
+                </p>
+              </div>
 
-              <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-                    <TrendingUpIcon className="h-4 w-4 text-primary" />
-                    CMV Real
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-foreground">
-                    {formatCurrency(buffetMetrics.realCMV, currency)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Margem: {buffetMetrics.profitMargin.toFixed(1)}%
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="admin-card p-6">
+                <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-3">
+                  <TrendingUpIcon className="h-4 w-4 text-blue-500" />
+                  CMV Real
+                </h3>
+                <p className="text-2xl font-bold text-slate-900">
+                  {formatCurrency(buffetMetrics.realCMV, currency)}
+                </p>
+                <p className="text-sm text-slate-500">
+                  Margem: {buffetMetrics.profitMargin.toFixed(1)}%
+                </p>
+              </div>
 
-              <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-primary" />
-                    Lucro Real
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-emerald-600">
-                    {formatCurrency(buffetMetrics.profit, currency)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {buffetMetrics.profitMargin.toFixed(1)}% de margem
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="admin-card p-6">
+                <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-3">
+                  <TrendingUp className="h-4 w-4 text-emerald-500" />
+                  Lucro Real
+                </h3>
+                <p className="text-2xl font-bold text-emerald-600">
+                  {formatCurrency(buffetMetrics.profit, currency)}
+                </p>
+                <p className="text-sm text-slate-500">
+                  {buffetMetrics.profitMargin.toFixed(1)}% de margem
+                </p>
+              </div>
             </div>
 
             {/* Alertas de Ociosidade */}
             {idleComandas.length > 0 && (
-              <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2 text-amber-900 dark:text-amber-100">
-                    <AlertTriangle className="h-5 w-5" />
-                    Alertas de Ociosidade
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Comandas abertas há mais de 1 hora sem fechamento
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {idleComandas.map((c) => (
-                      <div key={c.number} className="flex items-center justify-between p-2 bg-white dark:bg-slate-900 rounded">
-                        <span className="font-medium">Comanda #{c.number}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {Math.floor(c.minutesOpen / 60)}h {c.minutesOpen % 60}min aberta
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="admin-card p-6 border-amber-200 bg-amber-50/30">
+                <h3 className="text-lg font-semibold text-amber-900 flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  Alertas de Ociosidade
+                </h3>
+                <p className="text-sm text-slate-500 mb-4">
+                  Comandas abertas há mais de 1 hora sem fechamento
+                </p>
+                <div className="space-y-2">
+                  {idleComandas.map((c) => (
+                    <div key={c.number} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200/80">
+                      <span className="font-medium text-slate-900">Comanda #{c.number}</span>
+                      <span className="text-sm text-slate-500">
+                        {Math.floor(c.minutesOpen / 60)}h {c.minutesOpen % 60}min aberta
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* Desempenho por Horário */}
             {weightByInterval.length > 0 && (
-              <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow min-w-0 overflow-hidden">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-xl font-bold text-foreground">
-                    Pesagens por Intervalo (30min)
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Volume de pesagens para planejamento de reposição
-                  </p>
-                </CardHeader>
-                <CardContent className="min-w-0">
+              <div className="admin-card p-6 min-w-0 overflow-hidden">
+                <h3 className="text-lg font-semibold text-slate-900 mb-1">
+                  Pesagens por Intervalo (30min)
+                </h3>
+                <p className="text-sm text-slate-500 mb-4">
+                  Volume de pesagens para planejamento de reposição
+                </p>
+                <div className="min-w-0">
                   <div className="w-full min-h-[300px] min-w-0">
                     <ResponsiveContainer width="100%" height={300} minWidth={0}>
                       <BarChart data={weightByInterval}>
@@ -882,24 +841,22 @@ export default function AdminDashboard() {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
           </>
         )}
 
         {/* Resetar dados da dashboard */}
-        <Card className="border-dashed border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2 text-amber-900 dark:text-amber-100">
-              <RotateCcw className="h-5 w-5" />
-              Resetar dados do painel
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Remove todos os pedidos deste restaurante e zera as métricas da dashboard. É necessário informar sua senha para confirmar.
-            </p>
-          </CardHeader>
-          <CardContent>
+        <div className="admin-card p-6 border-dashed border-amber-200 bg-amber-50/30">
+          <h3 className="text-lg font-semibold text-amber-900 flex items-center gap-2 mb-2">
+            <RotateCcw className="h-5 w-5" />
+            Resetar dados do painel
+          </h3>
+          <p className="text-sm text-slate-500 mb-4">
+            Remove todos os pedidos deste restaurante e zera as métricas da dashboard. É necessário informar sua senha para confirmar.
+          </p>
+          <div>
             <Button
               variant="outline"
               className="border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900/40"
@@ -912,8 +869,8 @@ export default function AdminDashboard() {
               <RotateCcw className="h-4 w-4 mr-2" />
               Resetar dados (exige senha)
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
           <DialogContent className="sm:max-w-md">
