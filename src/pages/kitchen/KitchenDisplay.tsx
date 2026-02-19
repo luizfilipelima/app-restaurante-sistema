@@ -179,16 +179,16 @@ export default function KitchenDisplay() {
             <div className="flex items-center gap-4">
               {user?.role === 'restaurant_admin' && (
                 <Link
-                  to="/admin"
+                  to="/admin/orders"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium transition-colors border border-slate-700"
                 >
                   <LayoutDashboard className="h-4 w-4" />
-                  Modo recepcionista
+                  Voltar ao painel
                 </Link>
               )}
               {user?.role === 'super_admin' && (
                 <Link
-                  to="/super-admin/restaurants"
+                  to={effectiveRestaurantId ? `/super-admin/restaurants/${effectiveRestaurantId}/orders` : '/super-admin/restaurants'}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium transition-colors border border-slate-700"
                 >
                   <LayoutDashboard className="h-4 w-4" />

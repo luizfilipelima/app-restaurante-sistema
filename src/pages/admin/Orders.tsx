@@ -339,7 +339,7 @@ export default function AdminOrders() {
                     {statusOrders.map((order) => {
                       const isTableOrder = order.order_source === 'table' || !!order.table_id;
                       const isDelivering = status === OrderStatus.DELIVERING;
-                      const isDeliveryOrder = !isTableOrder && order.delivery_type === 'delivery';
+                      const canNotifyWhatsApp = isDelivering && !isTableOrder;
 
                       // Botão de avanço de status
                       const tablePreparingOverride = isTableOrder && status === OrderStatus.PREPARING;
@@ -501,7 +501,7 @@ export default function AdminOrders() {
                             )}
 
                             {/* ── WhatsApp "Saiu pra entrega" ── */}
-                            {isDelivering && isDeliveryOrder && (
+                            {canNotifyWhatsApp && (
                               <a
                                 href={buildWhatsAppDeliveryUrl()}
                                 target="_blank"
