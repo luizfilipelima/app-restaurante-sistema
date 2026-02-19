@@ -719,6 +719,8 @@ export default function AdminLayout({
           </main>
         </div>
 
+      </div>{/* fecha min-h-screen */}
+
       {/* ── Painel de Gestão de Usuários (super-admin only) ─────────────── */}
       {isSuperAdminView && restaurantId && (
         <RestaurantUsersPanel
