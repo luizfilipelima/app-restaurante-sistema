@@ -1,23 +1,52 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAdminRestaurantId, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminRestaurant, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { Table, WaiterCall } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { getCardapioPublicUrl } from '@/lib/utils';
-import { Plus, Trash2, Utensils, Bell, Copy, Check, Loader2 } from 'lucide-react';
+import { formatCurrency, getCardapioPublicUrl } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Plus, Trash2, Utensils, Bell, Copy, Check, Loader2, ClipboardList, X, Clock, Package, CheckCircle2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+const statusLabels: Record<string, string> = {
+  pending: 'Pendente',
+  preparing: 'Em preparo',
+  ready: 'Pronto',
+  delivering: 'Saiu para entrega',
+  completed: 'Concluído',
+  cancelled: 'Cancelado',
+};
+
+interface TableOrder {
+  id: string;
+  total: number;
+  status: string;
+  created_at: string;
+  order_items?: { product_name: string; quantity: number; unit_price: number; total_price: number }[];
+}
 
 export default function AdminTables() {
   const restaurantId = useAdminRestaurantId();
   const { restaurant } = useAdminRestaurant();
+  const currency = useAdminCurrency();
   const [tables, setTables] = useState<Table[]>([]);
   const [waiterCalls, setWaiterCalls] = useState<WaiterCall[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formNumber, setFormNumber] = useState('');
   const [attendingCallId, setAttendingCallId] = useState<string | null>(null);
+  const [ordersModalTable, setOrdersModalTable] = useState<Table | null>(null);
+  const [tableOrders, setTableOrders] = useState<TableOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   useEffect(() => {
     if (restaurantId) {
@@ -79,6 +108,37 @@ export default function AdminTables() {
     setWaiterCalls(data || []);
   };
 
+  const loadTableOrders = async (tableId: string) => {
+    setLoadingOrders(true);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          total,
+          status,
+          created_at,
+          order_items (
+            product_name,
+            quantity,
+            unit_price,
+            total_price
+          )
+        `)
+        .eq('restaurant_id', restaurantId!)
+        .eq('table_id', tableId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setTableOrders((data || []) as TableOrder[]);
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Erro ao carregar pedidos', variant: 'destructive' });
+      setTableOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
   const handleAddTable = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId || !formNumber.trim()) return;
@@ -138,6 +198,11 @@ export default function AdminTables() {
     } finally {
       setAttendingCallId(null);
     }
+  };
+
+  const openOrdersModal = (table: Table) => {
+    setOrdersModalTable(table);
+    loadTableOrders(table.id);
   };
 
   const copyTableLink = (tableNumber: number) => {
@@ -269,6 +334,14 @@ export default function AdminTables() {
                     <Button
                       variant="outline"
                       size="icon"
+                      onClick={() => openOrdersModal(table)}
+                      title="Ver pedidos da mesa"
+                    >
+                      <ClipboardList className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
                       onClick={() => copyTableLink(table.number)}
                       title="Copiar link do cardápio"
                     >
@@ -305,6 +378,76 @@ export default function AdminTables() {
           )}
         </div>
       </div>
+
+      {/* Modal Pedidos da Mesa */}
+      <Dialog open={!!ordersModalTable} onOpenChange={(open) => !open && setOrdersModalTable(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-blue-500" />
+              Pedidos — Mesa {ordersModalTable?.number}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto -mx-6 px-6">
+            {loadingOrders ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+              </div>
+            ) : tableOrders.length === 0 ? (
+              <p className="text-center text-slate-500 py-8">
+                Nenhum pedido feito por esta mesa ainda.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {tableOrders.map((order) => {
+                  const statusConfig: Record<string, { bg: string; text: string; icon: typeof Clock }> = {
+                    pending: { bg: 'bg-amber-50', text: 'text-amber-700', icon: Clock },
+                    preparing: { bg: 'bg-blue-50', text: 'text-blue-700', icon: Package },
+                    ready: { bg: 'bg-violet-50', text: 'text-violet-700', icon: CheckCircle2 },
+                    delivering: { bg: 'bg-orange-50', text: 'text-orange-700', icon: CheckCircle2 },
+                    completed: { bg: 'bg-emerald-50', text: 'text-emerald-700', icon: CheckCircle2 },
+                    cancelled: { bg: 'bg-slate-100', text: 'text-slate-600', icon: X },
+                  };
+                  const sc = statusConfig[order.status] || statusConfig.pending;
+                  const StatusIcon = sc.icon;
+                  return (
+                    <div
+                      key={order.id}
+                      className="admin-card p-4 space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">
+                          {format(new Date(order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </span>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${sc.bg} ${sc.text}`}>
+                          <StatusIcon className="h-3.5 w-3.5" />
+                          {statusLabels[order.status] || order.status}
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {(order.order_items || []).map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-sm">
+                            <span className="text-slate-700">
+                              {item.quantity}x {item.product_name}
+                            </span>
+                            <span className="font-medium text-slate-900">
+                              {formatCurrency(item.total_price, currency)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                        <span className="text-sm font-medium text-slate-600">Total</span>
+                        <span className="font-bold text-slate-900">{formatCurrency(order.total, currency)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
