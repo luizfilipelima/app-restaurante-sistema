@@ -98,7 +98,7 @@ type NavSection = NavGroup | NavCollapsible;
 
 // ─── Configuração da navegação ───────────────────────────────────────────────
 
-const buildNavSections = (base: string, restaurantId: string | null): NavSection[] => [
+const buildNavSections = (base: string, restaurantId: string | null, restaurantSlug?: string | null): NavSection[] => [
   {
     kind: 'group',
     label: 'Visão Geral',
@@ -114,10 +114,13 @@ const buildNavSections = (base: string, restaurantId: string | null): NavSection
       {
         kind: 'leaf',
         name: 'Cozinha (KDS)',
-        // URL do KDS sempre carrega com o restaurant_id correto para isolamento de tela
-        href: restaurantId
-          ? `${window.location.origin}/kitchen?restaurant_id=${restaurantId}`
-          : '/kitchen',
+        // Usa o slug como identificador na URL do KDS (legível e estável).
+        // Fallback para restaurant_id quando o slug ainda não estiver configurado.
+        href: restaurantSlug
+          ? `${window.location.origin}/kitchen?slug=${restaurantSlug}`
+          : restaurantId
+            ? `${window.location.origin}/kitchen?restaurant_id=${restaurantId}`
+            : '/kitchen',
         icon: ChefHat,
         external: true, // abre em nova aba
       },
@@ -359,7 +362,7 @@ export default function AdminLayout({
   const isSuperAdminView = !!managedRestaurantId;
 
   const base = basePath || '/admin';
-  const navSections = buildNavSections(base, restaurantId);
+  const navSections = buildNavSections(base, restaurantId, restaurant?.slug);
 
   // Gerenciar sessões simultâneas (máximo 3 por restaurante)
   useSessionManager(user?.id || null, restaurantId);

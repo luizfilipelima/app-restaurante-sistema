@@ -13,8 +13,41 @@ import { Clock, AlertTriangle, ChefHat, ArrowRight, LayoutDashboard, UtensilsCro
 export default function KitchenDisplay() {
   const { user } = useAuthStore();
   const [searchParams] = useSearchParams();
+
+  const slugFromUrl       = searchParams.get('slug');
   const restaurantIdFromUrl = searchParams.get('restaurant_id');
-  const effectiveRestaurantId = user?.restaurant_id || restaurantIdFromUrl || null;
+
+  // Quando o link vem via slug (/kitchen?slug=pizzaria-do-joao),
+  // resolve o UUID fazendo uma query direta na tabela restaurants.
+  // Quando não há slug, usa o restaurant_id da URL ou do perfil do usuário.
+  const [resolvedId, setResolvedId] = useState<string | null>(null);
+  const [resolving, setResolving]   = useState(!!slugFromUrl);
+
+  useEffect(() => {
+    if (!slugFromUrl) {
+      // Sem slug → usa o fallback direto
+      setResolvedId(user?.restaurant_id || restaurantIdFromUrl || null);
+      setResolving(false);
+      return;
+    }
+
+    supabase
+      .from('restaurants')
+      .select('id')
+      .eq('slug', slugFromUrl)
+      .single()
+      .then(({ data, error }) => {
+        if (!error && data?.id) {
+          setResolvedId(data.id);
+        } else {
+          // Slug não encontrado: tenta o fallback
+          setResolvedId(user?.restaurant_id || restaurantIdFromUrl || null);
+        }
+        setResolving(false);
+      });
+  }, [slugFromUrl, restaurantIdFromUrl, user?.restaurant_id]);
+
+  const effectiveRestaurantId = resolvedId;
 
   const [orders, setOrders] = useState<DatabaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,6 +158,15 @@ export default function KitchenDisplay() {
       }
     }
   };
+
+  // Aguarda a resolução do slug antes de renderizar qualquer conteúdo
+  if (resolving) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500" />
+      </div>
+    );
+  }
 
   if (!effectiveRestaurantId) {
     return (
