@@ -239,10 +239,12 @@ export interface Order {
   notes?: string;
   is_paid: boolean; // Se pagamento foi confirmado (para priorização na cozinha)
   courier_id?: string | null;
-  /** Origem do pedido: delivery, pickup, table, buffet */
+  /** Origem do pedido: delivery, pickup, table, buffet, comanda */
   order_source?: OrderSource;
   /** Mesa associada (quando order_source = 'table') */
   table_id?: string | null;
+  /** Comanda digital de origem (quando order_source = 'comanda') */
+  virtual_comanda_id?: string | null;
   created_at: string;
   updated_at: string;
 }

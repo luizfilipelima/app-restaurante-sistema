@@ -247,11 +247,21 @@ export default function AdminOrders() {
 
       if (error) throw error;
 
+      // Se é pedido de comanda, reinicializa a comanda (limpa itens e nome)
+      const order = orders.find(o => o.id === orderId);
+      if (order?.order_source === 'comanda' && order?.virtual_comanda_id) {
+        await supabase.rpc('reset_virtual_comanda', {
+          p_comanda_id: order.virtual_comanda_id,
+        });
+      }
+
       await refetchOrders();
       setOrderToRemove(null);
       toast({
         title: "Pedido removido",
-        description: "O pedido foi cancelado e removido da lista.",
+        description: order?.order_source === 'comanda'
+          ? "Pedido cancelado e comanda reinicializada."
+          : "O pedido foi cancelado e removido da lista.",
         variant: "default",
       });
     } catch (error) {
@@ -267,7 +277,13 @@ export default function AdminOrders() {
   };
 
   const getOrdersByStatus = (status: OrderStatus) => {
-    return orders.filter((order) => order.status === status);
+    const COMANDA_INTERMEDIATE = [OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.DELIVERING];
+    return orders.filter((order) => {
+      if (order.status !== status) return false;
+      // Pedidos de comanda só aparecem nas colunas Pendentes e Concluídos
+      if (order.order_source === 'comanda' && COMANDA_INTERMEDIATE.includes(status)) return false;
+      return true;
+    });
   };
 
   const paymentMethodLabels: Record<string, string> = {
@@ -396,17 +412,20 @@ export default function AdminOrders() {
                   <div className="flex flex-col gap-2.5">
                     {statusOrders.map((order) => {
                       const isTableOrder = order.order_source === 'table' || !!order.table_id;
+                      const isComandaOrder = order.order_source === 'comanda';
                       const isDelivering = status === OrderStatus.DELIVERING;
-                      const isDeliveryOrder = !isTableOrder && (order.delivery_type === 'delivery' || order.order_source === 'delivery');
+                      const isDeliveryOrder = !isTableOrder && !isComandaOrder && (order.delivery_type === 'delivery' || order.order_source === 'delivery');
                       const canNotifyWhatsApp = isDelivering && isDeliveryOrder;
 
-                      // Botão de avanço de status
-                      const tablePreparingOverride = isTableOrder && status === OrderStatus.PREPARING;
+                      // Botão de avanço de status:
+                      // - Comanda: sempre vai direto para Concluído
+                      // - Mesa em preparo: também vai direto para Concluído
                       const completedConfig = statusConfig[OrderStatus.COMPLETED];
-                      const nextStatus = tablePreparingOverride ? OrderStatus.COMPLETED : config.nextStatus;
-                      const nextLabel = tablePreparingOverride ? completedConfig.label : config.nextLabel;
-                      const NextIconComponent = tablePreparingOverride ? completedConfig.icon : config.nextIcon;
-                      const gradientClass = tablePreparingOverride ? completedConfig.gradient : config.gradient;
+                      const tablePreparingOverride = isTableOrder && status === OrderStatus.PREPARING;
+                      const nextStatus = (isComandaOrder || tablePreparingOverride) ? OrderStatus.COMPLETED : config.nextStatus;
+                      const nextLabel = (isComandaOrder || tablePreparingOverride) ? completedConfig.label : config.nextLabel;
+                      const NextIconComponent = (isComandaOrder || tablePreparingOverride) ? completedConfig.icon : config.nextIcon;
+                      const gradientClass = (isComandaOrder || tablePreparingOverride) ? completedConfig.gradient : config.gradient;
                       const hideForTable = isTableOrder && (status === OrderStatus.READY || status === OrderStatus.DELIVERING);
 
                       // WhatsApp "saiu para entrega"
