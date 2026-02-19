@@ -70,7 +70,7 @@ interface PublicMenuProps {
   callingWaiter?: boolean;
 }
 
-export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId: _tableId, tableNumber, onCallWaiter, callingWaiter }: PublicMenuProps = {}) {
+export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableNumber, onCallWaiter, callingWaiter }: PublicMenuProps = {}) {
   const { t } = useTranslation();
   const params = useParams();
   const subdomain = getSubdomain();
@@ -107,11 +107,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId: _table
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
 
   const handleCheckoutNavigation = () => {
-    if (isSubdomain) {
-      navigate('/checkout');
-    } else {
-      navigate(`/${restaurantSlug}/checkout`);
+    const params = new URLSearchParams();
+    if (tableId && tableNumber) {
+      params.set('tableId', tableId);
+      params.set('tableNumber', String(tableNumber));
     }
+    const query = params.toString();
+    const base = isSubdomain ? '/checkout' : `/${restaurantSlug}/checkout`;
+    navigate(query ? `${base}?${query}` : base);
   };
 
   const { getItemsCount, getSubtotal, setRestaurant: setCartRestaurant } = useCartStore();

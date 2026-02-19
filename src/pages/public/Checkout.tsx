@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCartStore } from '@/store/cartStore';
 import { supabase } from '@/lib/supabase';
 import { getSubdomain } from '@/lib/subdomain';
@@ -53,7 +53,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   
   // Delivery State
   const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
-  const { tableId, tableNumber, clearTable } = useTableOrderStore();
+  const [searchParams] = useSearchParams();
+  const tableIdFromUrl = searchParams.get('tableId');
+  const tableNumberFromUrl = searchParams.get('tableNumber');
+  const { tableId: tableIdStore, tableNumber: tableNumberStore, clearTable } = useTableOrderStore();
+  const tableId = tableIdFromUrl || tableIdStore;
+  const tableNumber = tableNumberFromUrl ? parseInt(tableNumberFromUrl, 10) : tableNumberStore;
   const isTableOrder = !!(tableId && tableNumber);
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
   const [address, setAddress] = useState('');
@@ -603,7 +608,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 <span className="text-slate-500">{t('checkout.subtotal')}</span>
                 <span className="font-semibold text-slate-900">{formatCurrency(subtotal, currency)}</span>
               </div>
-              {deliveryType === DeliveryType.DELIVERY && (
+              {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
                 <div className="flex justify-between items-center text-sm sm:text-base">
                   <span className="text-slate-500">{t('checkout.deliveryFee')}</span>
                   <span className="font-semibold text-red-600">{formatCurrency(deliveryFee, currency)}</span>
@@ -617,7 +622,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             
             <Button 
               size="lg" 
-              className="w-full bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white font-bold h-12 sm:h-14 rounded-xl sm:rounded-2xl shadow-lg flex items-center justify-center gap-2 text-sm sm:text-base sm:text-lg touch-manipulation active:scale-[0.98]"
+              className={`w-full font-bold h-12 sm:h-14 rounded-xl sm:rounded-2xl shadow-lg flex items-center justify-center gap-2 text-sm sm:text-base sm:text-lg touch-manipulation active:scale-[0.98] ${
+                isTableOrder
+                  ? 'bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white'
+                  : 'bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white'
+              }`}
               onClick={handleCheckout}
               disabled={loading}
             >
@@ -626,6 +635,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
                   {t('checkout.sending')}
                 </span>
+              ) : isTableOrder ? (
+                <>
+                  <span className="hidden xs:inline">Enviar para Cozinha</span>
+                  <span className="xs:hidden">Enviar</span>
+                  <Send className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                </>
               ) : (
                 <>
                   <span className="hidden xs:inline">{t('checkout.sendWhatsApp')}</span>

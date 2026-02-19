@@ -113,7 +113,12 @@ export default function KitchenDisplay() {
 
     if (effectiveRestaurantId) {
       try {
-        await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+        const now = new Date().toISOString();
+        const payload: Record<string, unknown> = { status: newStatus };
+        if (newStatus === 'preparing') payload.accepted_at = now;
+        if (newStatus === 'ready') payload.ready_at = now;
+
+        await supabase.from('orders').update(payload).eq('id', orderId);
       } catch (e) {
         console.error(e);
         loadOrders();

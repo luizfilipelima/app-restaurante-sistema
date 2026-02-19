@@ -197,9 +197,15 @@ export default function AdminOrders() {
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     setUpdatingOrderId(orderId);
     try {
+      const now = new Date().toISOString();
+      const payload: Record<string, unknown> = { status: newStatus };
+      if (newStatus === OrderStatus.PREPARING) payload.accepted_at = now;
+      if (newStatus === OrderStatus.READY) payload.ready_at = now;
+      if (newStatus === OrderStatus.COMPLETED) payload.delivered_at = now;
+
       const { error } = await supabase
         .from('orders')
-        .update({ status: newStatus })
+        .update(payload)
         .eq('id', orderId);
 
       if (error) throw error;
