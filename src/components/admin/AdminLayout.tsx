@@ -193,27 +193,8 @@ const buildNavSections = (base: string, restaurantId: string | null): NavSection
       },
     ],
   },
-  {
-    kind: 'group',
-    label: 'Configurações',
-    items: [
-      {
-        kind: 'leaf',
-        name: 'Dados do Restaurante',
-        href: `${base}/settings`,
-        icon: Settings,
-        // Apenas admin pode editar configurações sensíveis do restaurante (matriz: só ✅ para restaurant_admin)
-        roleRequired: ['restaurant_admin', 'super_admin'],
-      },
-      {
-        kind: 'leaf',
-        name: 'Meu Plano',
-        href: `${base}/upgrade`,
-        icon: CreditCard,
-        // Todos os cargos podem ver o plano do restaurante
-      },
-    ],
-  },
+  // "Dados do Restaurante" e "Meu Plano" foram removidos da sidebar.
+  // O acesso é feito exclusivamente pelos ícones na top bar direita (Settings + CreditCard).
 ];
 
 /** Retorna todos os hrefs de uma seção (para checar se algum está ativo) */
@@ -465,11 +446,11 @@ export default function AdminLayout({
                   <img
                     src={restaurant.logo}
                     alt={restaurant?.name ?? 'Restaurante'}
-                    className="h-11 w-11 rounded-xl object-cover flex-shrink-0 border border-slate-200 shadow-sm"
+                    className="h-14 w-14 rounded-2xl object-cover flex-shrink-0 border border-slate-200 shadow-sm"
                   />
                 ) : (
-                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center flex-shrink-0 shadow-sm border border-orange-200">
-                    <span className="text-base font-bold text-white select-none">
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center flex-shrink-0 shadow-sm border border-orange-200">
+                    <span className="text-xl font-bold text-white select-none">
                       {restaurant?.name?.charAt(0)?.toUpperCase() ?? '?'}
                     </span>
                   </div>
