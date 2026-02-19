@@ -134,18 +134,27 @@ function App() {
               </ProtectedRoute>
             }
           />
-          {/* Gestão de assinatura e features — rota standalone (sem AdminLayout) */}
+          {/*
+           * Gestão de assinatura e features — rota standalone (sem AdminLayout).
+           * O parâmetro :identifier aceita tanto o slug amigável do restaurante
+           * (ex: "pizzaria-do-joao") quanto o UUID bruto como fallback.
+           * A resolução slug → UUID acontece dentro de RestaurantDetails.
+           */}
           <Route
-            path="/super-admin/restaurants/:restaurantId/subscription"
+            path="/super-admin/restaurants/:identifier/subscription"
             element={
               <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
                 <RestaurantDetails />
               </ProtectedRoute>
             }
           />
-          {/* Painel do restaurante dentro do AdminLayout (todas as sub-rotas) */}
+          {/*
+           * Painel do restaurante dentro do AdminLayout (todas as sub-rotas).
+           * Mesmo padrão: :identifier pode ser slug ou UUID.
+           * A resolução acontece dentro de AdminLayoutWrapper.
+           */}
           <Route
-            path="/super-admin/restaurants/:restaurantId"
+            path="/super-admin/restaurants/:identifier"
             element={
               <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
                 <AdminLayoutWrapper />

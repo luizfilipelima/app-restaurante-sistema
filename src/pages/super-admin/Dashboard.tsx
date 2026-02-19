@@ -477,17 +477,28 @@ export default function SuperAdminDashboard() {
                       <Button
                         size="sm"
                         className="flex-1 min-w-[100px]"
-                        onClick={() => navigate(`/super-admin/restaurants/${restaurant.id}`)}
+                        onClick={() => {
+                          /**
+                           * Usa o slug amigável como identifier na URL quando disponível.
+                           * Fallback para o UUID bruto caso o restaurante ainda não tenha slug.
+                           * A resolução inversa (identifier → UUID real) acontece em AdminLayoutWrapper.
+                           */
+                          const identifier = restaurant.slug || restaurant.id;
+                          navigate(`/super-admin/restaurants/${identifier}`);
+                        }}
                       >
                         <Layout className="h-3.5 w-3.5 mr-1.5" />
                         Admin
                       </Button>
-                      {/* Botão de gestão de assinatura */}
+                      {/* Botão de gestão de assinatura — mesma lógica de fallback slug → id */}
                       <Button
                         size="sm"
                         variant="outline"
                         className="flex-1 min-w-[100px] border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-                        onClick={() => navigate(`/super-admin/restaurants/${restaurant.id}/subscription`)}
+                        onClick={() => {
+                          const identifier = restaurant.slug || restaurant.id;
+                          navigate(`/super-admin/restaurants/${identifier}/subscription`);
+                        }}
                       >
                         <CreditCard className="h-3.5 w-3.5 mr-1.5" />
                         Assinatura
