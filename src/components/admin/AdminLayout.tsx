@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { getCardapioPublicUrl } from '@/lib/utils';
+import RestaurantUsersPanel from '@/components/admin/RestaurantUsersPanel';
 import {
   LayoutDashboard,
   UtensilsCrossed,
@@ -35,6 +36,7 @@ import {
   CreditCard,
   ScanBarcode,
   QrCode,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -386,6 +388,8 @@ export default function AdminLayout({
   const { data: restaurant } = useRestaurant(restaurantId);
   const isSuperAdminView = !!managedRestaurantId;
 
+  const [usersPanelOpen, setUsersPanelOpen] = useState(false);
+
   const base = basePath || '/admin';
   const navSections = buildNavSections(base, restaurantId, restaurant?.slug);
 
@@ -602,6 +606,17 @@ export default function AdminLayout({
               >
                 <CreditCard className="h-4 w-4" />
               </Link>
+
+              {/* Gestão de Usuários — visível somente para super-admin */}
+              {isSuperAdminView && (
+                <button
+                  onClick={() => setUsersPanelOpen(true)}
+                  title="Gerenciar usuários do restaurante"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-200 text-indigo-500 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700 hover:border-indigo-300 transition-colors"
+                >
+                  <Users className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -641,6 +656,16 @@ export default function AdminLayout({
                   <BookOpen className="h-3.5 w-3.5" />
                   <span className="hidden xs:inline">Cardápio</span>
                 </a>
+              )}
+              {/* Gestão de Usuários — mobile, somente super-admin */}
+              {isSuperAdminView && (
+                <button
+                  onClick={() => setUsersPanelOpen(true)}
+                  title="Gerenciar usuários"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-indigo-200 text-indigo-500 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                >
+                  <Users className="h-3.5 w-3.5" />
+                </button>
               )}
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4" />
@@ -694,7 +719,16 @@ export default function AdminLayout({
           </main>
         </div>
 
-      </div>
+      {/* ── Painel de Gestão de Usuários (super-admin only) ─────────────── */}
+      {isSuperAdminView && restaurantId && (
+        <RestaurantUsersPanel
+          open={usersPanelOpen}
+          onClose={() => setUsersPanelOpen(false)}
+          restaurantId={restaurantId}
+          restaurantName={restaurant?.name}
+        />
+      )}
+
     </AdminRestaurantContext.Provider>
   );
 }
