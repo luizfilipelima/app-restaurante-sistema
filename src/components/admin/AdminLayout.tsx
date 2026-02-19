@@ -445,16 +445,16 @@ export default function AdminLayout({
                * O aspect-square garante proporção quadrada independente do tamanho.
                * Quando não há logo, exibe avatar com a inicial do restaurante.
                */}
-              <Link to={base} className="block w-full">
+              <Link to={base} className="flex justify-center">
                 {restaurant?.logo ? (
                   <img
                     src={restaurant.logo}
                     alt={restaurant?.name ?? 'Restaurante'}
-                    className="w-full aspect-square rounded-2xl object-cover border border-slate-200 shadow-sm"
+                    className="w-4/5 aspect-square rounded-2xl object-cover border border-slate-200 shadow-sm"
                   />
                 ) : (
-                  <div className="w-full aspect-square rounded-2xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center shadow-sm border border-orange-200">
-                    <span className="text-5xl font-bold text-white select-none">
+                  <div className="w-4/5 aspect-square rounded-2xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center shadow-sm border border-orange-200">
+                    <span className="text-4xl font-bold text-white select-none">
                       {restaurant?.name?.charAt(0)?.toUpperCase() ?? '?'}
                     </span>
                   </div>
