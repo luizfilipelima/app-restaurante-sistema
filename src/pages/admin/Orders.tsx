@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt } from 'lucide-react';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { ROLES_CANCEL_ORDER } from '@/hooks/useUserRole';
 import { useCouriers, useOrders, usePrintSettings } from '@/hooks/queries';
@@ -432,7 +432,11 @@ export default function AdminOrders() {
                                 <span className="text-xs font-mono font-bold text-foreground">
                                   #{order.id.slice(0, 8).toUpperCase()}
                                 </span>
-                                {isTableOrder ? (
+                                {order.order_source === 'comanda' ? (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">
+                                    <Receipt className="h-2.5 w-2.5" /> Comanda
+                                  </span>
+                                ) : isTableOrder ? (
                                   <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
                                     <UtensilsCrossed className="h-2.5 w-2.5" /> Mesa
                                   </span>

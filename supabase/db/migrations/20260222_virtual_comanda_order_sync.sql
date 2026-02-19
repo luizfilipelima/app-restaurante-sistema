@@ -9,6 +9,12 @@
 -- Nota: orders não possui table_number (apenas table_id). Incluímos order_source 'comanda'.
 -- =============================================================================
 
+-- Função usada pelo sync (pode ter sido removida por migration_prices-to-integer).
+CREATE OR REPLACE FUNCTION get_restaurant_currency(rest_id UUID)
+RETURNS TEXT AS $$
+  SELECT COALESCE(currency, 'BRL') FROM restaurants WHERE id = rest_id;
+$$ LANGUAGE SQL STABLE;
+
 -- Permite order_source = 'comanda' (tabela orders usa CHECK)
 ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_order_source_check;
 ALTER TABLE orders ADD CONSTRAINT orders_order_source_check

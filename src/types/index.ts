@@ -29,7 +29,7 @@ export enum DeliveryType {
 }
 
 /** Origem do pedido para BI e filtros */
-export type OrderSource = 'delivery' | 'pickup' | 'table' | 'buffet';
+export type OrderSource = 'delivery' | 'pickup' | 'table' | 'buffet' | 'comanda';
 
 export enum ProductCategory {
   PIZZA = 'pizza',
