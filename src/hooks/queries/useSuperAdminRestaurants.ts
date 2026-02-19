@@ -11,6 +11,7 @@ import type { Restaurant } from '@/types';
 export interface SuperAdminRestaurantsData {
   restaurants: Restaurant[];
   ordersByRestaurant: Record<string, number>;
+  revenueByRestaurant: Record<string, number>;
   metrics: {
     totalRestaurants: number;
     activeRestaurants: number;
@@ -40,11 +41,13 @@ export async function fetchSuperAdminRestaurants(): Promise<SuperAdminRestaurant
   const orders = ordersRes.data || [];
 
   const countByRestaurant: Record<string, number> = {};
+  const revenueByRestaurant: Record<string, number> = {};
   let totalRevenue = 0;
   let totalOrders = 0;
 
   for (const o of orders as { restaurant_id: string; total?: number }[]) {
-    countByRestaurant[o.restaurant_id] = (countByRestaurant[o.restaurant_id] || 0) + 1;
+    countByRestaurant[o.restaurant_id]  = (countByRestaurant[o.restaurant_id]  || 0) + 1;
+    revenueByRestaurant[o.restaurant_id] = (revenueByRestaurant[o.restaurant_id] || 0) + (o.total ?? 0);
     totalOrders += 1;
     totalRevenue += o.total ?? 0;
   }
@@ -52,6 +55,7 @@ export async function fetchSuperAdminRestaurants(): Promise<SuperAdminRestaurant
   return {
     restaurants: list,
     ordersByRestaurant: countByRestaurant,
+    revenueByRestaurant,
     metrics: {
       totalRestaurants: list.length,
       activeRestaurants: list.filter((r) => r.is_active).length,
