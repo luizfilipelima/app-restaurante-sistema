@@ -8,3 +8,5 @@ export { useOrders } from './useOrders';
 export type { UseOrdersParams } from './useOrders';
 export { usePrintSettings } from './usePrintSettings';
 export type { PrintSettings } from './usePrintSettings';
+export { useDashboardAnalytics } from './useDashboardAnalytics';
+export type { UseDashboardAnalyticsParams } from './useDashboardAnalytics';

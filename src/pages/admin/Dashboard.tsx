@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { useDashboardAnalytics } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,7 +32,7 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Select,
@@ -55,32 +57,78 @@ const AREA_OPTIONS = [
 ] as const;
 type AreaValue = 'all' | 'delivery' | 'table' | 'pickup' | 'buffet';
 
+function getDateRange(period: PeriodValue) {
+  const end = new Date();
+  let start: Date;
+  if (period === '30') start = subDays(end, 30);
+  else if (period === '365') start = subDays(end, 365);
+  else start = new Date(2020, 0, 1);
+  return { start, end };
+}
+
 export default function AdminDashboard() {
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<PeriodValue>('30');
   const [areaFilter, setAreaFilter] = useState<AreaValue>('all');
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetPassword, setResetPassword] = useState('');
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState('');
-  const [metrics, setMetrics] = useState({
-    totalRevenue: 0,
-    totalOrders: 0,
-    averageTicket: 0,
-    pendingOrders: 0,
+
+  const { start, end } = useMemo(() => getDateRange(period), [period]);
+  const prevRange = useMemo(() => {
+    if (period === '30') return { start: subDays(start, 30), end: start };
+    if (period === '365') return { start: subDays(start, 365), end: start };
+    return null;
+  }, [period, start]);
+
+  const { data: analytics, isLoading: loading } = useDashboardAnalytics({
+    tenantId: restaurantId,
+    startDate: start,
+    endDate: end,
+    areaFilter: areaFilter === 'buffet' ? 'all' : areaFilter,
   });
-  const [prevMetrics, setPrevMetrics] = useState({ totalRevenue: 0, totalOrders: 0 });
-  const [dailyRevenue, setDailyRevenue] = useState<any[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
-  const [topZone, setTopZone] = useState<{ name: string; count: number } | null>(null);
-  const [peakHours, setPeakHours] = useState<{ hour: number; count: number }[]>([]);
-  const [topProducts, setTopProducts] = useState<{ name: string; quantity: number }[]>([]);
-  const [bottomProducts, setBottomProducts] = useState<{ name: string; quantity: number }[]>([]);
-  
+
+  const { data: prevAnalytics } = useDashboardAnalytics({
+    tenantId: restaurantId,
+    startDate: prevRange?.start ?? start,
+    endDate: prevRange?.end ?? start,
+    areaFilter: areaFilter === 'buffet' ? 'all' : areaFilter,
+    enabled: !!prevRange,
+  });
+
+  const metrics = useMemo(() => ({
+    totalRevenue: analytics?.kpis?.total_faturado ?? 0,
+    totalOrders: analytics?.kpis?.total_pedidos ?? 0,
+    averageTicket: analytics?.kpis?.ticket_medio ?? 0,
+    pendingOrders: analytics?.kpis?.pedidos_pendentes ?? 0,
+  }), [analytics]);
+
+  const prevMetrics = useMemo(() => ({
+    totalRevenue: prevAnalytics?.kpis?.total_faturado ?? 0,
+    totalOrders: prevAnalytics?.kpis?.total_pedidos ?? 0,
+  }), [prevAnalytics]);
+
+  const dailyRevenue = useMemo(() => {
+    const trend = analytics?.sales_trend ?? [];
+    const last7 = trend.slice(-7);
+    return last7.map((d) => ({
+      date: format(new Date(d.date), 'dd/MM', { locale: ptBR }),
+      revenue: d.revenue,
+      orders: d.orders,
+    }));
+  }, [analytics]);
+
+  const paymentMethods = analytics?.payment_methods ?? [];
+  const topZone = analytics?.top_zone ?? null;
+  const peakHours = analytics?.peak_hours ?? [];
+  const topProducts = analytics?.top_products ?? [];
+  const bottomProducts = analytics?.bottom_products ?? [];
+
   // Métricas de Buffet
   const [buffetMetrics, setBuffetMetrics] = useState({
     totalComandas: 0,
@@ -96,173 +144,15 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (restaurantId) {
-      loadMetrics();
+      loadBuffetMetrics();
     }
   }, [restaurantId, period, areaFilter]);
 
-  const loadMetrics = async () => {
+  const loadBuffetMetrics = async () => {
     if (!restaurantId) return;
-
-    try {
-      setLoading(true);
-
-      let startDate: Date | null = null;
-      if (period === '30') startDate = subDays(new Date(), 30);
-      else if (period === '365') startDate = subDays(new Date(), 365);
-
-      let query = supabase
-        .from('orders')
-        .select('*')
-        .eq('restaurant_id', restaurantId);
-      if (startDate) query = query.gte('created_at', startDate.toISOString());
-      const { data: orders, error } = await query;
-
-      if (error) throw error;
-      let orderList = orders || [];
-
-      // Filtrar por área (order_source / delivery_type)
-      if (areaFilter === 'delivery') {
-        orderList = orderList.filter((o: any) =>
-          o.order_source === 'delivery' || (!o.order_source && o.delivery_type === 'delivery')
-        );
-      } else if (areaFilter === 'table') {
-        orderList = orderList.filter((o: any) => o.order_source === 'table');
-      } else if (areaFilter === 'pickup') {
-        orderList = orderList.filter((o: any) =>
-          o.order_source === 'pickup' || (!o.order_source && o.delivery_type === 'pickup')
-        );
-      } else if (areaFilter === 'buffet') {
-        // Buffet usa comandas; cards de pedidos mostram 0
-        orderList = [];
-      }
-
-      const orderIds = orderList.map((o: { id: string }) => o.id);
-      const { data: zonesData } = await supabase
-        .from('delivery_zones')
-        .select('id, location_name')
-        .eq('restaurant_id', restaurantId);
-      const zonesMap: Record<string, string> = {};
-      (zonesData || []).forEach((z: { id: string; location_name: string }) => {
-        zonesMap[z.id] = z.location_name || 'Sem nome';
-      });
-
-      let orderItems: { order_id: string; product_name: string; quantity: number }[] = [];
-      if (orderIds.length > 0) {
-        const { data: items } = await supabase
-          .from('order_items')
-          .select('order_id, product_name, quantity')
-          .in('order_id', orderIds);
-        orderItems = items || [];
-      }
-
-      const totalRevenue = orderList.reduce((sum: number, o: { total?: number }) => sum + (o.total || 0), 0);
-      const totalOrders = orderList.length;
-      const averageTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-      const pendingOrders = orderList.filter((o: { status: string }) => o.status === 'pending').length;
-
-      setMetrics({ totalRevenue, totalOrders, averageTicket, pendingOrders });
-
-      // Período anterior para comparação "vs last period"
-      let prevRevenue = 0;
-      let prevOrders = 0;
-      if (startDate && period !== 'max' && areaFilter !== 'buffet') {
-        const prevStart = subDays(startDate, period === '30' ? 30 : 365);
-        let prevQuery = supabase
-          .from('orders')
-          .select('id, total, order_source, delivery_type, delivery_zone_id')
-          .eq('restaurant_id', restaurantId)
-          .gte('created_at', prevStart.toISOString())
-          .lt('created_at', startDate.toISOString());
-        const { data: prevOrdersData } = await prevQuery;
-        let prevList = prevOrdersData || [];
-        if (areaFilter === 'delivery') prevList = prevList.filter((o: any) => o.order_source === 'delivery' || (!o.order_source && o.delivery_type === 'delivery'));
-        else if (areaFilter === 'table') prevList = prevList.filter((o: any) => o.order_source === 'table');
-        else if (areaFilter === 'pickup') prevList = prevList.filter((o: any) => o.order_source === 'pickup' || (!o.order_source && o.delivery_type === 'pickup'));
-        prevOrders = prevList.length;
-        prevRevenue = prevList.reduce((s: number, o: { total?: number }) => s + (o.total || 0), 0);
-      }
-      setPrevMetrics({ totalRevenue: prevRevenue, totalOrders: prevOrders });
-
-      const last7Days = Array.from({ length: 7 }, (_, i) => {
-        const date = subDays(new Date(), 6 - i);
-        return {
-          date: format(date, 'dd/MM', { locale: ptBR }),
-          fullDate: date,
-          revenue: 0,
-          orders: 0,
-        };
-      });
-      orderList.forEach((order: { created_at: string; total: number }) => {
-        const orderDate = new Date(order.created_at);
-        const dayData = last7Days.find(
-          (d) =>
-            orderDate >= startOfDay(d.fullDate) &&
-            orderDate <= endOfDay(d.fullDate)
-        );
-        if (dayData) {
-          dayData.revenue += order.total;
-          dayData.orders += 1;
-        }
-      });
-      setDailyRevenue(last7Days.map(({ fullDate, ...rest }) => rest));
-
-      const paymentData = orderList.reduce((acc: Record<string, { name: string; value: number }>, order: { payment_method: string; total: number }) => {
-        const method = order.payment_method;
-        if (!acc[method]) acc[method] = { name: method, value: 0 };
-        acc[method].value += order.total;
-        return acc;
-      }, {});
-      setPaymentMethods(Object.values(paymentData));
-
-      const zoneCounts: Record<string, number> = {};
-      orderList.forEach((o: { delivery_zone_id?: string }) => {
-        const zid = o.delivery_zone_id || 'sem_zona';
-        zoneCounts[zid] = (zoneCounts[zid] || 0) + 1;
-      });
-      const topZoneEntry = Object.entries(zoneCounts)
-        .filter(([k]) => k !== 'sem_zona')
-        .sort((a, b) => b[1] - a[1])[0];
-      setTopZone(
-        topZoneEntry
-          ? { name: zonesMap[topZoneEntry[0]] || topZoneEntry[0], count: topZoneEntry[1] }
-          : null
-      );
-
-      const hourCounts: Record<number, number> = {};
-      for (let h = 0; h < 24; h++) hourCounts[h] = 0;
-      orderList.forEach((o: { created_at: string }) => {
-        const h = new Date(o.created_at).getHours();
-        hourCounts[h]++;
-      });
-      setPeakHours(
-        Object.entries(hourCounts)
-          .map(([hour, count]) => ({ hour: Number(hour), count }))
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 5)
-      );
-
-      const productCounts: Record<string, number> = {};
-      orderItems.forEach((item: { product_name: string; quantity: number }) => {
-        const name = item.product_name || 'Sem nome';
-        productCounts[name] = (productCounts[name] || 0) + item.quantity;
-      });
-      const sorted = Object.entries(productCounts)
-        .map(([name, qty]) => ({ name, quantity: qty }))
-        .sort((a, b) => b.quantity - a.quantity);
-      setTopProducts(sorted.slice(0, 5));
-      setBottomProducts(sorted.slice(-5).reverse());
-
-      // Carregar métricas de Buffet (sempre, para mostrar seção quando aplicável)
-      await loadBuffetMetrics(startDate);
-    } catch (error) {
-      console.error('Erro ao carregar métricas:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadBuffetMetrics = async (startDate: Date | null) => {
-    if (!restaurantId) return;
+    let startDate: Date | null = null;
+    if (period === '30') startDate = subDays(new Date(), 30);
+    else if (period === '365') startDate = subDays(new Date(), 365);
 
     try {
       // Carregar comandas fechadas no período
@@ -401,7 +291,7 @@ export default function AdminDashboard() {
       });
       setShowResetDialog(false);
       setResetPassword('');
-      loadMetrics();
+      queryClient.invalidateQueries({ queryKey: ['dashboard-analytics'] });
     } catch (e) {
       console.error(e);
       toast({
@@ -591,6 +481,48 @@ export default function AdminDashboard() {
                 </BarChart>
               </ResponsiveContainer>
               </div>
+            </div>
+          </div>
+
+          <div className="admin-card p-6 min-w-0 overflow-hidden">
+            <div className="pb-4">
+              <h3 className="text-lg font-semibold text-slate-900">
+                Clientes Novos vs Recorrentes
+              </h3>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Quantidade de clientes no período
+              </p>
+            </div>
+            <div className="min-w-0">
+              {(analytics?.retention?.clientes_novos ?? 0) + (analytics?.retention?.clientes_recorrentes ?? 0) > 0 ? (
+                <div className="w-full min-h-[300px] min-w-0">
+                  <ResponsiveContainer width="100%" height={300} minWidth={0}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Novos', value: analytics?.retention?.clientes_novos ?? 0 },
+                          { name: 'Recorrentes', value: analytics?.retention?.clientes_recorrentes ?? 0 },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, value }) => `${name}: ${value}`}
+                        outerRadius={90}
+                        dataKey="value"
+                      >
+                        <Cell fill="#10b981" />
+                        <Cell fill="#3b82f6" />
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-slate-400">
+                  <p>Sem dados de retenção no período</p>
+                </div>
+              )}
             </div>
           </div>
 
