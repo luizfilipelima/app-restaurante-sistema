@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useRestaurantStore } from '@/store/restaurantStore';
+import { useTableOrderStore } from '@/store/tableOrderStore';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours } from '@/lib/utils';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
@@ -52,6 +53,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   
   // Delivery State
   const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
+  const { tableId, tableNumber, clearTable } = useTableOrderStore();
+  const isTableOrder = !!(tableId && tableNumber);
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
   const [address, setAddress] = useState('');
   
@@ -62,7 +65,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
 
   const handleBackToMenu = () => {
-    if (isSubdomain) {
+    if (isTableOrder && isSubdomain) {
+      navigate(`/cardapio/${tableNumber}`);
+    } else if (isTableOrder && restaurantSlug) {
+      navigate(`/${restaurantSlug}/cardapio/${tableNumber}`);
+    } else if (isSubdomain) {
       navigate('/');
     } else {
       navigate(`/${restaurantSlug}`);
@@ -116,12 +123,19 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const total = subtotal + deliveryFee;
 
   const handleCheckout = async () => {
-    if (!customerName || !customerPhone) {
+    const nameToUse = isTableOrder ? `Mesa ${tableNumber}` : customerName;
+    const phoneToUse = isTableOrder
+      ? ((currentRestaurant?.phone || '').replace(/\D/g, '').length >= 9
+          ? (currentRestaurant?.phone || '0')
+          : '0000000000')
+      : customerPhone;
+
+    if (!isTableOrder && (!customerName || !customerPhone)) {
       toast({ title: t('checkout.errorFillNamePhone'), variant: 'destructive' });
       return;
     }
 
-    if (deliveryType === DeliveryType.DELIVERY && !selectedZoneId) {
+    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && !selectedZoneId) {
       toast({ title: t('checkout.errorSelectZone'), variant: 'destructive' });
       return;
     }
@@ -159,23 +173,31 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
     setLoading(true);
 
+    const finalDeliveryType = isTableOrder ? DeliveryType.PICKUP : deliveryType;
+    const finalDeliveryFee = isTableOrder ? 0 : deliveryFee;
+    const finalTotal = subtotal + finalDeliveryFee;
+
     try {
-      const orderData = {
+      const orderData: Record<string, unknown> = {
         restaurant_id: restaurantId,
-        customer_name: customerName,
-        customer_phone: normalizePhoneWithCountryCode(customerPhone, phoneCountry),
-        delivery_type: deliveryType,
-        delivery_zone_id: deliveryType === DeliveryType.DELIVERY ? selectedZoneId : null,
-        delivery_address: deliveryType === DeliveryType.DELIVERY ? address : null,
-        delivery_fee: deliveryFee,
+        customer_name: nameToUse,
+        customer_phone: normalizePhoneWithCountryCode(phoneToUse, phoneCountry),
+        delivery_type: finalDeliveryType,
+        delivery_zone_id: finalDeliveryType === DeliveryType.DELIVERY ? selectedZoneId : null,
+        delivery_address: finalDeliveryType === DeliveryType.DELIVERY ? address : null,
+        delivery_fee: finalDeliveryFee,
         subtotal,
-        total,
+        total: finalTotal,
         payment_method: paymentMethod,
         payment_change_for: changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null,
         status: 'pending',
         notes: notes || null,
-        is_paid: true, // Todos os pedidos são considerados pagos por padrão
+        is_paid: true,
       };
+      if (isTableOrder && tableId) {
+        orderData.order_source = 'table';
+        orderData.table_id = tableId;
+      }
 
       const { data: order, error } = await supabase
         .from('orders')
@@ -211,7 +233,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
       if (itemsError) throw itemsError;
 
-      // WhatsApp: mensagem organizada para o estabelecimento
+      if (isTableOrder) {
+        clearTable();
+      }
+
+      // WhatsApp: apenas para pedidos não-mesa (delivery/pickup)
+      if (!isTableOrder) {
       const itemsText = items
         .map(
           (i) =>
@@ -308,6 +335,16 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           }, 1000);
         }
       }
+      } else {
+        // Pedido de mesa: não abre WhatsApp
+        clearCart();
+        toast({
+          title: '✅ Pedido enviado!',
+          description: 'Seu pedido foi enviado para a cozinha. Mesa ' + tableNumber,
+          className: 'bg-green-50 border-green-200',
+        });
+        setTimeout(() => handleBackToMenu(), 1500);
+      }
     } catch (error: unknown) {
       console.error('Erro ao finalizar:', error);
       const message = error && typeof error === 'object' && 'message' in error
@@ -399,7 +436,16 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </CardContent>
         </Card>
 
-        {/* Tipo de Entrega - Mobile First */}
+        {/* Pedido de mesa: badge */}
+        {isTableOrder && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
+            <Store className="h-5 w-5 text-amber-600" />
+            <span className="font-semibold">Pedido da Mesa {tableNumber}</span>
+          </div>
+        )}
+
+        {/* Tipo de Entrega - oculto em pedidos de mesa */}
+        {!isTableOrder && (
         <div className="grid grid-cols-2 gap-2 sm:gap-3 p-1 bg-slate-200/50 rounded-xl">
           <button
             onClick={() => setDeliveryType(DeliveryType.DELIVERY)}
@@ -422,8 +468,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             <Store className="h-4 w-4 sm:h-5 sm:w-5" /> <span className="hidden xs:inline">{t('checkout.pickup')}</span><span className="xs:hidden">{t('checkout.pickupShort')}</span>
           </button>
         </div>
+        )}
 
-        {/* Formulário de Entrega - Mobile First */}
+        {/* Formulário de Entrega - oculto em pedidos de mesa */}
+        {!isTableOrder && (
         <Card className="border-0 shadow-sm bg-white rounded-xl sm:rounded-2xl">
           <CardContent className="pt-4 sm:pt-6 space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -492,6 +540,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Pagamento - Mobile First */}
         <Card className="border-0 shadow-sm bg-white rounded-xl sm:rounded-2xl">

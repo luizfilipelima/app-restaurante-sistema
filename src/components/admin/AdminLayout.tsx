@@ -22,6 +22,7 @@ import {
   Bike,
   Scale,
   Package,
+  LayoutGrid,
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -39,6 +40,7 @@ const getNavItems = (basePath: string) => {
     { name: 'Pedidos', href: `${base}/orders`, icon: ClipboardList },
     { name: 'Cardápio', href: `${base}/menu`, icon: UtensilsCrossed },
     { name: 'Buffet', href: `${base}/buffet`, icon: Scale },
+    { name: 'Mesas', href: `${base}/tables`, icon: LayoutGrid },
     { name: 'Produtos', href: `${base}/products`, icon: Package },
     { name: 'Zonas de Entrega', href: `${base}/delivery-zones`, icon: MapPin },
     { name: 'Entregadores', href: `${base}/couriers`, icon: Bike },

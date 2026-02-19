@@ -21,10 +21,12 @@ import AdminDeliveryZones from './pages/admin/DeliveryZones';
 import AdminCouriers from './pages/admin/Couriers';
 import AdminBuffet from './pages/admin/Buffet';
 import AdminProductsInventory from './pages/admin/ProductsInventory';
+import AdminTables from './pages/admin/Tables';
 import KitchenDisplay from './pages/kitchen/KitchenDisplay';
 import PublicMenu from './pages/public/Menu';
 import PublicCheckout from './pages/public/Checkout';
 import MenuViewOnly from './pages/public/MenuViewOnly';
+import MenuTable from './pages/public/MenuTable';
 
 const adminRoutes = (
   <>
@@ -33,6 +35,7 @@ const adminRoutes = (
     <Route path="menu" element={<AdminMenu />} />
     <Route path="buffet" element={<AdminBuffet />} />
     <Route path="products" element={<AdminProductsInventory />} />
+    <Route path="tables" element={<AdminTables />} />
     <Route path="delivery-zones" element={<AdminDeliveryZones />} />
     <Route path="couriers" element={<AdminCouriers />} />
     <Route path="settings" element={<AdminSettings />} />
@@ -120,6 +123,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/:restaurantSlug" element={<PublicMenu />} />
         <Route path="/:restaurantSlug/menu" element={<MenuViewOnly />} />
+        <Route path="/:restaurantSlug/cardapio/:tableNumber" element={<MenuTable />} />
         <Route path="/:restaurantSlug/checkout" element={<PublicCheckout />} />
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route

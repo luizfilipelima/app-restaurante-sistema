@@ -26,6 +26,9 @@ export enum DeliveryType {
   DELIVERY = 'delivery',
 }
 
+/** Origem do pedido para BI e filtros */
+export type OrderSource = 'delivery' | 'pickup' | 'table' | 'buffet';
+
 export enum ProductCategory {
   PIZZA = 'pizza',
   BURGER = 'burger',
@@ -234,8 +237,33 @@ export interface Order {
   notes?: string;
   is_paid: boolean; // Se pagamento foi confirmado (para priorização na cozinha)
   courier_id?: string | null;
+  /** Origem do pedido: delivery, pickup, table, buffet */
+  order_source?: OrderSource;
+  /** Mesa associada (quando order_source = 'table') */
+  table_id?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Table {
+  id: string;
+  restaurant_id: string;
+  number: number;
+  name?: string | null;
+  is_active: boolean;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WaiterCall {
+  id: string;
+  restaurant_id: string;
+  table_id?: string | null;
+  table_number: number;
+  status: 'pending' | 'attended';
+  created_at: string;
+  attended_at?: string | null;
 }
 
 export interface OrderItem {

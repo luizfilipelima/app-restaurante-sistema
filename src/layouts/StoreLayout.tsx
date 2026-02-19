@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import PublicMenu from '@/pages/public/Menu';
 import PublicCheckout from '@/pages/public/Checkout';
 import MenuViewOnly from '@/pages/public/MenuViewOnly';
+import MenuTable from '@/pages/public/MenuTable';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
 import { supabase } from '@/lib/supabase';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
@@ -61,6 +62,7 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
       <Routes>
         <Route path="/" element={<PublicMenu tenantSlug={tenantSlug} />} />
         <Route path="/menu" element={<MenuViewOnly tenantSlug={tenantSlug} />} />
+        <Route path="/cardapio/:tableNumber" element={<MenuTable tenantSlug={tenantSlug} />} />
         <Route path="/checkout" element={<PublicCheckout tenantSlug={tenantSlug} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

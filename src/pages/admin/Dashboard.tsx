@@ -47,6 +47,15 @@ const PERIOD_OPTIONS = [
 ] as const;
 type PeriodValue = '30' | '365' | 'max';
 
+const AREA_OPTIONS = [
+  { value: 'all', label: 'Todos' },
+  { value: 'delivery', label: 'Delivery' },
+  { value: 'table', label: 'Mesas' },
+  { value: 'pickup', label: 'Retirada' },
+  { value: 'buffet', label: 'Buffet' },
+] as const;
+type AreaValue = 'all' | 'delivery' | 'table' | 'pickup' | 'buffet';
+
 export default function AdminDashboard() {
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
@@ -54,6 +63,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<PeriodValue>('30');
+  const [areaFilter, setAreaFilter] = useState<AreaValue>('all');
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetPassword, setResetPassword] = useState('');
   const [resetting, setResetting] = useState(false);
@@ -88,7 +98,7 @@ export default function AdminDashboard() {
     if (restaurantId) {
       loadMetrics();
     }
-  }, [restaurantId, period]);
+  }, [restaurantId, period, areaFilter]);
 
   const loadMetrics = async () => {
     if (!restaurantId) return;
@@ -108,7 +118,23 @@ export default function AdminDashboard() {
       const { data: orders, error } = await query;
 
       if (error) throw error;
-      const orderList = orders || [];
+      let orderList = orders || [];
+
+      // Filtrar por área (order_source / delivery_type)
+      if (areaFilter === 'delivery') {
+        orderList = orderList.filter((o: any) =>
+          o.order_source === 'delivery' || (!o.order_source && o.delivery_type === 'delivery')
+        );
+      } else if (areaFilter === 'table') {
+        orderList = orderList.filter((o: any) => o.order_source === 'table');
+      } else if (areaFilter === 'pickup') {
+        orderList = orderList.filter((o: any) =>
+          o.order_source === 'pickup' || (!o.order_source && o.delivery_type === 'pickup')
+        );
+      } else if (areaFilter === 'buffet') {
+        // Buffet usa comandas; cards de pedidos mostram 0
+        orderList = [];
+      }
 
       const orderIds = orderList.map((o: { id: string }) => o.id);
       const { data: zonesData } = await supabase
@@ -205,7 +231,7 @@ export default function AdminDashboard() {
       setTopProducts(sorted.slice(0, 5));
       setBottomProducts(sorted.slice(-5).reverse());
 
-      // Carregar métricas de Buffet
+      // Carregar métricas de Buffet (sempre, para mostrar seção quando aplicável)
       await loadBuffetMetrics(startDate);
     } catch (error) {
       console.error('Erro ao carregar métricas:', error);
@@ -409,6 +435,7 @@ export default function AdminDashboard() {
   }
 
   const periodLabel = period === '30' ? 'últimos 30 dias' : period === '365' ? 'último ano' : 'todo o período';
+  const areaLabel = AREA_OPTIONS.find((o) => o.value === areaFilter)?.label ?? 'Todos';
 
   return (
     <div className="space-y-8 min-w-0">
@@ -416,21 +443,35 @@ export default function AdminDashboard() {
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-foreground">Dashboard</h1>
             <p className="text-muted-foreground text-base sm:text-lg">
-              Visão geral do seu negócio ({periodLabel})
+              Visão geral do seu negócio ({periodLabel}{areaFilter !== 'all' ? ` · ${areaLabel}` : ''})
             </p>
           </div>
-          <Select value={period} onValueChange={(v) => setPeriod(v as PeriodValue)}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              {PERIOD_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap gap-2">
+            <Select value={areaFilter} onValueChange={(v) => setAreaFilter(v as AreaValue)}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Área" />
+              </SelectTrigger>
+              <SelectContent>
+                {AREA_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={period} onValueChange={(v) => setPeriod(v as PeriodValue)}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                {PERIOD_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Cards de Métricas */}
@@ -707,8 +748,8 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Métricas de Buffet */}
-        {buffetMetrics.totalComandas > 0 && (
+        {/* Métricas de Buffet - exibir quando filtro Buffet ou quando há comandas */}
+        {(areaFilter === 'buffet' || buffetMetrics.totalComandas > 0) && (
           <>
             <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 min-w-0">
               <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-shadow">

@@ -61,9 +61,12 @@ const sortCategories = (categories: string[]): string[] => {
 interface PublicMenuProps {
   /** Quando renderizado dentro de StoreLayout (subdomínio), o slug é passado por prop */
   tenantSlug?: string;
+  /** Modo mesa: exibe indicador e associa pedidos à mesa */
+  tableId?: string;
+  tableNumber?: number;
 }
 
-export default function PublicMenu({ tenantSlug: tenantSlugProp }: PublicMenuProps = {}) {
+export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId: _tableId, tableNumber: _tableNumber }: PublicMenuProps = {}) {
   const { t } = useTranslation();
   const params = useParams();
   const subdomain = getSubdomain();
