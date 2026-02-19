@@ -194,7 +194,7 @@ interface MenuTabProps {
   restaurantId: string;
   currency: CurrencyCode;
   comanda: VirtualComandaData | null;
-  onItemAdded: () => void;
+  onItemAdded: () => Promise<void>;
 }
 
 function MenuTab({ restaurantId, currency, comanda, onItemAdded }: MenuTabProps) {
@@ -205,6 +205,7 @@ function MenuTab({ restaurantId, currency, comanda, onItemAdded }: MenuTabProps)
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -258,6 +259,7 @@ function MenuTab({ restaurantId, currency, comanda, onItemAdded }: MenuTabProps)
   const confirmOrder = async () => {
     if (!comanda || comanda.status !== 'open' || cart.length === 0) return;
     setConfirming(true);
+    setSubmitError(null);
     try {
       const inserts = cart.flatMap(({ product, quantity }) => ({
         comanda_id: comanda.id,
@@ -266,12 +268,25 @@ function MenuTab({ restaurantId, currency, comanda, onItemAdded }: MenuTabProps)
         quantity,
         unit_price: product.price,
       }));
-      const { error } = await supabase.from('virtual_comanda_items').insert(inserts);
-      if (!error) {
-        setCart([]);
-        setCartOpen(false);
-        onItemAdded();
+      const { error: insertErr } = await supabase.from('virtual_comanda_items').insert(inserts);
+      if (insertErr) {
+        setSubmitError(`Não foi possível confirmar o pedido: ${insertErr.message}`);
+        return;
       }
+
+      // Sincroniza a comanda com a tela de Pedidos (orders + order_items).
+      // Isso garante que o restaurante veja o pedido imediatamente no Kanban.
+      const { error: syncErr } = await supabase.rpc('sync_virtual_comanda_to_order', {
+        p_comanda_id: comanda.id,
+      });
+      if (syncErr) {
+        setSubmitError(`Pedido salvo na comanda, mas falhou ao enviar ao restaurante: ${syncErr.message}`);
+        return;
+      }
+
+      setCart([]);
+      setCartOpen(false); // fecha o carrinho após confirmar
+      await onItemAdded(); // recarrega extrato e abre aba "Minha Comanda"
     } finally {
       setConfirming(false);
     }
@@ -424,6 +439,12 @@ function MenuTab({ restaurantId, currency, comanda, onItemAdded }: MenuTabProps)
         confirming={confirming}
       />
 
+      {submitError && (
+        <div className="fixed bottom-20 left-4 right-4 z-40 rounded-xl bg-red-50 border border-red-200 px-3 py-2">
+          <p className="text-xs text-red-700">{submitError}</p>
+        </div>
+      )}
+
       {cart.length > 0 && (
         <button
           onClick={() => setCartOpen(true)}
@@ -450,26 +471,33 @@ interface ComandaTabProps {
   comanda: VirtualComandaData | null;
   items: ComandaItem[];
   currency: CurrencyCode;
-  onSaveCustomerName: (name: string) => Promise<void>;
+  onSaveCustomerName: (name: string) => Promise<boolean>;
 }
 
 function ComandaTab({ comanda, items, currency, onSaveCustomerName }: ComandaTabProps) {
   const [customerName, setCustomerName] = useState(comanda?.customer_name ?? '');
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     setCustomerName(comanda?.customer_name ?? '');
   }, [comanda?.customer_name]);
 
+  const normalizedCurrent = customerName.trim();
+  const normalizedSaved = (comanda?.customer_name ?? '').trim();
+  const isDirty = normalizedCurrent !== normalizedSaved;
+
   const handleSaveName = async () => {
-    const trimmed = customerName.trim();
-    if (!trimmed) return;
+    if (!normalizedCurrent || !isDirty) return;
     setSaving(true);
+    setSaveError(null);
     try {
-      await onSaveCustomerName(trimmed);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      const ok = await onSaveCustomerName(normalizedCurrent);
+      if (!ok) {
+        setSaveError('Não foi possível salvar o nome agora. Tente novamente.');
+      }
+    } catch {
+      setSaveError('Não foi possível salvar o nome agora. Tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -533,17 +561,24 @@ function ComandaTab({ comanda, items, currency, onSaveCustomerName }: ComandaTab
             />
             <button
               onClick={handleSaveName}
-              disabled={saving || !customerName.trim()}
+              disabled={saving || !normalizedCurrent || !isDirty}
               className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors ${
-                saved
+                !isDirty && !!normalizedCurrent
                   ? 'bg-emerald-500 text-white'
                   : 'bg-[#F87116] hover:bg-orange-600 text-white disabled:opacity-50'
               }`}
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {saved ? 'Salvo' : 'Salvar'}
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : !isDirty && !!normalizedCurrent ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {!isDirty && !!normalizedCurrent ? 'Salvo' : 'Salvar'}
             </button>
           </div>
+          {saveError && <p className="text-[11px] text-red-600 mt-1.5">{saveError}</p>}
           <p className="text-[11px] text-slate-400 mt-1.5">
             Em caso de bug, pedidos podem ser vinculados ao seu nome e aparecerão na tela de pedidos com a tag "Comanda".
           </p>
@@ -764,21 +799,29 @@ export default function VirtualComanda() {
     return () => { supabase.removeChannel(channel); };
   }, [comanda?.id, restaurantSlug, loadItems]);
 
-  const handleItemAdded = useCallback(() => {
-    if (comandaIdRef.current) loadItems(comandaIdRef.current);
+  const handleItemAdded = useCallback(async () => {
+    if (comandaIdRef.current) {
+      await loadItems(comandaIdRef.current);
+    }
     setNewItemPulse(true);
     setTimeout(() => setNewItemPulse(false), 1500);
+    setActiveTab('comanda');
   }, [loadItems]);
 
   const handleSaveCustomerName = useCallback(async (name: string) => {
-    if (!comanda?.id) return;
-    const { data } = await supabase.rpc('update_virtual_comanda_customer_name', {
+    if (!comanda?.id) return false;
+    const { data, error } = await supabase.rpc('update_virtual_comanda_customer_name', {
       p_comanda_id: comanda.id,
       p_customer_name: name,
     });
+    if (error) {
+      return false;
+    }
     if (data) {
       setComanda((prev) => (prev ? { ...prev, customer_name: name } : prev));
+      return true;
     }
+    return false;
   }, [comanda?.id]);
 
   const currency = (restaurant?.currency ?? 'BRL') as CurrencyCode;
