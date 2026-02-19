@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
-import { useDashboardStats, useDashboardKPIs, useDashboardAnalytics } from '@/hooks/queries';
+import { useDashboardStats, useDashboardKPIs, useDashboardAnalytics, useRestaurant } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,21 +16,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
-import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2, MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon, Flame, Bike, HelpCircle, Users, LayoutGrid } from 'lucide-react';
+import { exportDashboardCSV, exportDashboardXLSX } from '@/lib/dashboard-export';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
+  DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2,
+  MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon, Flame, Bike, HelpCircle,
+  Users, LayoutGrid, Download, FileSpreadsheet, FileText, ChevronDown,
+} from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -75,12 +77,14 @@ export default function AdminDashboard() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { toast } = useToast();
+  const { data: restaurant } = useRestaurant(restaurantId);
   const [period, setPeriod] = useState<PeriodValue>('30');
   const [areaFilter, setAreaFilter] = useState<AreaValue>('all');
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetPassword, setResetPassword] = useState('');
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const { start, end } = useMemo(() => getDateRange(period), [period]);
   const prevRange = useMemo(() => {
@@ -156,8 +160,28 @@ export default function AdminDashboard() {
   const avgPrepTime = operational?.avg_prep_time ?? 0;
   const avgDeliveryTime = operational?.avg_delivery_time ?? 0;
   const grossProfit = financial?.gross_profit ?? 0;
-  const cancelRate = financial?.cancel_rate ?? 0;
-  const showCancelAlert = cancelRate > 5;
+
+  const restaurantName = restaurant?.name ?? 'Restaurante';
+  const periodLabel = period === '30' ? 'últimos 30 dias' : period === '365' ? 'último ano' : 'todo o período';
+  const areaLabel = AREA_OPTIONS.find((o) => o.value === areaFilter)?.label ?? 'Todos';
+
+  const handleExport = async (fmt: 'csv' | 'xlsx') => {
+    if (!analytics) return;
+    setExporting(true);
+    try {
+      const params = {
+        analytics: analytics as DashboardAdvancedStatsResponse,
+        restaurantName,
+        currency,
+        periodLabel,
+        areaLabel,
+      };
+      if (fmt === 'csv') exportDashboardCSV(params);
+      else exportDashboardXLSX(params);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const movementByHour = useMemo(() => {
     const heatmap = operational?.idleness_heatmap ?? [];
@@ -389,47 +413,76 @@ export default function AdminDashboard() {
     );
   }
 
-  const periodLabel = period === '30' ? 'últimos 30 dias' : period === '365' ? 'último ano' : 'todo o período';
-  const areaLabel = AREA_OPTIONS.find((o) => o.value === areaFilter)?.label ?? 'Todos';
-
   const revPct = pctChange(metrics.totalRevenue, prevMetrics.totalRevenue);
   const ordPct = pctChange(metrics.totalOrders, prevMetrics.totalOrders);
 
   return (
     <div className="space-y-6 min-w-0">
-        {/* Header + Filtros - Estilo Shopeers */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* ── Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Dashboard BI</h1>
             <p className="text-slate-500 text-sm mt-0.5">
               {periodLabel}{areaFilter !== 'all' ? ` · ${areaLabel}` : ''}
+              {restaurantName && <> · <span className="font-medium">{restaurantName}</span></>}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Select value={areaFilter} onValueChange={(v) => setAreaFilter(v as AreaValue)}>
-              <SelectTrigger className="w-full sm:w-[160px] h-10 bg-white border-slate-200">
+              <SelectTrigger className="w-full sm:w-[150px] h-9 bg-white border-slate-200 text-sm">
                 <SelectValue placeholder="Área" />
               </SelectTrigger>
               <SelectContent>
                 {AREA_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Select value={period} onValueChange={(v) => setPeriod(v as PeriodValue)}>
-              <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white border-slate-200">
+              <SelectTrigger className="w-full sm:w-[170px] h-9 bg-white border-slate-200 text-sm">
                 <SelectValue placeholder="Período" />
               </SelectTrigger>
               <SelectContent>
                 {PERIOD_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Export */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  disabled={!analytics || exporting}
+                >
+                  {exporting
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Download className="h-4 w-4" />
+                  }
+                  Exportar
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem
+                  className="gap-2 cursor-pointer"
+                  onClick={() => handleExport('csv')}
+                >
+                  <FileText className="h-4 w-4 text-slate-500" />
+                  Exportar CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="gap-2 cursor-pointer"
+                  onClick={() => handleExport('xlsx')}
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                  Exportar XLSX
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -494,41 +547,56 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Secção Operacional */}
+        {/* ── Seção Operacional ── */}
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">
           <div className="admin-card p-6 min-w-0 overflow-hidden">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Tempo de Cozinha vs Entrega</h3>
-            <div className="flex flex-wrap gap-6">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-lg bg-orange-50 flex items-center justify-center">
-                  <Flame className="h-6 w-6 text-orange-600" />
+            <h3 className="text-base font-semibold text-slate-700 mb-4 flex items-center gap-2">
+              <Flame className="h-4 w-4 text-orange-500" />
+              Tempos Operacionais
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-xl bg-orange-50 border border-orange-100 px-4 py-3 flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-orange-600">
+                  <Flame className="h-4 w-4" />
+                  <span className="text-xs font-medium">Cozinha</span>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-900">
-                    {Math.round(avgPrepTime)} <span className="text-base font-normal text-slate-500">min</span>
+                {avgPrepTime > 0 ? (
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {Math.round(avgPrepTime)}<span className="text-sm font-normal text-slate-500"> min</span>
                   </p>
-                  <p className="text-sm text-slate-500">Tempo de Cozinha</p>
-                </div>
+                ) : (
+                  <p className="text-sm text-slate-400 italic mt-1">Sem dados</p>
+                )}
+                <p className="text-[11px] text-slate-400">Tempo médio de preparo</p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-lg bg-cyan-50 flex items-center justify-center">
-                  <Bike className="h-6 w-6 text-cyan-600" />
+              <div className="rounded-xl bg-cyan-50 border border-cyan-100 px-4 py-3 flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-cyan-600">
+                  <Bike className="h-4 w-4" />
+                  <span className="text-xs font-medium">Entrega</span>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-900">
-                    {Math.round(avgDeliveryTime)} <span className="text-base font-normal text-slate-500">min</span>
+                {avgDeliveryTime > 0 ? (
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {Math.round(avgDeliveryTime)}<span className="text-sm font-normal text-slate-500"> min</span>
                   </p>
-                  <p className="text-sm text-slate-500">Tempo de Entrega</p>
-                </div>
+                ) : (
+                  <p className="text-sm text-slate-400 italic mt-1">Sem dados</p>
+                )}
+                <p className="text-[11px] text-slate-400">Tempo médio de entrega</p>
               </div>
             </div>
+            <p className="text-[11px] text-slate-400 mt-3">
+              * Baseado em pedidos com timestamps de preparo e entrega registados
+            </p>
           </div>
 
           <div className="admin-card p-6 min-w-0 overflow-hidden">
             <div className="pb-4">
-              <h3 className="text-lg font-semibold text-slate-900">Movimento por Hora</h3>
-              <p className="text-sm text-slate-500 mt-0.5">
-                Horas em cor diferente sugerem oportunidades de Happy Hour
+              <h3 className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-blue-500" />
+                Movimento por Hora
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Barras <span className="text-amber-500 font-medium">amarelas</span> = baixo movimento — oportunidade de Happy Hour
               </p>
             </div>
             <div className="min-w-0">
@@ -561,53 +629,38 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Secção Financeira */}
-        <div className="flex flex-col sm:flex-row gap-4 min-w-0">
-          <div className="admin-metric-card flex-1 min-w-0">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-slate-500">Lucro Estimado (Baseado no CMV)</p>
-                <span
-                  title="O lucro depende do cadastro do preço de custo dos produtos. Verifique os itens do cardápio."
-                  className="cursor-help text-slate-400 hover:text-slate-600"
-                >
-                  <HelpCircle className="h-4 w-4" />
-                </span>
-              </div>
-              <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
-              </div>
+        {/* ── Seção Financeira ── */}
+        <div className="admin-metric-card min-w-0">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-slate-500">Lucro Estimado (Baseado no CMV)</p>
+              <span
+                title="O lucro depende do cadastro do preço de custo dos produtos. Verifique os itens do cardápio."
+                className="cursor-help text-slate-400 hover:text-slate-600"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </span>
             </div>
-            <p className="text-2xl font-bold text-slate-900 mt-2">
-              {formatCurrency(grossProfit, currency)}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">Receita - CMV</p>
+            <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+            </div>
           </div>
-
-          {showCancelAlert && (
-            <div className="admin-card p-4 flex items-center gap-4 bg-amber-50 border border-amber-200 min-w-0">
-              <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                <AlertTriangle className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="font-semibold text-amber-800">Taxa de cancelamento alta</p>
-                <p className="text-sm text-amber-700">
-                  {cancelRate.toFixed(1)}% dos pedidos foram cancelados. Sugerimos verificar os motivos de cancelamento.
-                </p>
-              </div>
-            </div>
-          )}
+          <p className={`text-2xl font-bold mt-2 ${grossProfit >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
+            {formatCurrency(grossProfit, currency)}
+          </p>
+          <p className="text-xs text-slate-400 mt-1">Receita − CMV dos produtos</p>
         </div>
 
         {/* Gráficos - Cards brancos estilo Shopeers */}
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">
           <div className="admin-card p-6 min-w-0 overflow-hidden">
             <div className="pb-4">
-              <h3 className="text-lg font-semibold text-slate-900">
-                Faturamento Diário (Últimos 7 dias)
+              <h3 className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                <TrendingUpIcon className="h-4 w-4 text-orange-500" />
+                Faturamento Diário — últimos 7 dias
               </h3>
-              <p className="text-sm text-slate-500 mt-0.5">
-                Acompanhe o desempenho diário das vendas
+              <p className="text-xs text-slate-400 mt-0.5">
+                Desempenho de vendas dia a dia
               </p>
             </div>
             <div className="min-w-0">
@@ -644,37 +697,50 @@ export default function AdminDashboard() {
                 Clientes Novos vs Recorrentes
               </h3>
               <p className="text-sm text-slate-500 mt-0.5">
-                Quantidade de clientes no período
+                Identificados pelo número de WhatsApp/telefone
               </p>
             </div>
             <div className="min-w-0">
               {(analytics?.retention?.clientes_novos ?? 0) + (analytics?.retention?.clientes_recorrentes ?? 0) > 0 ? (
-                <div className="w-full min-h-[300px] min-w-0">
-                  <ResponsiveContainer width="100%" height={300} minWidth={0}>
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: 'Novos', value: analytics?.retention?.clientes_novos ?? 0 },
-                          { name: 'Recorrentes', value: analytics?.retention?.clientes_recorrentes ?? 0 },
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, value }) => `${name}: ${value}`}
-                        outerRadius={90}
-                        dataKey="value"
-                      >
-                        <Cell fill="#10b981" />
-                        <Cell fill="#3b82f6" />
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
+                <>
+                  <div className="w-full min-h-[240px] min-w-0">
+                    <ResponsiveContainer width="100%" height={240} minWidth={0}>
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'Novos', value: analytics?.retention?.clientes_novos ?? 0 },
+                            { name: 'Recorrentes', value: analytics?.retention?.clientes_recorrentes ?? 0 },
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={85}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          <Cell fill="#10b981" />
+                          <Cell fill="#3b82f6" />
+                        </Pie>
+                        <Tooltip formatter={(v: number) => [`${v} clientes`, '']} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2 text-center">
+                      <p className="text-xs text-emerald-700 font-medium">Novos</p>
+                      <p className="text-xl font-bold text-emerald-800">{analytics?.retention?.clientes_novos ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2 text-center">
+                      <p className="text-xs text-blue-700 font-medium">Recorrentes</p>
+                      <p className="text-xl font-bold text-blue-800">{analytics?.retention?.clientes_recorrentes ?? 0}</p>
+                    </div>
+                  </div>
+                </>
               ) : (
-                <div className="flex items-center justify-center h-[300px] text-slate-400">
-                  <p>Sem dados de retenção no período</p>
+                <div className="flex flex-col items-center justify-center h-[300px] text-slate-400 gap-2">
+                  <Users className="h-10 w-10 opacity-20" />
+                  <p className="text-sm">Sem dados de retenção no período</p>
                 </div>
               )}
             </div>
@@ -682,149 +748,175 @@ export default function AdminDashboard() {
 
           <div className="admin-card p-6 min-w-0 overflow-hidden">
             <div className="pb-4">
-              <h3 className="text-lg font-semibold text-slate-900">
-                Formas de Pagamento
-              </h3>
-              <p className="text-sm text-slate-500 mt-0.5">
-                Distribuição dos métodos de pagamento
-              </p>
+              <h3 className="text-lg font-semibold text-slate-900">Formas de Pagamento</h3>
+              <p className="text-sm text-slate-500 mt-0.5">Distribuição do volume faturado por método</p>
             </div>
             <div className="min-w-0">
               {paymentMethods.length > 0 ? (
-                <div className="w-full min-h-[300px] min-w-0">
-                <ResponsiveContainer width="100%" height={300} minWidth={0}>
-                  <PieChart>
-                    <Pie
-                      data={paymentMethods}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={(entry) => paymentMethodNames[entry.name] || entry.name}
-                      outerRadius={90}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {paymentMethods.map((_entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
+                <>
+                  <div className="w-full min-h-[240px] min-w-0">
+                    <ResponsiveContainer width="100%" height={240} minWidth={0}>
+                      <PieChart>
+                        <Pie
+                          data={paymentMethods}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={85}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {paymentMethods.map((_e, idx) => (
+                            <Cell key={`pm-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(v: number) => [formatCurrency(v, currency), '']}
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                         />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: number) => formatCurrency(value, currency)}
-                      contentStyle={{
-                        borderRadius: '8px',
-                        border: 'none',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                      }}
-                    />
-                    <Legend
-                      formatter={(value) => paymentMethodNames[value] || value}
-                      wrapperStyle={{ fontSize: '14px' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-[300px] text-slate-400">
-                  <div className="text-center">
-                    <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                    <p>Sem dados de pagamento</p>
+                        <Legend formatter={(v) => paymentMethodNames[v] || v} wrapperStyle={{ fontSize: '13px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
+                  <div className="space-y-2 mt-2">
+                    {paymentMethods.map((pm, idx) => {
+                      const total = paymentMethods.reduce((s, m) => s + m.value, 0);
+                      const pct = total > 0 ? ((pm.value / total) * 100).toFixed(0) : '0';
+                      return (
+                        <div key={pm.name} className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                          <span className="text-xs text-slate-600 flex-1">{paymentMethodNames[pm.name] ?? pm.name}</span>
+                          <span className="text-xs font-semibold text-slate-800">{formatCurrency(pm.value, currency)}</span>
+                          <span className="text-[11px] text-slate-400 w-8 text-right">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-[300px] text-slate-400 gap-2">
+                  <DollarSign className="h-10 w-10 opacity-20" />
+                  <p className="text-sm">Sem dados de pagamento</p>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* BI: Região, horário pico, itens mais/menos pedidos */}
+        {/* ── BI: Região, Horários, Itens ── */}
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 min-w-0">
-          <div className="admin-card p-6 min-w-0 overflow-hidden">
-            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-3">
-              <MapPin className="h-4 w-4 text-blue-500" />
-              Região mais pedida
-            </h3>
+          {/* Região */}
+          <div className="admin-card p-5 min-w-0 overflow-hidden flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                <MapPin className="h-4 w-4 text-blue-500" />
+              </div>
+              <h3 className="text-sm font-semibold text-slate-700">Região mais pedida</h3>
+            </div>
             {topZone ? (
               <div>
-                <p className="text-xl font-bold text-slate-900 truncate" title={topZone.name}>
+                <p className="text-lg font-bold text-slate-900 truncate" title={topZone.name}>
                   {topZone.name}
                 </p>
-                <p className="text-sm text-slate-500">{topZone.count} pedidos</p>
+                <p className="text-xs text-slate-500 mt-0.5">{topZone.count} pedidos</p>
               </div>
             ) : (
-              <p className="text-slate-500 text-sm">Sem dados de região no período</p>
+              <p className="text-sm text-slate-400 italic">Sem dados no período</p>
             )}
           </div>
 
-          <div className="admin-card p-6 min-w-0 overflow-hidden">
-            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-3">
-              <Clock className="h-4 w-4 text-blue-500" />
-              Horários de pico
-            </h3>
+          {/* Horários de Pico */}
+          <div className="admin-card p-5 min-w-0 overflow-hidden flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                <Clock className="h-4 w-4 text-violet-500" />
+              </div>
+              <h3 className="text-sm font-semibold text-slate-700">Horários de pico</h3>
+            </div>
             {peakHours.length > 0 ? (
-              <ul className="space-y-2 text-sm">
-                {peakHours.map(({ hour, count }) => (
-                  <li key={hour} className="flex justify-between">
-                    <span className="text-slate-500">{hour}h – {hour + 1}h</span>
-                    <span className="font-medium text-slate-900">{count} pedidos</span>
+              <ul className="space-y-1.5">
+                {peakHours.map(({ hour, count }, i) => (
+                  <li key={hour} className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold w-4 text-center ${i === 0 ? 'text-violet-600' : 'text-slate-400'}`}>
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-violet-400 rounded-full"
+                        style={{ width: `${(count / peakHours[0].count) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-slate-500 shrink-0">{hour}h</span>
+                    <span className="text-xs font-semibold text-slate-800 shrink-0 w-8 text-right">{count}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-slate-500 text-sm">Sem pedidos no período</p>
+              <p className="text-sm text-slate-400 italic">Sem pedidos no período</p>
             )}
           </div>
 
-          <div className="admin-card p-6 min-w-0 overflow-hidden">
-            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-3">
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
-              Itens mais pedidos
-            </h3>
+          {/* Itens mais pedidos */}
+          <div className="admin-card p-5 min-w-0 overflow-hidden flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                <TrendingUp className="h-4 w-4 text-emerald-500" />
+              </div>
+              <h3 className="text-sm font-semibold text-slate-700">Itens mais pedidos</h3>
+            </div>
             {topProducts.length > 0 ? (
-              <ul className="space-y-2 text-sm">
-                {topProducts.map(({ name, quantity }) => (
-                  <li key={name} className="flex justify-between gap-2">
-                    <span className="text-slate-700 truncate" title={name}>{name}</span>
-                    <span className="font-medium text-slate-900 shrink-0">{quantity}</span>
+              <ul className="space-y-1.5">
+                {topProducts.map(({ name, quantity }, i) => (
+                  <li key={name} className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold w-4 text-center ${i === 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {i + 1}
+                    </span>
+                    <span className="text-xs text-slate-700 truncate flex-1" title={name}>{name}</span>
+                    <span className="text-xs font-bold text-slate-900 shrink-0">{quantity}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-slate-500 text-sm">Sem itens no período</p>
+              <p className="text-sm text-slate-400 italic">Sem itens no período</p>
             )}
           </div>
 
-          <div className="admin-card p-6 min-w-0 overflow-hidden">
-            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-3">
-              <TrendingDown className="h-4 w-4 text-amber-500" />
-              Itens menos pedidos
-            </h3>
+          {/* Itens menos pedidos */}
+          <div className="admin-card p-5 min-w-0 overflow-hidden flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                <TrendingDown className="h-4 w-4 text-amber-500" />
+              </div>
+              <h3 className="text-sm font-semibold text-slate-700">Itens menos pedidos</h3>
+            </div>
             {bottomProducts.length > 0 ? (
-              <ul className="space-y-2 text-sm">
-                {bottomProducts.map(({ name, quantity }) => (
-                  <li key={name} className="flex justify-between gap-2">
-                    <span className="text-slate-700 truncate" title={name}>{name}</span>
-                    <span className="font-medium text-slate-900 shrink-0">{quantity}</span>
+              <ul className="space-y-1.5">
+                {bottomProducts.map(({ name, quantity }, i) => (
+                  <li key={name} className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold w-4 text-center text-slate-400">{i + 1}</span>
+                    <span className="text-xs text-slate-700 truncate flex-1" title={name}>{name}</span>
+                    <span className="text-xs font-bold text-slate-900 shrink-0">{quantity}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-slate-500 text-sm">Sem itens no período</p>
+              <p className="text-sm text-slate-400 italic">Sem itens no período</p>
             )}
           </div>
         </div>
 
-        {/* Inteligência de Vendas: Recuperação de Clientes e Matriz BCG */}
+        {/* ── Inteligência de Vendas ── */}
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">
           <div className="admin-card p-6 min-w-0 overflow-hidden">
-            <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2 mb-4">
-              <Users className="h-5 w-5 text-emerald-500" />
-              Recuperação de Clientes (Churn)
-            </h3>
-            <p className="text-sm text-slate-500 mb-4">
-              Clientes sem pedido há mais de 30 dias. Entre em contacto para recuperá-los.
-            </p>
+            <div className="pb-4">
+              <h3 className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                <Users className="h-4 w-4 text-emerald-500" />
+                Recuperação de Clientes — Churn
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Clientes sem pedido há mais de 30 dias — identificados por WhatsApp/telefone
+              </p>
+            </div>
             <ChurnRecoveryList
               clients={analytics?.retention_risk ?? []}
               currency={currency}
@@ -833,12 +925,12 @@ export default function AdminDashboard() {
 
           <div className="admin-card p-6 min-w-0 overflow-hidden">
             <div className="pb-4">
-              <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2 mb-1">
-                <LayoutGrid className="h-5 w-5 text-violet-500" />
+              <h3 className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                <LayoutGrid className="h-4 w-4 text-violet-500" />
                 Matriz BCG do Cardápio
               </h3>
-              <p className="text-sm text-slate-500">
-                Volume de vendas vs margem. Passe o rato sobre os pontos para ver as recomendações.
+              <p className="text-xs text-slate-400 mt-0.5">
+                Volume de vendas vs margem por produto — passe o cursor para recomendações
               </p>
             </div>
             <MenuMatrixBCG

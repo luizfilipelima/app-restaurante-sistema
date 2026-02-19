@@ -61,10 +61,9 @@ const EMPTY_ADVANCED: DashboardAdvancedStatsResponse = {
   },
 };
 
-function normalizeClientKey(phone?: string | null, name?: string | null): string {
-  const phoneDigits = (phone ?? '').replace(/\D/g, '');
-  if (phoneDigits) return phoneDigits;
-  return (name ?? '').trim().toLowerCase();
+/** Identifica cliente exclusivamente pelo telefone (dígitos). Retorna '' se sem telefone. */
+function normalizeClientKey(phone?: string | null): string {
+  return (phone ?? '').replace(/\D/g, '');
 }
 
 function orderMatchesArea(order: Pick<OrderLite, 'order_source' | 'delivery_type'>, areaFilter: string) {
@@ -340,7 +339,7 @@ export async function computeDashboardAdvancedStatsFallback({
   const churnAcc = new Map<string, { nome: string; telefone: string; total: number; lastAt: Date }>();
 
   allNonCancelled.forEach((o) => {
-    const key = normalizeClientKey(o.customer_phone, o.customer_name);
+    const key = normalizeClientKey(o.customer_phone);
     if (!key) return;
     const createdAt = new Date(o.created_at);
 
@@ -368,7 +367,7 @@ export async function computeDashboardAdvancedStatsFallback({
 
   const clientsInPeriod = new Set(
     nonCancelled
-      .map((o) => normalizeClientKey(o.customer_phone, o.customer_name))
+      .map((o) => normalizeClientKey(o.customer_phone))
       .filter(Boolean)
   );
 
