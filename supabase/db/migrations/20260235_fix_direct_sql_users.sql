@@ -69,13 +69,13 @@ BEGIN
   END IF;
 
   -- Remove sessões ativas
-  DELETE FROM auth.sessions     WHERE user_id = v_uid;
+  DELETE FROM auth.sessions       WHERE user_id = v_uid;
   -- Remove identidades (e-mail/senha)
-  DELETE FROM auth.identities   WHERE user_id = v_uid;
-  -- Remove refresh tokens
-  DELETE FROM auth.refresh_tokens WHERE user_id = v_uid;
+  DELETE FROM auth.identities     WHERE user_id = v_uid;
+  -- Remove refresh tokens (user_id é character varying nesta tabela)
+  DELETE FROM auth.refresh_tokens WHERE user_id = v_uid::TEXT;
   -- Remove o usuário do auth
-  DELETE FROM auth.users        WHERE id = v_uid;
+  DELETE FROM auth.users          WHERE id = v_uid;
 
   -- public.users é MANTIDO para preservar restaurant_id, role e login.
   -- Na recriação via Edge Function, o upsert atualizará o registro existente.
