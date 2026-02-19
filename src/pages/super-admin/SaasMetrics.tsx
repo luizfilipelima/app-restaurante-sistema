@@ -274,6 +274,45 @@ export default function SaasMetrics() {
         </motion.div>
       </motion.div>
 
+      {/* ── Receita por plano (no topo) ─────────────────────────────────────── */}
+      <motion.div
+        className="admin-card p-6 min-w-0 overflow-hidden"
+        variants={sectionVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <h3 className="text-base font-semibold text-slate-700 mb-4">Receita por Plano</h3>
+        <p className="text-xs text-slate-400 mb-5">MRR estimado por cada tier de assinatura</p>
+        <div className="space-y-3">
+          {chartData.length === 0 ? (
+            <p className="text-sm text-slate-400">Nenhum dado</p>
+          ) : (
+            chartData.map((item) => {
+              const palette = PLAN_COLORS[item.plan_name];
+              const totalRevenue = metrics.total_mrr;
+              const pct = totalRevenue > 0 ? Math.round((item.monthly_revenue_brl / totalRevenue) * 100) : 0;
+              return (
+                <div key={item.plan_name} className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: palette?.bar }} />
+                      <span className="text-sm font-medium text-slate-700">{item.plan_label}</span>
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${palette?.badge}`}>
+                        {item.tenant_count}
+                      </span>
+                    </div>
+                    <span className="text-sm font-semibold text-slate-800">{formatCurrency(item.monthly_revenue_brl)}</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-slate-100">
+                    <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: palette?.bar }} />
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </motion.div>
+
       {/* ── Segunda linha: Distribuição + Gráfico (estilo Tempos Op. + Movimento) ─ */}
       <motion.div
         className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0"
@@ -356,45 +395,6 @@ export default function SaasMetrics() {
         </div>
         <p className="text-2xl font-bold text-slate-900 mt-2">{formatCurrency(metrics.total_mrr)}</p>
         <p className="text-xs text-slate-400 mt-1">Receita mensal recorrente consolidada</p>
-      </motion.div>
-
-      {/* ── Receita por plano (tabela) ─────────────────────────────────────── */}
-      <motion.div
-        className="admin-card p-6 min-w-0 overflow-hidden"
-        variants={sectionVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <h3 className="text-base font-semibold text-slate-700 mb-4">Receita por Plano</h3>
-        <p className="text-xs text-slate-400 mb-5">MRR estimado por cada tier de assinatura</p>
-        <div className="space-y-3">
-          {chartData.length === 0 ? (
-            <p className="text-sm text-slate-400">Nenhum dado</p>
-          ) : (
-            chartData.map((item) => {
-              const palette = PLAN_COLORS[item.plan_name];
-              const totalRevenue = metrics.total_mrr;
-              const pct = totalRevenue > 0 ? Math.round((item.monthly_revenue_brl / totalRevenue) * 100) : 0;
-              return (
-                <div key={item.plan_name} className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: palette?.bar }} />
-                      <span className="text-sm font-medium text-slate-700">{item.plan_label}</span>
-                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${palette?.badge}`}>
-                        {item.tenant_count}
-                      </span>
-                    </div>
-                    <span className="text-sm font-semibold text-slate-800">{formatCurrency(item.monthly_revenue_brl)}</span>
-                  </div>
-                  <div className="h-1.5 w-full rounded-full bg-slate-100">
-                    <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: palette?.bar }} />
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
       </motion.div>
 
     </div>
