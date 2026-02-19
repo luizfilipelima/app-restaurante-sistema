@@ -28,6 +28,7 @@ import {
   LogOut,
   ChevronRight,
   ShieldCheck,
+  MonitorSmartphone,
 } from 'lucide-react';
 
 // ─── Variantes de animação do sidebar ─────────────────────────────────────────
@@ -56,9 +57,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard (BI)',  href: '/super-admin',             icon: LayoutDashboard, exact: true },
-  { label: 'Restaurantes',    href: '/super-admin/restaurants', icon: Store },
-  { label: 'Planos & Preços', href: '/super-admin/plans',       icon: CreditCard },
+  { label: 'Dashboard (BI)',  href: '/super-admin',                  icon: LayoutDashboard, exact: true },
+  { label: 'Restaurantes',    href: '/super-admin/restaurants',      icon: Store },
+  { label: 'Planos & Preços', href: '/super-admin/plans',            icon: CreditCard },
+  { label: 'Landing Page',    href: '/super-admin/landing-page',     icon: MonitorSmartphone },
 ];
 
 // ─── Componente ───────────────────────────────────────────────────────────────

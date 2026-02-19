@@ -2,9 +2,13 @@
  * QuieroFood — Landing Page Premium (v2)
  * Dark Mode · Glass Morphism · Framer Motion 3D Mockups
  * CTA → WhatsApp | Entrar → app.quiero.food
+ *
+ * Conteúdo editável via painel Super Admin → /super-admin/landing-page
+ * O conteúdo é lido do banco; valores padrão são usados enquanto carrega.
  */
 
-import { useRef } from 'react';
+import { useRef, createContext, useContext } from 'react';
+import { useLandingPageContent, type LandingContent } from '@/hooks/queries/useLandingPageContent';
 import {
   motion,
   useInView,
@@ -36,11 +40,33 @@ import {
   ExternalLink,
 } from 'lucide-react';
 
-// ─── Constantes de link ───────────────────────────────────────────────────────
+// ─── Links padrão (fallback enquanto o conteúdo do banco carrega) ─────────────
 
-const WA_LINK =
+const DEFAULT_WA_LINK =
   'https://wa.me/5575992776610?text=Ol%C3%A1%20Filipe%2C%20gostaria%20de%20implementar%20o%20QuieroFood%20no%20meu%20neg%C3%B3cio%20com%20o%20plano%20gratuito%20de%207%20dias';
-const APP_LINK = 'https://app.quiero.food';
+const DEFAULT_APP_LINK = 'https://app.quiero.food';
+
+// ─── Context de conteúdo da landing ──────────────────────────────────────────
+
+interface LandingCtxValue {
+  c: LandingContent;
+  waLink: string;
+  appLink: string;
+}
+
+const LandingCtx = createContext<LandingCtxValue>({
+  c: {},
+  waLink: DEFAULT_WA_LINK,
+  appLink: DEFAULT_APP_LINK,
+});
+
+function useLandingCtx() {
+  return useContext(LandingCtx);
+}
+
+function lc(content: LandingContent, section: string, key: string, fallback = ''): string {
+  return content[section]?.[key] ?? fallback;
+}
 
 // ─── Variantes de animação ────────────────────────────────────────────────────
 
@@ -96,6 +122,7 @@ function CtaButton({
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }) {
+  const { waLink } = useLandingCtx();
   const sizes = {
     sm: 'text-sm px-5 py-3',
     md: 'text-base px-7 py-4',
@@ -103,7 +130,7 @@ function CtaButton({
   };
   return (
     <a
-      href={WA_LINK}
+      href={waLink}
       target="_blank"
       rel="noopener noreferrer"
       className={`group inline-flex items-center gap-2.5 rounded-2xl bg-[#F87116] text-white font-bold
@@ -266,6 +293,28 @@ function KDSMockupContent() {
 // ─── SEÇÃO 1: HERO ────────────────────────────────────────────────────────────
 
 function Hero() {
+  const { c, appLink } = useLandingCtx();
+
+  const badgeText        = lc(c, 'hero', 'badge_text',          'Exclusivo para Restaurantes da Tríplice Fronteira');
+  const headline         = lc(c, 'hero', 'headline',            'Pare de Dividir Seu Lucro com Apps e Acabe com o Caos na Cozinha.');
+  const highlight        = lc(c, 'hero', 'headline_highlight',  'Lucro');
+  const subheadline      = lc(c, 'hero', 'subheadline',         'Do QR Code na mesa à tela da cozinha — gerencie pedidos em Reais e Guaraníes sem pagar 1% de comissão.');
+  const ctaPrimaryLabel  = lc(c, 'hero', 'cta_primary_label',   'Testar 7 Dias Grátis');
+  const ctaSecondLabel   = lc(c, 'hero', 'cta_secondary_label', 'Entrar na Plataforma');
+  const notifText        = lc(c, 'hero', 'notification_text',   'Novo pedido! 🎉');
+
+  const stat1v = lc(c, 'hero', 'stat_1_value', '500+');
+  const stat1l = lc(c, 'hero', 'stat_1_label', 'Restaurantes');
+  const stat2v = lc(c, 'hero', 'stat_2_value', 'R$0');
+  const stat2l = lc(c, 'hero', 'stat_2_label', 'Comissão');
+  const stat3v = lc(c, 'hero', 'stat_3_value', '3 Países');
+  const stat3l = lc(c, 'hero', 'stat_3_label', 'BR · PY · AR');
+
+  // Divide o headline em partes: antes, highlight, depois
+  const hlIdx = headline.indexOf(highlight);
+  const beforeHL = hlIdx >= 0 ? headline.slice(0, hlIdx) : headline;
+  const afterHL  = hlIdx >= 0 ? headline.slice(hlIdx + highlight.length) : '';
+
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-5 pt-24 pb-16 overflow-hidden">
       {/* Fundo com glow radial */}
@@ -289,7 +338,7 @@ function Hero() {
           <motion.div variants={fadeUp}>
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#F87116]/30 bg-[#F87116]/10 text-orange-300 text-[11px] font-bold uppercase tracking-[0.15em] shadow-[0_0_24px_rgba(248,113,22,0.15)]">
               <Zap className="h-3 w-3 flex-shrink-0" />
-              Exclusivo para Restaurantes da Tríplice Fronteira
+              {badgeText}
             </span>
           </motion.div>
 
@@ -298,16 +347,16 @@ function Hero() {
             variants={fadeUp}
             className="text-4xl sm:text-5xl xl:text-6xl font-extrabold text-white leading-[1.08] tracking-tight"
           >
-            Pare de Dividir Seu{' '}
-            <span className="relative inline-block">
-              <span className="text-[#F87116]">Lucro</span>
-              <span className="absolute -bottom-1 left-0 right-0 h-px bg-gradient-to-r from-[#F87116] to-transparent" />
-            </span>{' '}
-            com Apps e Acabe com o{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">
-              Caos
-            </span>{' '}
-            na Cozinha.
+            {hlIdx >= 0 ? (
+              <>
+                {beforeHL}
+                <span className="relative inline-block">
+                  <span className="text-[#F87116]">{highlight}</span>
+                  <span className="absolute -bottom-1 left-0 right-0 h-px bg-gradient-to-r from-[#F87116] to-transparent" />
+                </span>
+                {afterHL}
+              </>
+            ) : headline}
           </motion.h1>
 
           {/* Sub-headline */}
@@ -315,22 +364,20 @@ function Hero() {
             variants={fadeUp}
             className="text-base sm:text-lg text-slate-400 leading-relaxed max-w-lg"
           >
-            Do QR Code na mesa à tela da cozinha — gerencie pedidos em{' '}
-            <span className="text-white font-semibold">Reais e Guaraníes</span> sem pagar{' '}
-            <span className="text-[#F87116] font-semibold">1% de comissão</span>.
+            {subheadline}
           </motion.p>
 
           {/* CTAs */}
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-3 items-start">
-            <CtaButton label="Testar 7 Dias Grátis" size="lg" />
+            <CtaButton label={ctaPrimaryLabel} size="lg" />
             <a
-              href={APP_LINK}
+              href={appLink}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-7 py-4 rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-sm text-slate-300 text-base font-semibold hover:bg-white/[0.08] hover:text-white transition-all duration-200"
             >
               <ExternalLink className="h-4 w-4" />
-              Entrar na Plataforma
+              {ctaSecondLabel}
             </a>
           </motion.div>
 
@@ -340,9 +387,9 @@ function Hero() {
             className="flex flex-wrap gap-5 pt-2"
           >
             {[
-              { n: '500+', label: 'Restaurantes' },
-              { n: 'R$0', label: 'Comissão' },
-              { n: '3 Países', label: 'BR · PY · AR' },
+              { n: stat1v, label: stat1l },
+              { n: stat2v, label: stat2l },
+              { n: stat3v, label: stat3l },
             ].map((s) => (
               <div key={s.label} className="text-center">
                 <p className="text-xl font-black text-[#F87116]">{s.n}</p>
@@ -369,7 +416,7 @@ function Hero() {
               <Bell className="h-4 w-4 text-white" />
             </div>
             <div>
-              <p className="text-[11px] font-black text-white">Novo pedido! 🎉</p>
+              <p className="text-[11px] font-black text-white">{notifText}</p>
               <p className="text-[10px] text-slate-400">#128 · R$ 94,00</p>
             </div>
           </motion.div>
@@ -395,19 +442,19 @@ function Hero() {
 
 // ─── SEÇÃO 2: STRIP DE PROVA SOCIAL ──────────────────────────────────────────
 
+const DEFAULT_STRIP_ITEMS = [
+  'Cardápio Digital','Pedidos em Tempo Real','KDS — Cozinha','Impressão Térmica',
+  'Multi-moeda BRL/PYG','Motoboys & Zonas','QR Code na Mesa','Offline-First',
+  'BI & Analytics','Comandas Digitais',
+];
+
 function SocialStrip() {
-  const items = [
-    'Cardápio Digital',
-    'Pedidos em Tempo Real',
-    'KDS — Cozinha',
-    'Impressão Térmica',
-    'Multi-moeda BRL/PYG',
-    'Motoboys & Zonas',
-    'QR Code na Mesa',
-    'Offline-First',
-    'BI & Analytics',
-    'Comandas Digitais',
-  ];
+  const { c } = useLandingCtx();
+  let items: string[] = DEFAULT_STRIP_ITEMS;
+  try {
+    const raw = c.social_strip?.items;
+    if (raw) items = JSON.parse(raw) as string[];
+  } catch { /* usa default */ }
 
   return (
     <div className="relative py-5 border-y border-white/[0.06] overflow-hidden bg-white/[0.02]">
@@ -429,13 +476,25 @@ function SocialStrip() {
 
 // ─── SEÇÃO 3: PROBLEMA ────────────────────────────────────────────────────────
 
+const DEFAULT_PAINS = [
+  { emoji: '📱', text: 'O WhatsApp não para de apitar e pedidos chegam errados.' },
+  { emoji: '💸', text: 'O iFood e o PedidosYa devoram até 20% da sua margem.' },
+  { emoji: '🌐', text: 'O sistema que você usa não entende Guaraníes nem a Fronteira.' },
+  { emoji: '🔌', text: 'Qualquer queda de internet paralisa toda a operação.' },
+];
+
 function ProblemSection() {
-  const pains = [
-    { emoji: '📱', text: 'O WhatsApp não para de apitar e pedidos chegam errados.' },
-    { emoji: '💸', text: 'O iFood e o PedidosYa devoram até 20% da sua margem.' },
-    { emoji: '🌐', text: 'O sistema que você usa não entende Guaraníes nem a Fronteira.' },
-    { emoji: '🔌', text: 'Qualquer queda de internet paralisa toda a operação.' },
-  ];
+  const { c } = useLandingCtx();
+
+  const headline    = lc(c, 'problem', 'headline',     'Você é refém do seu restaurante?');
+  const subheadline = lc(c, 'problem', 'subheadline',  'Nós conhecemos a realidade de Ciudad del Este, Foz e Puerto Iguazú.');
+  const closingText = lc(c, 'problem', 'closing_text', 'O sistema genérico que você usa hoje trava sua operação em vez de libertá-la.');
+
+  let pains: Array<{ emoji: string; text: string }> = DEFAULT_PAINS;
+  try {
+    const raw = c.problem?.pains;
+    if (raw) pains = JSON.parse(raw);
+  } catch { /* usa default */ }
 
   return (
     <section className="relative py-20 sm:py-28 px-5">
@@ -446,15 +505,10 @@ function ProblemSection() {
           variants={fadeUp}
           className="text-3xl sm:text-4xl font-extrabold text-white"
         >
-          Você é{' '}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-rose-500">
-            refém do seu restaurante
-          </span>
-          ?
+          {headline}
         </motion.h2>
         <motion.p variants={fadeUp} className="text-slate-400 text-lg">
-          Nós conhecemos a realidade de{' '}
-          <span className="text-white font-semibold">Ciudad del Este, Foz e Puerto Iguazú</span>.
+          {subheadline}
         </motion.p>
 
         <motion.ul variants={stagger} className="grid sm:grid-cols-2 gap-3 text-left">
@@ -474,8 +528,7 @@ function ProblemSection() {
           variants={fadeUp}
           className="text-lg sm:text-xl font-bold text-white border-t border-white/10 pt-8"
         >
-          O sistema genérico que você usa hoje{' '}
-          <span className="text-red-400">trava sua operação</span> em vez de libertá-la.
+          {closingText}
         </motion.p>
       </AnimatedSection>
     </section>
@@ -483,6 +536,22 @@ function ProblemSection() {
 }
 
 // ─── SEÇÃO 4: FEATURES BENTO ─────────────────────────────────────────────────
+
+function FeatureBentoHeader() {
+  const { c } = useLandingCtx();
+  const sectionLabel = lc(c, 'features', 'section_label', 'A Solução');
+  const headline     = lc(c, 'features', 'headline',      'Gestão Sem Fronteiras, Lucro Sem Limites.');
+  return (
+    <div className="text-center space-y-3">
+      <motion.p variants={fadeUp} className="text-xs font-bold uppercase tracking-[0.2em] text-[#F87116]">
+        {sectionLabel}
+      </motion.p>
+      <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-extrabold text-white">
+        {headline}
+      </motion.h2>
+    </div>
+  );
+}
 
 interface FeatureCardData {
   icon: React.ElementType;
@@ -599,15 +668,7 @@ function FeatureBento() {
   return (
     <section className="py-20 sm:py-28 px-5">
       <AnimatedSection className="max-w-6xl mx-auto space-y-12">
-        <div className="text-center space-y-3">
-          <motion.p variants={fadeUp} className="text-xs font-bold uppercase tracking-[0.2em] text-[#F87116]">
-            A Solução
-          </motion.p>
-          <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-extrabold text-white">
-            Gestão Sem Fronteiras,{' '}
-            <span className="text-[#F87116]">Lucro Sem Limites</span>.
-          </motion.h2>
-        </div>
+        <FeatureBentoHeader />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {features.map((f) => {
@@ -767,6 +828,26 @@ const ClipboardIcon = ({ className }: { className?: string }) => (
 
 // ─── SEÇÃO 6: PRICING ────────────────────────────────────────────────────────
 
+function PricingHeader() {
+  const { c } = useLandingCtx();
+  const sectionLabel = lc(c, 'pricing', 'section_label', 'Planos');
+  const headline     = lc(c, 'pricing', 'headline',      'Escolha o seu nível de poder.');
+  const subtext      = lc(c, 'pricing', 'subtext',       'Sem taxas escondidas. Sem comissão sobre as suas vendas.');
+  return (
+    <div className="text-center space-y-3">
+      <motion.p variants={fadeUp} className="text-xs font-bold uppercase tracking-[0.2em] text-[#F87116]">
+        {sectionLabel}
+      </motion.p>
+      <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-extrabold text-white">
+        {headline}
+      </motion.h2>
+      <motion.p variants={fadeUp} className="text-slate-400">
+        {subtext}
+      </motion.p>
+    </div>
+  );
+}
+
 const plans = [
   {
     name: 'Core',
@@ -793,24 +874,15 @@ const plans = [
 ];
 
 function Pricing() {
+  const { waLink } = useLandingCtx();
+
   return (
     <section className="relative py-20 sm:py-28 px-5">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       <AnimatedSection className="max-w-5xl mx-auto space-y-12">
-        <div className="text-center space-y-3">
-          <motion.p variants={fadeUp} className="text-xs font-bold uppercase tracking-[0.2em] text-[#F87116]">
-            Planos
-          </motion.p>
-          <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-extrabold text-white">
-            Escolha o seu nível de poder.
-          </motion.h2>
-          <motion.p variants={fadeUp} className="text-slate-400">
-            Sem taxas escondidas.{' '}
-            <span className="text-emerald-400 font-semibold">Sem comissão sobre as suas vendas.</span>
-          </motion.p>
-        </div>
+        <PricingHeader />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
           {plans.map((plan) => (
@@ -850,7 +922,7 @@ function Pricing() {
               </ul>
 
               <a
-                href={WA_LINK}
+                href={waLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold transition-all hover:scale-[1.02] active:scale-[0.98] ${
@@ -872,37 +944,33 @@ function Pricing() {
 
 // ─── SEÇÃO 7: DEPOIMENTOS ─────────────────────────────────────────────────────
 
-const testimonials = [
-  {
-    quote: 'Desde que usamos o Quiero, nossos pedidos saem 30% mais rápido. O suporte local faz a diferença.',
-    name: 'Carlos Benitez',
-    role: 'Pizzaria Bella Italia',
-    initials: 'CB',
-  },
-  {
-    quote: 'A integração com a impressora térmica é perfeita. Não perdemos mais nenhum pedido no horário de pico.',
-    name: 'Maria González',
-    role: 'Burger House CDE',
-    initials: 'MG',
-  },
-  {
-    quote: 'O cardápio em Guarani e Reais facilitou muito para nossos clientes brasileiros e paraguaios.',
-    name: 'Fernando Silva',
-    role: 'Sushi House',
-    initials: 'FS',
-  },
+const DEFAULT_TESTIMONIALS = [
+  { quote: 'Desde que usamos o Quiero, nossos pedidos saem 30% mais rápido. O suporte local faz a diferença.', name: 'Carlos Benitez', role: 'Pizzaria Bella Italia', initials: 'CB' },
+  { quote: 'A integração com a impressora térmica é perfeita. Não perdemos mais nenhum pedido no horário de pico.', name: 'Maria González', role: 'Burger House CDE', initials: 'MG' },
+  { quote: 'O cardápio em Guarani e Reais facilitou muito para nossos clientes brasileiros e paraguaios.', name: 'Fernando Silva', role: 'Sushi House', initials: 'FS' },
 ];
 
 function Testimonials() {
+  const { c } = useLandingCtx();
+
+  const sectionLabel = lc(c, 'testimonials', 'section_label', 'Depoimentos');
+  const headline     = lc(c, 'testimonials', 'headline',      'Quem usa, recomenda.');
+
+  let testimonials: Array<{ quote: string; name: string; role: string; initials: string }> = DEFAULT_TESTIMONIALS;
+  try {
+    const raw = c.testimonials?.items;
+    if (raw) testimonials = JSON.parse(raw);
+  } catch { /* usa default */ }
+
   return (
     <section className="py-20 sm:py-24 px-5">
       <AnimatedSection className="max-w-5xl mx-auto space-y-10">
         <div className="text-center space-y-2">
           <motion.p variants={fadeUp} className="text-xs font-bold uppercase tracking-[0.2em] text-[#F87116]">
-            Depoimentos
+            {sectionLabel}
           </motion.p>
           <motion.h2 variants={fadeUp} className="text-2xl sm:text-3xl font-extrabold text-white">
-            Quem usa, recomenda.
+            {headline}
           </motion.h2>
         </div>
 
@@ -940,6 +1008,13 @@ function Testimonials() {
 // ─── SEÇÃO 8: FINAL CTA ───────────────────────────────────────────────────────
 
 function FinalCTA() {
+  const { c } = useLandingCtx();
+
+  const headline      = lc(c, 'final_cta', 'headline',       'Sua transformação começa agora.');
+  const body          = lc(c, 'final_cta', 'body',           'Você pode continuar pagando 20% para aplicativos, ou pode transformar seu restaurante em uma máquina lucrativa e silenciosa hoje.');
+  const ctaLabel      = lc(c, 'final_cta', 'cta_label',      'Quero Assumir o Controle do Meu Restaurante');
+  const guaranteeText = lc(c, 'final_cta', 'guarantee_text', 'Nossa equipe fará um diagnóstico rápido. Se a QuieroFood não for perfeita para você, nós mesmos diremos isso. Risco zero.');
+
   return (
     <section className="relative py-24 sm:py-32 px-5 overflow-hidden">
       <div className="pointer-events-none absolute inset-0">
@@ -952,18 +1027,15 @@ function FinalCTA() {
           variants={fadeUp}
           className="text-3xl sm:text-5xl font-extrabold text-white leading-tight"
         >
-          Sua transformação{' '}
-          <span className="text-[#F87116]">começa agora.</span>
+          {headline}
         </motion.h2>
 
         <motion.p variants={fadeUp} className="text-base sm:text-lg text-slate-400 leading-relaxed">
-          Você pode continuar pagando 20% para aplicativos, ou pode transformar seu restaurante
-          em uma{' '}
-          <span className="text-white font-semibold">máquina lucrativa e silenciosa</span> hoje.
+          {body}
         </motion.p>
 
         <motion.div variants={fadeUp} className="flex justify-center">
-          <CtaButton label="Quero Assumir o Controle do Meu Restaurante" size="lg" />
+          <CtaButton label={ctaLabel} size="lg" />
         </motion.div>
 
         <motion.div
@@ -972,9 +1044,7 @@ function FinalCTA() {
         >
           <Shield className="h-5 w-5 text-emerald-400 flex-shrink-0 mt-0.5" />
           <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-            Nossa equipe fará um diagnóstico rápido. Se a QuieroFood não for perfeita para
-            você,{' '}
-            <span className="text-white font-semibold">nós mesmos diremos isso.</span> Risco zero.
+            {guaranteeText}
           </p>
         </motion.div>
       </AnimatedSection>
@@ -985,6 +1055,14 @@ function FinalCTA() {
 // ─── NAVBAR ───────────────────────────────────────────────────────────────────
 
 function Navbar() {
+  const { c, appLink } = useLandingCtx();
+
+  let navItems: string[] = ['Funcionalidades', 'Planos', 'Contato'];
+  try {
+    const raw = c.navbar?.nav_items;
+    if (raw) navItems = JSON.parse(raw) as string[];
+  } catch { /* usa default */ }
+
   return (
     <header className="fixed top-0 inset-x-0 z-50 h-16 flex items-center px-5 border-b border-white/[0.07] bg-slate-950/75 backdrop-blur-xl">
       <div className="max-w-6xl mx-auto w-full flex items-center justify-between">
@@ -998,7 +1076,7 @@ function Navbar() {
         </a>
 
         <nav className="hidden md:flex items-center gap-6">
-          {['Funcionalidades', 'Planos', 'Contato'].map((item) => (
+          {navItems.map((item) => (
             <a
               key={item}
               href="#"
@@ -1011,7 +1089,7 @@ function Navbar() {
 
         <div className="flex items-center gap-2.5">
           <a
-            href={APP_LINK}
+            href={appLink}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-slate-400 hover:text-white transition-colors px-3 py-2 hidden sm:block"
@@ -1028,15 +1106,22 @@ function Navbar() {
 // ─── FOOTER ───────────────────────────────────────────────────────────────────
 
 function Footer() {
+  const { c, appLink } = useLandingCtx();
+
+  // O copyright_text pode estar em 'footer' ou 'navbar' (editor unificado na aba Navbar & Rodapé)
+  const copyrightText = c.footer?.copyright_text
+    ?? c.navbar?.copyright_text
+    ?? 'QuieroFood. Todos os direitos reservados. Feito para a Tríplice Fronteira.';
+
   return (
     <footer className="border-t border-white/[0.07] py-10 px-5 bg-slate-950">
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         <img src="/logo_quiero_food.svg" alt="QuieroFood" className="h-6 w-auto opacity-70" />
         <p className="text-xs text-slate-600 text-center">
-          © {new Date().getFullYear()} QuieroFood. Todos os direitos reservados. Feito para a Tríplice Fronteira.
+          © {new Date().getFullYear()} {copyrightText}
         </p>
         <a
-          href={APP_LINK}
+          href={appLink}
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1"
@@ -1052,18 +1137,25 @@ function Footer() {
 // ─── PAGE SHELL ───────────────────────────────────────────────────────────────
 
 export default function QuieroFoodLanding() {
+  const { data: content = {} } = useLandingPageContent();
+
+  const waLink  = content.hero?.wa_link  ?? DEFAULT_WA_LINK;
+  const appLink = content.hero?.app_link ?? DEFAULT_APP_LINK;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-sans antialiased overflow-x-hidden">
-      <Navbar />
-      <Hero />
-      <SocialStrip />
-      <ProblemSection />
-      <FeatureBento />
-      <DashboardMockup />
-      <Pricing />
-      <Testimonials />
-      <FinalCTA />
-      <Footer />
-    </div>
+    <LandingCtx.Provider value={{ c: content, waLink, appLink }}>
+      <div className="min-h-screen bg-slate-950 text-white font-sans antialiased overflow-x-hidden">
+        <Navbar />
+        <Hero />
+        <SocialStrip />
+        <ProblemSection />
+        <FeatureBento />
+        <DashboardMockup />
+        <Pricing />
+        <Testimonials />
+        <FinalCTA />
+        <Footer />
+      </div>
+    </LandingCtx.Provider>
   );
 }

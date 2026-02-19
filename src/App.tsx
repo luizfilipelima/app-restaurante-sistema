@@ -34,6 +34,7 @@ const SaasMetrics           = lazyWithRetry(() => import('./pages/super-admin/Sa
 const SuperAdminRestaurants = lazyWithRetry(() => import('./pages/super-admin/Dashboard'));
 const Plans                 = lazyWithRetry(() => import('./pages/super-admin/Plans'));
 const RestaurantDetails     = lazyWithRetry(() => import('./pages/super-admin/RestaurantDetails'));
+const LandingPageEditor     = lazyWithRetry(() => import('./pages/super-admin/LandingPageEditor'));
 
 // Admin (painel do restaurante)
 const AdminDashboard        = lazyWithRetry(() => import('./pages/admin/Dashboard'));
@@ -241,6 +242,8 @@ function App() {
             <Route path="restaurants" element={<SuperAdminRestaurants />} />
             {/* Edição de planos e preços */}
             <Route path="plans" element={<Plans />} />
+            {/* Editor de conteúdo da landing page */}
+            <Route path="landing-page" element={<LandingPageEditor />} />
           </Route>
 
           {/*
