@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
-import { useDashboardStats, useDashboardKPIs } from '@/hooks/queries';
+import { useDashboardStats, useDashboardKPIs, useDashboardAnalytics } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/select';
 import { ChurnRecoveryList } from '@/components/admin/ChurnRecoveryList';
 import { MenuMatrixBCG } from '@/components/admin/MenuMatrixBCG';
+import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
 const PERIOD_OPTIONS = [
   { value: '30', label: 'Últimos 30 dias' },
   { value: '365', label: 'Último ano' },
@@ -97,12 +98,22 @@ export default function AdminDashboard() {
     areaFilter: areaForRpc,
   });
 
-  const { data: analytics, isLoading: loadingBI } = useDashboardStats({
+  const { data: statsData, isLoading: loadingBI } = useDashboardStats({
     tenantId: restaurantId,
     startDate: start,
     endDate: end,
     areaFilter: areaForRpc,
   });
+
+  const { data: analyticsFallback } = useDashboardAnalytics({
+    tenantId: restaurantId,
+    startDate: start,
+    endDate: end,
+    areaFilter: areaForRpc,
+    enabled: !!restaurantId,
+  });
+
+  const analytics = (statsData ?? analyticsFallback) as DashboardAdvancedStatsResponse | undefined;
 
   const { data: prevAnalytics } = useDashboardStats({
     tenantId: restaurantId,
@@ -345,6 +356,7 @@ export default function AdminDashboard() {
     pix: 'PIX',
     card: 'Cartão',
     cash: 'Dinheiro',
+    table: 'Mesa',
   };
 
   const pctChange = (curr: number, prev: number) =>

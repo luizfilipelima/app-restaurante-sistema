@@ -29,7 +29,12 @@ supabase/db/
 1. **schema/initial.sql** — Schema base (tabelas, RLS básico)
 2. **scripts/rls/supabase-rls-completo.sql** — Políticas completas
 3. **scripts/setup/supabase-criar-super-admin.sql** — (Opcional) Criar super admin
-4. Migrations em ordem de dependência conforme necessidade do projeto
+4. **BI do Dashboard** — Execute no SQL Editor do Supabase, nesta ordem:
+   - `migrations/add_bi_columns.sql`
+   - `migrations/create_dashboard_analytics_rpc.sql`
+   - `migrations/create_get_advanced_dashboard_stats_rpc.sql`
+   - `migrations/create_get_dashboard_kpis_rpc.sql`
+5. Demais migrations conforme necessidade do projeto
 
 ## Convenções
 
