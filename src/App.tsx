@@ -42,6 +42,7 @@ const AdminDeliveryZones    = lazy(() => import('./pages/admin/DeliveryZones'));
 const AdminCouriers         = lazy(() => import('./pages/admin/Couriers'));
 const AdminBuffet           = lazy(() => import('./pages/admin/Buffet'));
 const AdminCashier          = lazy(() => import('./pages/admin/Cashier'));
+const AdminComandaQRCode    = lazy(() => import('./pages/admin/ComandaQRCode'));
 const AdminProductsInventory = lazy(() => import('./pages/admin/ProductsInventory'));
 const AdminTables           = lazy(() => import('./pages/admin/Tables'));
 const UpgradePage           = lazy(() => import('./pages/admin/UpgradePage'));
@@ -133,6 +134,8 @@ const adminRoutes = (
     />
     {/* Caixa — leitura de Comandas Digitais e encerramento (Enterprise) */}
     <Route path="cashier" element={<AdminCashier />} />
+    {/* QR Code para impressão — link de entrada das Comandas Digitais (Enterprise) */}
+    <Route path="comanda-qr" element={<AdminComandaQRCode />} />
     {/* Página de upgrade — exibida quando o usuário tenta acessar uma feature bloqueada */}
     <Route path="upgrade" element={<UpgradePage />} />
   </>

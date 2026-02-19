@@ -33,6 +33,7 @@ import {
   Sparkles,
   CreditCard,
   ScanBarcode,
+  QrCode,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -139,6 +140,14 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
         name: 'Caixa (Comanda Digital)',
         href: `${base}/cashier`,
         icon: ScanBarcode,
+        featureFlag: 'feature_virtual_comanda',
+        featureLabel: 'Plano Enterprise',
+      },
+      {
+        kind: 'leaf',
+        name: 'QR Code da Comanda',
+        href: `${base}/comanda-qr`,
+        icon: QrCode,
         featureFlag: 'feature_virtual_comanda',
         featureLabel: 'Plano Enterprise',
       },
