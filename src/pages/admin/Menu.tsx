@@ -24,7 +24,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
 import { uploadProductImage } from '@/lib/imageUpload';
@@ -786,6 +785,8 @@ export default function AdminMenu() {
     );
   }
 
+  return (
+    <div className="space-y-6">
       {/* Tabs principais */}
       <Tabs defaultValue="produtos" className="w-full">
         <TabsList className="h-auto flex flex-wrap gap-1 p-1 mb-2">
@@ -970,7 +971,7 @@ export default function AdminMenu() {
                     <p className="text-xs text-muted-foreground">Tamanhos, massas e bordas para categorias do tipo Pizza</p>
                   </div>
                 </div>
-                <Separator />
+                <div className="h-px bg-border my-2" />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   {/* Tamanhos */}
@@ -1115,7 +1116,7 @@ export default function AdminMenu() {
                     <p className="text-xs text-muted-foreground">Tamanhos, proteínas e acompanhamentos para categorias do tipo Marmita</p>
                   </div>
                 </div>
-                <Separator />
+                <div className="h-px bg-border my-2" />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   {/* Tamanhos de Marmita */}
