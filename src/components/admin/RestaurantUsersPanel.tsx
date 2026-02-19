@@ -559,18 +559,23 @@ function AddUserForm({ restaurantId, onSuccess, onCancel }: AddUserFormProps) {
 
     setLoading(true);
     try {
-      const { error } = await supabase.rpc('super_admin_add_restaurant_user', {
-        p_restaurant_id: restaurantId,
-        p_email: form.email.trim().toLowerCase(),
-        p_password: form.password,
-        p_login: form.login.trim() || null,
-        p_role: form.role,
+      // Usa a Edge Function (supabase.auth.admin.createUser) em vez de INSERT SQL direto.
+      // Inserção SQL direta em auth.users bypassa o GoTrue e causa "Database error querying schema" no login.
+      const { data, error } = await supabase.functions.invoke('create-restaurant-user', {
+        body: {
+          email: form.email.trim().toLowerCase(),
+          password: form.password,
+          restaurant_id: restaurantId,
+          login: form.login.trim() || null,
+          restaurant_role: form.role,
+        },
       });
 
-      if (error) {
-        const msg = error.message ?? '';
-        if (msg.includes('duplicate_email'))
-          throw new Error('Já existe um usuário com este e-mail.');
+      if (error) throw new Error(error.message);
+
+      // A Edge Function retorna { error } no body quando há erros de negócio
+      if (data?.error) {
+        const msg: string = data.error ?? '';
         if (msg.includes('duplicate_login'))
           throw new Error('Já existe um usuário com este nome de usuário.');
         throw new Error(msg);
@@ -579,7 +584,12 @@ function AddUserForm({ restaurantId, onSuccess, onCancel }: AddUserFormProps) {
       toast({ title: 'Usuário criado com sucesso!' });
       onSuccess();
     } catch (err) {
-      toast({ title: 'Erro ao criar usuário', description: String(err), variant: 'destructive' });
+      const msg = String(err);
+      if (msg.includes('already been registered') || msg.includes('already exists')) {
+        toast({ title: 'Erro ao criar usuário', description: 'Já existe um usuário com este e-mail.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Erro ao criar usuário', description: msg.replace('Error: ', ''), variant: 'destructive' });
+      }
     } finally {
       setLoading(false);
     }
