@@ -23,7 +23,7 @@ import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, is
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote, Send } from 'lucide-react';
+import { ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote, Send, Trash2 } from 'lucide-react';
 
 interface PublicCheckoutProps {
   /** Quando renderizado dentro de StoreLayout (subdomínio), o slug é passado por prop */
@@ -381,43 +381,40 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         </div>
       </div>
 
-      <div className="container mx-auto px-3 sm:px-4 mt-4 sm:mt-6 mb-6 sm:mb-8 max-w-2xl space-y-4 sm:space-y-6">
-        
-        {/* Lista de Itens - Mobile First */}
-        <Card className="border-0 shadow-sm bg-white rounded-xl sm:rounded-2xl overflow-hidden">
-          <CardHeader className="pb-2 sm:pb-3 bg-slate-50/50 border-b border-slate-100 px-3 sm:px-6 pt-3 sm:pt-6">
-            <CardTitle className="text-base sm:text-lg text-slate-800">{t('checkout.orderItems')}</CardTitle>
+      <div className="container mx-auto px-3 sm:px-4 mt-3 sm:mt-5 mb-6 sm:mb-8 max-w-xl space-y-3">
+
+        {/* Lista de Itens */}
+        <Card className="border-0 shadow-sm bg-white rounded-xl overflow-hidden">
+          <CardHeader className="pb-2 bg-slate-50/50 border-b border-slate-100 px-4 pt-3">
+            <CardTitle className="text-sm font-semibold text-slate-600 uppercase tracking-wide">{t('checkout.orderItems')}</CardTitle>
           </CardHeader>
-          <CardContent className="pt-3 sm:pt-4 space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
+          <CardContent className="pt-2 space-y-1 px-4 pb-3">
             {items.map((item, index) => (
-              <div key={index} className="flex gap-3 sm:gap-4">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 font-bold text-xs sm:text-sm flex-shrink-0">
+              <div key={index} className="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
+                <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 font-bold text-xs flex-shrink-0">
                   {item.quantity}x
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start gap-2">
-                    <h3 className="font-semibold text-slate-900 text-sm sm:text-base leading-tight flex-1 min-w-0">{item.productName}</h3>
-                    {!isTableOrder && (
-                      <span className="font-bold text-slate-700 text-sm sm:text-base flex-shrink-0">{formatCurrency(item.unitPrice * item.quantity, currency)}</span>
-                    )}
-                  </div>
+                  <p className="font-semibold text-slate-900 text-sm leading-tight">{item.productName}</p>
                   {(item.pizzaSize || item.pizzaFlavors) && (
-                    <p className="text-xs sm:text-sm text-slate-500 mt-1 line-clamp-2">
-                      {item.pizzaSize} - {item.pizzaFlavors?.join(', ')}
+                    <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
+                      {[item.pizzaSize, item.pizzaFlavors?.join(', ')].filter(Boolean).join(' · ')}
                     </p>
                   )}
                   {item.observations && (
-                    <p className="text-xs text-orange-600 mt-1 italic line-clamp-2">Obs: {item.observations}</p>
+                    <p className="text-xs text-orange-500 mt-0.5 italic line-clamp-1">Obs: {item.observations}</p>
                   )}
-                  <div className="mt-2 flex gap-3">
-                    <button 
-                      onClick={() => updateQuantity(index, Math.max(0, item.quantity - 1))}
-                      className="text-xs text-slate-400 hover:text-orange-500 active:text-orange-600 font-medium touch-manipulation"
-                    >
-                      {t('checkout.remove')}
-                    </button>
-                  </div>
                 </div>
+                {!isTableOrder && (
+                  <span className="font-bold text-slate-700 text-sm flex-shrink-0">{formatCurrency(item.unitPrice * item.quantity, currency)}</span>
+                )}
+                <button
+                  onClick={() => updateQuantity(index, 0)}
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 active:scale-95 transition-all touch-manipulation flex-shrink-0"
+                  aria-label={t('checkout.remove')}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
             ))}
           </CardContent>
@@ -433,55 +430,55 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* Tipo de Entrega - oculto em pedidos de mesa */}
         {!isTableOrder && (
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 p-1 bg-slate-200/50 rounded-xl">
+        <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-200/40 rounded-xl">
           <button
             onClick={() => setDeliveryType(DeliveryType.DELIVERY)}
-            className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 rounded-lg font-bold text-sm sm:text-base transition-all touch-manipulation active:scale-95 ${
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all touch-manipulation active:scale-95 ${
               deliveryType === DeliveryType.DELIVERY
                 ? 'bg-white text-orange-600 shadow-sm ring-1 ring-orange-100'
                 : 'text-slate-500 active:bg-white/50'
             }`}
           >
-            <Bike className="h-4 w-4 sm:h-5 sm:w-5" /> <span className="hidden xs:inline">{t('checkout.delivery')}</span><span className="xs:hidden">{t('checkout.deliveryShort')}</span>
+            <Bike className="h-4 w-4" /> {t('checkout.delivery')}
           </button>
           <button
             onClick={() => setDeliveryType(DeliveryType.PICKUP)}
-            className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 rounded-lg font-bold text-sm sm:text-base transition-all touch-manipulation active:scale-95 ${
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all touch-manipulation active:scale-95 ${
               deliveryType === DeliveryType.PICKUP
                 ? 'bg-white text-orange-600 shadow-sm ring-1 ring-orange-100'
                 : 'text-slate-500 active:bg-white/50'
             }`}
           >
-            <Store className="h-4 w-4 sm:h-5 sm:w-5" /> <span className="hidden xs:inline">{t('checkout.pickup')}</span><span className="xs:hidden">{t('checkout.pickupShort')}</span>
+            <Store className="h-4 w-4" /> {t('checkout.pickup')}
           </button>
         </div>
         )}
 
         {/* Formulário de Entrega - oculto em pedidos de mesa */}
         {!isTableOrder && (
-        <Card className="border-0 shadow-sm bg-white rounded-xl sm:rounded-2xl">
-          <CardContent className="pt-4 sm:pt-6 space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="space-y-1.5 sm:space-y-2">
-                <Label htmlFor="name" className="text-sm sm:text-base">{t('checkout.yourName')}</Label>
+        <Card className="border-0 shadow-sm bg-white rounded-xl">
+          <CardContent className="pt-4 space-y-3 px-4 pb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="name" className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.yourName')}</Label>
                 <Input 
                   id="name" 
                   value={customerName} 
                   onChange={(e) => setCustomerName(e.target.value)} 
                   placeholder={t('checkout.namePlaceholder')} 
-                  className="bg-slate-50 border-slate-200 h-11 sm:h-12 text-sm sm:text-base touch-manipulation" 
+                  className="bg-slate-50 border-slate-200 h-11 text-base touch-manipulation" 
                 />
               </div>
-              <div className="space-y-1.5 sm:space-y-2">
-                <Label htmlFor="phone" className="text-sm sm:text-base">{t('checkout.phoneLabel')}</Label>
+              <div className="space-y-1">
+                <Label htmlFor="phone" className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.phoneLabel')}</Label>
                 <div className="flex gap-2">
                   <Select value={phoneCountry} onValueChange={(v) => setPhoneCountry(v as 'BR' | 'PY')}>
-                    <SelectTrigger className="w-[90px] sm:w-[100px] bg-slate-50 border-slate-200 shrink-0 h-11 sm:h-12 text-sm sm:text-base">
-                      <SelectValue />
+                    <SelectTrigger className="w-12 bg-slate-50 border-slate-200 shrink-0 h-11 px-2 justify-center text-lg">
+                      <span>{phoneCountry === 'BR' ? '🇧🇷' : '🇵🇾'}</span>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="BR">🇧🇷 +55</SelectItem>
-                      <SelectItem value="PY">🇵🇾 +595</SelectItem>
+                      <SelectItem value="BR">🇧🇷 +55 (Brasil)</SelectItem>
+                      <SelectItem value="PY">🇵🇾 +595 (Paraguay)</SelectItem>
                     </SelectContent>
                   </Select>
                   <Input
@@ -489,7 +486,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     placeholder={phoneCountry === 'BR' ? '(11) 99999-9999' : '981 123 456'}
-                    className="bg-slate-50 border-slate-200 flex-1 h-11 sm:h-12 text-sm sm:text-base touch-manipulation"
+                    className="bg-slate-50 border-slate-200 flex-1 h-11 text-base touch-manipulation"
                     type="tel"
                   />
                 </div>
@@ -497,30 +494,30 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             </div>
 
             {deliveryType === DeliveryType.DELIVERY && (
-              <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-slate-100">
-                <div className="space-y-1.5 sm:space-y-2">
-                  <Label className="text-sm sm:text-base">{t('checkout.zoneLabel')}</Label>
+              <div className="space-y-3 pt-3 border-t border-slate-100">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.zoneLabel')}</Label>
                   <Select value={selectedZoneId} onValueChange={setSelectedZoneId}>
-                    <SelectTrigger className="bg-slate-50 border-slate-200 h-11 sm:h-12 text-sm sm:text-base touch-manipulation">
+                    <SelectTrigger className="bg-slate-50 border-slate-200 h-11 text-base touch-manipulation">
                       <SelectValue placeholder={t('checkout.zonePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {zones.map((zone) => (
-                        <SelectItem key={zone.id} value={zone.id} className="text-sm sm:text-base">
+                        <SelectItem key={zone.id} value={zone.id} className="text-sm">
                           {zone.location_name} ({formatCurrency(zone.fee, currency)})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5 sm:space-y-2">
-                  <Label htmlFor="address" className="text-sm sm:text-base">{t('checkout.addressLabel')}</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="address" className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.addressLabel')}</Label>
                   <Input 
                     id="address" 
                     value={address} 
                     onChange={(e) => setAddress(e.target.value)} 
                     placeholder={t('checkout.addressPlaceholder')} 
-                    className="bg-slate-50 border-slate-200 h-11 sm:h-12 text-sm sm:text-base touch-manipulation"
+                    className="bg-slate-50 border-slate-200 h-11 text-base touch-manipulation"
                   />
                 </div>
               </div>
@@ -531,39 +528,39 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* Pagamento - oculto em pedidos de mesa */}
         {!isTableOrder && (
-        <Card className="border-0 shadow-sm bg-white rounded-xl sm:rounded-2xl">
-          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-4 sm:pt-6">
-            <CardTitle className="text-base sm:text-lg text-slate-800">{t('checkout.payment')}</CardTitle>
+        <Card className="border-0 shadow-sm bg-white rounded-xl">
+          <CardHeader className="pb-2 px-4 pt-3">
+            <CardTitle className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.payment')}</CardTitle>
           </CardHeader>
-          <CardContent className="pt-2 px-3 sm:px-6 pb-4 sm:pb-6">
-            <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="gap-2.5 sm:gap-3">
-              <div className={`flex items-center space-x-2 sm:space-x-3 border p-3 sm:p-4 rounded-xl transition-all touch-manipulation active:scale-[0.98] ${paymentMethod === PaymentMethod.PIX ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200 active:bg-slate-50'}`}>
-                <RadioGroupItem value={PaymentMethod.PIX} id="pix" className="h-5 w-5 sm:h-6 sm:w-6" />
-                <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer w-full font-bold text-sm sm:text-base">
-                  <Smartphone className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500 flex-shrink-0" /> PIX
+          <CardContent className="pt-0 px-4 pb-4">
+            <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="gap-2">
+              <div className={`flex items-center gap-3 border p-3 rounded-xl transition-all touch-manipulation active:scale-[0.98] cursor-pointer ${paymentMethod === PaymentMethod.PIX ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200 active:bg-slate-50'}`}>
+                <RadioGroupItem value={PaymentMethod.PIX} id="pix" className="h-4 w-4 shrink-0" />
+                <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer w-full font-semibold text-sm">
+                  <Smartphone className="h-4 w-4 text-emerald-500 flex-shrink-0" /> PIX
                 </Label>
               </div>
-              <div className={`flex items-center space-x-2 sm:space-x-3 border p-3 sm:p-4 rounded-xl transition-all touch-manipulation active:scale-[0.98] ${paymentMethod === PaymentMethod.CARD ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200 active:bg-slate-50'}`}>
-                <RadioGroupItem value={PaymentMethod.CARD} id="card" className="h-5 w-5 sm:h-6 sm:w-6" />
-                <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer w-full font-bold text-sm sm:text-base">
-                  <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 flex-shrink-0" /> <span className="hidden xs:inline">{t('checkout.cardOnDelivery')}</span><span className="xs:hidden">{t('checkout.cardShort')}</span>
+              <div className={`flex items-center gap-3 border p-3 rounded-xl transition-all touch-manipulation active:scale-[0.98] cursor-pointer ${paymentMethod === PaymentMethod.CARD ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200 active:bg-slate-50'}`}>
+                <RadioGroupItem value={PaymentMethod.CARD} id="card" className="h-4 w-4 shrink-0" />
+                <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer w-full font-semibold text-sm">
+                  <CreditCard className="h-4 w-4 text-blue-500 flex-shrink-0" /> {t('checkout.cardOnDelivery')}
                 </Label>
               </div>
-              <div className={`flex flex-col space-y-2.5 sm:space-y-3 border p-3 sm:p-4 rounded-xl transition-all ${paymentMethod === PaymentMethod.CASH ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200'}`}>
-                <div className="flex items-center space-x-2 sm:space-x-3 touch-manipulation active:scale-[0.98]">
-                  <RadioGroupItem value={PaymentMethod.CASH} id="cash" className="h-5 w-5 sm:h-6 sm:w-6" />
-                  <Label htmlFor="cash" className="flex items-center gap-2 cursor-pointer w-full font-bold text-sm sm:text-base">
-                    <Banknote className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" /> {t('checkout.cash')}
+              <div className={`flex flex-col gap-2 border p-3 rounded-xl transition-all ${paymentMethod === PaymentMethod.CASH ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200'}`}>
+                <div className="flex items-center gap-3 touch-manipulation active:scale-[0.98] cursor-pointer">
+                  <RadioGroupItem value={PaymentMethod.CASH} id="cash" className="h-4 w-4 shrink-0" />
+                  <Label htmlFor="cash" className="flex items-center gap-2 cursor-pointer w-full font-semibold text-sm">
+                    <Banknote className="h-4 w-4 text-green-600 flex-shrink-0" /> {t('checkout.cash')}
                   </Label>
                 </div>
                 {paymentMethod === PaymentMethod.CASH && (
-                  <div className="pl-7 sm:pl-9">
-                    <Label className="text-xs sm:text-sm text-slate-500">{t('checkout.changeFor')} ({currency === 'PYG' ? t('checkout.changeForGuarani') : t('checkout.changeForReal')})</Label>
+                  <div className="pl-7">
+                    <Label className="text-xs text-slate-500">{t('checkout.changeFor')} ({currency === 'PYG' ? t('checkout.changeForGuarani') : t('checkout.changeForReal')})</Label>
                     <Input 
                       placeholder="Ex: 50.000" 
                       value={changeFor}
                       onChange={(e) => setChangeFor(e.target.value)}
-                      className="mt-1.5 sm:mt-2 bg-white h-10 sm:h-11 text-sm sm:text-base touch-manipulation"
+                      className="mt-1.5 bg-white h-10 text-base touch-manipulation"
                     />
                   </div>
                 )}
@@ -575,34 +572,34 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* Observações - oculto em pedidos de mesa */}
         {!isTableOrder && (
-        <div className="space-y-1.5 sm:space-y-2">
-          <Label htmlFor="notes" className="text-sm sm:text-base">{t('checkout.notesLabel')}</Label>
+        <div className="space-y-1">
+          <Label htmlFor="notes" className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.notesLabel')}</Label>
           <Input 
             id="notes" 
             value={notes} 
             onChange={(e) => setNotes(e.target.value)} 
             placeholder={t('checkout.notesPlaceholder')} 
-            className="bg-white border-slate-200 h-11 sm:h-12 text-sm sm:text-base touch-manipulation"
+            className="bg-white border-slate-200 h-11 text-base touch-manipulation"
           />
         </div>
         )}
 
-        {/* Resumo e Botão Finalizar - Integrado ao conteúdo */}
-        <Card className="border-0 shadow-lg bg-white rounded-xl sm:rounded-2xl">
-          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6 pb-4 sm:pb-6 space-y-3 sm:space-y-4">
+        {/* Resumo e Botão Finalizar */}
+        <Card className="border-0 shadow-lg bg-white rounded-xl">
+          <CardContent className="pt-4 px-4 pb-4 space-y-3">
             {!isTableOrder && (
-            <div className="space-y-2 sm:space-y-2.5">
-              <div className="flex justify-between items-center text-sm sm:text-base">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-sm">
                 <span className="text-slate-500">{t('checkout.subtotal')}</span>
                 <span className="font-semibold text-slate-900">{formatCurrency(subtotal, currency)}</span>
               </div>
               {deliveryType === DeliveryType.DELIVERY && (
-                <div className="flex justify-between items-center text-sm sm:text-base">
+                <div className="flex justify-between items-center text-sm">
                   <span className="text-slate-500">{t('checkout.deliveryFee')}</span>
                   <span className="font-semibold text-red-600">{formatCurrency(deliveryFee, currency)}</span>
                 </div>
               )}
-              <div className="flex justify-between items-center text-lg sm:text-xl font-bold border-t border-slate-200 pt-3">
+              <div className="flex justify-between items-center text-base font-bold border-t border-slate-200 pt-2.5">
                 <span className="text-slate-900">{t('checkout.total')}</span>
                 <span className="text-slate-900">{formatCurrency(total, currency)}</span>
               </div>
@@ -611,7 +608,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             
             <Button 
               size="lg" 
-              className={`w-full font-bold h-12 sm:h-14 rounded-xl sm:rounded-2xl shadow-lg flex items-center justify-center gap-2 text-sm sm:text-base sm:text-lg touch-manipulation active:scale-[0.98] ${
+              className={`w-full font-bold h-12 rounded-xl shadow-lg flex items-center justify-center gap-2 text-base touch-manipulation active:scale-[0.98] ${
                 isTableOrder
                   ? 'bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white'
                   : 'bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white'
@@ -627,13 +624,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               ) : isTableOrder ? (
                 <>
                   <span>Fazer Pedido</span>
-                  <Send className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                  <Send className="h-4 w-4 flex-shrink-0" />
                 </>
               ) : (
                 <>
-                  <span className="hidden xs:inline">{t('checkout.sendWhatsApp')}</span>
-                  <span className="xs:hidden">{t('checkout.sendWhatsAppShort')}</span>
-                  <Send className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                  <span>{t('checkout.sendWhatsApp')}</span>
+                  <Send className="h-4 w-4 flex-shrink-0" />
                 </>
               )}
             </Button>

@@ -29,7 +29,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] sm:max-h-[85vh] flex flex-col p-0 gap-0 safe-area-inset-bottom">
+      <DialogContent className="max-w-lg md:max-w-xl lg:max-w-2xl max-h-[90vh] sm:max-h-[85vh] flex flex-col p-0 gap-0 safe-area-inset-bottom">
         <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b">
           <DialogTitle className="text-lg sm:text-xl">{t('cart.title')}</DialogTitle>
         </DialogHeader>
@@ -114,25 +114,27 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
         </div>
 
         {items.length > 0 && (
-          <DialogFooter className="flex flex-col gap-3 sm:gap-4 px-4 sm:px-6 pb-4 sm:pb-6 pt-4 border-t bg-slate-50/50">
-            <div className="w-full rounded-xl bg-sky-50 border border-sky-200 p-3 sm:p-4 flex gap-2 sm:gap-3">
+          <DialogFooter className="flex flex-col md:flex-row md:items-start gap-4 px-4 sm:px-6 pb-4 sm:pb-6 pt-4 border-t bg-slate-50/50">
+            <div className="flex-1 min-w-0 md:max-w-sm rounded-xl bg-sky-50 border border-sky-200 p-3 sm:p-4 flex gap-2 sm:gap-3">
               <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 text-sky-600 flex-shrink-0 mt-0.5" />
-              <div className="text-xs sm:text-sm text-sky-800">
+              <div className="min-w-0 text-xs sm:text-sm text-sky-800">
                 <p className="font-semibold">{t('cart.sendLocationTitle')}</p>
                 <p className="text-sky-700 mt-0.5 leading-relaxed">{t('cart.sendLocationDesc')}</p>
               </div>
             </div>
-            <div className="flex justify-between items-center text-base sm:text-lg font-bold w-full">
-              <span>{t('cart.subtotal')}:</span>
-              <span>{formatCurrency(getSubtotal(), currency)}</span>
+            <div className="flex flex-col gap-3 md:min-w-[200px] md:shrink-0">
+              <div className="flex justify-between items-center text-base sm:text-lg font-bold">
+                <span>{t('cart.subtotal')}:</span>
+                <span>{formatCurrency(getSubtotal(), currency)}</span>
+              </div>
+              <Button 
+                size="lg" 
+                onClick={handleCheckout} 
+                className="w-full h-12 sm:h-14 text-sm sm:text-base font-semibold rounded-xl sm:rounded-2xl touch-manipulation active:scale-[0.98]"
+              >
+                {t('cart.finalize')}
+              </Button>
             </div>
-            <Button 
-              size="lg" 
-              onClick={handleCheckout} 
-              className="w-full h-12 sm:h-14 text-sm sm:text-base font-semibold rounded-xl sm:rounded-2xl touch-manipulation active:scale-[0.98]"
-            >
-              {t('cart.finalize')}
-            </Button>
           </DialogFooter>
         )}
       </DialogContent>
