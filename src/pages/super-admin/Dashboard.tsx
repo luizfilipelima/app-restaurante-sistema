@@ -31,7 +31,6 @@ import {
   DollarSign,
   ShoppingCart,
   TrendingUp,
-  LogOut,
   ChefHat,
   Layout,
   BookOpen,
@@ -59,7 +58,7 @@ const DAYS: { key: DayKey; label: string }[] = [
 ];
 
 export default function SuperAdminDashboard() {
-  const { signOut } = useAuthStore();
+  useAuthStore();
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState({
     totalRestaurants: 0,
@@ -214,11 +213,6 @@ export default function SuperAdminDashboard() {
       setRestaurantToDelete(null);
       setDeleteConfirmName('');
     }
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -376,239 +370,260 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-card shadow-sm">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="p-8 space-y-8">
+
+      {/* ── Cabeçalho ──────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Restaurantes</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Gerencie todos os tenants do SaaS
+          </p>
+        </div>
+        <Button onClick={() => setShowNewRestaurantDialog(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Novo restaurante
+        </Button>
+      </div>
+
+      {/* ── Cards de métricas ─────────────────────────────────────────────── */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Restaurantes */}
+        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Painel Geral</h1>
-              <p className="text-muted-foreground mt-0.5">
-                Visão geral do sistema e todos os restaurantes
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                Restaurantes
+              </p>
+              <p className="text-3xl font-extrabold text-slate-900 mt-2">
+                {metrics.totalRestaurants}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                {metrics.activeRestaurants} ativos
               </p>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <Button
-                variant="default"
-                onClick={() => setShowNewRestaurantDialog(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Novo restaurante
-              </Button>
-              <Button variant="outline" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sair
-              </Button>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50">
+              <Store className="h-4 w-4 text-[#F87116]" />
+            </div>
+          </div>
+        </div>
+
+        {/* Faturamento */}
+        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                Faturamento total
+              </p>
+              <p className="text-3xl font-extrabold text-slate-900 mt-2">
+                {formatCurrency(metrics.totalRevenue)}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">histórico geral</p>
+            </div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50">
+              <DollarSign className="h-4 w-4 text-emerald-600" />
+            </div>
+          </div>
+        </div>
+
+        {/* Pedidos */}
+        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                Total de pedidos
+              </p>
+              <p className="text-3xl font-extrabold text-slate-900 mt-2">
+                {metrics.totalOrders}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">em todos os tenants</p>
+            </div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50">
+              <ShoppingCart className="h-4 w-4 text-sky-600" />
+            </div>
+          </div>
+        </div>
+
+        {/* Ticket médio */}
+        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                Ticket médio
+              </p>
+              <p className="text-3xl font-extrabold text-slate-900 mt-2">
+                {formatCurrency(
+                  metrics.totalOrders > 0 ? metrics.totalRevenue / metrics.totalOrders : 0
+                )}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">por pedido</p>
+            </div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50">
+              <TrendingUp className="h-4 w-4 text-violet-600" />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8 space-y-8">
-        {/* Métricas */}
-        <div>
-          <h2 className="text-lg font-semibold text-foreground mb-4">Métricas globais</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="relative border-0 shadow-premium overflow-hidden group">
-              <div className="absolute inset-0 gradient-primary opacity-90 group-hover:opacity-100 transition-opacity rounded-lg" />
-              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-semibold text-white/90">
-                  Restaurantes
-                </CardTitle>
-                <Store className="h-5 w-5 text-white/80" />
-              </CardHeader>
-              <CardContent className="relative">
-                <div className="text-2xl font-bold text-white">
-                  {metrics.totalRestaurants}
-                </div>
-                <p className="text-xs text-white/80">{metrics.activeRestaurants} ativos</p>
-              </CardContent>
-            </Card>
-
-            <Card className="relative border-0 shadow-premium overflow-hidden group">
-              <div className="absolute inset-0 gradient-secondary opacity-90 group-hover:opacity-100 transition-opacity rounded-lg" />
-              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-semibold text-white/90">
-                  Faturamento total
-                </CardTitle>
-                <DollarSign className="h-5 w-5 text-white/80" />
-              </CardHeader>
-              <CardContent className="relative">
-                <div className="text-2xl font-bold text-white">
-                  {formatCurrency(metrics.totalRevenue)}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="relative border-0 shadow-premium overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-600 opacity-90 group-hover:opacity-100 transition-opacity rounded-lg" />
-              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-semibold text-white/90">
-                  Total de pedidos
-                </CardTitle>
-                <ShoppingCart className="h-5 w-5 text-white/80" />
-              </CardHeader>
-              <CardContent className="relative">
-                <div className="text-2xl font-bold text-white">{metrics.totalOrders}</div>
-              </CardContent>
-            </Card>
-
-            <Card className="relative border-0 shadow-premium overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-600 opacity-90 group-hover:opacity-100 transition-opacity rounded-lg" />
-              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-semibold text-white/90">
-                  Ticket médio
-                </CardTitle>
-                <TrendingUp className="h-5 w-5 text-white/80" />
-              </CardHeader>
-              <CardContent className="relative">
-                <div className="text-2xl font-bold text-white">
-                  {formatCurrency(
-                    metrics.totalOrders > 0 ? metrics.totalRevenue / metrics.totalOrders : 0
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Lista de restaurantes */}
-        <div>
-          <h2 className="text-lg font-semibold text-foreground mb-4">
-            Restaurantes ({restaurants.length})
+      {/* ── Lista de restaurantes ─────────────────────────────────────────── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-slate-800">
+            Todos os restaurantes
+            <span className="ml-2 text-sm font-normal text-slate-400">
+              ({restaurants.length})
+            </span>
           </h2>
-
-          {restaurants.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <Store className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground font-medium">Nenhum restaurante cadastrado</p>
-                <p className="text-sm text-muted-foreground mt-1 mb-4">
-                  Crie o primeiro restaurante para começar
-                </p>
-                <Button onClick={() => setShowNewRestaurantDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Criar restaurante
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {restaurants.map((restaurant) => (
-                <Card key={restaurant.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                  <CardContent className="p-0">
-                    <div className="p-4 flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        {restaurant.logo ? (
-                          <img
-                            src={restaurant.logo}
-                            alt={restaurant.name}
-                            className="h-11 w-11 rounded-xl object-cover flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                            <Store className="h-5 w-5 text-primary" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-foreground truncate">
-                            {restaurant.name}
-                          </h3>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {restaurant.phone || restaurant.slug}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {ordersByRestaurant[restaurant.id] ?? 0} pedidos
-                          </p>
-                        </div>
-                      </div>
-                      <Badge
-                        variant={restaurant.is_active ? 'default' : 'secondary'}
-                        className="flex-shrink-0"
-                      >
-                        {restaurant.is_active ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                    </div>
-                    <div className="px-4 pb-4 flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        className="flex-1 min-w-[100px]"
-                        onClick={() => {
-                          /**
-                           * Usa o slug amigável como identifier na URL quando disponível.
-                           * Fallback para o UUID bruto caso o restaurante ainda não tenha slug.
-                           * A resolução inversa (identifier → UUID real) acontece em AdminLayoutWrapper.
-                           */
-                          const identifier = restaurant.slug || restaurant.id;
-                          navigate(`/super-admin/restaurants/${identifier}`);
-                        }}
-                      >
-                        <Layout className="h-3.5 w-3.5 mr-1.5" />
-                        Admin
-                      </Button>
-                      {/* Botão de gestão de assinatura — mesma lógica de fallback slug → id */}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 min-w-[100px] border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-                        onClick={() => {
-                          const identifier = restaurant.slug || restaurant.id;
-                          navigate(`/super-admin/restaurants/${identifier}/subscription`);
-                        }}
-                      >
-                        <CreditCard className="h-3.5 w-3.5 mr-1.5" />
-                        Assinatura
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          window.open(`${window.location.origin}/kitchen?restaurant_id=${restaurant.id}`, '_blank')
-                        }
-                      >
-                        <ChefHat className="h-3.5 w-3.5 mr-1.5" />
-                        Cozinha
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => window.open(`/${restaurant.slug}`, '_blank')}
-                      >
-                        <BookOpen className="h-3.5 w-3.5 mr-1.5" />
-                        Cardápio
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          toggleRestaurantStatus(restaurant.id, restaurant.is_active)
-                        }
-                      >
-                        {restaurant.is_active ? (
-                          <EyeOff className="h-3.5 w-3.5" />
-                        ) : (
-                          <Eye className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                      {/* Soft delete: abre modal de confirmação por nome */}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
-                        onClick={() => {
-                          setRestaurantToDelete(restaurant);
-                          setDeleteConfirmName('');
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
         </div>
+
+        {restaurants.length === 0 ? (
+          <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-12 text-center">
+            <Store className="mx-auto h-10 w-10 text-slate-300 mb-3" />
+            <p className="font-semibold text-slate-600">Nenhum restaurante cadastrado</p>
+            <p className="text-sm text-slate-400 mt-1 mb-5">
+              Crie o primeiro restaurante para começar
+            </p>
+            <Button onClick={() => setShowNewRestaurantDialog(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Criar restaurante
+            </Button>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {restaurants.map((restaurant) => (
+              <div
+                key={restaurant.id}
+                className="rounded-2xl border border-slate-200 bg-white overflow-hidden hover:shadow-md transition-shadow"
+              >
+                <div className="p-4 flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {restaurant.logo ? (
+                      <img
+                        src={restaurant.logo}
+                        alt={restaurant.name}
+                        className="h-11 w-11 rounded-xl object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="h-11 w-11 rounded-xl bg-orange-50 flex items-center justify-center flex-shrink-0">
+                        <Store className="h-5 w-5 text-[#F87116]" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-slate-800 truncate">
+                        {restaurant.name}
+                      </h3>
+                      <p className="text-sm text-slate-500 truncate">
+                        {restaurant.phone || restaurant.slug}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {ordersByRestaurant[restaurant.id] ?? 0} pedidos
+                      </p>
+                    </div>
+                  </div>
+                  <Badge
+                    variant={restaurant.is_active ? 'default' : 'secondary'}
+                    className={`flex-shrink-0 text-xs ${
+                      restaurant.is_active
+                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+                        : ''
+                    }`}
+                  >
+                    {restaurant.is_active ? 'Ativo' : 'Inativo'}
+                  </Badge>
+                </div>
+                {/* Separador */}
+                <div className="mx-4 h-px bg-slate-100" />
+
+                {/* Ações do card */}
+                <div className="px-4 py-3 flex flex-wrap gap-2">
+                  {/* Admin — navega para o painel do restaurante */}
+                  <Button
+                    size="sm"
+                    className="flex-1 min-w-[96px] bg-[#F87116] hover:bg-[#e56910] text-white gap-1.5"
+                    onClick={() => {
+                      /**
+                       * Usa slug como identifier quando disponível.
+                       * Fallback para UUID caso slug não esteja configurado.
+                       */
+                      const identifier = restaurant.slug || restaurant.id;
+                      navigate(`/super-admin/restaurants/${identifier}`);
+                    }}
+                  >
+                    <Layout className="h-3.5 w-3.5" />
+                    Admin
+                  </Button>
+
+                  {/* Assinatura */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 min-w-[96px] border-orange-200 text-[#F87116] hover:bg-orange-50 hover:border-orange-300 gap-1.5"
+                    onClick={() => {
+                      const identifier = restaurant.slug || restaurant.id;
+                      navigate(`/super-admin/restaurants/${identifier}/subscription`);
+                    }}
+                  >
+                    <CreditCard className="h-3.5 w-3.5" />
+                    Assinatura
+                  </Button>
+
+                  {/* Cozinha */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-slate-200 text-slate-600 hover:bg-slate-50 gap-1"
+                    onClick={() =>
+                      window.open(`${window.location.origin}/kitchen?restaurant_id=${restaurant.id}`, '_blank')
+                    }
+                  >
+                    <ChefHat className="h-3.5 w-3.5" />
+                    Cozinha
+                  </Button>
+
+                  {/* Cardápio */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-slate-200 text-slate-600 hover:bg-slate-50 gap-1"
+                    onClick={() => window.open(`/${restaurant.slug}`, '_blank')}
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    Cardápio
+                  </Button>
+
+                  {/* Ativar / Desativar */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-slate-200 text-slate-600 hover:bg-slate-50"
+                    title={restaurant.is_active ? 'Desativar' : 'Ativar'}
+                    onClick={() => toggleRestaurantStatus(restaurant.id, restaurant.is_active)}
+                  >
+                    {restaurant.is_active ? (
+                      <EyeOff className="h-3.5 w-3.5" />
+                    ) : (
+                      <Eye className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+
+                  {/* Soft delete */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-red-200 text-red-400 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                    title="Remover restaurante"
+                    onClick={() => {
+                      setRestaurantToDelete(restaurant);
+                      setDeleteConfirmName('');
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Modal de confirmação de exclusão (Danger Modal) ─────────────── */}
