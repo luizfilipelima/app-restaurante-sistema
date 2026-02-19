@@ -194,22 +194,31 @@ function CashierContent() {
 
   // ── Real-time: mudanças em virtual_comandas ────────────────────────────────
 
+  const handleComandasRealtime = useCallback(() => {
+    loadActiveComandas();
+  }, [loadActiveComandas]);
+
   useEffect(() => {
     if (!restaurantId) return;
     const ch = supabase
       .channel(`cashier-comandas-${restaurantId}`)
       .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'virtual_comandas',
+        event: '*',
+        schema: 'public',
+        table: 'virtual_comandas',
         filter: `restaurant_id=eq.${restaurantId}`,
-      }, () => { loadActiveComandas(); })
-      .subscribe((status) => {
+      }, handleComandasRealtime)
+      .subscribe((status, err) => {
         setIsLive(status === 'SUBSCRIBED');
+        if (status === 'CHANNEL_ERROR' && import.meta.env.DEV && err) {
+          console.warn('[Cashier Realtime]', status, err);
+        }
       });
     return () => {
       supabase.removeChannel(ch);
       setIsLive(false);
     };
-  }, [restaurantId, loadActiveComandas]);
+  }, [restaurantId, handleComandasRealtime]);
 
   // Fallback: polling quando Realtime não está conectado (ex: tabela fora da publicação)
   useEffect(() => {

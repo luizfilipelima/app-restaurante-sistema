@@ -144,6 +144,8 @@ export default function AdminOrders() {
 
   const handleRealtimeOrder = useCallback(async (payload: any) => {
     queryClient.invalidateQueries({ queryKey: ['orders', restaurantId] });
+    queryClient.invalidateQueries({ queryKey: ['completed-orders', restaurantId] });
+    refetchOrders();
     if (payload.eventType === 'INSERT' && payload.new?.restaurant_id === restaurantId) {
       const orderId = (payload.new as { id: string }).id;
       const settings = printSettingsRef.current;
@@ -166,7 +168,7 @@ export default function AdminOrders() {
         console.error('Erro ao imprimir pedido novo:', e);
       }
     }
-  }, [restaurantId, queryClient, printOrder, currency]);
+  }, [restaurantId, queryClient, printOrder, currency, refetchOrders]);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -182,8 +184,11 @@ export default function AdminOrders() {
         },
         handleRealtimeOrder
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         setIsLive(status === 'SUBSCRIBED');
+        if (status === 'CHANNEL_ERROR' && import.meta.env.DEV && err) {
+          console.warn('[Orders Realtime]', status, err);
+        }
       });
     return () => {
       supabase.removeChannel(channel);
