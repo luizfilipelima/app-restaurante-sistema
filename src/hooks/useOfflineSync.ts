@@ -101,7 +101,7 @@ export function useOfflineSync(restaurantId: string) {
 
       setSyncStatus('online');
       if (queue.length > 0) {
-        toast({ title: `${queue.length} item(s) sincronizado(s) com sucesso!` });
+        toast({ title: `${queue.length} item(s) sincronizado(s) com sucesso!`, duration: 3000 });
       }
     } catch (error) {
       console.error('Erro na sincronização:', error);
@@ -122,7 +122,7 @@ export function useOfflineSync(restaurantId: string) {
     syncStatus,
     pendingCount,
     syncNow: syncPendingItems,
-    isOnline: syncStatus === 'online',
+    isOnline: syncStatus === 'online' || syncStatus === 'syncing',
     isSyncing: syncStatus === 'syncing',
   };
 }

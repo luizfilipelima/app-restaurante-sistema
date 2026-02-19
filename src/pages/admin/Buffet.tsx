@@ -34,7 +34,6 @@ import {
   Hash,
   ShoppingBag,
   Receipt,
-  RefreshCw,
   Zap,
 } from 'lucide-react';
 
@@ -81,15 +80,13 @@ const URGENCY_STYLES: Record<TimeUrgency, { bar: string; badge: string; text: st
 // ─── Componente: Status Bar ───────────────────────────────────────────────────
 
 function StatusBar({
-  isLive, isOnline, isSyncing, pendingCount, onRefresh, onNewComanda, loading,
+  isLive, isOnline, isSyncing, pendingCount, onNewComanda,
 }: {
   isLive: boolean;
   isOnline: boolean;
   isSyncing: boolean;
   pendingCount: number;
-  onRefresh: () => void;
   onNewComanda: () => void;
-  loading: boolean;
 }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -146,14 +143,6 @@ function StatusBar({
 
       {/* Ações */}
       <div className="flex items-center gap-2">
-        <button
-          onClick={onRefresh}
-          disabled={loading}
-          className="h-9 w-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-50 transition-colors"
-          title="Atualizar comandas"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-        </button>
         <Button
           onClick={onNewComanda}
           className="gap-2 bg-[#F87116] hover:bg-[#e56910] text-white shadow-sm shadow-orange-200"
@@ -753,9 +742,7 @@ export default function Buffet() {
         isOnline={isOnline}
         isSyncing={isSyncing}
         pendingCount={pendingCount}
-        onRefresh={() => refresh()}
         onNewComanda={handleNewComanda}
-        loading={loading}
       />
 
       {/* ── Métricas rápidas ───────────────────────────────────────────── */}

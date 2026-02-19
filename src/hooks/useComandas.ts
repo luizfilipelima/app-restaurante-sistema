@@ -9,7 +9,7 @@ export function useComandas(restaurantId: string) {
   const [comandas, setComandas] = useState<ComandaWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
-  const { syncNow, isOnline } = useOfflineSync(restaurantId);
+  const { isOnline } = useOfflineSync(restaurantId);
 
   const loadComandas = useCallback(async (silent = false) => {
     if (!restaurantId) return;
@@ -33,8 +33,6 @@ export function useComandas(restaurantId: string) {
 
         if (data) {
           setComandas(data as ComandaWithItems[]);
-          // Sincronizar dados locais
-          await syncNow();
           return;
         }
       }
@@ -62,7 +60,7 @@ export function useComandas(restaurantId: string) {
     } finally {
       setLoading(false);
     }
-  }, [restaurantId, isOnline, syncNow]);
+  }, [restaurantId, isOnline]);
 
   // Carga inicial
   useEffect(() => {
