@@ -137,7 +137,7 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
       },
       {
         kind: 'leaf',
-        name: 'Caixa (Comanda Digital)',
+        name: 'Caixa / Comanda Digital',
         href: `${base}/cashier`,
         icon: ScanBarcode,
         featureFlag: 'feature_virtual_comanda',
