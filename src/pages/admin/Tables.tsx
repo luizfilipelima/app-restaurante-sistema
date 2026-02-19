@@ -49,6 +49,8 @@ export default function AdminTables() {
   const [ordersModalTable, setOrdersModalTable] = useState<Table | null>(null);
   const [tableOrders, setTableOrders] = useState<TableOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  /** Mesas com pedidos novos (dot de notificação). Limpa ao visualizar. */
+  const [tablesWithNewOrders, setTablesWithNewOrders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -69,6 +71,32 @@ export default function AdminTables() {
       supabase.removeChannel(channel);
     };
   }, [restaurantId, refetchWaiterCalls]);
+
+  // Realtime: novos pedidos em mesas -> mostrar dot de notificação
+  useEffect(() => {
+    if (!restaurantId) return;
+    const channel = supabase
+      .channel('orders-table-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'orders',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        (payload) => {
+          const tableId = (payload.new as { table_id?: string | null }).table_id;
+          if (tableId) {
+            setTablesWithNewOrders((prev) => new Set(prev).add(tableId));
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [restaurantId]);
 
   const loadTableOrders = async (tableId: string) => {
     setLoadingOrders(true);
@@ -165,6 +193,11 @@ export default function AdminTables() {
   const openOrdersModal = (table: Table) => {
     setOrdersModalTable(table);
     loadTableOrders(table.id);
+    setTablesWithNewOrders((prev) => {
+      const next = new Set(prev);
+      next.delete(table.id);
+      return next;
+    });
   };
 
   const copyTableLink = (tableNumber: number) => {
@@ -298,8 +331,15 @@ export default function AdminTables() {
                       size="icon"
                       onClick={() => openOrdersModal(table)}
                       title="Ver pedidos da mesa"
+                      className="relative"
                     >
                       <ClipboardList className="h-4 w-4" />
+                      {tablesWithNewOrders.has(table.id) && (
+                        <span
+                          className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background"
+                          aria-label="Novos pedidos"
+                        />
+                      )}
                     </Button>
                     <Button
                       variant="outline"
