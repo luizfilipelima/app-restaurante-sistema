@@ -122,7 +122,8 @@ export default function AdminDashboard() {
     };
   }, [kpisData, analytics?.kpis]);
 
-  const loading = loadingKPIs && loadingBI && !kpisData && !analytics?.kpis;
+  const hasKpis = !!kpisData || !!(analytics && analytics.kpis);
+  const loading = loadingKPIs && loadingBI && !hasKpis;
 
   const prevMetrics = useMemo(() => ({
     totalRevenue: prevAnalytics?.kpis?.total_faturado ?? 0,
