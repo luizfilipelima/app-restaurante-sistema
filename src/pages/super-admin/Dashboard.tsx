@@ -7,7 +7,6 @@ import {
 } from '@/hooks/queries/useSuperAdminRestaurants';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,9 +49,6 @@ import {
   UserPlus,
   ShieldCheck,
   Search,
-  ExternalLink,
-  MoreHorizontal,
-  Power,
   CheckCircle2,
   XCircle,
   ReceiptText,
@@ -110,8 +106,7 @@ function KpiCard({
           </p>
           <p className="text-xs text-slate-400 mt-1">{sub}</p>
         </div>
-        <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${accent.replace('bg-', 'bg-').replace('from-', 'bg-').replace('to-', '')} bg-opacity-10`}
-          style={{ background: 'var(--kpi-bg)' }}>
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100">
           <Icon className="h-5 w-5 text-slate-600 group-hover:scale-110 transition-transform duration-200" />
         </div>
       </div>
