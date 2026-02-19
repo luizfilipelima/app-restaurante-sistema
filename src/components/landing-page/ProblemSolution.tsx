@@ -15,9 +15,9 @@ const BENTO_ICON_MAP: Record<string, React.ElementType> = {
   Lock, CheckCircle, BarChart2, PieChart, Activity, Flame,
 };
 
-function BentoIcon({ name, className }: { name: string; className?: string }) {
+function BentoIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   const Icon = BENTO_ICON_MAP[name] ?? Zap;
-  return <Icon className={className} />;
+  return <Icon className={className} style={style} />;
 }
 
 const container = {
