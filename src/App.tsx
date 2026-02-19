@@ -210,6 +210,8 @@ function App() {
           <Route path="/login"    element={<PublicRoute><LoginPage />    </PublicRoute>} />
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          {/* Comanda Digital — rota pública para clientes que escaneiam QR (app. ou quiero.) */}
+          <Route path="/:restaurantSlug/comanda" element={<VirtualComanda />} />
           {/*
            * ── Super Admin Shell ───────────────────────────────────────────
            * SuperAdminLayout (dark sidebar) envolve as páginas de gestão do SaaS.
