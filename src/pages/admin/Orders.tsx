@@ -23,6 +23,7 @@ import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCi
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { ROLES_CANCEL_ORDER } from '@/hooks/useUserRole';
 import { useCouriers, useOrders, usePrintSettings } from '@/hooks/queries';
+import { isUUID } from '@/hooks/useResolveRestaurantId';
 import { usePrinter } from '@/hooks/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
 import { CompletedOrdersView } from '@/components/orders/CompletedOrdersView';
@@ -171,7 +172,8 @@ export default function AdminOrders() {
   }, [restaurantId, queryClient, printOrder, currency, refetchOrders]);
 
   useEffect(() => {
-    if (!restaurantId) return;
+    // Só subscreve quando temos UUID válido (evita undefined/slug malformado na montagem)
+    if (!restaurantId || !isUUID(restaurantId)) return;
     const channel = supabase
       .channel(`orders-changes-${restaurantId}`)
       .on(
