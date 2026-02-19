@@ -1,12 +1,14 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
 import { RoleProtectedRoute } from './components/auth/RoleProtectedRoute';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Toaster } from './components/ui/toaster';
 import { UserRole } from './types';
 import { getSubdomain } from './lib/subdomain';
+import { lazyWithRetry } from './lib/lazyWithRetry';
 
 // ─── Componentes estruturais — carregam imediatamente (sem lazy) ─────────────
 // Layouts, guards e providers fazem parte do shell da aplicação e devem estar
@@ -19,43 +21,43 @@ import SuperAdminLayout from './components/super-admin/SuperAdminLayout';
 // Cada página gera um chunk JS separado no build, reduzindo o bundle inicial.
 
 // Landing page premium (rota /landing-page)
-const QuieroFoodLanding     = lazy(() => import('./pages/landing/QuieroFoodLanding'));
+const QuieroFoodLanding     = lazyWithRetry(() => import('./pages/landing/QuieroFoodLanding'));
 
 // Auth
-const LandingPage           = lazy(() => import('./pages/landing/LandingPage'));
-const LoginPage             = lazy(() => import('./pages/auth/LoginPage'));
-const RegisterPage          = lazy(() => import('./pages/auth/Register'));
-const UnauthorizedPage      = lazy(() => import('./pages/auth/UnauthorizedPage'));
+const LandingPage           = lazyWithRetry(() => import('./pages/landing/LandingPage'));
+const LoginPage             = lazyWithRetry(() => import('./pages/auth/LoginPage'));
+const RegisterPage          = lazyWithRetry(() => import('./pages/auth/Register'));
+const UnauthorizedPage      = lazyWithRetry(() => import('./pages/auth/UnauthorizedPage'));
 
 // Super Admin
-const SaasMetrics           = lazy(() => import('./pages/super-admin/SaasMetrics'));
-const SuperAdminRestaurants = lazy(() => import('./pages/super-admin/Dashboard'));
-const Plans                 = lazy(() => import('./pages/super-admin/Plans'));
-const RestaurantDetails     = lazy(() => import('./pages/super-admin/RestaurantDetails'));
+const SaasMetrics           = lazyWithRetry(() => import('./pages/super-admin/SaasMetrics'));
+const SuperAdminRestaurants = lazyWithRetry(() => import('./pages/super-admin/Dashboard'));
+const Plans                 = lazyWithRetry(() => import('./pages/super-admin/Plans'));
+const RestaurantDetails     = lazyWithRetry(() => import('./pages/super-admin/RestaurantDetails'));
 
 // Admin (painel do restaurante)
-const AdminDashboard        = lazy(() => import('./pages/admin/Dashboard'));
-const AdminMenu             = lazy(() => import('./pages/admin/Menu'));
-const AdminOrders           = lazy(() => import('./pages/admin/Orders'));
-const AdminSettings         = lazy(() => import('./pages/admin/Settings'));
-const AdminDeliveryZones    = lazy(() => import('./pages/admin/DeliveryZones'));
-const AdminCouriers         = lazy(() => import('./pages/admin/Couriers'));
-const AdminBuffet           = lazy(() => import('./pages/admin/Buffet'));
-const AdminCashier          = lazy(() => import('./pages/admin/Cashier'));
-const AdminComandaQRCode    = lazy(() => import('./pages/admin/ComandaQRCode'));
-const AdminProductsInventory = lazy(() => import('./pages/admin/ProductsInventory'));
-const AdminTables           = lazy(() => import('./pages/admin/Tables'));
-const UpgradePage           = lazy(() => import('./pages/admin/UpgradePage'));
+const AdminDashboard        = lazyWithRetry(() => import('./pages/admin/Dashboard'));
+const AdminMenu             = lazyWithRetry(() => import('./pages/admin/Menu'));
+const AdminOrders           = lazyWithRetry(() => import('./pages/admin/Orders'));
+const AdminSettings         = lazyWithRetry(() => import('./pages/admin/Settings'));
+const AdminDeliveryZones    = lazyWithRetry(() => import('./pages/admin/DeliveryZones'));
+const AdminCouriers         = lazyWithRetry(() => import('./pages/admin/Couriers'));
+const AdminBuffet           = lazyWithRetry(() => import('./pages/admin/Buffet'));
+const AdminCashier          = lazyWithRetry(() => import('./pages/admin/Cashier'));
+const AdminComandaQRCode    = lazyWithRetry(() => import('./pages/admin/ComandaQRCode'));
+const AdminProductsInventory = lazyWithRetry(() => import('./pages/admin/ProductsInventory'));
+const AdminTables           = lazyWithRetry(() => import('./pages/admin/Tables'));
+const UpgradePage           = lazyWithRetry(() => import('./pages/admin/UpgradePage'));
 
 // Cozinha (KDS)
-const KitchenDisplay        = lazy(() => import('./pages/kitchen/KitchenDisplay'));
+const KitchenDisplay        = lazyWithRetry(() => import('./pages/kitchen/KitchenDisplay'));
 
 // Cardápio público
-const PublicMenu            = lazy(() => import('./pages/public/Menu'));
-const PublicCheckout        = lazy(() => import('./pages/public/Checkout'));
-const MenuViewOnly          = lazy(() => import('./pages/public/MenuViewOnly'));
-const MenuTable             = lazy(() => import('./pages/public/MenuTable'));
-const VirtualComanda        = lazy(() => import('./pages/public/VirtualComanda'));
+const PublicMenu            = lazyWithRetry(() => import('./pages/public/Menu'));
+const PublicCheckout        = lazyWithRetry(() => import('./pages/public/Checkout'));
+const MenuViewOnly          = lazyWithRetry(() => import('./pages/public/MenuViewOnly'));
+const MenuTable             = lazyWithRetry(() => import('./pages/public/MenuTable'));
+const VirtualComanda        = lazyWithRetry(() => import('./pages/public/VirtualComanda'));
 
 // ─── Fallback de carregamento ─────────────────────────────────────────────────
 
@@ -168,6 +170,7 @@ function App() {
   if (subdomain === 'kds') {
     return (
       <BrowserRouter>
+        <ErrorBoundary>
         <Suspense fallback={<LoadingScreen />}>
           <Routes>
             {/* Login no próprio subdomínio kds para redirecionar de volta após autenticação */}
@@ -191,6 +194,7 @@ function App() {
             <Route path="/" element={<Navigate to="/login" replace />} />
           </Routes>
         </Suspense>
+        </ErrorBoundary>
         <Toaster />
       </BrowserRouter>
     );
@@ -205,6 +209,7 @@ function App() {
   if (isAdminSubdomain) {
     return (
       <BrowserRouter>
+        <ErrorBoundary>
         <Suspense fallback={<LoadingScreen />}>
         <Routes>
           <Route path="/login"    element={<PublicRoute><LoginPage />    </PublicRoute>} />
@@ -288,6 +293,7 @@ function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
         </Suspense>
+        </ErrorBoundary>
         <Toaster />
       </BrowserRouter>
     );
@@ -296,6 +302,7 @@ function App() {
   // 4) Domínio principal (quiero.food, localhost) -> Landing + rotas legado (path-based)
   return (
     <BrowserRouter>
+      <ErrorBoundary>
       <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
@@ -320,6 +327,7 @@ function App() {
         </Route>
       </Routes>
       </Suspense>
+      </ErrorBoundary>
       <Toaster />
     </BrowserRouter>
   );

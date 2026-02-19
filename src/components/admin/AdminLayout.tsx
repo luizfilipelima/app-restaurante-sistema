@@ -393,7 +393,7 @@ export default function AdminLayout({
   const { toast } = useToast();
 
   const restaurantId = managedRestaurantId || user?.restaurant_id || null;
-  const { data: restaurant, isLoading: loadingRestaurant } = useRestaurant(restaurantId);
+  const { data: restaurant } = useRestaurant(restaurantId);
   const isSuperAdminView = !!managedRestaurantId;
 
   const base = basePath || '/admin';
@@ -428,13 +428,11 @@ export default function AdminLayout({
     );
   }
 
-  if (loadingRestaurant) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-      </div>
-    );
-  }
+  // Não bloqueamos o layout enquanto `loadingRestaurant` é true.
+  // O React Query serve do cache instantaneamente em navegações subsequentes
+  // (staleTime 5 min). Na primeira visita, o layout renderiza normalmente
+  // com placeholders; o nome/slug do restaurante aparece em seguida.
+  // Isso evita que a sidebar e o header "sumam" durante a transição de rota.
 
   const contextValue = {
     restaurantId,
