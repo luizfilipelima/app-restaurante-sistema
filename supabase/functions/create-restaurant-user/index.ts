@@ -1,9 +1,8 @@
 // Edge Function: criar usuário de restaurante com cargo específico
 //
-// IMPORTANTE: usa supabaseAdmin.auth.admin.createUser() — API oficial do GoTrue.
-// NÃO insere diretamente em auth.users via SQL (isso causa "Database error querying schema" no login).
+// Usa supabaseAdmin.auth.admin.createUser() — API oficial do GoTrue.
+// Sempre retorna HTTP 200; erros são comunicados via { ok: false, error: string }.
 //
-// Cargos suportados (restaurant_role_type): owner | manager | waiter | cashier | kitchen
 // Deploy: supabase functions deploy create-restaurant-user
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -13,16 +12,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const VALID_RESTAURANT_ROLES = ['owner', 'manager', 'waiter', 'cashier', 'kitchen'] as const;
-type RestaurantRole = typeof VALID_RESTAURANT_ROLES[number];
+const VALID_ROLES = ['owner', 'manager', 'waiter', 'cashier', 'kitchen'] as const;
+type RestaurantRole = typeof VALID_ROLES[number];
 
-/**
- * Mapeia cargo do restaurante para system_role em public.users.
- * kitchen → 'kitchen'
- * demais  → 'restaurant_admin'
- */
-function toSystemRole(restaurantRole: RestaurantRole): string {
-  return restaurantRole === 'kitchen' ? 'kitchen' : 'restaurant_admin';
+function toSystemRole(r: RestaurantRole) {
+  return r === 'kitchen' ? 'kitchen' : 'restaurant_admin';
+}
+
+function ok(data: Record<string, unknown>) {
+  return new Response(
+    JSON.stringify({ ok: true, ...data }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+function fail(error: string, detail?: string) {
+  console.error('[create-restaurant-user] FAIL:', error, detail ?? '');
+  return new Response(
+    JSON.stringify({ ok: false, error, detail: detail ?? null }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
 }
 
 Deno.serve(async (req) => {
@@ -31,207 +40,136 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // ── Auth header ────────────────────────────────────────────────────────────
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Token de autenticação ausente' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!authHeader) return fail('Token de autenticação ausente');
+
+    const supabaseUrl            = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAnonKey        = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+    if (!supabaseUrl || !supabaseServiceRoleKey || !supabaseAnonKey) {
+      return fail('Variáveis de ambiente da Edge Function não configuradas');
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-
-    // Cliente com service_role (ignora RLS para operações admin)
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    // Admin client (bypassa RLS)
+    const admin = createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Cliente com JWT do caller para verificar autenticação
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+    // Client com JWT do caller
+    const callerClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // ── Verifica autenticação e permissão ──────────────────────────────────────
-    const { data: { user: caller } } = await supabaseAuth.auth.getUser();
-    if (!caller) {
-      return new Response(
-        JSON.stringify({ error: 'Não autenticado' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // ── Verifica autenticação ──────────────────────────────────────────────────
+    const { data: { user: caller }, error: callerErr } = await callerClient.auth.getUser();
+    if (callerErr || !caller) {
+      return fail('Não autenticado', callerErr?.message);
     }
 
-    const { data: callerRow } = await supabaseAdmin
+    // ── Verifica role super_admin ──────────────────────────────────────────────
+    const { data: callerRow, error: roleErr } = await admin
       .from('users')
       .select('role')
       .eq('id', caller.id)
       .single();
 
-    if (callerRow?.role !== 'super_admin') {
-      return new Response(
-        JSON.stringify({ error: 'Apenas super_admin pode criar usuários de restaurante' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    if (roleErr) return fail('Erro ao verificar permissões', roleErr.message);
+    if (callerRow?.role !== 'super_admin') return fail('Apenas super_admin pode criar usuários');
 
     // ── Valida body ────────────────────────────────────────────────────────────
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return fail('Body JSON inválido');
+    }
+
     const {
       email,
       password,
       restaurant_id,
       login,
       restaurant_role = 'manager',
-    } = body;
+    } = body as Record<string, string>;
 
     if (!email || !password || !restaurant_id) {
-      return new Response(
-        JSON.stringify({ error: 'Campos obrigatórios: email, password, restaurant_id' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return fail('Campos obrigatórios: email, password, restaurant_id');
+    }
+    if ((password as string).length < 6) {
+      return fail('Senha deve ter no mínimo 6 caracteres');
+    }
+    if (!VALID_ROLES.includes(restaurant_role as RestaurantRole)) {
+      return fail(`Cargo inválido. Use: ${VALID_ROLES.join(', ')}`);
     }
 
-    if (password.length < 6) {
-      return new Response(
-        JSON.stringify({ error: 'Senha deve ter no mínimo 6 caracteres' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!VALID_RESTAURANT_ROLES.includes(restaurant_role)) {
-      return new Response(
-        JSON.stringify({ error: `Cargo inválido. Use: ${VALID_RESTAURANT_ROLES.join(', ')}` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const normalizedEmail = email.trim().toLowerCase();
-    const normalizedLogin = login ? String(login).trim().toLowerCase().replace(/\s+/g, '_') : null;
-    const systemRole = toSystemRole(restaurant_role as RestaurantRole);
+    const normEmail = email.trim().toLowerCase();
+    const normLogin = login ? String(login).trim().toLowerCase().replace(/\s+/g, '_') : null;
+    const sysRole   = toSystemRole(restaurant_role as RestaurantRole);
 
     // ── Verifica duplicidade de login ─────────────────────────────────────────
-    if (normalizedLogin) {
-      const { data: existingLogin } = await supabaseAdmin
+    if (normLogin) {
+      const { data: existingLogin } = await admin
         .from('users')
         .select('id')
-        .eq('login', normalizedLogin)
+        .eq('login', normLogin)
         .maybeSingle();
 
-      if (existingLogin) {
-        return new Response(
-          JSON.stringify({ error: 'duplicate_login: já existe um usuário com este nome de usuário' }),
-          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      if (existingLogin) return fail('duplicate_login: já existe um usuário com este nome de usuário');
     }
 
-    // ── Cria usuário via API Admin do GoTrue (evita "Database error querying schema") ──
-    // auth.admin.createUser() inicializa corretamente todo o estado interno do GoTrue.
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: normalizedEmail,
+    // ── Cria usuário via GoTrue Admin API ─────────────────────────────────────
+    const { data: authData, error: authErr } = await admin.auth.admin.createUser({
+      email: normEmail,
       password,
-      email_confirm: true,   // e-mail já confirmado — criado pelo super-admin
-      user_metadata: {
-        role: systemRole,
-        restaurant_id,
-        login: normalizedLogin ?? '',
-      },
-      app_metadata: {
-        role: systemRole,
-        restaurant_id,
-      },
+      email_confirm: true,
+      user_metadata: { role: sysRole, restaurant_id, login: normLogin ?? '' },
+      app_metadata:  { role: sysRole, restaurant_id },
     });
 
-    if (authError) {
-      // Usuário já existe no auth → atualiza perfil
-      if (authError.message.includes('already been registered') || authError.message.includes('already exists')) {
-        const { data: list } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
-        const existing = list?.users?.find((u) => u.email === normalizedEmail);
-
+    if (authErr) {
+      const msg = authErr.message ?? '';
+      if (msg.includes('already been registered') || msg.includes('already exists')) {
+        // Usuário já existe no auth → atualiza perfil
+        const { data: list } = await admin.auth.admin.listUsers({ perPage: 1000 });
+        const existing = list?.users?.find((u) => u.email === normEmail);
         if (existing) {
-          // Atualiza public.users
-          const profileRow: Record<string, unknown> = {
-            id: existing.id,
-            email: normalizedEmail,
-            role: systemRole,
-            restaurant_id,
-          };
-          if (normalizedLogin) profileRow.login = normalizedLogin;
-          await supabaseAdmin.from('users').upsert(profileRow, { onConflict: 'id' });
-
-          // Upsert restaurant_user_roles
-          await supabaseAdmin
-            .from('restaurant_user_roles')
-            .upsert(
-              { user_id: existing.id, restaurant_id, role: restaurant_role },
-              { onConflict: 'user_id,restaurant_id' }
-            );
-
-          return new Response(
-            JSON.stringify({ message: 'Usuário já existia; perfil atualizado.', user_id: existing.id }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          const row: Record<string, unknown> = { id: existing.id, email: normEmail, role: sysRole, restaurant_id };
+          if (normLogin) row.login = normLogin;
+          await admin.from('users').upsert(row, { onConflict: 'id' });
+          await admin.from('restaurant_user_roles').upsert(
+            { user_id: existing.id, restaurant_id, role: restaurant_role },
+            { onConflict: 'user_id,restaurant_id' }
           );
+          return ok({ message: 'Usuário já existia; perfil atualizado.', user_id: existing.id });
         }
       }
-
-      return new Response(
-        JSON.stringify({ error: authError.message }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return fail('Erro ao criar usuário no auth', msg);
     }
 
     const userId = authData.user!.id;
 
-    // ── Cria/atualiza perfil em public.users ──────────────────────────────────
-    const profileRow: Record<string, unknown> = {
-      id: userId,
-      email: normalizedEmail,
-      role: systemRole,
-      restaurant_id,
-    };
-    if (normalizedLogin) profileRow.login = normalizedLogin;
+    // ── Cria perfil em public.users ───────────────────────────────────────────
+    const profileRow: Record<string, unknown> = { id: userId, email: normEmail, role: sysRole, restaurant_id };
+    if (normLogin) profileRow.login = normLogin;
 
-    const { error: profileError } = await supabaseAdmin
-      .from('users')
-      .upsert(profileRow, { onConflict: 'id' });
-
-    if (profileError) {
-      // Auth criou, mas perfil falhou — retorna aviso ao invés de travar
-      console.error('Perfil não criado:', profileError.message);
-      return new Response(
-        JSON.stringify({
-          warning: 'Usuário criado no Auth, mas falha ao salvar perfil: ' + profileError.message,
-          user_id: userId,
-        }),
-        { status: 207, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const { error: profileErr } = await admin.from('users').upsert(profileRow, { onConflict: 'id' });
+    if (profileErr) {
+      console.warn('[create-restaurant-user] Perfil não salvo:', profileErr.message);
     }
 
-    // ── Vincula cargo na tabela restaurant_user_roles ─────────────────────────
-    await supabaseAdmin
-      .from('restaurant_user_roles')
-      .upsert(
-        { user_id: userId, restaurant_id, role: restaurant_role },
-        { onConflict: 'user_id,restaurant_id' }
-      );
-
-    return new Response(
-      JSON.stringify({
-        message: 'Usuário criado com sucesso.',
-        user_id: userId,
-        email: normalizedEmail,
-        restaurant_role,
-        system_role: systemRole,
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    // ── Vincula cargo em restaurant_user_roles ────────────────────────────────
+    await admin.from('restaurant_user_roles').upsert(
+      { user_id: userId, restaurant_id, role: restaurant_role },
+      { onConflict: 'user_id,restaurant_id' }
     );
+
+    return ok({ message: 'Usuário criado com sucesso.', user_id: userId, restaurant_role, system_role: sysRole });
 
   } catch (e) {
-    console.error('Erro interno:', e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : 'Erro interno' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[create-restaurant-user] EXCEPTION:', msg);
+    return fail('Erro interno na Edge Function', msg);
   }
 });

@@ -571,25 +571,37 @@ function AddUserForm({ restaurantId, onSuccess, onCancel }: AddUserFormProps) {
         },
       });
 
-      if (error) throw new Error(error.message);
+      // Erro de rede / Edge Function inacessível
+      if (error) {
+        // Tenta extrair o body real da resposta de erro
+        let realMsg = error.message;
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const body = await (error as any).context?.json?.();
+          if (body?.error) realMsg = body.error;
+          if (body?.detail) realMsg += ` (${body.detail})`;
+        } catch { /* ignora */ }
+        throw new Error(realMsg);
+      }
 
-      // A Edge Function retorna { error } no body quando há erros de negócio
-      if (data?.error) {
-        const msg: string = data.error ?? '';
+      // A Edge Function sempre retorna 200; erros ficam em { ok: false, error }
+      if (!data?.ok) {
+        const msg: string = data?.error ?? 'Erro desconhecido';
         if (msg.includes('duplicate_login'))
           throw new Error('Já existe um usuário com este nome de usuário.');
+        if (msg.includes('already been registered') || msg.includes('already exists'))
+          throw new Error('Já existe um usuário com este e-mail.');
         throw new Error(msg);
       }
 
       toast({ title: 'Usuário criado com sucesso!' });
       onSuccess();
     } catch (err) {
-      const msg = String(err);
-      if (msg.includes('already been registered') || msg.includes('already exists')) {
-        toast({ title: 'Erro ao criar usuário', description: 'Já existe um usuário com este e-mail.', variant: 'destructive' });
-      } else {
-        toast({ title: 'Erro ao criar usuário', description: msg.replace('Error: ', ''), variant: 'destructive' });
-      }
+      toast({
+        title: 'Erro ao criar usuário',
+        description: String(err).replace('Error: ', ''),
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
