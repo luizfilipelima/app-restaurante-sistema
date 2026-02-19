@@ -2,7 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { DatabaseOrder } from '@/types';
 
-/** Colunas e relações necessárias para o Kanban de pedidos (evita select *) */
+/**
+ * Colunas estritamente necessárias para a listagem do Kanban.
+ * Evita select('*') para reduzir payload e melhorar performance.
+ * Inclui: dados do pedido, zona, itens (para cards) e entregador.
+ */
 const ORDERS_SELECT = `
   id, restaurant_id, customer_name, customer_phone, delivery_type, delivery_zone_id,
   delivery_address, delivery_fee, subtotal, total, payment_method, payment_change_for,
