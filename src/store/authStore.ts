@@ -14,6 +14,8 @@ interface AuthState {
   hasRole: (roles: UserRole[]) => boolean;
 }
 
+let authListenerUnsubscribe: (() => void) | null = null;
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   session: null,
@@ -45,20 +47,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ initialized: true, loading: false });
       }
 
-      // Listener para mudanças de autenticação
-      supabase.auth.onAuthStateChange(async (_event, session) => {
+      // Listener único para mudanças de autenticação (multi-tab via BroadcastChannel do Supabase)
+      // Evitar callback async para prevenir deadlock entre abas (auth-js usa lock exclusivo)
+      if (authListenerUnsubscribe) authListenerUnsubscribe();
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         if (session?.user) {
-          const { data: userData } = await supabase
+          supabase
             .from('users')
             .select('*')
             .eq('id', session.user.id)
-            .single();
-
-          set({ session, user: userData });
+            .single()
+            .then(({ data: userData }) => set({ session, user: userData }));
         } else {
           set({ session: null, user: null });
         }
       });
+      authListenerUnsubscribe = subscription.unsubscribe;
     } catch (error) {
       console.error('Error initializing auth:', error);
       set({ initialized: true, loading: false });

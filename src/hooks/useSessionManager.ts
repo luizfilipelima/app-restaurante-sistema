@@ -17,7 +17,7 @@ function getSessionId(): string {
 }
 
 /**
- * Hook para gerenciar sessões ativas por restaurante (limite de 3 simultâneas)
+ * Hook para gerenciar sessões ativas por restaurante (até 20 abas simultâneas por usuário)
  */
 export function useSessionManager(userId: string | null, restaurantId: string | null) {
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
