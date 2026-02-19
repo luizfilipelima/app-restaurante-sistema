@@ -18,6 +18,9 @@ import SuperAdminLayout from './components/super-admin/SuperAdminLayout';
 // ─── Páginas — carregadas sob demanda (lazy) ─────────────────────────────────
 // Cada página gera um chunk JS separado no build, reduzindo o bundle inicial.
 
+// Landing page premium (rota /landing-page)
+const QuieroFoodLanding     = lazy(() => import('./pages/landing/QuieroFoodLanding'));
+
 // Auth
 const LandingPage           = lazy(() => import('./pages/landing/LandingPage'));
 const LoginPage             = lazy(() => import('./pages/auth/LoginPage'));
@@ -291,6 +294,8 @@ function App() {
       <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        {/* Landing page premium — deve vir ANTES de /:restaurantSlug para não ser capturada como slug */}
+        <Route path="/landing-page" element={<QuieroFoodLanding />} />
         <Route path="/:restaurantSlug" element={<PublicMenu />} />
         <Route path="/:restaurantSlug/menu" element={<MenuViewOnly />} />
         <Route path="/:restaurantSlug/cardapio/:tableNumber" element={<MenuTable />} />
