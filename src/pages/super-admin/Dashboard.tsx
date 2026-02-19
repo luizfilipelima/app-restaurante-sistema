@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
+import {
+  useSuperAdminRestaurants,
+  useInvalidateSuperAdminRestaurants,
+} from '@/hooks/queries/useSuperAdminRestaurants';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -91,15 +95,16 @@ const DAYS: { key: DayKey; label: string }[] = [
 export default function SuperAdminDashboard() {
   useAuthStore();
   const navigate = useNavigate();
-  const [metrics, setMetrics] = useState({
+  const { data, isLoading: loading } = useSuperAdminRestaurants();
+  const invalidate = useInvalidateSuperAdminRestaurants();
+  const restaurants = data?.restaurants ?? [];
+  const ordersByRestaurant = data?.ordersByRestaurant ?? {};
+  const metrics = data?.metrics ?? {
     totalRestaurants: 0,
     activeRestaurants: 0,
     totalRevenue: 0,
     totalOrders: 0,
-  });
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [ordersByRestaurant, setOrdersByRestaurant] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
+  };
   const [showNewRestaurantDialog, setShowNewRestaurantDialog] = useState(false);
   const [saving, setSaving] = useState(false);
   // Soft delete: qual restaurante está prestes a ser removido
@@ -121,58 +126,6 @@ export default function SuperAdminDashboard() {
     print_paper_width: '80mm' as PrintPaperWidth,
   });
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-
-      const [restaurantsRes, ordersRes] = await Promise.all([
-        supabase
-          .from('restaurants')
-          .select('*')
-          // Soft delete: exclui restaurantes marcados como deletados.
-          // Restaurantes com deleted_at preenchido são preservados no banco para
-          // integridade histórica, mas não devem aparecer na visão principal.
-          .is('deleted_at', null)
-          .order('name'),
-        supabase.from('orders').select('restaurant_id'),
-      ]);
-
-      if (restaurantsRes.error) throw restaurantsRes.error;
-      if (ordersRes.error) throw ordersRes.error;
-
-      const list = restaurantsRes.data || [];
-      setRestaurants(list);
-
-      const countByRestaurant: Record<string, number> = {};
-      (ordersRes.data || []).forEach((o: { restaurant_id: string }) => {
-        countByRestaurant[o.restaurant_id] = (countByRestaurant[o.restaurant_id] || 0) + 1;
-      });
-      setOrdersByRestaurant(countByRestaurant);
-
-      const totalRestaurants = list.length;
-      const activeRestaurants = list.filter((r) => r.is_active).length;
-
-      const { data: ordersWithTotal } = await supabase.from('orders').select('total');
-      const totalRevenue = ordersWithTotal?.reduce((sum, o) => sum + (o.total || 0), 0) || 0;
-      const totalOrders = ordersWithTotal?.length || 0;
-
-      setMetrics({
-        totalRestaurants,
-        activeRestaurants,
-        totalRevenue,
-        totalOrders,
-      });
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const toggleRestaurantStatus = async (restaurantId: string, isActive: boolean) => {
     try {
       const { error } = await supabase
@@ -180,13 +133,7 @@ export default function SuperAdminDashboard() {
         .update({ is_active: !isActive })
         .eq('id', restaurantId);
       if (error) throw error;
-      setRestaurants((prev) =>
-        prev.map((r) => (r.id === restaurantId ? { ...r, is_active: !isActive } : r))
-      );
-      setMetrics((m) => ({
-        ...m,
-        activeRestaurants: m.activeRestaurants + (isActive ? -1 : 1),
-      }));
+      invalidate();
       toast({
         title: 'Status atualizado',
         description: `Restaurante ${!isActive ? 'ativado' : 'desativado'} com sucesso.`,
@@ -217,16 +164,7 @@ export default function SuperAdminDashboard() {
 
       if (error) throw error;
 
-      // Remove da lista imediatamente para feedback instantâneo
-      setRestaurants((prev) => prev.filter((r) => r.id !== restaurantToDelete.id));
-      setMetrics((m) => ({
-        ...m,
-        totalRestaurants:  m.totalRestaurants - 1,
-        activeRestaurants: restaurantToDelete.is_active
-          ? m.activeRestaurants - 1
-          : m.activeRestaurants,
-      }));
-
+      invalidate();
       toast({
         title: 'Restaurante removido',
         description: `"${restaurantToDelete.name}" foi removido com segurança. Os dados históricos foram preservados.`,
@@ -340,7 +278,7 @@ export default function SuperAdminDashboard() {
         print_paper_width: '80mm' as PrintPaperWidth,
       });
       setShowNewRestaurantDialog(false);
-      await loadData();
+      invalidate();
     } catch (err: unknown) {
       console.error('Erro ao criar restaurante:', err);
       const message =

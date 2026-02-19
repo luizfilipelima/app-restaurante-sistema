@@ -12,7 +12,12 @@
 
 import { ReactNode } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
+import {
+  superAdminRestaurantsKey,
+  fetchSuperAdminRestaurants,
+} from '@/hooks/queries/useSuperAdminRestaurants';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageTransition } from '@/components/ui/PageTransition';
@@ -65,7 +70,15 @@ interface SuperAdminLayoutProps {
 export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   const location  = useLocation();
   const navigate  = useNavigate();
+  const qc        = useQueryClient();
   const { user, signOut } = useAuthStore();
+
+  const prefetchRestaurants = () => {
+    qc.prefetchQuery({
+      queryKey: superAdminRestaurantsKey(),
+      queryFn:  fetchSuperAdminRestaurants,
+    });
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -117,10 +130,12 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
             </motion.p>
             {NAV_ITEMS.map((item) => {
               const active = isActive(item);
+              const isRestaurants = item.href === '/super-admin/restaurants';
               return (
                 <motion.div key={item.href} variants={navItemVariants}>
                   <Link
                     to={item.href}
+                    onMouseEnter={isRestaurants ? prefetchRestaurants : undefined}
                     className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors border-l-[3px] ${
                       active
                         ? 'bg-orange-50 text-[#F87116] border-l-[#F87116]'
