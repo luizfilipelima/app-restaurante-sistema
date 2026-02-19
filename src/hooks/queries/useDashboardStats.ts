@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
+import { computeDashboardAdvancedStatsFallback } from '@/lib/dashboard-fallback';
 
 export interface UseDashboardStatsParams {
   tenantId: string | null;
@@ -32,14 +33,34 @@ async function fetchDashboardStats({
       bottom_products: [],
     };
   }
-  const { data, error } = await supabase.rpc('get_advanced_dashboard_stats', {
-    p_tenant_id: tenantId,
-    p_start_date: startDate.toISOString(),
-    p_end_date: endDate.toISOString(),
-    p_area_filter: areaFilter,
+  try {
+    const { data, error } = await supabase.rpc('get_advanced_dashboard_stats', {
+      p_tenant_id: tenantId,
+      p_start_date: startDate.toISOString(),
+      p_end_date: endDate.toISOString(),
+      p_area_filter: areaFilter,
+    });
+
+    if (!error && data) {
+      const typedData = data as DashboardAdvancedStatsResponse;
+      const hasAdvancedSections =
+        !!typedData.operational &&
+        !!typedData.financial &&
+        Array.isArray(typedData.retention_risk) &&
+        !!typedData.menu_matrix;
+
+      if (hasAdvancedSections) return typedData;
+    }
+  } catch {
+    // fallback abaixo
+  }
+
+  return computeDashboardAdvancedStatsFallback({
+    tenantId,
+    startDate,
+    endDate,
+    areaFilter,
   });
-  if (error) throw error;
-  return data as DashboardAdvancedStatsResponse;
 }
 
 /** Hook para métricas avançadas do dashboard (RPC). Inclui operational e financial. */

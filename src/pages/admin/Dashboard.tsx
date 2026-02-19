@@ -89,7 +89,7 @@ export default function AdminDashboard() {
     return null;
   }, [period, start]);
 
-  const areaForRpc = areaFilter === 'buffet' ? 'all' : areaFilter;
+  const areaForRpc = areaFilter;
 
   const { data: kpisData, isLoading: loadingKPIs } = useDashboardKPIs({
     tenantId: restaurantId,
@@ -124,14 +124,14 @@ export default function AdminDashboard() {
   });
 
   const metrics = useMemo(() => {
-    const k = kpisData ?? analytics?.kpis;
+    const k = analytics?.kpis ?? kpisData;
     return {
       totalRevenue: k?.total_faturado ?? 0,
       totalOrders: k?.total_pedidos ?? 0,
       averageTicket: k?.ticket_medio ?? 0,
       pendingOrders: k?.pedidos_pendentes ?? 0,
     };
-  }, [kpisData, analytics?.kpis]);
+  }, [analytics?.kpis, kpisData]);
 
   const hasKpis = !!kpisData || !!(analytics && analytics.kpis);
   const loading = loadingKPIs && loadingBI && !hasKpis;

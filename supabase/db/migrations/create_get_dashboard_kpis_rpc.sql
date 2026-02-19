@@ -25,7 +25,7 @@ DECLARE
 BEGIN
   -- Single query para KPIs principais (exclui cancelados)
   SELECT
-    COALESCE(SUM(o.total), 0)::NUMERIC,
+    COALESCE(SUM(o.total) FILTER (WHERE o.status != 'cancelled'), 0)::NUMERIC,
     COALESCE(COUNT(*) FILTER (WHERE o.status != 'cancelled'), 0)::BIGINT,
     CASE WHEN COUNT(*) FILTER (WHERE o.status != 'cancelled') > 0
       THEN COALESCE(SUM(o.total) FILTER (WHERE o.status != 'cancelled'), 0) / COUNT(*) FILTER (WHERE o.status != 'cancelled')
