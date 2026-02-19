@@ -3,7 +3,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { DatabaseOrder, OrderStatus } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle } from 'lucide-react';
 import { useCouriers, useOrders, usePrintSettings } from '@/hooks/queries';
 import { usePrinter } from '@/hooks/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
@@ -308,243 +307,233 @@ export default function AdminOrders() {
         </div>
 
         {/* Kanban Board */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 min-w-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 min-w-0">
           {ORDER_TAB_STATUSES.map((status) => {
             const statusOrders = getOrdersByStatus(status);
             const config = statusConfig[status];
             const IconComponent = config.icon;
 
             return (
-              <div key={status} className="space-y-4">
-                {/* Header da Coluna */}
-                <div className={`p-4 rounded-xl ${config.bgColor} border-2 ${config.borderColor} shadow-sm`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`h-10 w-10 rounded-lg bg-gradient-to-br ${config.gradient} flex items-center justify-center shadow-md`}>
-                        <IconComponent className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-sm">{config.label}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {statusOrders.length} {statusOrders.length === 1 ? 'pedido' : 'pedidos'}
-                        </p>
-                      </div>
+              <div key={status} className="flex flex-col gap-3 min-w-0">
+                {/* ── Header da Coluna ── */}
+                <div className={`flex items-center justify-between px-3 py-2.5 rounded-xl ${config.bgColor} border ${config.borderColor}`}>
+                  <div className="flex items-center gap-2">
+                    <div className={`h-7 w-7 rounded-lg bg-gradient-to-br ${config.gradient} flex items-center justify-center shadow-sm`}>
+                      <IconComponent className="h-3.5 w-3.5 text-white" />
                     </div>
-                    {statusOrders.length > 0 && (
-                      <Badge className={`bg-gradient-to-r ${config.gradient} text-white border-0`}>
-                        {statusOrders.length}
-                      </Badge>
-                    )}
+                    <span className="font-semibold text-sm text-foreground">{config.label}</span>
                   </div>
+                  <Badge className={`bg-gradient-to-r ${config.gradient} text-white border-0 text-xs min-w-[1.5rem] justify-center`}>
+                    {statusOrders.length}
+                  </Badge>
                 </div>
 
-                {/* Cards dos Pedidos */}
-                <div className="space-y-3">
-                  {statusOrders.length === 0 ? (
-                    <Card className="border-2 border-dashed border-muted">
-                      <CardContent className="p-8 text-center">
-                        <IconComponent className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-30" />
-                        <p className="text-sm text-muted-foreground">
-                          Nenhum pedido
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    statusOrders.map((order, index) => (
-                      <Card
-                        key={order.id}
-                        className={`border-2 hover:shadow-premium transition-shadow ${config.borderColor}`}
-                        style={{ animationDelay: `${index * 50}ms` }}
-                      >
-                        <CardHeader className="pb-3 space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <CardTitle className="text-base font-bold truncate">
+                {/* ── Cards ── */}
+                {statusOrders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-muted py-10">
+                    <IconComponent className="h-7 w-7 text-muted-foreground/30" />
+                    <p className="text-xs text-muted-foreground">Nenhum pedido</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2.5">
+                    {statusOrders.map((order) => {
+                      const isTableOrder = order.order_source === 'table' || !!order.table_id;
+                      const isDelivering = status === OrderStatus.DELIVERING;
+                      const isDeliveryOrder = !isTableOrder && order.delivery_type === 'delivery';
+
+                      // Botão de avanço de status
+                      const tablePreparingOverride = isTableOrder && status === OrderStatus.PREPARING;
+                      const completedConfig = statusConfig[OrderStatus.COMPLETED];
+                      const nextStatus = tablePreparingOverride ? OrderStatus.COMPLETED : config.nextStatus;
+                      const nextLabel = tablePreparingOverride ? completedConfig.label : config.nextLabel;
+                      const NextIconComponent = tablePreparingOverride ? completedConfig.icon : config.nextIcon;
+                      const gradientClass = tablePreparingOverride ? completedConfig.gradient : config.gradient;
+                      const hideForTable = isTableOrder && (status === OrderStatus.READY || status === OrderStatus.DELIVERING);
+
+                      // WhatsApp "saiu para entrega"
+                      const buildWhatsAppDeliveryUrl = () => {
+                        const phone = order.customer_phone.replace(/\D/g, '');
+                        const name = order.customer_name.split(' ')[0];
+                        const msg = encodeURIComponent(`Olá ${name}! 🛵 Seu pedido acabou de sair para entrega. Em breve estará na sua porta! 😊`);
+                        return `https://wa.me/${phone}?text=${msg}`;
+                      };
+
+                      return (
+                        <div
+                          key={order.id}
+                          className={`relative bg-card rounded-xl border border-border shadow-sm overflow-hidden hover:shadow-md transition-shadow`}
+                        >
+                          {/* Borda lateral colorida de status */}
+                          <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${config.gradient} rounded-l-xl`} />
+
+                          <div className="pl-3 pr-2.5 pt-2.5 pb-3 space-y-2.5">
+                            {/* ── Linha 1: ID + Badge + Ações ── */}
+                            <div className="flex items-center justify-between gap-1 min-w-0">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-xs font-mono font-bold text-foreground">
                                   #{order.id.slice(0, 8).toUpperCase()}
-                                </CardTitle>
-                                {(order.order_source === 'table' || order.table_id) ? (
-                                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
-                                    <UtensilsCrossed className="h-3 w-3 mr-1" /> Mesa
-                                  </Badge>
+                                </span>
+                                {isTableOrder ? (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                    <UtensilsCrossed className="h-2.5 w-2.5" /> Mesa
+                                  </span>
                                 ) : (
-                                  <Badge variant="outline" className="text-xs bg-cyan-50 text-cyan-700 border-cyan-200">
-                                    <Bike className="h-3 w-3 mr-1" /> Delivery
-                                  </Badge>
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-cyan-100 text-cyan-700">
+                                    <Bike className="h-2.5 w-2.5" /> Delivery
+                                  </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                <Clock className="h-3 w-3 flex-shrink-0" />
-                                <span className="truncate">
-                                  {formatDistanceToNow(new Date(order.created_at), {
-                                    addSuffix: true,
-                                    locale: ptBR,
-                                  })}
-                                </span>
+                              <div className="flex items-center gap-0.5 flex-shrink-0">
+                                <Button
+                                  type="button" variant="ghost" size="icon"
+                                  className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                                  onClick={() => handlePrintOrder(order)} title="Imprimir cupom"
+                                >
+                                  <Printer className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  type="button" variant="ghost" size="icon"
+                                  className="h-6 w-6 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => setOrderToRemove(order.id)} title="Cancelar pedido"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
                               </div>
                             </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
-                                onClick={() => handlePrintOrder(order)}
-                                title="Imprimir cupom"
-                                aria-label="Imprimir cupom"
-                              >
-                                <Printer className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                onClick={() => setOrderToRemove(order.id)}
-                                title="Remover pedido"
-                                aria-label="Remover pedido"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          {/* Cliente */}
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-2 text-sm">
-                              <Phone className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                              <span className="font-semibold truncate">
-                                {order.customer_name}
-                              </span>
-                            </div>
-                            <div className="text-xs text-muted-foreground pl-5">
-                              {formatPhone(order.customer_phone)}
-                            </div>
-                          </div>
 
-                          {/* Endereço de Entrega */}
-                          {order.delivery_type === 'delivery' && (
-                            <div className="flex items-start gap-2 text-xs p-2 rounded-lg bg-muted/50">
-                              <MapPin className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold mb-0.5">
-                                  {order.delivery_zone?.location_name}
-                                </div>
-                                <div className="text-muted-foreground line-clamp-2">
-                                  {order.delivery_address}
-                                </div>
+                            {/* ── Linha 2: Tempo ── */}
+                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground -mt-1">
+                              <Clock className="h-2.5 w-2.5 flex-shrink-0" />
+                              {formatDistanceToNow(new Date(order.created_at), { addSuffix: true, locale: ptBR })}
+                            </div>
+
+                            {/* ── Cliente ── */}
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                <Phone className="h-3 w-3 text-muted-foreground" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-foreground truncate leading-tight">
+                                  {order.customer_name}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground leading-tight">
+                                  {formatPhone(order.customer_phone)}
+                                </p>
                               </div>
                             </div>
-                          )}
 
-                          {/* Itens do Pedido */}
-                          <div className="space-y-1.5 p-2 rounded-lg bg-muted/30">
-                            {order.order_items?.slice(0, 3).map((item: any) => (
-                              <div
-                                key={item.id}
-                                className="text-xs flex items-start gap-2"
-                              >
-                                <Badge variant="secondary" className="h-5 px-1.5 font-bold text-xs">
-                                  {item.quantity}x
-                                </Badge>
-                                <span className="flex-1 line-clamp-2">{item.product_name}</span>
-                              </div>
-                            ))}
-                            {order.order_items && order.order_items.length > 3 && (
-                              <div className="text-xs text-muted-foreground font-medium pt-1">
-                                +{order.order_items.length - 3} {order.order_items.length - 3 === 1 ? 'item' : 'itens'}
+                            {/* ── Endereço (delivery) ── */}
+                            {isDeliveryOrder && (order.delivery_zone?.location_name || order.delivery_address) && (
+                              <div className="flex items-start gap-1.5 rounded-lg bg-muted/50 px-2 py-1.5">
+                                <MapPin className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                <div className="min-w-0">
+                                  {order.delivery_zone?.location_name && (
+                                    <p className="text-[11px] font-semibold text-foreground truncate">
+                                      {order.delivery_zone.location_name}
+                                    </p>
+                                  )}
+                                  {order.delivery_address && (
+                                    <p className="text-[11px] text-muted-foreground line-clamp-2">
+                                      {order.delivery_address}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                             )}
-                          </div>
 
-                          {/* Total e Pagamento */}
-                          <div className="flex items-center justify-between pt-2 border-t-2">
-                            <div className="flex items-center gap-1.5">
-                              <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="text-xs font-medium">
-                                {(order.order_source === 'table' || order.table_id)
-                                  ? 'Pagar na mesa'
-                                  : paymentMethodLabels[order.payment_method] ?? order.payment_method}
+                            {/* ── Itens ── */}
+                            <div className="space-y-1 rounded-lg bg-muted/30 px-2 py-1.5">
+                              {order.order_items?.slice(0, 3).map((item: any) => (
+                                <div key={item.id} className="flex items-baseline gap-1.5">
+                                  <span className="text-[11px] font-bold text-foreground/60 flex-shrink-0 w-5 text-right">
+                                    {item.quantity}×
+                                  </span>
+                                  <span className="text-[11px] text-foreground line-clamp-1 flex-1">
+                                    {item.product_name}
+                                  </span>
+                                </div>
+                              ))}
+                              {order.order_items && order.order_items.length > 3 && (
+                                <p className="text-[11px] text-muted-foreground pl-6">
+                                  +{order.order_items.length - 3} {order.order_items.length - 3 === 1 ? 'item' : 'itens'}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* ── Rodapé: Pagamento + Total ── */}
+                            <div className="flex items-center justify-between pt-1.5 border-t border-border/60">
+                              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                <CreditCard className="h-3 w-3 flex-shrink-0" />
+                                <span>
+                                  {isTableOrder
+                                    ? 'Pagar na mesa'
+                                    : paymentMethodLabels[order.payment_method] ?? order.payment_method}
+                                </span>
+                              </div>
+                              <span className="text-sm font-bold text-foreground">
+                                {formatCurrency(order.total, currency)}
                               </span>
                             </div>
-                            <span className="font-bold text-lg text-gradient">
-                              {formatCurrency(order.total, currency)}
-                            </span>
-                          </div>
 
-                          {/* Entregador - apenas para delivery */}
-                          {couriers.length > 0 && order.order_source !== 'table' && !order.table_id && (
-                            <div className="space-y-1.5">
-                              <label className="text-xs font-medium flex items-center gap-1.5">
-                                <Bike className="h-3.5 w-3.5 text-muted-foreground" />
-                                Entregador
-                              </label>
-                              <Select
-                                value={order.courier_id ?? 'none'}
-                                onValueChange={(v) => updateOrderCourier(order.id, v === 'none' ? null : v)}
+                            {/* ── Entregador (só delivery) ── */}
+                            {couriers.length > 0 && !isTableOrder && (
+                              <div className="space-y-1">
+                                <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+                                  <Bike className="h-3 w-3" /> Entregador
+                                </p>
+                                <Select
+                                  value={order.courier_id ?? 'none'}
+                                  onValueChange={(v) => updateOrderCourier(order.id, v === 'none' ? null : v)}
+                                >
+                                  <SelectTrigger className="h-7 text-xs">
+                                    <SelectValue placeholder="Atribuir motoboy" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Nenhum</SelectItem>
+                                    {couriers.filter((c) => c.active).map((c) => (
+                                      <SelectItem key={c.id} value={c.id}>
+                                        {c.name}{c.phone ? ` (${c.phone})` : ''}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+
+                            {/* ── WhatsApp "Saiu pra entrega" ── */}
+                            {isDelivering && isDeliveryOrder && (
+                              <a
+                                href={buildWhatsAppDeliveryUrl()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center gap-1.5 w-full rounded-lg bg-[#25D366] hover:bg-[#1ebe5d] transition-colors py-1.5 text-xs font-semibold text-white shadow-sm"
                               >
-                                <SelectTrigger className="h-9 text-xs">
-                                  <SelectValue placeholder="Atribuir motoboy" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">Nenhum</SelectItem>
-                                  {couriers.filter((c) => c.active).map((c) => (
-                                    <SelectItem key={c.id} value={c.id}>
-                                      {c.name}
-                                      {c.phone ? ` (${c.phone})` : ''}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
+                                <MessageCircle className="h-3.5 w-3.5" />
+                                Avisar cliente no WhatsApp
+                              </a>
+                            )}
 
-                          {/* Botão de Ação */}
-                          {(() => {
-                            const isTableOrder = order.order_source === 'table' || !!order.table_id;
-                            // Pedidos de mesa: de "Em Preparo" vai direto para "Concluído"
-                            const tablePreparingOverride =
-                              isTableOrder && status === OrderStatus.PREPARING;
-                            const completedConfig = statusConfig[OrderStatus.COMPLETED];
-                            const nextStatus = tablePreparingOverride
-                              ? OrderStatus.COMPLETED
-                              : config.nextStatus;
-                            const nextLabel = tablePreparingOverride
-                              ? completedConfig.label
-                              : config.nextLabel;
-                            const NextIconComponent = tablePreparingOverride
-                              ? completedConfig.icon
-                              : config.nextIcon;
-                            const gradientClass = tablePreparingOverride
-                              ? completedConfig.gradient
-                              : config.gradient;
-                            // Pedidos de mesa não exibem "Pronto" nem "Em Entrega"
-                            const hideForTable =
-                              isTableOrder &&
-                              (status === OrderStatus.READY || status === OrderStatus.DELIVERING);
-                            if (hideForTable || !nextStatus || !NextIconComponent) return null;
-                            return (
+                            {/* ── Botão avançar status ── */}
+                            {!hideForTable && nextStatus && NextIconComponent && (
                               <Button
                                 size="sm"
                                 disabled={updatingOrderId === order.id}
-                                className={`w-full bg-gradient-to-r ${gradientClass} text-white border-0 shadow-md hover:shadow-lg transition-all hover:scale-[1.02] font-semibold`}
+                                className={`w-full h-8 text-xs bg-gradient-to-r ${gradientClass} text-white border-0 shadow-sm hover:shadow-md hover:brightness-105 transition-all font-semibold`}
                                 onClick={() => updateOrderStatus(order.id, nextStatus)}
                               >
-                                {updatingOrderId === order.id ? (
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                ) : (
-                                  React.createElement(NextIconComponent, { className: "h-4 w-4 mr-2" })
-                                )}
+                                {updatingOrderId === order.id
+                                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  : React.createElement(NextIconComponent, { className: "h-3.5 w-3.5 mr-1.5" })
+                                }
                                 {nextLabel}
                               </Button>
-                            );
-                          })()}
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}

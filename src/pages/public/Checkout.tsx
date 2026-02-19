@@ -317,31 +317,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         className: 'bg-green-50 border-green-200'
       });
       
-      // Abrir WhatsApp
-      // Em mobile, window.location.href funciona melhor e redireciona diretamente
-      // Em desktop, tentamos window.open primeiro
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
-      if (isMobile) {
-        // Mobile: redirecionar diretamente (melhor experiência)
-        setTimeout(() => {
-          window.location.href = link;
-        }, 500); // Pequeno delay para o toast aparecer
-      } else {
-        // Desktop: tentar abrir em nova aba
-        const opened = window.open(link, '_blank', 'noopener,noreferrer');
-        if (!opened || opened.closed || typeof opened.closed === 'undefined') {
-          // Pop-up bloqueado, redirecionar na mesma aba
-          setTimeout(() => {
-            window.location.href = link;
-          }, 500);
-        } else {
-          // Pop-up aberto com sucesso, voltar ao menu após um tempo
-          setTimeout(() => {
-            handleBackToMenu();
-          }, 1000);
-        }
-      }
+      // Abrir WhatsApp apenas em nova aba (evita redirecionamento duplo)
+      window.open(link, '_blank', 'noopener,noreferrer');
+      setTimeout(() => handleBackToMenu(), 800);
       } else {
         // Pedido de mesa: não abre WhatsApp
         clearCart();
