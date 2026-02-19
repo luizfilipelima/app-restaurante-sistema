@@ -78,7 +78,7 @@ Recarregue a página do GitHub. Você deverá ver todos os arquivos!
 
 1. No painel do Supabase, clique em **"SQL Editor"** (ícone 📝 no menu lateral)
 2. Clique em **"New Query"**
-3. Abra o arquivo `supabase-schema.sql` do projeto
+3. Abra o arquivo `supabase/db/schema/initial.sql` do projeto
 4. **Copie TODO o conteúdo** (Cmd+A → Cmd+C ou Ctrl+A → Ctrl+C)
 5. **Cole** no SQL Editor do Supabase
 6. Clique em **"Run"** (ou pressione Cmd+Enter / Ctrl+Enter)

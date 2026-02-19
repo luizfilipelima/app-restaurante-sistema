@@ -24,7 +24,7 @@ Este guia explica como fazer o deploy completo do sistema usando Vercel e Supaba
 
 1. No painel do Supabase, vá em **SQL Editor** (menu lateral)
 2. Clique em **New Query**
-3. Copie todo o conteúdo do arquivo `supabase-schema.sql`
+3. Copie todo o conteúdo do arquivo `supabase/db/schema/initial.sql`
 4. Cole no editor e clique em **Run**
 5. Aguarde a execução (deve retornar "Success")
 

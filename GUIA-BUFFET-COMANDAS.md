@@ -8,7 +8,7 @@ Sistema completo de gestão de comandas para buffet com arquitetura **offline-fi
 
 ### 1. Executar Migração SQL
 
-Execute o arquivo `supabase-migration-buffet-comandas.sql` no Supabase SQL Editor:
+Execute o arquivo `supabase/db/migrations/migration_buffet-comandas.sql` no Supabase SQL Editor:
 
 ```sql
 -- O script cria:

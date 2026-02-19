@@ -59,7 +59,12 @@ App-Restaurante-Sistema/
 │   └── index.css           # Estilos globais
 │
 ├── public/                 # Assets públicos
-├── supabase-schema.sql     # Schema do banco de dados
+├── supabase/
+│   ├── db/                 # Banco de dados
+│   │   ├── schema/         # Schema inicial (initial.sql)
+│   │   ├── migrations/     # Migrations de features
+│   │   └── scripts/        # Scripts pontuais (setup, rls, fixes, diagnostic)
+│   └── functions/          # Edge Functions
 ├── package.json            # Dependências
 ├── tsconfig.json           # Configuração TypeScript
 ├── vite.config.ts          # Configuração Vite

@@ -10,7 +10,7 @@ Este guia explica passo a passo como configurar o Supabase para o sistema de res
 2. Para **INSERT**, o PostgreSQL exige a cláusula **WITH CHECK** (não basta só **USING**). Sem isso, criar novos registros falha.
 3. As tabelas de **pizza** (tamanhos, sabores, massas, bordas) e **zonas de entrega** não tinham política de escrita para o admin do restaurante.
 
-O script `supabase-rls-completo.sql` corrige tudo isso.
+O script `supabase/db/scripts/rls/supabase-rls-completo.sql` corrige tudo isso.
 
 ---
 
@@ -19,11 +19,11 @@ O script `supabase-rls-completo.sql` corrige tudo isso.
 | # | O quê | Arquivo / Onde |
 |---|--------|-----------------|
 | 1 | Criar projeto e obter chaves | Dashboard Supabase |
-| 2 | Criar tabelas e RLS básico | `supabase-schema.sql` |
+| 2 | Criar tabelas e RLS básico | `supabase/db/schema/initial.sql` |
 | 3 | Usuário conseguir logar | política "Users can read own profile" (já está no schema) |
-| 4 | Admin poder criar produtos, zonas, pizzas | `supabase-rls-completo.sql` |
-| 5 | (Opcional) Criar super admin | `supabase-criar-super-admin.sql` |
-| 6 | (Opcional) Super admin gerenciar qualquer restaurante | já incluso no `supabase-rls-completo.sql` |
+| 4 | Admin poder criar produtos, zonas, pizzas | `supabase/db/scripts/rls/supabase-rls-completo.sql` |
+| 5 | (Opcional) Criar super admin | `supabase/db/scripts/setup/supabase-criar-super-admin.sql` |
+| 6 | (Opcional) Super admin gerenciar qualquer restaurante | já incluso no `supabase-rls-completo.sql` (em `supabase/db/scripts/rls/`) |
 
 ---
 
@@ -47,14 +47,14 @@ No seu projeto (Vercel ou `.env` local), use:
 ## Passo 2: Rodar o schema (tabelas + RLS básico)
 
 1. No Supabase: **SQL Editor** → **New query**.
-2. Abra o arquivo **`supabase-schema.sql`** do repositório.
+2. Abra o arquivo **`supabase/db/schema/initial.sql`** do repositório.
 3. Copie **todo** o conteúdo e cole na query.
 4. Clique em **Run** (ou Ctrl+Enter).
 
 Se aparecer erro de “policy already exists” ou “object already exists”, pode ser que você já tenha rodado parte do schema antes. Nesse caso:
 
 - Ou rode só os trechos que faltam, **ou**
-- Se preferir começar do zero: **Database** → **Migrations** (ou apague as tabelas manualmente) e rode o `supabase-schema.sql` de novo.
+- Se preferir começar do zero: **Database** → **Migrations** (ou apague as tabelas manualmente) e rode o `supabase/db/schema/initial.sql` de novo.
 
 Ao final você deve ter:
 
@@ -69,7 +69,7 @@ Ao final você deve ter:
 Este passo é o que **corrige** os erros ao adicionar zonas de entrega, produtos e cardápio.
 
 1. No Supabase: **SQL Editor** → **New query**.
-2. Abra o arquivo **`supabase-rls-completo.sql`** do repositório.
+2. Abra o arquivo **`supabase/db/scripts/rls/supabase-rls-completo.sql`** do repositório.
 3. Copie **todo** o conteúdo e cole na query.
 4. Clique em **Run**.
 
@@ -228,11 +228,11 @@ Se não configurar o bucket, o admin ainda pode usar o campo **“Ou cole uma UR
 
 | Arquivo | O que faz |
 |--------|------------|
-| **supabase-schema.sql** | Cria tabelas, índices, triggers e RLS básico (incluindo “Users can read own profile”). |
-| **supabase-rls-completo.sql** | Corrige e completa as políticas para produtos, zonas, pizzas e pedidos (INSERT com WITH CHECK, admin e super_admin). **Execute depois do schema.** |
-| **supabase-criar-super-admin.sql** | Exemplo para chamar `create_super_admin(email, user_id)` e virar super_admin. |
-| **supabase-fix-login.sql** | Apenas a política “Users can read own profile” se você já tiver o resto e só o login estiver falhando. |
-| **supabase-super-admin-policies.sql** | Versão antiga de políticas do super_admin; o **supabase-rls-completo.sql** já cobre e amplia isso. |
+| **supabase/db/schema/initial.sql** | Cria tabelas, índices, triggers e RLS básico (incluindo “Users can read own profile”). |
+| **supabase/db/scripts/rls/supabase-rls-completo.sql** | Corrige e completa as políticas para produtos, zonas, pizzas e pedidos (INSERT com WITH CHECK, admin e super_admin). **Execute depois do schema.** |
+| **supabase/db/scripts/setup/supabase-criar-super-admin.sql** | Exemplo para chamar `create_super_admin(email, user_id)` e virar super_admin. |
+| **supabase/db/scripts/fixes/supabase-fix-login.sql** | Apenas a política “Users can read own profile” se você já tiver o resto e só o login estiver falhando. |
+| **supabase/db/scripts/rls/supabase-super-admin-policies.sql** | Versão antiga de políticas do super_admin; o **supabase-rls-completo.sql** já cobre e amplia isso. |
 | **supabase/functions/create-restaurant-user/** | Edge Function para o super admin cadastrar usuários (admin/cozinha) pelo painel. Deploy com `supabase functions deploy create-restaurant-user`. |
 
 ---
@@ -240,8 +240,8 @@ Se não configurar o bucket, o admin ainda pode usar o campo **“Ou cole uma UR
 ## Checklist rápido
 
 - [ ] Projeto Supabase criado e URL + anon key no app (`.env` / Vercel).
-- [ ] `supabase-schema.sql` executado (tabelas e RLS básico).
-- [ ] `supabase-rls-completo.sql` executado (corrige zonas, produtos e cardápio).
+- [ ] `supabase/db/schema/initial.sql` executado (tabelas e RLS básico).
+- [ ] `supabase/db/scripts/rls/supabase-rls-completo.sql` executado (corrige zonas, produtos e cardápio).
 - [ ] Pelo menos um usuário criado em **Authentication**.
 - [ ] Super admin criado com `create_super_admin(email, user_id)`.
 - [ ] (Opcional) Um restaurante criado e um usuário `restaurant_admin` vinculado a ele.
@@ -255,15 +255,15 @@ Se todos os itens estiverem feitos e as variáveis de ambiente corretas, **adici
 ## Erros comuns
 
 - **“new row violates row-level security policy”**  
-  Falta política com **WITH CHECK** para INSERT. Solução: rodar **`supabase-rls-completo.sql`**.
+  Falta política com **WITH CHECK** para INSERT. Solução: rodar **`supabase/db/scripts/rls/supabase-rls-completo.sql`**.
 
 - **“permission denied for table products” (ou delivery_zones, etc.)**  
   RLS está ativo mas não existe política que permita ao seu usuário (admin/super_admin) acessar. Solução: mesmo script acima.
 
 - **Login “funciona” mas o app não carrega dados**  
-  Verifique se existe a política **“Users can read own profile”** em `users` (já está no `supabase-schema.sql` e em `supabase-fix-login.sql`).
+  Verifique se existe a política **“Users can read own profile”** em `users` (já está no `supabase/db/schema/initial.sql` e em `supabase/db/scripts/fixes/supabase-fix-login.sql`).
 
 - **Super admin não vê outros restaurantes**  
-  Rodar **`supabase-rls-completo.sql`** (ele inclui a política para super_admin ler todos os restaurantes).
+  Rodar **`supabase/db/scripts/rls/supabase-rls-completo.sql`** (ele inclui a política para super_admin ler todos os restaurantes).
 
 Se depois disso ainda aparecer algum erro, envie a **mensagem exata** do Supabase (ou do console do navegador) para ajustar a política específica.

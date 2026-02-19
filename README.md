@@ -66,7 +66,7 @@ npm install
 ### 2. Configurar Supabase
 
 1. Crie um projeto no [Supabase](https://supabase.com)
-2. Execute o script SQL do arquivo `supabase-schema.sql` no SQL Editor do Supabase
+2. Execute o script SQL do arquivo `supabase/db/schema/initial.sql` no SQL Editor do Supabase
 3. Copie `.env.example` para `.env` e preencha as variáveis:
 
 ```env

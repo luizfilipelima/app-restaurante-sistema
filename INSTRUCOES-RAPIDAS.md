@@ -2,11 +2,11 @@
 
 ## ⚡ Execute este script primeiro:
 
-**Arquivo:** `supabase-migration-orders-insert-public-SOLUCAO-COMPLETA.sql`
+**Arquivo:** `supabase/db/scripts/fixes/migration_orders-insert-public-SOLUCAO-COMPLETA.sql`
 
 1. Abra o **Supabase Dashboard**
 2. Vá em **SQL Editor** → **New query**
-3. Copie TODO o conteúdo do arquivo `supabase-migration-orders-insert-public-SOLUCAO-COMPLETA.sql`
+3. Copie TODO o conteúdo do arquivo `supabase/db/scripts/fixes/migration_orders-insert-public-SOLUCAO-COMPLETA.sql`
 4. Cole no SQL Editor
 5. Clique em **Run** (ou pressione Ctrl+Enter)
 6. Verifique se apareceu a mensagem: `✅ Migration completa!`

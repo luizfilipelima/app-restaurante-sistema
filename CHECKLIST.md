@@ -34,7 +34,7 @@ Use este checklist para garantir que tudo está funcionando corretamente.
 ## 🗄️ Banco de Dados
 
 ### Schema SQL
-- [x] `supabase-schema.sql` criado
+- [x] `supabase/db/schema/initial.sql` criado
 - [x] 10 tabelas definidas
 - [x] Triggers para `updated_at`
 - [x] Índices para performance

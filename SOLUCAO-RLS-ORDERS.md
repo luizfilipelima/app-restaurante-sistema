@@ -2,7 +2,7 @@
 
 ## 🐛 Problema Identificado
 
-O arquivo `supabase-rls-completo.sql` **não incluía políticas de INSERT** para `orders` e `order_items`. Quando esse script era executado, ele removia as políticas públicas de INSERT que estavam no `supabase-schema.sql`, causando o erro:
+O arquivo `supabase/db/scripts/rls/supabase-rls-completo.sql` **não incluía políticas de INSERT** para `orders` e `order_items`. Quando esse script era executado, ele removia as políticas públicas de INSERT que estavam no `supabase/db/schema/initial.sql`, causando o erro:
 
 ```
 new row violates row-level security policy for table "orders"
@@ -24,7 +24,7 @@ Este script:
 
 ### 2. Correção Permanente
 
-**Arquivo:** `supabase-rls-completo.sql` (ATUALIZADO)
+**Arquivo:** `supabase/db/scripts/rls/supabase-rls-completo.sql` (ATUALIZADO)
 
 Atualizei este arquivo para incluir as políticas de INSERT público, garantindo que:
 - Qualquer pessoa pode criar pedidos (sem autenticação)
@@ -44,7 +44,7 @@ Atualizei este arquivo para incluir as políticas de INSERT público, garantindo
 
 ### Passo 2: Execute o RLS Completo Atualizado
 
-1. Execute o arquivo: `supabase-rls-completo.sql` (versão atualizada)
+1. Execute o arquivo: `supabase/db/scripts/rls/supabase-rls-completo.sql` (versão atualizada)
 2. Isso garante que todas as políticas estejam corretas
 
 ### Passo 3: Teste Manual (Opcional)
@@ -61,7 +61,7 @@ No Supabase Dashboard:
 
 ## ⚠️ Importante
 
-- **Nunca** execute `supabase-rls-completo.sql` sem a versão atualizada (que inclui INSERT público)
+- **Nunca** execute `supabase/db/scripts/rls/supabase-rls-completo.sql` sem a versão atualizada (que inclui INSERT público)
 - Se executar scripts antigos, execute `supabase-fix-orders-public-insert-FINAL.sql` novamente
 - Sempre teste após executar migrations SQL
 

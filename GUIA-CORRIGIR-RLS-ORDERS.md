@@ -8,7 +8,7 @@ new row violates row-level security policy for table "orders"
 ## ⚡ SOLUÇÃO RÁPIDA (Execute esta primeiro)
 
 1. Acesse o **Supabase Dashboard** → **SQL Editor**
-2. Execute o arquivo: **`supabase-migration-orders-insert-public-DEFINITIVO.sql`**
+2. Execute o arquivo: **`supabase/db/scripts/fixes/migration_orders-insert-public-DEFINITIVO.sql`**
 3. Este script:
    - Remove TODAS as políticas de INSERT conflitantes
    - Cria políticas públicas com `WITH CHECK (true)` 
@@ -24,7 +24,7 @@ new row violates row-level security policy for table "orders"
 
 ## Passo 2: Tentar Solução Normal
 
-1. Execute o arquivo: `supabase-migration-orders-insert-public-FINAL.sql`
+1. Execute o arquivo: `supabase/db/scripts/fixes/migration_orders-insert-public-FINAL.sql`
 2. Este script remove **apenas** políticas de INSERT e cria uma nova pública
 3. Teste criar um pedido no frontend
 
@@ -32,7 +32,7 @@ new row violates row-level security policy for table "orders"
 
 ⚠️ **ATENÇÃO**: Esta solução remove TODAS as políticas e recria apenas as essenciais.
 
-1. Execute o arquivo: `supabase-migration-orders-insert-public-FORCE.sql`
+1. Execute o arquivo: `supabase/db/scripts/fixes/migration_orders-insert-public-FORCE.sql`
 2. Este script:
    - Remove TODAS as políticas de `orders` e `order_items`
    - Cria política pública de INSERT (qualquer um pode criar pedidos)

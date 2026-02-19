@@ -61,8 +61,8 @@ npm install -D nome-do-pacote
 
 ### Executar schema SQL
 ```bash
-# 1. Copie o conteúdo de supabase-schema.sql
-cat supabase-schema.sql
+# 1. Copie o conteúdo de supabase/db/schema/initial.sql
+cat supabase/db/schema/initial.sql
 
 # 2. Cole no SQL Editor do Supabase e execute
 ```

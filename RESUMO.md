@@ -81,7 +81,7 @@ Sistema SaaS Multi-tenant para gestão de pizzarias e restaurantes desenvolvido 
 - **Pages**: 12 arquivos
 
 ### Banco de Dados
-- `supabase-schema.sql` - Schema completo com RLS
+- `supabase/db/schema/initial.sql` - Schema completo com RLS
 
 ### Documentação (4 arquivos)
 - `README.md` - Documentação principal

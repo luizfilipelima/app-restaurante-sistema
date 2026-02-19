@@ -14,7 +14,7 @@ npm install
 
 1. Crie conta em [supabase.com](https://supabase.com)
 2. Crie um novo projeto
-3. Vá em **SQL Editor** e execute o arquivo `supabase-schema.sql`
+3. Vá em **SQL Editor** e execute o arquivo `supabase/db/schema/initial.sql`
 4. Vá em **Settings** > **API** e copie:
    - Project URL
    - anon public key
