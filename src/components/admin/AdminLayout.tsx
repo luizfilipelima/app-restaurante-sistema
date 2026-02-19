@@ -114,13 +114,14 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
       {
         kind: 'leaf',
         name: 'Cozinha (KDS)',
-        // Usa o slug como identificador na URL do KDS (legível e estável).
-        // Fallback para restaurant_id quando o slug ainda não estiver configurado.
+        // URL do KDS no subdomínio dedicado: kds.quiero.food/{slug}
+        // Fallback para o caminho local com restaurant_id quando o slug ainda
+        // não estiver configurado (evita quebrar o acesso à cozinha).
         href: restaurantSlug
-          ? `${window.location.origin}/kitchen?slug=${restaurantSlug}`
+          ? `https://kds.quiero.food/${restaurantSlug}`
           : restaurantId
             ? `${window.location.origin}/kitchen?restaurant_id=${restaurantId}`
-            : '/kitchen',
+            : 'https://kds.quiero.food',
         icon: ChefHat,
         external: true, // abre em nova aba
       },
