@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -7,33 +7,65 @@ import { RoleProtectedRoute } from './components/auth/RoleProtectedRoute';
 import { Toaster } from './components/ui/toaster';
 import { UserRole } from './types';
 import { getSubdomain } from './lib/subdomain';
-import StoreLayout from './layouts/StoreLayout';
-import LandingPage from './pages/landing/LandingPage';
 
-import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/Register';
-import UnauthorizedPage from './pages/auth/UnauthorizedPage';
-import SuperAdminLayout from './components/super-admin/SuperAdminLayout';
-import SaasMetrics from './pages/super-admin/SaasMetrics';
-import SuperAdminRestaurants from './pages/super-admin/Dashboard';
-import Plans from './pages/super-admin/Plans';
+// ─── Componentes estruturais — carregam imediatamente (sem lazy) ─────────────
+// Layouts, guards e providers fazem parte do shell da aplicação e devem estar
+// prontos antes de qualquer rota ser resolvida.
+import StoreLayout from './layouts/StoreLayout';
 import AdminLayoutWrapper from './components/admin/AdminLayoutWrapper';
-import AdminDashboard from './pages/admin/Dashboard';
-import AdminMenu from './pages/admin/Menu';
-import AdminOrders from './pages/admin/Orders';
-import AdminSettings from './pages/admin/Settings';
-import AdminDeliveryZones from './pages/admin/DeliveryZones';
-import AdminCouriers from './pages/admin/Couriers';
-import AdminBuffet from './pages/admin/Buffet';
-import AdminProductsInventory from './pages/admin/ProductsInventory';
-import AdminTables from './pages/admin/Tables';
-import UpgradePage from './pages/admin/UpgradePage';
-import RestaurantDetails from './pages/super-admin/RestaurantDetails';
-import KitchenDisplay from './pages/kitchen/KitchenDisplay';
-import PublicMenu from './pages/public/Menu';
-import PublicCheckout from './pages/public/Checkout';
-import MenuViewOnly from './pages/public/MenuViewOnly';
-import MenuTable from './pages/public/MenuTable';
+import SuperAdminLayout from './components/super-admin/SuperAdminLayout';
+
+// ─── Páginas — carregadas sob demanda (lazy) ─────────────────────────────────
+// Cada página gera um chunk JS separado no build, reduzindo o bundle inicial.
+
+// Auth
+const LandingPage           = lazy(() => import('./pages/landing/LandingPage'));
+const LoginPage             = lazy(() => import('./pages/auth/LoginPage'));
+const RegisterPage          = lazy(() => import('./pages/auth/Register'));
+const UnauthorizedPage      = lazy(() => import('./pages/auth/UnauthorizedPage'));
+
+// Super Admin
+const SaasMetrics           = lazy(() => import('./pages/super-admin/SaasMetrics'));
+const SuperAdminRestaurants = lazy(() => import('./pages/super-admin/Dashboard'));
+const Plans                 = lazy(() => import('./pages/super-admin/Plans'));
+const RestaurantDetails     = lazy(() => import('./pages/super-admin/RestaurantDetails'));
+
+// Admin (painel do restaurante)
+const AdminDashboard        = lazy(() => import('./pages/admin/Dashboard'));
+const AdminMenu             = lazy(() => import('./pages/admin/Menu'));
+const AdminOrders           = lazy(() => import('./pages/admin/Orders'));
+const AdminSettings         = lazy(() => import('./pages/admin/Settings'));
+const AdminDeliveryZones    = lazy(() => import('./pages/admin/DeliveryZones'));
+const AdminCouriers         = lazy(() => import('./pages/admin/Couriers'));
+const AdminBuffet           = lazy(() => import('./pages/admin/Buffet'));
+const AdminProductsInventory = lazy(() => import('./pages/admin/ProductsInventory'));
+const AdminTables           = lazy(() => import('./pages/admin/Tables'));
+const UpgradePage           = lazy(() => import('./pages/admin/UpgradePage'));
+
+// Cozinha (KDS)
+const KitchenDisplay        = lazy(() => import('./pages/kitchen/KitchenDisplay'));
+
+// Cardápio público
+const PublicMenu            = lazy(() => import('./pages/public/Menu'));
+const PublicCheckout        = lazy(() => import('./pages/public/Checkout'));
+const MenuViewOnly          = lazy(() => import('./pages/public/MenuViewOnly'));
+const MenuTable             = lazy(() => import('./pages/public/MenuTable'));
+
+// ─── Fallback de carregamento ─────────────────────────────────────────────────
+
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-50">
+      <div className="relative">
+        {/* Anel externo */}
+        <div className="h-14 w-14 rounded-full border-4 border-orange-100" />
+        {/* Arco animado */}
+        <div className="absolute inset-0 h-14 w-14 rounded-full border-4 border-transparent border-t-[#F87116] animate-spin" />
+      </div>
+      <p className="text-sm font-medium text-slate-400 tracking-wide">Carregando...</p>
+    </div>
+  );
+}
 
 const adminRoutes = (
   <>
@@ -126,27 +158,29 @@ function App() {
   if (subdomain === 'kds') {
     return (
       <BrowserRouter>
-        <Routes>
-          {/* Login no próprio subdomínio kds para redirecionar de volta após autenticação */}
-          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            {/* Login no próprio subdomínio kds para redirecionar de volta após autenticação */}
+            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
 
-          {/*
-           * Rota principal do KDS: /:slug
-           * O componente KitchenDisplay lê o slug via useParams(),
-           * resolve o restaurant_id e se inscreve no canal Realtime correto.
-           */}
-          <Route
-            path="/:slug"
-            element={
-              <ProtectedRoute allowedRoles={KDS_ROLES}>
-                <KitchenDisplay />
-              </ProtectedRoute>
-            }
-          />
+            {/*
+             * Rota principal do KDS: /:slug
+             * O componente KitchenDisplay lê o slug via useParams(),
+             * resolve o restaurant_id e se inscreve no canal Realtime correto.
+             */}
+            <Route
+              path="/:slug"
+              element={
+                <ProtectedRoute allowedRoles={KDS_ROLES}>
+                  <KitchenDisplay />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Raiz sem slug → redireciona para login */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-        </Routes>
+            {/* Raiz sem slug → redireciona para login */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </Suspense>
         <Toaster />
       </BrowserRouter>
     );
@@ -161,6 +195,7 @@ function App() {
   if (isAdminSubdomain) {
     return (
       <BrowserRouter>
+        <Suspense fallback={<LoadingScreen />}>
         <Routes>
           <Route path="/login"    element={<PublicRoute><LoginPage />    </PublicRoute>} />
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
@@ -240,14 +275,16 @@ function App() {
           />
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
+        </Suspense>
         <Toaster />
       </BrowserRouter>
     );
   }
 
-  // 3) Domínio principal (quiero.food, localhost) -> Landing + rotas legado (path-based)
+  // 4) Domínio principal (quiero.food, localhost) -> Landing + rotas legado (path-based)
   return (
     <BrowserRouter>
+      <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/:restaurantSlug" element={<PublicMenu />} />
@@ -266,6 +303,7 @@ function App() {
           {adminRoutes}
         </Route>
       </Routes>
+      </Suspense>
       <Toaster />
     </BrowserRouter>
   );
