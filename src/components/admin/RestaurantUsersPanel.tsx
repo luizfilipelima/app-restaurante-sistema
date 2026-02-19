@@ -257,7 +257,7 @@ export default function RestaurantUsersPanel({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl w-full p-0 gap-0 max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent hideClose className="max-w-2xl w-full p-0 gap-0 max-h-[90vh] flex flex-col overflow-hidden">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-slate-100">
