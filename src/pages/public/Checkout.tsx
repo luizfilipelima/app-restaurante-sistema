@@ -183,44 +183,31 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     const finalTotal = subtotal + finalDeliveryFee;
 
     try {
-      const orderData: Record<string, unknown> = {
+      const orderPayload = {
         restaurant_id: restaurantId,
         customer_name: nameToUse,
         customer_phone: normalizePhoneWithCountryCode(phoneToUse, phoneCountry),
         delivery_type: finalDeliveryType,
-        delivery_zone_id: finalDeliveryType === DeliveryType.DELIVERY ? selectedZoneId : null,
-        delivery_address: finalDeliveryType === DeliveryType.DELIVERY ? address : null,
+        delivery_zone_id: finalDeliveryType === DeliveryType.DELIVERY ? (selectedZoneId || null) : null,
+        delivery_address: finalDeliveryType === DeliveryType.DELIVERY ? (address || null) : null,
         delivery_fee: finalDeliveryFee,
         subtotal,
         total: finalTotal,
         payment_method: isTableOrder ? PaymentMethod.TABLE : paymentMethod,
         payment_change_for: isTableOrder ? null : (changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null),
+        order_source: isTableOrder ? 'table' : (finalDeliveryType === DeliveryType.DELIVERY ? 'delivery' : 'pickup'),
+        table_id: isTableOrder && tableId ? tableId : null,
         status: 'pending',
         notes: notes || null,
         is_paid: isTableOrder ? false : true,
       };
-      if (isTableOrder && tableId) {
-        orderData.order_source = 'table';
-        orderData.table_id = tableId;
-      } else {
-        orderData.order_source = finalDeliveryType === DeliveryType.DELIVERY ? 'delivery' : 'pickup';
-      }
 
-      const { data: order, error } = await supabase
-        .from('orders')
-        .insert(orderData)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const orderItems = items.map((item) => {
+      const orderItemsPayload = items.map((item) => {
         const itemTotal =
           item.unitPrice * item.quantity +
           (item.pizzaEdgePrice ?? 0) * item.quantity +
           (item.pizzaDoughPrice ?? 0) * item.quantity;
         return {
-          order_id: order.id,
           product_id: item.productId ?? null,
           product_name: item.productName,
           quantity: item.quantity,
@@ -234,11 +221,14 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         };
       });
 
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
+      // Usa RPC SECURITY DEFINER que bypassa RLS — funciona para clientes anônimos
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('place_order', {
+        p_order: orderPayload,
+        p_items: orderItemsPayload,
+      });
 
-      if (itemsError) throw itemsError;
+      if (rpcError) throw rpcError;
+      if (!rpcResult?.ok) throw new Error(rpcResult?.error ?? 'Erro ao registrar pedido.');
 
       if (isTableOrder) {
         clearTable();
