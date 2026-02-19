@@ -5,7 +5,7 @@ import { getSubdomain } from '@/lib/subdomain';
 import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide, Category, Subcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
-import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed } from 'lucide-react';
+import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -64,9 +64,13 @@ interface PublicMenuProps {
   /** Modo mesa: exibe indicador e associa pedidos à mesa */
   tableId?: string;
   tableNumber?: number;
+  /** Callback ao clicar em "Chamar garçom" (modo mesa) */
+  onCallWaiter?: () => void;
+  /** Se true, exibe loading no botão Chamar garçom */
+  callingWaiter?: boolean;
 }
 
-export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId: _tableId, tableNumber: _tableNumber }: PublicMenuProps = {}) {
+export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId: _tableId, tableNumber, onCallWaiter, callingWaiter }: PublicMenuProps = {}) {
   const { t } = useTranslation();
   const params = useParams();
   const subdomain = getSubdomain();
@@ -356,11 +360,34 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId: _table
             </Button>
           </div>
         </div>
+        {/* Barra Mesa + Chamar Garçom - modo mesa */}
+        {tableNumber != null && onCallWaiter && (
+          <div className="border-t border-amber-200/60 bg-amber-50/90">
+            <div className="container mx-auto max-w-6xl flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5">
+              <span className="text-sm font-semibold text-amber-900">
+                {t('menu.tableLabel')} {tableNumber}
+              </span>
+              <Button
+                onClick={onCallWaiter}
+                disabled={callingWaiter}
+                size="sm"
+                className="flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold shadow-sm"
+              >
+                {callingWaiter ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Bell className="h-4 w-4" />
+                )}
+                {t('menu.callWaiter')}
+              </Button>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-6xl space-y-4 sm:space-y-6">
         {/* Busca e categorias - Mobile First */}
-        <div className="sticky top-[65px] sm:top-[73px] md:top-[81px] z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-slate-100/80 backdrop-blur-md rounded-xl sm:rounded-2xl">
+        <div className={`sticky z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-slate-100/80 backdrop-blur-md rounded-xl sm:rounded-2xl ${tableNumber != null && onCallWaiter ? 'top-[115px] sm:top-[125px] md:top-[135px]' : 'top-[65px] sm:top-[73px] md:top-[81px]'}`}>
           <div className="space-y-3 sm:space-y-4">
             <div className="relative">
               <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none z-10" />
@@ -435,7 +462,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId: _table
                         return (
                           <div key={sub.id} className="space-y-2">
                             <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                               {subProducts.map((product) => (
                                 <ProductCard
                                   key={product.id}
@@ -449,7 +476,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId: _table
                         );
                       })}
                       {productsWithoutSub.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                           {productsWithoutSub.map((product) => (
                             <ProductCard
                               key={product.id}
@@ -462,7 +489,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId: _table
                       )}
                     </>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                       {categoryProducts.map((product) => (
                         <ProductCard
                           key={product.id}
@@ -482,7 +509,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId: _table
               <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
                 {selectedCategory}
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {filteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}

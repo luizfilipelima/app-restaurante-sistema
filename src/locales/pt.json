@@ -6,6 +6,8 @@
     "viewCart": "Ver Carrinho",
     "open": "Aberto",
     "closed": "Fechado",
+    "callWaiter": "Chamar garçom",
+    "tableLabel": "Mesa",
     "estimateTime": "30–45 min",
     "searchPlaceholder": "Buscar no cardápio...",
     "noProductsInCategory": "Nenhum produto nesta categoria.",

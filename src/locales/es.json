@@ -6,6 +6,8 @@
     "viewCart": "Ver Carrito",
     "open": "Abierto",
     "closed": "Cerrado",
+    "callWaiter": "Llamar al mesero",
+    "tableLabel": "Mesa",
     "estimateTime": "30–45 min",
     "searchPlaceholder": "Buscar en la carta...",
     "noProductsInCategory": "Ningún producto en esta categoría.",

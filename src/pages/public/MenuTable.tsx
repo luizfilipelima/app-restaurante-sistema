@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { getSubdomain } from '@/lib/subdomain';
-import { Button } from '@/components/ui/button';
 import PublicMenu from './Menu';
 import { useTableOrderStore } from '@/store/tableOrderStore';
 import { toast } from '@/hooks/use-toast';
-import { Bell, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 interface MenuTableProps {
   tenantSlug?: string;
@@ -117,28 +116,12 @@ export default function MenuTable({ tenantSlug: tenantSlugProp }: MenuTableProps
   }
 
   return (
-    <div className="relative">
-      <PublicMenu tenantSlug={restaurantSlug ?? undefined} tableId={tableFound.id} tableNumber={tableFound.number} />
-      {/* Botão flutuante Chamar Garçom */}
-      <div
-        className="fixed bottom-24 right-4 z-40 md:bottom-8 md:right-6"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
-        <Button
-          size="lg"
-          variant="outline"
-          className="rounded-full h-14 w-14 md:h-16 md:w-16 shadow-lg bg-white hover:bg-amber-50 border-amber-300 hover:border-amber-400"
-          onClick={handleCallWaiter}
-          disabled={callingWaiter}
-          title="Chamar garçom"
-        >
-          {callingWaiter ? (
-            <Loader2 className="h-6 w-6 animate-spin text-amber-600" />
-          ) : (
-            <Bell className="h-6 w-6 text-amber-600" />
-          )}
-        </Button>
-      </div>
-    </div>
+    <PublicMenu
+      tenantSlug={restaurantSlug ?? undefined}
+      tableId={tableFound.id}
+      tableNumber={tableFound.number}
+      onCallWaiter={handleCallWaiter}
+      callingWaiter={callingWaiter}
+    />
   );
 }
