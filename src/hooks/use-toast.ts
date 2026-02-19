@@ -2,7 +2,7 @@ import * as React from 'react';
 import type { ToastActionElement, ToastProps } from '@/components/ui/toast';
 
 const TOAST_LIMIT = 3;
-const TOAST_REMOVE_DELAY = 5000;
+const TOAST_REMOVE_DELAY = 2500;
 
 type ToasterToast = ToastProps & {
   id: string;
@@ -131,10 +131,10 @@ function dispatch(action: Action) {
   });
 }
 
-type Toast = Omit<ToasterToast, 'id'>;
+type Toast = Omit<ToasterToast, 'id'> & { id?: string };
 
-function toast({ ...props }: Toast) {
-  const id = genId();
+function toast({ id: customId, ...props }: Toast) {
+  const id = customId ?? genId();
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -143,20 +143,25 @@ function toast({ ...props }: Toast) {
     });
   const dismiss = () => dispatch({ type: 'DISMISS_TOAST', toastId: id });
 
-  dispatch({
-    type: 'ADD_TOAST',
-    toast: {
-      ...props,
-      id,
-      open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss();
+  // Se já existe um toast com esse id, atualiza em vez de criar novo
+  if (customId && memoryState.toasts.some((t) => t.id === customId)) {
+    dispatch({ type: 'UPDATE_TOAST', toast: { ...props, id, open: true } });
+  } else {
+    dispatch({
+      type: 'ADD_TOAST',
+      toast: {
+        ...props,
+        id,
+        open: true,
+        onOpenChange: (open) => {
+          if (!open) dismiss();
+        },
       },
-    },
-  });
+    });
+  }
 
   return {
-    id: id,
+    id,
     dismiss,
     update,
   };

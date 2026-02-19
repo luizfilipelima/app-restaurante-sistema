@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { useRestaurant } from '@/hooks/queries';
 import { DatabaseOrder, OrderStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,10 +19,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks } from 'lucide-react';
 import { useCouriers, useOrders, usePrintSettings } from '@/hooks/queries';
 import { usePrinter } from '@/hooks/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
+import { CompletedOrdersView } from '@/components/orders/CompletedOrdersView';
 import {
   Select,
   SelectContent,
@@ -105,14 +107,15 @@ const statusConfig = {
   },
 };
 
-/** Statuses exibidos nas abas do Kanban (exclui CANCELLED) */
+/** Statuses do Kanban (pedidos ativos — COMPLETED fica na view separada) */
 const ORDER_TAB_STATUSES = [
   OrderStatus.PENDING,
   OrderStatus.PREPARING,
   OrderStatus.READY,
   OrderStatus.DELIVERING,
-  OrderStatus.COMPLETED,
 ];
+
+type OrdersView = 'kanban' | 'completed';
 
 export default function AdminOrders() {
   const restaurantId = useAdminRestaurantId();
@@ -125,9 +128,11 @@ export default function AdminOrders() {
   });
   const orders = ordersData?.orders ?? [];
   const { data: printSettings } = usePrintSettings(restaurantId);
+  const { data: restaurant } = useRestaurant(restaurantId);
   const printSettingsRef = useRef(printSettings);
   printSettingsRef.current = printSettings;
 
+  const [view, setView] = useState<OrdersView>('kanban');
   const [orderToRemove, setOrderToRemove] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
@@ -212,8 +217,8 @@ export default function AdminOrders() {
       await refetchOrders();
 
       toast({
-        title: "✅ Status atualizado!",
-        description: `Pedido movido para ${statusConfig[newStatus].label}`,
+        id: 'kanban-status',
+        title: `Pedido → ${statusConfig[newStatus].label}`,
         variant: "success",
       });
     } catch (error) {
@@ -277,8 +282,8 @@ export default function AdminOrders() {
           <Skeleton className="h-9 w-56" />
           <Skeleton className="h-5 w-96" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="space-y-3">
               <Skeleton className="h-8 w-32" />
               <Skeleton className="h-64 w-full rounded-xl" />
@@ -298,16 +303,67 @@ export default function AdminOrders() {
   return (
     <>
       <OrderReceipt data={receiptData} />
-      <div className="space-y-8 min-w-0">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-foreground">Gestão de Pedidos</h1>
-          <p className="text-muted-foreground text-base sm:text-lg">
-            Acompanhe e gerencie os pedidos em tempo real
-          </p>
+      <div className="space-y-6 min-w-0">
+        {/* ── Cabeçalho ── */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold mb-1 text-foreground">Gestão de Pedidos</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              {view === 'kanban'
+                ? 'Acompanhe e gerencie os pedidos em tempo real'
+                : 'Histórico de pedidos concluídos com exportação CSV'}
+            </p>
+          </div>
+
+          {/* Toggle Kanban / Concluídos */}
+          <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1 self-start sm:self-auto flex-shrink-0">
+            <button
+              onClick={() => setView('kanban')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                view === 'kanban'
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Kanban
+              {orders.length > 0 && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  view === 'kanban'
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  {orders.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setView('completed')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                view === 'completed'
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <ListChecks className="h-4 w-4" />
+              Concluídos
+            </button>
+          </div>
         </div>
 
-        {/* Kanban Board */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 min-w-0">
+        {/* ── View: Concluídos ── */}
+        {view === 'completed' && (
+          <CompletedOrdersView
+            restaurantId={restaurantId}
+            restaurantName={restaurant?.name ?? printSettings?.name ?? 'Restaurante'}
+            currency={currency}
+            onPrintOrder={handlePrintOrder}
+          />
+        )}
+
+        {/* ── View: Kanban ── */}
+        {view === 'kanban' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
           {ORDER_TAB_STATUSES.map((status) => {
             const statusOrders = getOrdersByStatus(status);
             const config = statusConfig[status];
@@ -539,6 +595,7 @@ export default function AdminOrders() {
             );
           })}
         </div>
+        )} {/* fim view kanban */}
       </div>
 
       {/* Diálogo de confirmação para remover pedido */}

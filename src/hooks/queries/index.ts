@@ -14,3 +14,5 @@ export { useDashboardKPIs } from './useDashboardKPIs';
 export type { UseDashboardKPIsParams } from './useDashboardKPIs';
 export { useDashboardStats } from './useDashboardStats';
 export type { UseDashboardStatsParams } from './useDashboardStats';
+export { useCompletedOrders } from './useCompletedOrders';
+export type { UseCompletedOrdersParams, CompletedOrdersDateRange } from './useCompletedOrders';
