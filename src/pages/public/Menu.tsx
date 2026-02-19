@@ -244,7 +244,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   };
 
   const handleProductClick = (product: Product) => {
-    if (product.is_pizza) {
+    const isPizzaProduct = product.is_pizza || product.category?.toLowerCase() === 'pizza';
+    if (isPizzaProduct) {
       setSelectedProduct(product);
       setPizzaModalOpen(true);
     } else if (product.is_marmita) {
@@ -595,7 +596,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         currency={currency}
       />
 
-      {selectedProduct && selectedProduct.is_pizza && (
+      {selectedProduct && (selectedProduct.is_pizza || selectedProduct.category?.toLowerCase() === 'pizza') && (
         <PizzaModal
           open={pizzaModalOpen}
           onClose={() => {
