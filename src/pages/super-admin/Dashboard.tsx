@@ -96,7 +96,14 @@ export default function SuperAdminDashboard() {
       setLoading(true);
 
       const [restaurantsRes, ordersRes] = await Promise.all([
-        supabase.from('restaurants').select('*').order('name'),
+        supabase
+          .from('restaurants')
+          .select('*')
+          // Soft delete: exclui restaurantes marcados como deletados.
+          // Restaurantes com deleted_at preenchido são preservados no banco para
+          // integridade histórica, mas não devem aparecer na visão principal.
+          .is('deleted_at', null)
+          .order('name'),
         supabase.from('orders').select('restaurant_id'),
       ]);
 
