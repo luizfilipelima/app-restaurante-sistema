@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff } from 'lucide-react';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { ROLES_CANCEL_ORDER } from '@/hooks/useUserRole';
 import { useCouriers, useOrders, usePrintSettings } from '@/hooks/queries';
@@ -138,13 +138,40 @@ export default function AdminOrders() {
   const [orderToRemove, setOrderToRemove] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [isLive, setIsLive] = useState(false);
   const { couriers } = useCouriers(restaurantId);
   const { printOrder, receiptData } = usePrinter();
+
+  const handleRealtimeOrder = useCallback(async (payload: any) => {
+    queryClient.invalidateQueries({ queryKey: ['orders', restaurantId] });
+    if (payload.eventType === 'INSERT' && payload.new?.restaurant_id === restaurantId) {
+      const orderId = (payload.new as { id: string }).id;
+      const settings = printSettingsRef.current;
+      if (!settings?.print_auto_on_new_order || !orderId) return;
+      try {
+        const { data: fullOrder, error } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            delivery_zone:delivery_zones(*),
+            order_items(*),
+            courier:couriers(id, name, phone)
+          `)
+          .eq('id', orderId)
+          .single();
+        if (!error && fullOrder) {
+          printOrder(fullOrder as DatabaseOrder, settings.name, settings.print_paper_width || '80mm', currency);
+        }
+      } catch (e) {
+        console.error('Erro ao imprimir pedido novo:', e);
+      }
+    }
+  }, [restaurantId, queryClient, printOrder, currency]);
 
   useEffect(() => {
     if (!restaurantId) return;
     const channel = supabase
-      .channel('orders-changes')
+      .channel(`orders-changes-${restaurantId}`)
       .on(
         'postgres_changes',
         {
@@ -153,37 +180,16 @@ export default function AdminOrders() {
           table: 'orders',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        async (payload) => {
-          queryClient.invalidateQueries({ queryKey: ['orders', restaurantId] });
-          if (payload.eventType === 'INSERT' && payload.new?.restaurant_id === restaurantId) {
-            const orderId = (payload.new as { id: string }).id;
-            const settings = printSettingsRef.current;
-            if (!settings?.print_auto_on_new_order || !orderId) return;
-            try {
-              const { data: fullOrder, error } = await supabase
-                .from('orders')
-                .select(`
-                  *,
-                  delivery_zone:delivery_zones(*),
-                  order_items(*),
-                  courier:couriers(id, name, phone)
-                `)
-                .eq('id', orderId)
-                .single();
-              if (!error && fullOrder) {
-                printOrder(fullOrder as DatabaseOrder, settings.name, settings.print_paper_width || '80mm', currency);
-              }
-            } catch (e) {
-              console.error('Erro ao imprimir pedido novo:', e);
-            }
-          }
-        }
+        handleRealtimeOrder
       )
-      .subscribe();
+      .subscribe((status) => {
+        setIsLive(status === 'SUBSCRIBED');
+      });
     return () => {
       supabase.removeChannel(channel);
+      setIsLive(false);
     };
-  }, [restaurantId, printOrder, queryClient]);
+  }, [restaurantId, handleRealtimeOrder]);
 
   const updateOrderCourier = async (orderId: string, courierId: string | null) => {
     try {
@@ -333,8 +339,27 @@ export default function AdminOrders() {
             </p>
           </div>
 
-          {/* Toggle Kanban / Concluídos */}
-          <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1 self-start sm:self-auto flex-shrink-0">
+          {/* Indicador Ao Vivo + Toggle Kanban / Concluídos */}
+          <div className="flex items-center gap-3 self-start sm:self-auto flex-shrink-0">
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+              isLive
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-muted border-border text-muted-foreground'
+            }`}>
+              {isLive ? (
+                <>
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <Wifi className="h-3 w-3" />
+                  Ao Vivo
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-3 w-3" />
+                  Conectando…
+                </>
+              )}
+            </div>
+          <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
             <button
               onClick={() => setView('kanban')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -367,6 +392,7 @@ export default function AdminOrders() {
               Concluídos
             </button>
           </div>
+          </div>{/* fim wrapper live + toggle */}
         </div>
 
         {/* ── View: Concluídos ── */}

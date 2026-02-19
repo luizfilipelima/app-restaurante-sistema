@@ -8,6 +8,7 @@ import { useOfflineSync } from './useOfflineSync';
 export function useComandas(restaurantId: string) {
   const [comandas, setComandas] = useState<ComandaWithItems[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLive, setIsLive] = useState(false);
   const { syncNow, isOnline } = useOfflineSync(restaurantId);
 
   const loadComandas = useCallback(async (silent = false) => {
@@ -63,12 +64,36 @@ export function useComandas(restaurantId: string) {
     }
   }, [restaurantId, isOnline, syncNow]);
 
+  // Carga inicial
   useEffect(() => {
-    loadComandas(false); // carga inicial com loading
-    // Atualizar a cada 5 segundos em background (sem loading para não piscar)
-    const interval = setInterval(() => loadComandas(true), 5000);
-    return () => clearInterval(interval);
+    loadComandas(false);
   }, [loadComandas]);
+
+  // Real-time: Supabase Realtime substitui o polling de 5s
+  useEffect(() => {
+    if (!restaurantId) return;
+
+    const channel = supabase
+      .channel(`buffet-comandas-${restaurantId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'comandas',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        () => { loadComandas(true); }
+      )
+      .subscribe((status) => {
+        setIsLive(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+      setIsLive(false);
+    };
+  }, [restaurantId, loadComandas]);
 
   const createComanda = useCallback(async (): Promise<string> => {
     if (!restaurantId) throw new Error('Restaurant ID não fornecido');
@@ -221,6 +246,7 @@ export function useComandas(restaurantId: string) {
   return {
     comandas,
     loading,
+    isLive,
     createComanda,
     addItemToComanda,
     closeComanda,

@@ -28,6 +28,8 @@ import {
   Smartphone,
   Link2,
   Link2Off,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 
 // Padrão de short_code das Comandas Digitais (ex: CMD-A7F2)
@@ -43,7 +45,7 @@ interface ActiveVirtualComanda {
 export default function Buffet() {
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
-  const { comandas, loading, createComanda, addItemToComanda, closeComanda, refresh } = useComandas(restaurantId || '');
+  const { comandas, loading, isLive, createComanda, addItemToComanda, closeComanda, refresh } = useComandas(restaurantId || '');
   const { pendingCount, isOnline, isSyncing } = useOfflineSync(restaurantId || '');
   
   const [products, setProducts] = useState<Product[]>([]);
@@ -328,30 +330,50 @@ export default function Buffet() {
             Sistema offline-first para operação rápida
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          {/* Indicador de Status */}
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white ${
-            isSyncing ? 'bg-blue-600' : isOnline ? 'bg-emerald-600' : 'bg-red-600'
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Indicador Ao Vivo (Realtime) */}
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+            isLive
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              : 'bg-muted border-border text-muted-foreground'
           }`}>
-            {isSyncing ? (
+            {isLive ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Sincronizando...</span>
-              </>
-            ) : isOnline ? (
-              <>
-                <Cloud className="h-4 w-4" />
-                <span className="text-sm">Online</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <Wifi className="h-3 w-3" />
+                Ao Vivo
               </>
             ) : (
               <>
-                <CloudOff className="h-4 w-4" />
-                <span className="text-sm">Offline</span>
+                <WifiOff className="h-3 w-3" />
+                Conectando…
+              </>
+            )}
+          </div>
+
+          {/* Indicador Sync Offline */}
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold text-white ${
+            isSyncing ? 'bg-blue-600' : isOnline ? 'bg-slate-500' : 'bg-red-600'
+          }`}>
+            {isSyncing ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Sincronizando…
+              </>
+            ) : isOnline ? (
+              <>
+                <Cloud className="h-3.5 w-3.5" />
+                Online
+              </>
+            ) : (
+              <>
+                <CloudOff className="h-3.5 w-3.5" />
+                Offline
               </>
             )}
             {pendingCount > 0 && (
-              <Badge variant="secondary" className="ml-2 bg-white text-slate-900">
-                {pendingCount} pendente{pendingCount > 1 ? 's' : ''}
+              <Badge variant="secondary" className="ml-1 bg-white text-slate-900 text-[10px]">
+                {pendingCount}
               </Badge>
             )}
           </div>

@@ -24,7 +24,7 @@ import {
   ScanBarcode, Receipt, CheckCircle2, X, Loader2,
   Banknote, CreditCard, Smartphone, AlertCircle,
   Trash2, User, Clock, ShoppingBag, RefreshCw,
-  ChevronRight,
+  ChevronRight, Wifi, WifiOff,
 } from 'lucide-react';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -160,6 +160,7 @@ function CashierContent() {
   // Estado da lista de comandas ativas
   const [activeComandas, setActiveComandas] = useState<ActiveComanda[]>([]);
   const [loadingList,    setLoadingList]    = useState(true);
+  const [isLive,         setIsLive]         = useState(false);
 
   // Estado da comanda selecionada
   const [selected,       setSelected]       = useState<SelectedComanda | null>(null);
@@ -195,13 +196,18 @@ function CashierContent() {
   useEffect(() => {
     if (!restaurantId) return;
     const ch = supabase
-      .channel('cashier-comandas')
+      .channel(`cashier-comandas-${restaurantId}`)
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'virtual_comandas',
         filter: `restaurant_id=eq.${restaurantId}`,
       }, () => { loadActiveComandas(); })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+      .subscribe((status) => {
+        setIsLive(status === 'SUBSCRIBED');
+      });
+    return () => {
+      supabase.removeChannel(ch);
+      setIsLive(false);
+    };
   }, [restaurantId, loadActiveComandas]);
 
   // ── Real-time: mudanças nos itens da comanda selecionada ──────────────────
@@ -209,7 +215,7 @@ function CashierContent() {
   useEffect(() => {
     if (!selected) return;
     const ch = supabase
-      .channel(`cashier-items-${selected.id}`)
+      .channel(`cashier-items-${restaurantId}-${selected.id}`)
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'virtual_comanda_items',
         filter: `comanda_id=eq.${selected.id}`,
@@ -383,11 +389,24 @@ function CashierContent() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-semibold text-emerald-700">
-              {loadingList ? '…' : activeComandas.length} aberta{activeComandas.length !== 1 ? 's' : ''}
-            </span>
+          {/* Indicador Ao Vivo */}
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+            isLive
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              : 'bg-muted border-border text-muted-foreground'
+          }`}>
+            {isLive ? (
+              <>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <Wifi className="h-3 w-3" />
+                {loadingList ? '…' : activeComandas.length} aberta{activeComandas.length !== 1 ? 's' : ''}
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-3 w-3" />
+                Conectando…
+              </>
+            )}
           </div>
           <button
             onClick={loadActiveComandas}
