@@ -41,6 +41,7 @@ import {
   Loader2,
   Instagram,
   Printer,
+  CreditCard,
 } from 'lucide-react';
 import { Restaurant, DayKey, PrintPaperWidth } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -480,6 +481,16 @@ export default function SuperAdminDashboard() {
                       >
                         <Layout className="h-3.5 w-3.5 mr-1.5" />
                         Admin
+                      </Button>
+                      {/* Botão de gestão de assinatura */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 min-w-[100px] border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                        onClick={() => navigate(`/super-admin/restaurants/${restaurant.id}/subscription`)}
+                      >
+                        <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                        Assinatura
                       </Button>
                       <Button
                         size="sm"

@@ -16,3 +16,22 @@ export { useDashboardStats } from './useDashboardStats';
 export type { UseDashboardStatsParams } from './useDashboardStats';
 export { useCompletedOrders } from './useCompletedOrders';
 export type { UseCompletedOrdersParams, CompletedOrdersDateRange } from './useCompletedOrders';
+export { useFeatureAccess } from './useFeatureAccess';
+export type { UseFeatureAccessResult } from './useFeatureAccess';
+export {
+  useSubscriptionPlans,
+  useFeaturesCatalog,
+  usePlanFeatures,
+  useRestaurantSubscription,
+  useFeatureOverrides,
+  useUpdateSubscription,
+  useToggleFeatureOverride,
+  subscriptionKeys,
+} from './useSubscriptionManager';
+export type {
+  SubscriptionPlan,
+  Feature,
+  PlanFeature,
+  RestaurantSubscription,
+  FeatureOverride,
+} from './useSubscriptionManager';

@@ -22,6 +22,8 @@ import AdminCouriers from './pages/admin/Couriers';
 import AdminBuffet from './pages/admin/Buffet';
 import AdminProductsInventory from './pages/admin/ProductsInventory';
 import AdminTables from './pages/admin/Tables';
+import UpgradePage from './pages/admin/UpgradePage';
+import RestaurantDetails from './pages/super-admin/RestaurantDetails';
 import KitchenDisplay from './pages/kitchen/KitchenDisplay';
 import PublicMenu from './pages/public/Menu';
 import PublicCheckout from './pages/public/Checkout';
@@ -33,12 +35,42 @@ const adminRoutes = (
     <Route index element={<AdminDashboard />} />
     <Route path="orders" element={<AdminOrders />} />
     <Route path="menu" element={<AdminMenu />} />
-    <Route path="buffet" element={<AdminBuffet />} />
+    <Route
+      path="buffet"
+      element={
+        <ProtectedRoute requiredFeature="feature_buffet_module">
+          <AdminBuffet />
+        </ProtectedRoute>
+      }
+    />
     <Route path="products" element={<AdminProductsInventory />} />
-    <Route path="tables" element={<AdminTables />} />
-    <Route path="delivery-zones" element={<AdminDeliveryZones />} />
-    <Route path="couriers" element={<AdminCouriers />} />
+    <Route
+      path="tables"
+      element={
+        <ProtectedRoute requiredFeature="feature_tables">
+          <AdminTables />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="delivery-zones"
+      element={
+        <ProtectedRoute requiredFeature="feature_delivery_zones">
+          <AdminDeliveryZones />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="couriers"
+      element={
+        <ProtectedRoute requiredFeature="feature_couriers">
+          <AdminCouriers />
+        </ProtectedRoute>
+      }
+    />
     <Route path="settings" element={<AdminSettings />} />
+    {/* Página de upgrade — exibida quando o usuário tenta acessar uma feature bloqueada */}
+    <Route path="upgrade" element={<UpgradePage />} />
   </>
 );
 
@@ -81,6 +113,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Gestão de assinatura e features — rota standalone (sem AdminLayout) */}
+          <Route
+            path="/super-admin/restaurants/:restaurantId/subscription"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
+                <RestaurantDetails />
+              </ProtectedRoute>
+            }
+          />
+          {/* Painel do restaurante dentro do AdminLayout (todas as sub-rotas) */}
           <Route
             path="/super-admin/restaurants/:restaurantId"
             element={
