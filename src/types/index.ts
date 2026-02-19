@@ -78,8 +78,6 @@ export interface Restaurant {
   /** País do número de telefone/WhatsApp: BR ou PY */
   phone_country?: PhoneCountry;
   instagram_url?: string;
-  primary_color?: string;
-  secondary_color?: string;
   is_active: boolean;
   opening_hours?: Record<DayKey, OpeningHoursSlot | null>;
   is_manually_closed?: boolean;

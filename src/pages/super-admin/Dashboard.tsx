@@ -83,8 +83,6 @@ export default function SuperAdminDashboard() {
     phone_country: 'BR' as 'BR' | 'PY',
     instagram_url: '',
     logo: '',
-    primary_color: '#FF6B35',
-    secondary_color: '#FFFFFF',
     is_active: true,
     always_open: false,
     opening_hours: {} as Record<DayKey, { open: string; close: string } | null>,
@@ -257,8 +255,6 @@ export default function SuperAdminDashboard() {
         phone_country: formData.phone_country,
         instagram_url: formData.instagram_url.trim() || null,
         logo: formData.logo || null,
-        primary_color: formData.primary_color,
-        secondary_color: formData.secondary_color,
         is_active: formData.is_active,
         always_open: formData.always_open,
         opening_hours: formData.opening_hours,
@@ -306,8 +302,6 @@ export default function SuperAdminDashboard() {
         phone_country: 'BR',
         instagram_url: '',
         logo: '',
-        primary_color: '#FF6B35',
-        secondary_color: '#FFFFFF',
         is_active: true,
         always_open: false,
         opening_hours: {} as Record<DayKey, { open: string; close: string } | null>,
@@ -774,45 +768,6 @@ export default function SuperAdminDashboard() {
                         accept="image/*"
                         onChange={handleLogoUpload}
                         className="cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="primary_color">Cor Primária</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="primary_color"
-                        type="color"
-                        value={formData.primary_color}
-                        onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
-                        className="h-10 w-20"
-                      />
-                      <Input
-                        value={formData.primary_color}
-                        onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
-                        placeholder="#FF6B35"
-                        className="flex-1"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="secondary_color">Cor Secundária</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="secondary_color"
-                        type="color"
-                        value={formData.secondary_color}
-                        onChange={(e) => setFormData({ ...formData, secondary_color: e.target.value })}
-                        className="h-10 w-20"
-                      />
-                      <Input
-                        value={formData.secondary_color}
-                        onChange={(e) => setFormData({ ...formData, secondary_color: e.target.value })}
-                        placeholder="#FFFFFF"
-                        className="flex-1"
                       />
                     </div>
                   </div>
