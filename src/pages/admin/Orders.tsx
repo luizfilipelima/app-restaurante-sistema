@@ -398,7 +398,7 @@ export default function AdminOrders() {
                       const isTableOrder = order.order_source === 'table' || !!order.table_id;
                       const isDelivering = status === OrderStatus.DELIVERING;
                       const isDeliveryOrder = !isTableOrder && (order.delivery_type === 'delivery' || order.order_source === 'delivery');
-                      const canNotifyWhatsApp = isDelivering && !isTableOrder;
+                      const canNotifyWhatsApp = isDelivering && isDeliveryOrder;
 
                       // Botão de avanço de status
                       const tablePreparingOverride = isTableOrder && status === OrderStatus.PREPARING;
@@ -536,8 +536,8 @@ export default function AdminOrders() {
                               </span>
                             </div>
 
-                            {/* ── Entregador (só delivery) ── */}
-                            {couriers.length > 0 && !isTableOrder && (
+                            {/* ── Entregador (só delivery — oculto em pedidos de retirada) ── */}
+                            {couriers.length > 0 && isDeliveryOrder && (
                               <div className="space-y-1">
                                 <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
                                   <Bike className="h-3 w-3" /> Entregador
