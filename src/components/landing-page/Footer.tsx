@@ -13,13 +13,17 @@ const DEFAULT_COLS: FooterCol[] = [
 export default function Footer() {
   const { c, primaryColor, logoUrl, appLink } = useMainLanding();
 
-  const tagline       = mlc(c, 'main_footer', 'tagline',       'O sistema de delivery mais amado da fronteira. Feito para quem tem fome de crescer.');
-  const instagramUrl  = mlc(c, 'main_footer', 'instagram_url', '#');
-  const facebookUrl   = mlc(c, 'main_footer', 'facebook_url',  '#');
-  const twitterUrl    = mlc(c, 'main_footer', 'twitter_url',   '#');
-  const copyrightText = mlc(c, 'main_footer', 'copyright_text','Quiero Food. Todos os direitos reservados.');
-  const madeInText    = mlc(c, 'main_footer', 'made_in_text',  'Feito com ❤️ em Ciudad del Este');
-  const productCols   = mlcJson<FooterCol[]>(c, 'main_footer', 'product_cols', DEFAULT_COLS);
+  const tagline        = mlc(c, 'main_footer', 'tagline',        'O sistema de delivery mais amado da fronteira. Feito para quem tem fome de crescer.');
+  const instagramUrl   = mlc(c, 'main_footer', 'instagram_url',  '#');
+  const facebookUrl    = mlc(c, 'main_footer', 'facebook_url',   '#');
+  const twitterUrl     = mlc(c, 'main_footer', 'twitter_url',    '#');
+  const copyrightText  = mlc(c, 'main_footer', 'copyright_text', 'Quiero Food. Todos os direitos reservados.');
+  const madeInText     = mlc(c, 'main_footer', 'made_in_text',   'Feito com ❤️ em Ciudad del Este');
+  const footerLogoUrl  = mlc(c, 'main_footer', 'footer_logo_url','');
+  const productCols    = mlcJson<FooterCol[]>(c, 'main_footer', 'product_cols', DEFAULT_COLS);
+
+  // Logo exclusiva do rodapé; fallback para a logo principal
+  const displayLogo = footerLogoUrl || logoUrl;
 
   return (
     <footer className="bg-slate-900 text-slate-300 py-16 border-t border-slate-800">
@@ -29,7 +33,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-1 space-y-6">
             <a href="/" className="inline-block">
-              <img src={logoUrl} alt="Quiero.food" className="h-9 w-auto object-contain" />
+              <img src={displayLogo} alt="Quiero.food" className="h-9 w-auto object-contain" />
             </a>
             <p className="text-sm text-slate-400 max-w-xs leading-relaxed">{tagline}</p>
             <div className="flex gap-4 pt-4">

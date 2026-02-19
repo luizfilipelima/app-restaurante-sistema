@@ -2,33 +2,44 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Globe } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useMainLanding, mlc } from '@/contexts/MainLandingCtx';
+import { useMainLanding, mlc, mlcJson } from '@/contexts/MainLandingCtx';
+
+interface NavItem { label: string; href: string }
+
+const DEFAULT_NAV: NavItem[] = [
+  { label: 'Funcionalidades', href: '#features' },
+  { label: 'Preços',          href: '#pricing' },
+  { label: 'FAQ',             href: '#faq' },
+];
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [lang, setLang] = useState<'pt' | 'es'>('pt');
   const { c, primaryColor, logoUrl, waLink, appLink } = useMainLanding();
 
-  const toggleLanguage = () => setLang(lang === 'pt' ? 'es' : 'pt');
-
   const ctaLabel   = mlc(c, 'main_header', 'cta_label',   'Testar Grátis');
   const loginLabel = mlc(c, 'main_header', 'login_label', 'Entrar');
-  const nav1       = mlc(c, 'main_header', 'nav_item_1',  'Funcionalidades');
-  const nav2       = mlc(c, 'main_header', 'nav_item_2',  'Preços');
-  const nav3       = mlc(c, 'main_header', 'nav_item_3',  'FAQ');
 
-  const navItems = [
-    { label: nav1, section: 'features' },
-    { label: nav2, section: 'pricing' },
-    { label: nav3, section: 'faq' },
+  // Nav items: JSON array com label + href (backwards-compat com campos individuais)
+  const rawNav1 = mlc(c, 'main_header', 'nav_item_1', 'Funcionalidades');
+  const rawNav2 = mlc(c, 'main_header', 'nav_item_2', 'Preços');
+  const rawNav3 = mlc(c, 'main_header', 'nav_item_3', 'FAQ');
+  const fallbackNav: NavItem[] = [
+    { label: rawNav1, href: '#features' },
+    { label: rawNav2, href: '#pricing' },
+    { label: rawNav3, href: '#faq' },
   ];
+  const navItems = mlcJson<NavItem[]>(c, 'main_header', 'nav_items', fallbackNav.length ? fallbackNav : DEFAULT_NAV);
 
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-      setMobileMenuOpen(false);
+  const handleNavClick = (href: string) => {
+    if (href.startsWith('#')) {
+      const id = href.slice(1);
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    } else if (href && href !== '#') {
+      window.open(href, '_blank', 'noopener,noreferrer');
     }
+    setMobileMenuOpen(false);
   };
 
   return (
@@ -49,12 +60,11 @@ export default function Header() {
 
         {/* Desktop Menu */}
         <nav className="hidden md:flex items-center gap-8">
-          {navItems.map((item) => (
+          {navItems.map((item, i) => (
             <button
-              key={item.section}
-              onClick={() => scrollToSection(item.section)}
+              key={i}
+              onClick={() => handleNavClick(item.href)}
               className="text-sm font-medium text-slate-600 transition-colors"
-              style={{ ['--hover-color' as string]: primaryColor }}
               onMouseEnter={(e) => (e.currentTarget.style.color = primaryColor)}
               onMouseLeave={(e) => (e.currentTarget.style.color = '')}
             >
@@ -67,7 +77,7 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-4">
           <div
             className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
-            onClick={toggleLanguage}
+            onClick={() => setLang(lang === 'pt' ? 'es' : 'pt')}
           >
             <Globe className="h-4 w-4 text-slate-500" />
             <span className="text-xs font-semibold text-slate-700 uppercase">{lang}</span>
@@ -105,10 +115,10 @@ export default function Header() {
             className="md:hidden bg-white border-b border-slate-200 overflow-hidden"
           >
             <div className="px-4 py-6 space-y-4 flex flex-col">
-              {navItems.map((item) => (
+              {navItems.map((item, i) => (
                 <button
-                  key={item.section}
-                  onClick={() => scrollToSection(item.section)}
+                  key={i}
+                  onClick={() => handleNavClick(item.href)}
                   className="text-left font-medium text-slate-900 py-2"
                 >
                   {item.label}
@@ -119,7 +129,7 @@ export default function Header() {
                 <span className="text-slate-500 text-sm">Idioma</span>
                 <div
                   className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100"
-                  onClick={toggleLanguage}
+                  onClick={() => setLang(lang === 'pt' ? 'es' : 'pt')}
                 >
                   <span className={`text-xs font-bold ${lang === 'pt' ? 'text-orange-600' : 'text-slate-400'}`}>PT</span>
                   <span className="text-slate-300">|</span>

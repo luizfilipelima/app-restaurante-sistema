@@ -6,22 +6,29 @@ import { useMainLanding, mlc } from '@/contexts/MainLandingCtx';
 export default function Hero() {
   const { c, primaryColor, waLink } = useMainLanding();
 
-  const badgeText       = mlc(c, 'main_hero', 'badge_text',         'Novo: Modo Cozinha Inteligente v2.0');
-  const headline        = mlc(c, 'main_hero', 'headline',           'O Delivery que vende sozinho no WhatsApp.');
-  const highlight       = mlc(c, 'main_hero', 'headline_highlight', 'WhatsApp');
-  const subheadline     = mlc(c, 'main_hero', 'subheadline',        'Cardápio digital, pedidos em tempo real, zonas de entrega, motoboys, cupom térmico e impressão automática. Tudo em um só lugar.');
-  const ctaLabel        = mlc(c, 'main_hero', 'cta_label',          'Criar Cardápio Grátis');
-  const emailPH         = mlc(c, 'main_hero', 'email_placeholder',  'seu@email.com');
-  const socialCount     = mlc(c, 'main_hero', 'social_proof_count', '+100');
-  const socialText      = mlc(c, 'main_hero', 'social_proof_text',  'Usado por <strong>+100 restaurantes</strong> no Paraguai');
-  const heroImageUrl    = mlc(c, 'main_hero', 'hero_image_url',     '');
-  const heroImageLabel  = mlc(c, 'main_hero', 'hero_image_label',   'Dashboard Screenshot Mockup');
-  const heroImageAlt    = mlc(c, 'main_hero', 'hero_image_alt',     'Dashboard do QuieroFood');
+  const badgeText      = mlc(c, 'main_hero', 'badge_text',         'Novo: Modo Cozinha Inteligente v2.0');
+  const headline       = mlc(c, 'main_hero', 'headline',           'O Delivery que vende sozinho no WhatsApp.');
+  const highlight      = mlc(c, 'main_hero', 'headline_highlight', 'WhatsApp');
+  const subheadline    = mlc(c, 'main_hero', 'subheadline',        'Cardápio digital, pedidos em tempo real, zonas de entrega, motoboys, cupom térmico e impressão automática. Tudo em um só lugar.');
+  const ctaLabel       = mlc(c, 'main_hero', 'cta_label',          'Criar Cardápio Grátis');
+  const inputPH        = mlc(c, 'main_hero', 'email_placeholder',  'seu@email.com');
+  const ctaLink        = mlc(c, 'main_hero', 'cta_link',           '') || waLink;
+  const socialCount    = mlc(c, 'main_hero', 'social_proof_count', '+100');
+  const socialText     = mlc(c, 'main_hero', 'social_proof_text',  'Usado por <strong>+100 restaurantes</strong> no Paraguai');
+  const heroImageUrl   = mlc(c, 'main_hero', 'hero_image_url',     '');
+  const heroImageLabel = mlc(c, 'main_hero', 'hero_image_label',   'Dashboard Screenshot Mockup');
+  const heroImageAlt   = mlc(c, 'main_hero', 'hero_image_alt',     'Dashboard do QuieroFood');
+
+  // Avatares da prova social
+  const avatars = [1,2,3,4].map((n) => mlc(c, 'main_hero', `social_avatar_${n}`, ''));
 
   // Divide o headline em volta do highlight
   const hlIdx   = headline.indexOf(highlight);
   const beforeH = hlIdx >= 0 ? headline.slice(0, hlIdx) : headline;
   const afterH  = hlIdx >= 0 ? headline.slice(hlIdx + highlight.length) : '';
+
+  // Detecta se o placeholder é WhatsApp
+  const isWhatsApp = inputPH.toLowerCase().includes('whats') || inputPH.toLowerCase().includes('zap');
 
   return (
     <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 bg-slate-50 overflow-hidden">
@@ -79,8 +86,8 @@ export default function Hero() {
             className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md"
           >
             <input
-              type="email"
-              placeholder={emailPH}
+              type={isWhatsApp ? 'tel' : 'email'}
+              placeholder={inputPH}
               className="w-full h-12 px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-200 outline-none transition-all shadow-sm"
               style={{ ['--tw-ring-color' as string]: `${primaryColor}33` }}
             />
@@ -89,7 +96,7 @@ export default function Hero() {
               style={{ backgroundColor: primaryColor }}
               asChild
             >
-              <a href={waLink} target="_blank" rel="noopener noreferrer">
+              <a href={ctaLink} target="_blank" rel="noopener noreferrer">
                 {ctaLabel}
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </a>
@@ -104,8 +111,20 @@ export default function Hero() {
             className="pt-8 flex flex-col items-center gap-4"
           >
             <div className="flex -space-x-2">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-8 w-8 rounded-full ring-2 ring-white bg-slate-200" />
+              {avatars.map((url, i) => (
+                url ? (
+                  <img
+                    key={i}
+                    src={url}
+                    alt={`Avatar ${i + 1}`}
+                    className="h-8 w-8 rounded-full ring-2 ring-white object-cover bg-slate-200"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div key={i} className="h-8 w-8 rounded-full ring-2 ring-white bg-slate-200" />
+                )
               ))}
               <div className="h-8 w-8 rounded-full ring-2 ring-white bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
                 {socialCount}

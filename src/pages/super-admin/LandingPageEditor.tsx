@@ -3,9 +3,11 @@
  *
  * Cobre todas as seções com edição de:
  *   - Textos e títulos
- *   - Imagens (via URL)
+ *   - Imagens (URL + upload direto com dimensões recomendadas)
  *   - Cores (picker nativo)
  *   - Blocos dinâmicos (add/remove/edit)
+ *   - Navegação com links configuráveis
+ *   - Sincronização de preços com os planos do sistema
  *
  * Abas: Cores & Visual | Header | Hero | Bento | Funcionalidades |
  *       Depoimentos | Preços | FAQ | Rodapé
@@ -17,6 +19,8 @@ import {
   useUpsertLandingSection,
   type LandingUpsertItem,
 } from '@/hooks/queries/useLandingPageContent';
+import { useSubscriptionPlans } from '@/hooks/queries/useSubscriptionManager';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,7 +31,7 @@ import {
   ExternalLink, Loader2, Check, AlertCircle, Plus, Trash2,
   Palette, Layout, Zap, Grid3x3, MessageSquare, CreditCard,
   HelpCircle, Footprints, MonitorSmartphone, ChevronDown, ChevronUp,
-  Info,
+  Info, Upload, RefreshCw,
 } from 'lucide-react';
 
 // ─── Tipos compartilhados ─────────────────────────────────────────────────────
@@ -37,12 +41,13 @@ type SectionId =
   | 'main_problem' | 'main_features' | 'main_testimonials'
   | 'main_pricing' | 'main_faq' | 'main_footer';
 
-interface TestimonialItem { name: string; role: string; content: string; rating: number }
-interface FaqItem          { question: string; answer: string }
-interface FeatureGroup     { title: string; description: string; color: string; items: string[] }
-interface PlanItem         { name: string; price: string; period: string; features: string[]; cta: string; popular: boolean }
-interface CompRow          { name: string; basic: boolean; pro: boolean; enterprise: boolean }
-interface FooterCol        { title: string; links: Array<{ label: string; href: string }> }
+interface NavItem       { label: string; href: string }
+interface TestimonialItem { name: string; role: string; content: string; rating: number; image_url?: string }
+interface FaqItem        { question: string; answer: string }
+interface FeatureGroup   { title: string; description: string; color: string; icon?: string; items: string[] }
+interface PlanItem       { name: string; price: string; period: string; features: string[]; cta: string; popular: boolean }
+interface CompRow        { name: string; basic: boolean; pro: boolean; enterprise: boolean }
+interface FooterCol      { title: string; links: Array<{ label: string; href: string }> }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,6 +56,20 @@ function g(d: Record<string, string>, k: string, fb = '') { return d?.[k] ?? fb;
 function parseJson<T>(raw: string | undefined, fb: T): T {
   try { if (raw) return JSON.parse(raw) as T; } catch { /* noop */ }
   return fb;
+}
+
+async function uploadLandingImage(file: File): Promise<string> {
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml'];
+  if (!allowedTypes.includes(file.type)) throw new Error('Formato não suportado. Use PNG, JPG, GIF, WebP ou SVG.');
+  const ext = file.name.split('.').pop() ?? 'png';
+  const path = `landing/${crypto.randomUUID()}.${ext}`;
+  const { data, error } = await supabase.storage.from('product-images').upload(path, file, {
+    contentType: file.type,
+    upsert: false,
+  });
+  if (error) throw error;
+  const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(data.path);
+  return urlData.publicUrl;
 }
 
 // ─── Componentes de campo ─────────────────────────────────────────────────────
@@ -62,7 +81,7 @@ function Field({ label, hint, value, onChange, multiline, type = 'text', rows = 
 }) {
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 flex-wrap">
         <Label className="text-xs font-semibold text-slate-600">{label}</Label>
         {hint && <span className="text-[10px] text-slate-400 flex items-center gap-0.5"><Info className="h-2.5 w-2.5" />{hint}</span>}
       </div>
@@ -85,11 +104,9 @@ function ColorField({ label, hint, value, onChange }: {
         <Label className="text-xs font-semibold text-slate-600">{label}</Label>
         {hint && <span className="text-[10px] text-slate-400 flex items-center gap-0.5"><Info className="h-2.5 w-2.5" />{hint}</span>}
       </div>
-      <div className="flex items-center gap-3">
-        <div className="relative">
-          <input type="color" value={value || '#ea580c'} onChange={(e) => onChange(e.target.value)}
-            className="h-10 w-16 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white" />
-        </div>
+      <div className="flex items-center gap-3 flex-wrap">
+        <input type="color" value={value || '#ea580c'} onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-16 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white" />
         <Input value={value} onChange={(e) => onChange(e.target.value)}
           placeholder="#ea580c" className="h-9 text-sm font-mono w-32" />
         <div className="h-9 w-16 rounded-lg border border-slate-200 shadow-sm flex-shrink-0"
@@ -106,6 +123,88 @@ function ColorField({ label, hint, value, onChange }: {
   );
 }
 
+function ImageUploadField({ label, hint, value, onChange, recommended }: {
+  label: string; hint?: string; value: string; onChange: (v: string) => void;
+  recommended?: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadLandingImage(file);
+      onChange(url);
+      toast({ title: 'Imagem enviada', description: 'URL atualizada com sucesso.' });
+    } catch (err) {
+      toast({ title: 'Erro no upload', description: String(err), variant: 'destructive' });
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Label className="text-xs font-semibold text-slate-600">{label}</Label>
+        {recommended && (
+          <span className="text-[10px] text-emerald-700 font-medium bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 flex items-center gap-0.5">
+            📐 {recommended}
+          </span>
+        )}
+        {hint && <span className="text-[10px] text-slate-400 flex items-center gap-0.5"><Info className="h-2.5 w-2.5" />{hint}</span>}
+      </div>
+      <div className="flex items-center gap-2">
+        <Input type="url" value={value} onChange={(e) => onChange(e.target.value)}
+          className="h-9 text-sm flex-1" placeholder="https://... ou /caminho/relativo" />
+        <label className={`flex items-center gap-1.5 h-9 px-3 rounded-md border border-slate-200 text-xs font-medium cursor-pointer hover:bg-orange-50 hover:border-orange-200 transition-colors whitespace-nowrap flex-shrink-0 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5 text-[#F87116]" />}
+          <span className="text-slate-700">{uploading ? 'Enviando...' : 'Upload'}</span>
+          <input type="file" accept="image/*" className="hidden" onChange={handleFile} disabled={uploading} />
+        </label>
+      </div>
+      {value && (
+        <div className="rounded-xl border border-slate-200 overflow-hidden max-h-40 bg-slate-50">
+          <img src={value} alt="preview" className="w-full object-contain max-h-40"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Editor de itens de navegação ─────────────────────────────────────────────
+
+function NavItemsEditor({ items, onChange }: { items: NavItem[]; onChange: (items: NavItem[]) => void }) {
+  const upd = (i: number, k: keyof NavItem, v: string) =>
+    onChange(items.map((it, idx) => idx === i ? { ...it, [k]: v } : it));
+  const rem = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-1 px-1 mb-1">
+        <span className="text-[10px] font-semibold text-slate-400 uppercase">Label</span>
+        <span className="text-[10px] font-semibold text-slate-400 uppercase">Link</span>
+      </div>
+      {items.map((item, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <Input value={item.label} onChange={(e) => upd(i, 'label', e.target.value)}
+            placeholder="Funcionalidades" className="h-8 text-sm flex-1" />
+          <Input value={item.href} onChange={(e) => upd(i, 'href', e.target.value)}
+            placeholder="#features ou https://..." className="h-8 text-sm flex-1" />
+          <button onClick={() => rem(i)}
+            className="h-8 w-8 flex items-center justify-center rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ))}
+      <Button variant="outline" size="sm"
+        onClick={() => onChange([...items, { label: '', href: '#' }])}
+        className="w-full gap-1.5 h-9"><Plus className="h-3.5 w-3.5" />Adicionar item de navegação</Button>
+    </div>
+  );
+}
+
 // ─── Editor de depoimentos ────────────────────────────────────────────────────
 
 function TestimonialEditor({ items, onChange }: {
@@ -114,6 +213,24 @@ function TestimonialEditor({ items, onChange }: {
   const upd = (i: number, k: keyof TestimonialItem, v: string | number) =>
     onChange(items.map((it, idx) => idx === i ? { ...it, [k]: v } : it));
   const rem = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+  const [uploading, setUploading] = useState<number | null>(null);
+
+  const handleAvatarUpload = async (i: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(i);
+    try {
+      const url = await uploadLandingImage(file);
+      upd(i, 'image_url', url);
+      toast({ title: 'Foto enviada', description: 'Imagem do depoimento atualizada.' });
+    } catch (err) {
+      toast({ title: 'Erro no upload', description: String(err), variant: 'destructive' });
+    } finally {
+      setUploading(null);
+      e.target.value = '';
+    }
+  };
+
   return (
     <div className="space-y-3">
       {items.map((t, i) => (
@@ -133,10 +250,41 @@ function TestimonialEditor({ items, onChange }: {
               </button>
             </div>
           </div>
+
+          {/* Foto do depoente */}
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
+            <div className="flex-shrink-0">
+              {t.image_url ? (
+                <img src={t.image_url} alt={t.name}
+                  className="h-14 w-14 rounded-full object-cover border-2 border-white shadow-sm"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              ) : (
+                <div className="h-14 w-14 rounded-full bg-slate-200 border-2 border-dashed border-slate-300 flex items-center justify-center text-[10px] font-semibold text-slate-400">
+                  Foto
+                </div>
+              )}
+            </div>
+            <div className="flex-1 space-y-2 min-w-0">
+              <span className="text-[10px] text-emerald-700 font-medium bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 inline-flex items-center gap-0.5">
+                📐 200×200px · 1:1 · PNG/JPG/WebP
+              </span>
+              <div className="flex items-center gap-2">
+                <Input type="url" value={t.image_url ?? ''}
+                  onChange={(e) => upd(i, 'image_url', e.target.value)}
+                  placeholder="URL da foto" className="h-8 text-sm flex-1" />
+                <label className={`flex items-center gap-1 h-8 px-2.5 rounded-md border border-slate-200 text-xs font-medium cursor-pointer hover:bg-orange-50 hover:border-orange-200 transition-colors whitespace-nowrap flex-shrink-0 ${uploading === i ? 'opacity-50 pointer-events-none' : ''}`}>
+                  {uploading === i ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3 text-[#F87116]" />}
+                  <span>Upload</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleAvatarUpload(i, e)} />
+                </label>
+              </div>
+            </div>
+          </div>
+
           <textarea value={t.content} onChange={(e) => upd(i, 'content', e.target.value)}
             placeholder="Texto do depoimento..." rows={2}
             className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {([['name','Nome','Carlos Benitez'],['role','Estabelecimento','Pizzaria X']] as const).map(([fk,fl,fp]) => (
               <div key={fk}>
                 <Label className="text-[11px] text-slate-500">{fl}</Label>
@@ -156,13 +304,18 @@ function TestimonialEditor({ items, onChange }: {
 // ─── Editor de grupos de funcionalidades ──────────────────────────────────────
 
 const COLORS = ['orange','amber','blue','slate','emerald','green','violet','red','pink','cyan'];
+const ICON_OPTIONS = [
+  'ShoppingBag','Bike','Printer','Clock','MessageCircle','LayoutDashboard','Shield','Zap',
+  'QrCode','BarChart','TrendingUp','Star','Award','Bell','Globe','Target',
+  'Rocket','Package','Users','Layers','Monitor','Wallet','Database','Heart',
+];
 
 function FeatureGroupsEditor({ groups, onChange }: {
   groups: FeatureGroup[]; onChange: (groups: FeatureGroup[]) => void;
 }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const upd = (i: number, k: keyof FeatureGroup, v: unknown) =>
-    onChange(groups.map((g, idx) => idx === i ? { ...g, [k]: v } : g));
+    onChange(groups.map((gr, idx) => idx === i ? { ...gr, [k]: v } : gr));
   const rem = (i: number) => onChange(groups.filter((_, idx) => idx !== i));
   const addItem = (gi: number) => {
     onChange(groups.map((gr, idx) => idx === gi ? { ...gr, items: [...gr.items, ''] } : gr));
@@ -176,16 +329,14 @@ function FeatureGroupsEditor({ groups, onChange }: {
   };
   return (
     <div className="space-y-2">
-      {groups.map((g, i) => (
+      {groups.map((gr, i) => (
         <div key={i} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-          <button
-            onClick={() => setExpanded(expanded === i ? null : i)}
-            className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 transition-colors"
-          >
+          <button onClick={() => setExpanded(expanded === i ? null : i)}
+            className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 transition-colors">
             <div className="flex items-center gap-2">
-              <span className={`h-2.5 w-2.5 rounded-full bg-${g.color}-500`} />
-              <span className="text-sm font-semibold text-slate-800">{g.title || `Grupo ${i+1}`}</span>
-              <Badge variant="outline" className="text-[10px] font-normal">{g.items.length} itens</Badge>
+              <span className={`h-2.5 w-2.5 rounded-full bg-${gr.color}-500`} />
+              <span className="text-sm font-semibold text-slate-800">{gr.title || `Grupo ${i+1}`}</span>
+              <Badge variant="outline" className="text-[10px] font-normal">{gr.items.length} itens</Badge>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={(e) => { e.stopPropagation(); rem(i); }}
@@ -198,23 +349,30 @@ function FeatureGroupsEditor({ groups, onChange }: {
           {expanded === i && (
             <div className="px-4 pb-4 space-y-4 border-t border-slate-100 pt-4">
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Título" value={g.title} onChange={(v) => upd(i, 'title', v)} />
+                <Field label="Título" value={gr.title} onChange={(v) => upd(i, 'title', v)} />
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-600">Cor do ícone</Label>
-                  <div className="flex gap-1 flex-wrap mt-2">
-                    {COLORS.map((c) => (
-                      <button key={c} onClick={() => upd(i, 'color', c)}
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all ${g.color === c ? 'ring-2 ring-offset-1 ring-slate-400' : ''} bg-${c}-100 text-${c}-600`}>
-                        {c}
-                      </button>
-                    ))}
-                  </div>
+                  <Label className="text-xs font-semibold text-slate-600">Ícone</Label>
+                  <select value={gr.icon ?? 'Zap'} onChange={(e) => upd(i, 'icon', e.target.value)}
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+                    {ICON_OPTIONS.map((ic) => <option key={ic} value={ic}>{ic}</option>)}
+                  </select>
                 </div>
               </div>
-              <Field label="Descrição" value={g.description} onChange={(v) => upd(i, 'description', v)} />
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Cor do ícone</Label>
+                <div className="flex gap-1 flex-wrap mt-1">
+                  {COLORS.map((c) => (
+                    <button key={c} onClick={() => upd(i, 'color', c)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all ${gr.color === c ? 'ring-2 ring-offset-1 ring-slate-400' : ''} bg-${c}-100 text-${c}-600`}>
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Field label="Descrição" value={gr.description} onChange={(v) => upd(i, 'description', v)} />
               <div className="space-y-2">
                 <Label className="text-xs font-semibold text-slate-600">Itens da lista</Label>
-                {g.items.map((item, ii) => (
+                {gr.items.map((item, ii) => (
                   <div key={ii} className="flex items-center gap-2">
                     <Input value={item} onChange={(e) => updItem(i, ii, e.target.value)} className="h-8 text-sm flex-1" />
                     <button onClick={() => remItem(i, ii)}
@@ -232,7 +390,7 @@ function FeatureGroupsEditor({ groups, onChange }: {
         </div>
       ))}
       <Button variant="outline" size="sm"
-        onClick={() => onChange([...groups, { title:'', description:'', color:'orange', items:[] }])}
+        onClick={() => onChange([...groups, { title:'', description:'', color:'orange', icon:'Zap', items:[] }])}
         className="w-full gap-1.5 h-9"><Plus className="h-3.5 w-3.5" />Adicionar Grupo</Button>
     </div>
   );
@@ -368,11 +526,14 @@ function FooterColsEditor({ cols, onChange }: { cols: FooterCol[]; onChange: (c:
           {expanded === ci && (
             <div className="px-4 pb-4 border-t border-slate-100 pt-4 space-y-3">
               <Field label="Título da coluna" value={col.title} onChange={(v) => updTitle(ci, v)} />
-              <Label className="text-xs font-semibold text-slate-600 block">Links</Label>
+              <div className="grid grid-cols-2 gap-1 px-1">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase">Label</span>
+                <span className="text-[10px] font-semibold text-slate-400 uppercase">URL</span>
+              </div>
               {col.links.map((link, li) => (
                 <div key={li} className="flex items-center gap-2">
                   <Input value={link.label} onChange={(e) => updLink(ci, li, 'label', e.target.value)} placeholder="Label" className="h-8 text-sm flex-1" />
-                  <Input value={link.href}  onChange={(e) => updLink(ci, li, 'href',  e.target.value)} placeholder="URL (#)" className="h-8 text-sm flex-1" />
+                  <Input value={link.href}  onChange={(e) => updLink(ci, li, 'href',  e.target.value)} placeholder="https://..." className="h-8 text-sm flex-1" />
                   <button onClick={() => remLink(ci, li)}
                     className="h-8 w-8 flex items-center justify-center rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
                     <Trash2 className="h-3.5 w-3.5" />
@@ -389,6 +550,27 @@ function FooterColsEditor({ cols, onChange }: { cols: FooterCol[]; onChange: (c:
       <Button variant="outline" size="sm"
         onClick={() => onChange([...cols, { title:'', links:[] }])}
         className="w-full gap-1.5 h-9"><Plus className="h-3.5 w-3.5" />Adicionar Coluna</Button>
+    </div>
+  );
+}
+
+// ─── Picker de ícone para cards Bento ─────────────────────────────────────────
+
+const BENTO_ICON_OPTIONS = [
+  'Printer','QrCode','BarChart','Zap','Clock','TrendingUp','MessageCircle',
+  'Star','Award','Bell','Layers','Shield','Target','Rocket','Globe','Package',
+  'Users','Wallet','Monitor','Smartphone','Database','Heart','Wifi','Lock',
+  'BadgeCheck','CheckCircle','BarChart2','PieChart','Activity','Flame',
+];
+
+function BentoIconPicker({ label = 'Ícone', value, onChange }: { label?: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-semibold text-slate-600">{label}</Label>
+      <select value={value || 'Zap'} onChange={(e) => onChange(e.target.value)}
+        className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+        {BENTO_ICON_OPTIONS.map((ic) => <option key={ic} value={ic}>{ic}</option>)}
+      </select>
     </div>
   );
 }
@@ -450,6 +632,7 @@ const TABS = [
 export default function LandingPageEditor() {
   const [activeTab, setActiveTab] = useState<SectionId>('main_colors');
   const { data: content, isLoading, isError } = useLandingPageContent();
+  const { data: subscriptionPlans = [] } = useSubscriptionPlans();
   const upsert = useUpsertLandingSection();
 
   type DraftMap = Record<SectionId, Record<string, string>>;
@@ -487,11 +670,24 @@ export default function LandingPageEditor() {
     }
   };
 
-  // Helpers de JSON para drafts
   const getJson = <T,>(section: SectionId, key: string, fb: T): T =>
     parseJson(drafts[section]?.[key], fb);
   const setJson = <T,>(section: SectionId, key: string, value: T) =>
     setField(section, key, JSON.stringify(value));
+
+  // Sincronizar preços dos planos do sistema com a landing page
+  const syncPlanPrices = () => {
+    if (!subscriptionPlans.length) return;
+    const currentPlans = getJson<PlanItem[]>('main_pricing', 'plans', []);
+    const updatedPlans = currentPlans.map((plan, i) => {
+      const dbPlan = subscriptionPlans[i];
+      if (!dbPlan) return plan;
+      const price = dbPlan.price_brl === 0 ? 'Grátis' : `$${dbPlan.price_brl}`;
+      return { ...plan, price, name: dbPlan.label || plan.name };
+    });
+    setJson('main_pricing', 'plans', updatedPlans);
+    toast({ title: 'Preços sincronizados', description: 'Salve a seção para publicar as mudanças.' });
+  };
 
   if (isLoading) return (
     <div className="p-8 space-y-6">
@@ -513,6 +709,14 @@ export default function LandingPageEditor() {
 
   const saving = upsert.isPending;
   const d = drafts;
+
+  // Nav items: JSON first, fallback to old individual fields
+  const defaultNavItems: NavItem[] = [
+    { label: g(d.main_header, 'nav_item_1', 'Funcionalidades'), href: '#features' },
+    { label: g(d.main_header, 'nav_item_2', 'Preços'), href: '#pricing' },
+    { label: g(d.main_header, 'nav_item_3', 'FAQ'), href: '#faq' },
+  ];
+  const navItems = getJson<NavItem[]>('main_header', 'nav_items', defaultNavItems);
 
   return (
     <div className="p-6 lg:p-8 space-y-6 max-w-5xl">
@@ -540,6 +744,7 @@ export default function LandingPageEditor() {
         <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
         <p className="text-sm text-blue-800">
           <strong>Dica:</strong> Use "Ver página" para conferir as alterações em tempo real. Cada seção tem seu próprio botão de salvar.
+          Os campos com 📐 indicam as dimensões e proporção recomendadas para a imagem.
         </p>
       </div>
 
@@ -563,32 +768,23 @@ export default function LandingPageEditor() {
 
       {/* ── Tab: Cores & Visual ─────────────────────────────────────────────── */}
       {activeTab === 'main_colors' && (
-        <SectionWrapper title="Cores & Visual" description="Cor primária da marca, fundo e logotipo aplicados em toda a página."
+        <SectionWrapper title="Cores & Visual" description="Cor primária da marca e logotipo aplicados em toda a página."
           icon={Palette} saving={saving} hasChanges={hasChanges('main_colors')} onSave={() => saveSection('main_colors')}>
           <ColorField label="Cor primária da marca"
             hint="Botões, destaques, links e bordas."
             value={g(d.main_colors, 'primary_hex', '#ea580c')}
             onChange={(v) => setField('main_colors', 'primary_hex', v)} />
-          <div className="grid grid-cols-2 gap-5 border-t border-slate-100 pt-5">
-            <Field label="URL do logotipo" type="url"
-              hint="Caminho relativo ou URL absoluta"
+          <div className="border-t border-slate-100 pt-5">
+            <ImageUploadField
+              label="URL do logotipo principal"
+              recommended="SVG ou PNG · fundo transparente · mín. 200px de altura"
               value={g(d.main_colors, 'logo_url', '/quierofood-logo-f.svg')}
               onChange={(v) => setField('main_colors', 'logo_url', v)} />
-            <div>
-              <Label className="text-xs font-semibold text-slate-600 block mb-1.5">Prévia do logotipo</Label>
-              <div className="h-16 w-full rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center px-4">
-                {d.main_colors?.logo_url ? (
-                  <img src={d.main_colors.logo_url} alt="logo" className="h-8 w-auto object-contain" onError={(e) => (e.currentTarget.style.display='none')} />
-                ) : (
-                  <span className="text-xs text-slate-400">Nenhuma URL definida</span>
-                )}
-              </div>
-            </div>
           </div>
           <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 flex items-start gap-2">
             <Info className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-amber-800 leading-relaxed">
-              A cor primária é aplicada via CSS variable (<code>--brand</code>) e inline styles em botões, ícones e destaques. Após salvar, atualize a página para ver as mudanças.
+              A cor primária é aplicada via CSS variable (<code>--brand</code>). Após salvar, atualize a página para ver as mudanças.
             </p>
           </div>
         </SectionWrapper>
@@ -596,26 +792,28 @@ export default function LandingPageEditor() {
 
       {/* ── Tab: Header ──────────────────────────────────────────────────────── */}
       {activeTab === 'main_header' && (
-        <SectionWrapper title="Header / Navegação" description="Barra fixa no topo: logo, menu, botões de ação e links."
+        <SectionWrapper title="Header / Navegação" description="Barra fixa no topo: logo, menu de navegação e botões de ação."
           icon={Layout} saving={saving} hasChanges={hasChanges('main_header')} onSave={() => saveSection('main_header')}>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Texto do botão CTA" value={g(d.main_header,'cta_label','Testar Grátis')} onChange={(v) => setField('main_header','cta_label',v)} />
             <Field label="Texto do botão Entrar" value={g(d.main_header,'login_label','Entrar')} onChange={(v) => setField('main_header','login_label',v)} />
           </div>
           <div className="border-t border-slate-100 pt-4 space-y-3">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Links</p>
-            <Field label="Link WhatsApp (botão CTA)" type="url" value={g(d.main_header,'wa_link','')} onChange={(v) => setField('main_header','wa_link',v)} />
-            <Field label="Link da plataforma (botão Entrar)" type="url" value={g(d.main_header,'app_link','https://app.quiero.food')} onChange={(v) => setField('main_header','app_link',v)} />
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Links dos botões</p>
+            <Field label="Link do botão CTA (WhatsApp)" type="url"
+              value={g(d.main_header,'wa_link','')} onChange={(v) => setField('main_header','wa_link',v)} />
+            <Field label="Link da plataforma (botão Entrar)" type="url"
+              value={g(d.main_header,'app_link','https://app.quiero.food')} onChange={(v) => setField('main_header','app_link',v)} />
           </div>
           <div className="border-t border-slate-100 pt-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Itens do menu de navegação</p>
-            <div className="grid grid-cols-3 gap-3">
-              {[1,2,3].map((n) => (
-                <Field key={n} label={`Item ${n}`}
-                  value={g(d.main_header, `nav_item_${n}`, ['Funcionalidades','Preços','FAQ'][n-1])}
-                  onChange={(v) => setField('main_header', `nav_item_${n}`, v)} />
-              ))}
-            </div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+              Itens do menu de navegação
+              <span className="ml-2 font-normal normal-case text-slate-400">— defina label e link de destino (âncora ou URL)</span>
+            </p>
+            <NavItemsEditor
+              items={navItems}
+              onChange={(v) => setJson('main_header', 'nav_items', v)}
+            />
           </div>
         </SectionWrapper>
       )}
@@ -638,65 +836,99 @@ export default function LandingPageEditor() {
           </div>
           <Field label="Subtítulo" multiline rows={2}
             value={g(d.main_hero,'subheadline','')} onChange={(v) => setField('main_hero','subheadline',v)} />
-          <Field label="Placeholder do campo de e-mail"
-            value={g(d.main_hero,'email_placeholder','seu@email.com')} onChange={(v) => setField('main_hero','email_placeholder',v)} />
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Placeholder do campo (ex: seu WhatsApp)" hint="Campo de contato antes do botão CTA"
+              value={g(d.main_hero,'email_placeholder','seu@email.com')} onChange={(v) => setField('main_hero','email_placeholder',v)} />
+            <Field label="Link do botão CTA" type="url" hint="Deixe vazio para usar o link do header"
+              value={g(d.main_hero,'cta_link','')} onChange={(v) => setField('main_hero','cta_link',v)} />
+          </div>
+
           <div className="border-t border-slate-100 pt-4 space-y-3">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Imagem / Mockup</p>
-            <Field label="URL da imagem hero" type="url" hint="Substitui o placeholder cinza"
-              value={g(d.main_hero,'hero_image_url','')} onChange={(v) => setField('main_hero','hero_image_url',v)} />
+            <ImageUploadField
+              label="Imagem hero (dashboard/mockup)"
+              recommended="1200×675px · proporção 16:9 · PNG/JPG/WebP"
+              value={g(d.main_hero,'hero_image_url','')}
+              onChange={(v) => setField('main_hero','hero_image_url',v)} />
             <div className="grid grid-cols-2 gap-3">
               <Field label="Alt text da imagem" value={g(d.main_hero,'hero_image_alt','Dashboard do QuieroFood')} onChange={(v) => setField('main_hero','hero_image_alt',v)} />
               <Field label="Label quando sem imagem" value={g(d.main_hero,'hero_image_label','Dashboard Screenshot Mockup')} onChange={(v) => setField('main_hero','hero_image_label',v)} />
             </div>
-            {d.main_hero?.hero_image_url && (
-              <div className="rounded-xl border border-slate-200 overflow-hidden max-h-48">
-                <img src={d.main_hero.hero_image_url} alt="preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display='none')} />
-              </div>
-            )}
           </div>
+
           <div className="border-t border-slate-100 pt-4 space-y-3">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Prova Social</p>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Número de destaque (avatares)" value={g(d.main_hero,'social_proof_count','+100')} onChange={(v) => setField('main_hero','social_proof_count',v)} />
+              <Field label="Número de destaque" hint="Ex: +100"
+                value={g(d.main_hero,'social_proof_count','+100')} onChange={(v) => setField('main_hero','social_proof_count',v)} />
             </div>
             <Field label="Texto de prova social" hint="Aceita <strong> HTML básico"
               value={g(d.main_hero,'social_proof_text','Usado por <strong>+100 restaurantes</strong> no Paraguai')} onChange={(v) => setField('main_hero','social_proof_text',v)} />
+
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider pt-2">
+              Fotos dos avatares (círculos exibidos na prova social)
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              {[1,2,3,4].map((n) => (
+                <ImageUploadField
+                  key={n}
+                  label={`Avatar ${n}`}
+                  recommended="80×80px · 1:1 · PNG/JPG/WebP"
+                  value={g(d.main_hero, `social_avatar_${n}`, '')}
+                  onChange={(v) => setField('main_hero', `social_avatar_${n}`, v)} />
+              ))}
+            </div>
           </div>
         </SectionWrapper>
       )}
 
       {/* ── Tab: Bento ───────────────────────────────────────────────────────── */}
       {activeTab === 'main_problem' && (
-        <SectionWrapper title="Bento — Problema & Solução" description="Grid de 4 cards visuais que apresentam as principais soluções."
+        <SectionWrapper title="Bento — Problema & Solução" description="Grid de 6 cards visuais. Card 1 é grande; cards 2–6 são menores com ícone personalizável."
           icon={Grid3x3} saving={saving} hasChanges={hasChanges('main_problem')} onSave={() => saveSection('main_problem')}>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Título da seção" value={g(d.main_problem,'section_title','Adeus, caderninho.')} onChange={(v) => setField('main_problem','section_title',v)} />
             <Field label="Subtítulo da seção" value={g(d.main_problem,'section_subtitle','')} onChange={(v) => setField('main_problem','section_subtitle',v)} />
           </div>
-          <div className="border-t border-slate-100 pt-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Conteúdo dos Cards</p>
-            <div className="grid grid-cols-1 gap-4">
-              {[
-                { prefix:'card1', label:'Card 1 (destaque grande)',   hasCta: true },
-                { prefix:'card2', label:'Card 2 (pequeno, ícone impressora)', hasCta: false },
-                { prefix:'card3', label:'Card 3 (fundo escuro, QR Code)',     hasCta: false },
-                { prefix:'card4', label:'Card 4 (gradiente, gráfico)',         hasCta: false },
-              ].map(({ prefix, label, hasCta }) => (
-                <div key={prefix} className="rounded-xl border border-slate-100 p-4 space-y-3">
-                  <p className="text-xs font-semibold text-slate-500">{label}</p>
-                  <div className={`grid gap-3 ${hasCta ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                    <Field label="Título"
-                      value={g(d.main_problem, `${prefix}_title`, '')} onChange={(v) => setField('main_problem', `${prefix}_title`, v)} />
-                    <Field label="Descrição"
-                      value={g(d.main_problem, `${prefix}_desc`, '')} onChange={(v) => setField('main_problem', `${prefix}_desc`, v)} />
-                    {hasCta && (
-                      <Field label="Texto do botão"
-                        value={g(d.main_problem, `${prefix}_cta`, 'Ver Demo')} onChange={(v) => setField('main_problem', `${prefix}_cta`, v)} />
-                    )}
-                  </div>
-                </div>
-              ))}
+          <div className="border-t border-slate-100 pt-4 space-y-4">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Conteúdo dos Cards</p>
+
+            {/* Card 1 - grande, sem ícone */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+              <p className="text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-100 rounded px-2 py-1 w-fit">
+                Card 1 — Destaque grande (col-span-2, row-span-2)
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="Título"
+                  value={g(d.main_problem,'card1_title','')} onChange={(v) => setField('main_problem','card1_title',v)} />
+                <Field label="Descrição"
+                  value={g(d.main_problem,'card1_desc','')} onChange={(v) => setField('main_problem','card1_desc',v)} />
+                <Field label="Texto do botão"
+                  value={g(d.main_problem,'card1_cta','Ver Demo')} onChange={(v) => setField('main_problem','card1_cta',v)} />
+              </div>
             </div>
+
+            {/* Cards 2–6 com ícone */}
+            {[
+              { prefix:'card2', label:'Card 2 — Fundo branco, ícone centralizado', defaultIcon:'Printer', color:'blue' },
+              { prefix:'card3', label:'Card 3 — Fundo escuro (slate-900)',           defaultIcon:'QrCode',   color:'dark' },
+              { prefix:'card4', label:'Card 4 — Gradiente colorido',                defaultIcon:'BarChart', color:'grad' },
+              { prefix:'card5', label:'Card 5 — Gradiente colorido (novo)',         defaultIcon:'Zap',      color:'grad' },
+              { prefix:'card6', label:'Card 6 — Gradiente colorido (novo)',         defaultIcon:'TrendingUp', color:'grad' },
+            ].map(({ prefix, label, defaultIcon }) => (
+              <div key={prefix} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+                <p className="text-xs font-semibold text-slate-500">{label}</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <Field label="Título"
+                    value={g(d.main_problem,`${prefix}_title`,'')} onChange={(v) => setField('main_problem',`${prefix}_title`,v)} />
+                  <Field label="Descrição"
+                    value={g(d.main_problem,`${prefix}_desc`,'')} onChange={(v) => setField('main_problem',`${prefix}_desc`,v)} />
+                  <BentoIconPicker
+                    value={g(d.main_problem,`${prefix}_icon`, defaultIcon)}
+                    onChange={(v) => setField('main_problem',`${prefix}_icon`,v)} />
+                </div>
+              </div>
+            ))}
           </div>
         </SectionWrapper>
       )}
@@ -713,7 +945,7 @@ export default function LandingPageEditor() {
             value={g(d.main_features,'footer_cta','')} onChange={(v) => setField('main_features','footer_cta',v)} />
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-              Grupos de funcionalidades <span className="font-normal normal-case text-slate-400">(clique para expandir e editar)</span>
+              Grupos de funcionalidades <span className="font-normal normal-case text-slate-400">(clique para expandir)</span>
             </p>
             <FeatureGroupsEditor
               groups={getJson<FeatureGroup[]>('main_features', 'groups', [])}
@@ -725,7 +957,7 @@ export default function LandingPageEditor() {
 
       {/* ── Tab: Depoimentos ─────────────────────────────────────────────────── */}
       {activeTab === 'main_testimonials' && (
-        <SectionWrapper title="Depoimentos" description="Cards de avaliações de clientes reais."
+        <SectionWrapper title="Depoimentos" description="Cards de avaliações com foto, nome, cargo e texto."
           icon={MessageSquare} saving={saving} hasChanges={hasChanges('main_testimonials')} onSave={() => saveSection('main_testimonials')}>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Título" value={g(d.main_testimonials,'section_title','Quem usa, recomenda.')} onChange={(v) => setField('main_testimonials','section_title',v)} />
@@ -744,6 +976,30 @@ export default function LandingPageEditor() {
       {activeTab === 'main_pricing' && (
         <SectionWrapper title="Preços" description="Planos, preços e tabela de comparação."
           icon={CreditCard} saving={saving} hasChanges={hasChanges('main_pricing')} onSave={() => saveSection('main_pricing')}>
+
+          {/* Sincronização com planos do sistema */}
+          {subscriptionPlans.length > 0 && (
+            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 flex items-start justify-between gap-4">
+              <div className="flex items-start gap-2 flex-1 min-w-0">
+                <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-blue-800 mb-1.5">Preços definidos em Planos & Preços:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {subscriptionPlans.map((p) => (
+                      <span key={p.id} className="text-xs bg-white border border-blue-200 rounded px-2 py-0.5 text-blue-700 font-mono">
+                        {p.label}: <strong>{p.price_brl === 0 ? 'Grátis' : `$${p.price_brl}`}</strong>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={syncPlanPrices}
+                className="flex-shrink-0 gap-1.5 border-blue-200 text-blue-700 hover:bg-blue-100">
+                <RefreshCw className="h-3.5 w-3.5" />Sincronizar preços
+              </Button>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <Field label="Título" value={g(d.main_pricing,'section_title','Investimento que se paga com mais pedidos.')} onChange={(v) => setField('main_pricing','section_title',v)} />
             <Field label="Subtítulo" value={g(d.main_pricing,'section_subtitle','')} onChange={(v) => setField('main_pricing','section_subtitle',v)} />
@@ -819,11 +1075,20 @@ export default function LandingPageEditor() {
 
       {/* ── Tab: Rodapé ──────────────────────────────────────────────────────── */}
       {activeTab === 'main_footer' && (
-        <SectionWrapper title="Rodapé" description="Tagline, redes sociais, colunas de links e copyright."
+        <SectionWrapper title="Rodapé" description="Logo exclusiva, tagline, redes sociais, colunas de links e copyright."
           icon={Footprints} saving={saving} hasChanges={hasChanges('main_footer')} onSave={() => saveSection('main_footer')}>
+
+          <ImageUploadField
+            label="Logo exclusiva do rodapé"
+            hint="Se vazio, usa o logotipo principal de Cores & Visual"
+            recommended="SVG ou PNG branco/claro · fundo transparente · mín. 200px de altura"
+            value={g(d.main_footer,'footer_logo_url','')}
+            onChange={(v) => setField('main_footer','footer_logo_url',v)} />
+
           <Field label="Tagline (abaixo do logo)" multiline rows={2}
             value={g(d.main_footer,'tagline','O sistema de delivery mais amado da fronteira. Feito para quem tem fome de crescer.')}
             onChange={(v) => setField('main_footer','tagline',v)} />
+
           <div className="border-t border-slate-100 pt-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Redes Sociais</p>
             <div className="grid grid-cols-3 gap-3">
@@ -850,7 +1115,7 @@ export default function LandingPageEditor() {
         </SectionWrapper>
       )}
 
-      {/* Rodapé do editor */}
+      {/* Status geral */}
       <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
         <span className="text-xs text-slate-400">Seções com alterações pendentes:</span>
         {TABS.filter((t) => hasChanges(t.id)).length === 0 ? (

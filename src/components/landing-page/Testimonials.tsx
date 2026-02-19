@@ -3,7 +3,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Star } from 'lucide-react';
 import { useMainLanding, mlc, mlcJson } from '@/contexts/MainLandingCtx';
 
-interface Testimonial { name: string; role: string; content: string; rating: number }
+interface Testimonial {
+  name: string;
+  role: string;
+  content: string;
+  rating: number;
+  image_url?: string;
+}
 
 const DEFAULT_TESTIMONIALS: Testimonial[] = [
   { name: 'Carlos Benitez',  role: 'Dono, Pizzaria Bella Italia', content: 'Desde que usamos o Quiero, nossos pedidos saem 30% mais rápido. O suporte local faz a diferença.', rating: 5 },
@@ -45,9 +51,25 @@ export default function Testimonials() {
                     ))}
                   </div>
                   <p className="text-slate-600 leading-relaxed italic">"{t.content}"</p>
-                  <div className="pt-4 border-t border-slate-100">
-                    <p className="font-bold text-slate-900">{t.name}</p>
-                    <p className="text-xs text-slate-400 uppercase tracking-wider">{t.role}</p>
+                  <div className="pt-4 border-t border-slate-100 flex items-center gap-3">
+                    {t.image_url ? (
+                      <img
+                        src={t.image_url}
+                        alt={t.name}
+                        className="h-10 w-10 rounded-full object-cover ring-2 ring-slate-100 flex-shrink-0"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm font-bold text-slate-500">
+                          {t.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-bold text-slate-900">{t.name}</p>
+                      <p className="text-xs text-slate-400 uppercase tracking-wider">{t.role}</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
