@@ -10,6 +10,7 @@ const FEATURE_META: Record<string, {
   description: string;
 }> = {
   feature_buffet_module:       { label: 'Módulo Buffet',              planRequired: 'Enterprise', description: 'Gerencie comandas, escaneie produtos e opere 100% offline.' },
+  feature_virtual_comanda:     { label: 'Comandas Digitais (Mobile)', planRequired: 'Enterprise', description: 'Clientes abrem uma comanda via QR Code no celular. O caixa lê o código e fecha a conta em segundos.' },
   feature_tables:              { label: 'Mesas & QR Codes',            planRequired: 'Standard',   description: 'Crie mesas virtuais, gere QR Codes e receba chamadas de garçom.' },
   feature_couriers:            { label: 'Gestão de Entregadores',      planRequired: 'Standard',   description: 'Cadastre entregadores, controle o status e vincule aos pedidos.' },
   feature_delivery_zones:      { label: 'Zonas de Entrega',            planRequired: 'Standard',   description: 'Configure bairros com taxas personalizadas exibidas no checkout.' },

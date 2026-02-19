@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { useHotkeys } from 'react-hotkeys-hook';
+import { FeatureGuard } from '@/components/auth/FeatureGuard';
 import { 
   Plus, 
   X, 
@@ -23,8 +24,21 @@ import {
   Calculator,
   Clock,
   Trash2,
-  CheckCircle2
+  CheckCircle2,
+  Smartphone,
+  Link2,
+  Link2Off,
 } from 'lucide-react';
+
+// Padrão de short_code das Comandas Digitais (ex: CMD-A7F2)
+const VIRTUAL_COMANDA_PATTERN = /^CMD-[A-Z0-9]{4}$/i;
+
+interface ActiveVirtualComanda {
+  id: string;
+  short_code: string;
+  total_amount: number;
+  customer_name: string | null;
+}
 
 export default function Buffet() {
   const restaurantId = useAdminRestaurantId();
@@ -40,7 +54,11 @@ export default function Buffet() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [closingComandaId, setClosingComandaId] = useState<string | null>(null);
-  
+
+  // Comanda Digital vinculada via scanner (CMD-XXXX)
+  const [activeVirtualComanda, setActiveVirtualComanda] = useState<ActiveVirtualComanda | null>(null);
+  const [loadingVirtual, setLoadingVirtual] = useState(false);
+
   const scannerRef = useRef<HTMLInputElement>(null);
   const weightRef = useRef<HTMLInputElement>(null);
 
@@ -101,15 +119,54 @@ export default function Buffet() {
     }
   };
 
+  // Vincula uma Comanda Digital (CMD-XXXX) como destino de itens de peso/balança
+  const handleVirtualComandaScan = async (shortCode: string) => {
+    if (!restaurantId) return;
+    setLoadingVirtual(true);
+    try {
+      const { data, error } = await supabase
+        .from('virtual_comandas')
+        .select('id, short_code, status, total_amount, customer_name')
+        .eq('restaurant_id', restaurantId)
+        .eq('short_code', shortCode.toUpperCase())
+        .eq('status', 'open')
+        .single();
+
+      if (error || !data) {
+        toast({ title: `Comanda ${shortCode} não encontrada ou já fechada`, variant: 'destructive' });
+        return;
+      }
+
+      setActiveVirtualComanda(data);
+      // Desseleciona comanda de buffet ao vincular uma virtual
+      setSelectedComandaId(null);
+      toast({
+        title: `✅ Comanda ${shortCode} vinculada!`,
+        description: data.customer_name ? `Cliente: ${data.customer_name}` : 'Adicione produtos ou pesos agora.',
+      });
+      weightRef.current?.focus();
+    } finally {
+      setLoadingVirtual(false);
+    }
+  };
+
   const handleScannerInput = async (value: string) => {
     if (!value.trim()) return;
 
-    // Se começar com número, é número de comanda
+    // ── Comanda Digital: formato CMD-XXXX ─────────────────────────────────────
+    if (VIRTUAL_COMANDA_PATTERN.test(value.trim())) {
+      setScannerInput('');
+      await handleVirtualComandaScan(value.trim());
+      return;
+    }
+
+    // ── Comanda de Buffet: número inteiro ─────────────────────────────────────
     if (/^\d+$/.test(value)) {
       const comandaNumber = parseInt(value, 10);
       const comanda = comandas.find(c => c.number === comandaNumber);
       if (comanda) {
         setSelectedComandaId(comanda.id);
+        setActiveVirtualComanda(null); // desvincula virtual ao selecionar buffet
         setScannerInput('');
         weightRef.current?.focus();
         toast({ title: `Comanda #${comandaNumber} selecionada` });
@@ -119,7 +176,7 @@ export default function Buffet() {
       return;
     }
 
-    // Caso contrário, buscar produto por SKU ou nome
+    // ── Produto por SKU ou nome ───────────────────────────────────────────────
     const product = products.find(
       p => p.sku?.toLowerCase() === value.toLowerCase() || 
            p.name.toLowerCase().includes(value.toLowerCase())
@@ -139,16 +196,43 @@ export default function Buffet() {
   };
 
   const handleAddProduct = async (product: Product, quantity: number) => {
-    if (!selectedComanda) {
-      toast({ title: 'Selecione uma comanda primeiro', variant: 'destructive' });
+    const unitPrice = product.price_sale || product.price;
+
+    // ── Rota 1: Comanda Digital (CMD-XXXX) ────────────────────────────────────
+    if (activeVirtualComanda) {
+      try {
+        const { error } = await supabase.from('virtual_comanda_items').insert({
+          comanda_id: activeVirtualComanda.id,
+          product_id: product.id,
+          product_name: product.name,
+          quantity,
+          unit_price: unitPrice,
+          notes: null,
+        });
+        if (error) throw error;
+
+        // Atualiza o total exibido localmente (o trigger no banco fará o cálculo real)
+        setActiveVirtualComanda(prev =>
+          prev ? { ...prev, total_amount: prev.total_amount + unitPrice * quantity } : prev
+        );
+        setWeightInput('');
+        setSelectedProduct(null);
+        weightRef.current?.focus();
+        toast({ title: `${product.name} adicionado à comanda ${activeVirtualComanda.short_code}!` });
+      } catch (error) {
+        console.error('Erro ao adicionar produto à comanda virtual:', error);
+        toast({ title: 'Erro ao adicionar produto', variant: 'destructive' });
+      }
       return;
     }
 
-    const unitPrice = product.price_sale || product.price;
-    const totalPrice = product.is_by_weight 
-      ? unitPrice * quantity 
-      : unitPrice * quantity;
+    // ── Rota 2: Comanda de Buffet (offline-first) ─────────────────────────────
+    if (!selectedComanda) {
+      toast({ title: 'Selecione uma comanda ou escaneie um código CMD-XXXX primeiro', variant: 'destructive' });
+      return;
+    }
 
+    const totalPrice = unitPrice * quantity;
     try {
       await addItemToComanda(selectedComanda.id, {
         product_id: product.id,
@@ -338,6 +422,7 @@ export default function Buffet() {
                 </div>
               )}
 
+              {/* Comanda de Buffet selecionada */}
               {selectedComanda && (
                 <div className="pt-4 border-t">
                   <div className="flex items-center justify-between mb-2">
@@ -359,6 +444,49 @@ export default function Buffet() {
                   </div>
                 </div>
               )}
+
+              {/* Comanda Digital vinculada via CMD-XXXX */}
+              <FeatureGuard feature="feature_virtual_comanda" bannerVariant="inline">
+                {activeVirtualComanda ? (
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+                        <Link2 className="h-3.5 w-3.5" />
+                        {activeVirtualComanda.short_code}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        title="Desvincular comanda digital"
+                        onClick={() => {
+                          setActiveVirtualComanda(null);
+                          scannerRef.current?.focus();
+                        }}
+                      >
+                        <Link2Off className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    {activeVirtualComanda.customer_name && (
+                      <p className="text-xs text-muted-foreground mb-1">{activeVirtualComanda.customer_name}</p>
+                    )}
+                    <div className="text-2xl font-bold text-emerald-700">
+                      {loadingVirtual
+                        ? <Loader2 className="h-5 w-5 animate-spin" />
+                        : formatCurrency(activeVirtualComanda.total_amount, currency)
+                      }
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Próximos itens adicionados irão para esta comanda
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Smartphone className="h-3.5 w-3.5 flex-shrink-0" />
+                    Escaneie um código <span className="font-mono font-bold">CMD-XXXX</span> para vincular uma comanda do cliente
+                  </p>
+                )}
+              </FeatureGuard>
             </CardContent>
           </Card>
 

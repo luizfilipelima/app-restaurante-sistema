@@ -32,6 +32,7 @@ import {
   Lock,
   Sparkles,
   CreditCard,
+  ScanBarcode,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -131,6 +132,14 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
         href: `${base}/buffet`,
         icon: Scale,
         featureFlag: 'feature_buffet_module',
+        featureLabel: 'Plano Enterprise',
+      },
+      {
+        kind: 'leaf',
+        name: 'Caixa (Comanda Digital)',
+        href: `${base}/cashier`,
+        icon: ScanBarcode,
+        featureFlag: 'feature_virtual_comanda',
         featureLabel: 'Plano Enterprise',
       },
     ],
