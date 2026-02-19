@@ -339,6 +339,7 @@ export default function AdminOrders() {
                     {statusOrders.map((order) => {
                       const isTableOrder = order.order_source === 'table' || !!order.table_id;
                       const isDelivering = status === OrderStatus.DELIVERING;
+                      const isDeliveryOrder = !isTableOrder && (order.delivery_type === 'delivery' || order.order_source === 'delivery');
                       const canNotifyWhatsApp = isDelivering && !isTableOrder;
 
                       // Botão de avanço de status
