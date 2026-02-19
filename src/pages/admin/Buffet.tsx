@@ -5,10 +5,9 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { supabase } from '@/lib/supabase';
 import { Product, ComandaWithItems } from '@/types';
 import { offlineDB } from '@/lib/offline-db';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { useHotkeys } from 'react-hotkeys-hook';
@@ -191,7 +190,7 @@ function ScannerPanel({
   onDeselectComanda: () => void;
   onDeselectVirtual: () => void;
   loadingVirtual: boolean;
-  currency: string;
+  currency: CurrencyCode;
   products: Product[];
   onProductClick: (p: Product) => void;
 }) {
@@ -426,7 +425,7 @@ function ComandaCard({
 }: {
   comanda: ComandaWithItems;
   isSelected: boolean;
-  currency: string;
+  currency: CurrencyCode;
   onSelect: () => void;
   onClose: (e: React.MouseEvent) => void;
 }) {
