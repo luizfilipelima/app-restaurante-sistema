@@ -352,7 +352,6 @@ export default function RestaurantDetails() {
                     const override  = overrideMap.get(feature.id);
                     const isEnabled = isInPlan || (override?.is_enabled ?? false);
                     const isTogglingThis = toggleOverride.isPending &&
-                      // @ts-expect-error — variáveis de contexto do mutateAsync
                       toggleOverride.variables?.featureId === feature.id;
 
                     const planColor = PLAN_COLORS[feature.min_plan] ?? PLAN_COLORS.core;
