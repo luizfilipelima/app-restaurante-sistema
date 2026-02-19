@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone } from 'lucide-react';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { ROLES_CANCEL_ORDER } from '@/hooks/useUserRole';
 import { useCouriers, useOrders, usePrintSettings } from '@/hooks/queries';
@@ -430,7 +430,9 @@ export default function AdminOrders() {
                             <div className="flex items-center justify-between gap-1 min-w-0">
                               <div className="flex items-center gap-1.5 min-w-0">
                                 <span className="text-xs font-mono font-bold text-foreground">
-                                  #{order.id.slice(0, 8).toUpperCase()}
+                                  #{order.order_source === 'comanda' && order.virtual_comandas?.short_code
+                                    ? order.virtual_comandas.short_code
+                                    : order.id.slice(0, 8).toUpperCase()}
                                 </span>
                                 {order.order_source === 'comanda' ? (
                                   <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">
@@ -525,18 +527,28 @@ export default function AdminOrders() {
                               )}
                             </div>
 
-                            {/* ── Rodapé: Pagamento + Total ── */}
+                            {/* ── Rodapé: Pagamento (só ícone) + Total ── */}
                             <div className="flex items-center justify-between pt-1.5 border-t border-border/60">
-                              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                                <CreditCard className="h-3 w-3 flex-shrink-0" />
-                                <span>
-                                  {isTableOrder
-                                    ? 'Pagar na mesa'
-                                    : paymentMethodLabels[order.payment_method] ?? order.payment_method}
-                                </span>
+                              <div className="flex items-center gap-1 text-muted-foreground" title={
+                                isTableOrder ? 'Pagar na mesa' : (paymentMethodLabels[order.payment_method] ?? order.payment_method)
+                              }>
+                                {isTableOrder ? (
+                                  <UtensilsCrossed className="h-3 w-3 flex-shrink-0" />
+                                ) : order.payment_method === 'pix' ? (
+                                  <Smartphone className="h-3 w-3 flex-shrink-0" />
+                                ) : order.payment_method === 'card' ? (
+                                  <CreditCard className="h-3 w-3 flex-shrink-0" />
+                                ) : (
+                                  <Banknote className="h-3 w-3 flex-shrink-0" />
+                                )}
                               </div>
                               <span className="text-sm font-bold text-foreground">
-                                {formatCurrency(order.total, currency)}
+                                {formatCurrency(
+                                  (order.total != null && order.total !== 0)
+                                    ? order.total
+                                    : (order.order_items?.reduce((s, i) => s + (i.total_price ?? 0), 0) ?? 0),
+                                  currency
+                                )}
                               </span>
                             </div>
 

@@ -355,6 +355,8 @@ export interface DatabaseOrder extends Order {
   delivery_zone?: DeliveryZone;
   order_items?: OrderItem[];
   courier?: Courier | null;
+  /** Para pedidos de comanda: short_code da comanda (ex: CMD-A7F2) */
+  virtual_comandas?: { short_code: string } | null;
 }
 
 export interface RestaurantWithMetrics extends Restaurant {
