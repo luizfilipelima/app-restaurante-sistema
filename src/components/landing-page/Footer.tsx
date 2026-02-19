@@ -1,59 +1,101 @@
 import { Facebook, Instagram, Twitter } from 'lucide-react';
+import { useMainLanding, mlc, mlcJson } from '@/contexts/MainLandingCtx';
+
+interface FooterLink  { label: string; href: string }
+interface FooterCol   { title: string; links: FooterLink[] }
+
+const DEFAULT_COLS: FooterCol[] = [
+  { title: 'Produto',  links: [{ label: 'Cardápio Digital', href: '#' }, { label: 'Gestão de Pedidos', href: '#' }, { label: 'Integração WhatsApp', href: '#' }, { label: 'Impressão Térmica', href: '#' }] },
+  { title: 'Empresa',  links: [{ label: 'Sobre Nós', href: '#' }, { label: 'Carreiras', href: '#' }, { label: 'Blog', href: '#' }, { label: 'Contato', href: '#' }] },
+  { title: 'Legal',    links: [{ label: 'Termos de Uso', href: '#' }, { label: 'Privacidade', href: '#' }, { label: 'Cookies', href: '#' }] },
+];
 
 export default function Footer() {
+  const { c, primaryColor, logoUrl, appLink } = useMainLanding();
+
+  const tagline       = mlc(c, 'main_footer', 'tagline',       'O sistema de delivery mais amado da fronteira. Feito para quem tem fome de crescer.');
+  const instagramUrl  = mlc(c, 'main_footer', 'instagram_url', '#');
+  const facebookUrl   = mlc(c, 'main_footer', 'facebook_url',  '#');
+  const twitterUrl    = mlc(c, 'main_footer', 'twitter_url',   '#');
+  const copyrightText = mlc(c, 'main_footer', 'copyright_text','Quiero Food. Todos os direitos reservados.');
+  const madeInText    = mlc(c, 'main_footer', 'made_in_text',  'Feito com ❤️ em Ciudad del Este');
+  const productCols   = mlcJson<FooterCol[]>(c, 'main_footer', 'product_cols', DEFAULT_COLS);
+
   return (
     <footer className="bg-slate-900 text-slate-300 py-16 border-t border-slate-800">
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+
+          {/* Brand */}
           <div className="md:col-span-1 space-y-6">
             <a href="/" className="inline-block">
-              <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="h-9 w-auto object-contain" />
+              <img src={logoUrl} alt="Quiero.food" className="h-9 w-auto object-contain" />
             </a>
-            <p className="text-sm text-slate-400 max-w-xs leading-relaxed">
-              O sistema de delivery mais amado da fronteira. Feito para quem tem fome de crescer.
-            </p>
+            <p className="text-sm text-slate-400 max-w-xs leading-relaxed">{tagline}</p>
             <div className="flex gap-4 pt-4">
-              <a href="#" className="text-slate-500 hover:text-white transition-colors"><Instagram size={20} /></a>
-              <a href="#" className="text-slate-500 hover:text-white transition-colors"><Facebook size={20} /></a>
-              <a href="#" className="text-slate-500 hover:text-white transition-colors"><Twitter size={20} /></a>
+              <a
+                href={instagramUrl}
+                className="text-slate-500 hover:text-white transition-colors"
+                style={{ ['--hover-color' as string]: primaryColor }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = primaryColor)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '')}
+              >
+                <Instagram size={20} />
+              </a>
+              <a
+                href={facebookUrl}
+                className="text-slate-500 hover:text-white transition-colors"
+                onMouseEnter={(e) => (e.currentTarget.style.color = primaryColor)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '')}
+              >
+                <Facebook size={20} />
+              </a>
+              <a
+                href={twitterUrl}
+                className="text-slate-500 hover:text-white transition-colors"
+                onMouseEnter={(e) => (e.currentTarget.style.color = primaryColor)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '')}
+              >
+                <Twitter size={20} />
+              </a>
             </div>
           </div>
-          
-          <div className="md:col-span-1 space-y-4">
-            <h4 className="font-semibold text-white">Produto</h4>
-            <ul className="space-y-2 text-sm text-slate-400">
-              <li><a href="#" className="hover:text-orange-400 transition-colors">Cardápio Digital</a></li>
-              <li><a href="#" className="hover:text-orange-400 transition-colors">Gestão de Pedidos</a></li>
-              <li><a href="#" className="hover:text-orange-400 transition-colors">Integração WhatsApp</a></li>
-              <li><a href="#" className="hover:text-orange-400 transition-colors">Impressão Térmica</a></li>
-            </ul>
-          </div>
-          
-          <div className="md:col-span-1 space-y-4">
-            <h4 className="font-semibold text-white">Empresa</h4>
-            <ul className="space-y-2 text-sm text-slate-400">
-              <li><a href="#" className="hover:text-orange-400 transition-colors">Sobre Nós</a></li>
-              <li><a href="#" className="hover:text-orange-400 transition-colors">Carreiras</a></li>
-              <li><a href="#" className="hover:text-orange-400 transition-colors">Blog</a></li>
-              <li><a href="#" className="hover:text-orange-400 transition-colors">Contato</a></li>
-            </ul>
-          </div>
-          
-          <div className="md:col-span-1 space-y-4">
-            <h4 className="font-semibold text-white">Legal</h4>
-            <ul className="space-y-2 text-sm text-slate-400">
-              <li><a href="#" className="hover:text-orange-400 transition-colors">Termos de Uso</a></li>
-              <li><a href="#" className="hover:text-orange-400 transition-colors">Privacidade</a></li>
-              <li><a href="#" className="hover:text-orange-400 transition-colors">Cookies</a></li>
-            </ul>
-          </div>
+
+          {/* Colunas dinâmicas */}
+          {productCols.map((col, idx) => (
+            <div key={idx} className="md:col-span-1 space-y-4">
+              <h4 className="font-semibold text-white">{col.title}</h4>
+              <ul className="space-y-2 text-sm text-slate-400">
+                {col.links.map((link, li) => (
+                  <li key={li}>
+                    <a
+                      href={link.href}
+                      className="transition-colors hover:text-slate-200"
+                      onMouseEnter={(e) => (e.currentTarget.style.color = primaryColor)}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = '')}
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-        
+
         <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} Quiero Food. Todos os direitos reservados.</p>
-          <p className="flex items-center gap-1">
-            Feito com <span className="text-red-500">❤️</span> em Ciudad del Este
-          </p>
+          <p>© {new Date().getFullYear()} {copyrightText}</p>
+          <p className="flex items-center gap-1">{madeInText}</p>
+          <a
+            href={appLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors"
+            onMouseEnter={(e) => (e.currentTarget.style.color = primaryColor)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '')}
+          >
+            Acessar Plataforma →
+          </a>
         </div>
       </div>
     </footer>
