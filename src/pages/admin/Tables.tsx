@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminRestaurant, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { useTables, useWaiterCalls } from '@/hooks/queries';
@@ -37,10 +38,11 @@ interface TableOrder {
 
 export default function AdminTables() {
   const restaurantId = useAdminRestaurantId();
+  const queryClient = useQueryClient();
   const { restaurant } = useAdminRestaurant();
   const currency = useAdminCurrency();
   const { data: tablesData, isLoading: loading, refetch: refetchTables } = useTables(restaurantId);
-  const { data: waiterCallsData, refetch: refetchWaiterCalls } = useWaiterCalls(restaurantId);
+  const { data: waiterCallsData } = useWaiterCalls(restaurantId);
   const tables = tablesData ?? [];
   const waiterCalls = waiterCallsData ?? [];
   const [showForm, setShowForm] = useState(false);
@@ -52,10 +54,11 @@ export default function AdminTables() {
   /** Mesas com pedidos novos (dot de notificação). Limpa ao visualizar. */
   const [tablesWithNewOrders, setTablesWithNewOrders] = useState<Set<string>>(new Set());
 
+  // Realtime: chamados de garçom aparecem sem atualizar a página
   useEffect(() => {
     if (!restaurantId) return;
     const channel = supabase
-      .channel('waiter-calls-changes')
+      .channel('waiter-calls-realtime')
       .on(
         'postgres_changes',
         {
@@ -64,13 +67,15 @@ export default function AdminTables() {
           table: 'waiter_calls',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        () => refetchWaiterCalls()
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['waiterCalls', restaurantId] });
+        }
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [restaurantId, refetchWaiterCalls]);
+  }, [restaurantId, queryClient]);
 
   // Realtime: novos pedidos em mesas -> mostrar dot de notificação
   useEffect(() => {
@@ -181,7 +186,7 @@ export default function AdminTables() {
         .update({ status: 'attended', attended_at: new Date().toISOString() })
         .eq('id', callId);
       if (error) throw error;
-      refetchWaiterCalls();
+      queryClient.invalidateQueries({ queryKey: ['waiterCalls', restaurantId] });
       toast({ title: 'Chamado atendido!' });
     } catch (e) {
       toast({ title: 'Erro', variant: 'destructive' });
@@ -314,15 +319,25 @@ export default function AdminTables() {
             </p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {tables.map((table) => (
+              {tables.map((table) => {
+                const hasPendingCall = pendingCalls.some((c) => c.table_id === table.id);
+                return (
                 <div
                   key={table.id}
                   className={`flex items-center justify-between rounded-lg border p-4 ${
                     table.is_active ? 'border-border' : 'opacity-60 border-dashed'
-                  }`}
+                  } ${hasPendingCall ? 'ring-2 ring-amber-400 bg-amber-50/50' : ''}`}
                 >
                   <div>
-                    <p className="font-semibold">Mesa {table.number}</p>
+                    <p className="font-semibold flex items-center gap-2">
+                      Mesa {table.number}
+                      {hasPendingCall && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                          <Bell className="h-3 w-3" />
+                          Chamado
+                        </span>
+                      )}
+                    </p>
                     <p className="text-xs text-muted-foreground">Cardápio interativo</p>
                   </div>
                   <div className="flex gap-2">
@@ -375,7 +390,8 @@ export default function AdminTables() {
                     </Button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>
