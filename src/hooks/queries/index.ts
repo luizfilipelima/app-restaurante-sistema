@@ -10,5 +10,7 @@ export { usePrintSettings } from './usePrintSettings';
 export type { PrintSettings } from './usePrintSettings';
 export { useDashboardAnalytics } from './useDashboardAnalytics';
 export type { UseDashboardAnalyticsParams } from './useDashboardAnalytics';
+export { useDashboardKPIs } from './useDashboardKPIs';
+export type { UseDashboardKPIsParams } from './useDashboardKPIs';
 export { useDashboardStats } from './useDashboardStats';
 export type { UseDashboardStatsParams } from './useDashboardStats';

@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
-import { useDashboardStats } from '@/hooks/queries';
+import { useDashboardStats, useDashboardKPIs } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -88,27 +88,41 @@ export default function AdminDashboard() {
     return null;
   }, [period, start]);
 
-  const { data: analytics, isLoading: loading } = useDashboardStats({
+  const areaForRpc = areaFilter === 'buffet' ? 'all' : areaFilter;
+
+  const { data: kpisData, isLoading: loadingKPIs } = useDashboardKPIs({
     tenantId: restaurantId,
     startDate: start,
     endDate: end,
-    areaFilter: areaFilter === 'buffet' ? 'all' : areaFilter,
+    areaFilter: areaForRpc,
+  });
+
+  const { data: analytics, isLoading: loadingBI } = useDashboardStats({
+    tenantId: restaurantId,
+    startDate: start,
+    endDate: end,
+    areaFilter: areaForRpc,
   });
 
   const { data: prevAnalytics } = useDashboardStats({
     tenantId: restaurantId,
     startDate: prevRange?.start ?? start,
     endDate: prevRange?.end ?? start,
-    areaFilter: areaFilter === 'buffet' ? 'all' : areaFilter,
+    areaFilter: areaForRpc,
     enabled: !!prevRange,
   });
 
-  const metrics = useMemo(() => ({
-    totalRevenue: analytics?.kpis?.total_faturado ?? 0,
-    totalOrders: analytics?.kpis?.total_pedidos ?? 0,
-    averageTicket: analytics?.kpis?.ticket_medio ?? 0,
-    pendingOrders: analytics?.kpis?.pedidos_pendentes ?? 0,
-  }), [analytics]);
+  const metrics = useMemo(() => {
+    const k = kpisData ?? analytics?.kpis;
+    return {
+      totalRevenue: k?.total_faturado ?? 0,
+      totalOrders: k?.total_pedidos ?? 0,
+      averageTicket: k?.ticket_medio ?? 0,
+      pendingOrders: k?.pedidos_pendentes ?? 0,
+    };
+  }, [kpisData, analytics?.kpis]);
+
+  const loading = loadingKPIs && loadingBI && !kpisData && !analytics?.kpis;
 
   const prevMetrics = useMemo(() => ({
     totalRevenue: prevAnalytics?.kpis?.total_faturado ?? 0,
@@ -312,7 +326,8 @@ export default function AdminDashboard() {
       });
       setShowResetDialog(false);
       setResetPassword('');
-      queryClient.invalidateQueries({ queryKey: ['dashboard-analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
     } catch (e) {
       console.error(e);
       toast({
