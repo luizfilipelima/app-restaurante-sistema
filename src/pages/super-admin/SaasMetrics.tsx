@@ -28,7 +28,7 @@ import {
 const PLAN_COLORS: Record<string, { bar: string; badge: string; text: string }> = {
   core:       { bar: '#94a3b8', badge: 'bg-slate-100 text-slate-600',   text: 'text-slate-600'  },
   standard:   { bar: '#f97316', badge: 'bg-orange-100 text-orange-700', text: 'text-orange-700' },
-  enterprise: { bar: '#7c3aed', badge: 'bg-violet-100 text-violet-700', text: 'text-violet-700' },
+  enterprise: { bar: '#c2410c', badge: 'bg-orange-100 text-orange-800', text: 'text-orange-800' },
 };
 
 // ─── Tooltip customizado ───────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ export default function SaasMetrics() {
   if (isError || !metrics) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 text-slate-500 p-8">
-        <Zap className="h-12 w-12 text-violet-200" />
+        <Zap className="h-12 w-12 text-orange-200" />
         <p className="font-semibold">Não foi possível carregar as métricas.</p>
         <p className="text-sm text-slate-400">
           Verifique se a migration <code>20260220_saas_admin_features.sql</code> foi executada.
@@ -126,16 +126,16 @@ export default function SaasMetrics() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
         {/* MRR */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 p-6 text-white shadow-lg shadow-violet-200">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F87116] to-[#c2410c] p-6 text-white shadow-lg shadow-orange-200">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-violet-200">
+              <p className="text-xs font-semibold uppercase tracking-widest text-orange-100">
                 MRR Atual
               </p>
               <p className="text-3xl font-extrabold mt-2">
                 {formatCurrency(metrics.total_mrr)}
               </p>
-              <p className="text-xs text-violet-200 mt-1.5 flex items-center gap-1">
+              <p className="text-xs text-orange-100 mt-1.5 flex items-center gap-1">
                 <TrendingUp className="h-3 w-3" />
                 Receita mensal recorrente
               </p>
@@ -300,7 +300,7 @@ export default function SaasMetrics() {
               <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
                 Total MRR
               </span>
-              <span className="text-base font-extrabold text-violet-700">
+              <span className="text-base font-extrabold text-[#F87116]">
                 {formatCurrency(metrics.total_mrr)}
               </span>
             </div>
