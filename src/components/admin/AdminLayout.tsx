@@ -32,6 +32,7 @@ import {
   ExternalLink,
   Lock,
   Sparkles,
+  CreditCard,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -191,6 +192,13 @@ const buildNavSections = (base: string): NavSection[] => [
         // Apenas admin pode editar configurações sensíveis do restaurante (matriz: só ✅ para restaurant_admin)
         roleRequired: ['restaurant_admin', 'super_admin'],
       },
+      {
+        kind: 'leaf',
+        name: 'Meu Plano',
+        href: `${base}/upgrade`,
+        icon: CreditCard,
+        // Todos os cargos podem ver o plano do restaurante
+      },
     ],
   },
 ];
@@ -227,16 +235,20 @@ function NavLinkItem({ item, isActive }: { item: NavLeaf; isActive: boolean }) {
 }
 
 // ─── Componente: item bloqueado (sem plano) ──────────────────────────────────
+// Clicável: leva para a página de planos com contexto da feature bloqueada.
 
 function LockedNavItem({ item }: { item: NavLeaf }) {
   return (
-    <div
-      title={`Recurso disponível no ${item.featureLabel ?? 'plano superior'}. Faça upgrade para desbloquear.`}
-      className="group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg cursor-not-allowed
-                 border-l-[3px] border-l-transparent text-slate-400 select-none"
+    <Link
+      to="/admin/upgrade"
+      state={item.featureFlag ? { feature: item.featureFlag } : undefined}
+      title={`${item.featureLabel ?? 'Plano superior'} — clique para ver os planos disponíveis`}
+      className="group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg
+                 border-l-[3px] border-l-transparent text-slate-400 hover:bg-amber-50
+                 hover:text-amber-700 hover:border-l-amber-400 transition-colors select-none"
     >
-      <item.icon className="h-[18px] w-[18px] flex-shrink-0 opacity-50" />
-      <span className="flex-1 truncate opacity-70">{item.name}</span>
+      <item.icon className="h-[18px] w-[18px] flex-shrink-0 opacity-50 group-hover:opacity-70" />
+      <span className="flex-1 truncate opacity-70 group-hover:opacity-90">{item.name}</span>
       <span className="flex items-center gap-1 shrink-0">
         {item.featureLabel && (
           <span className="hidden group-hover:inline-flex items-center gap-0.5 text-[9px] font-semibold
@@ -245,9 +257,9 @@ function LockedNavItem({ item }: { item: NavLeaf }) {
             {item.featureLabel}
           </span>
         )}
-        <Lock className="h-3 w-3 opacity-40" />
+        <Lock className="h-3 w-3 opacity-40 group-hover:opacity-70" />
       </span>
-    </div>
+    </Link>
   );
 }
 
