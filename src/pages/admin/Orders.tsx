@@ -20,6 +20,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks } from 'lucide-react';
+import { RoleGuard } from '@/components/auth/RoleGuard';
+import { ROLES_CANCEL_ORDER } from '@/hooks/useUserRole';
 import { useCouriers, useOrders, usePrintSettings } from '@/hooks/queries';
 import { usePrinter } from '@/hooks/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
@@ -448,13 +450,15 @@ export default function AdminOrders() {
                                 >
                                   <Printer className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button
-                                  type="button" variant="ghost" size="icon"
-                                  className="h-6 w-6 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                  onClick={() => setOrderToRemove(order.id)} title="Cancelar pedido"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </Button>
+                                <RoleGuard allowedRoles={[...ROLES_CANCEL_ORDER]}>
+                                  <Button
+                                    type="button" variant="ghost" size="icon"
+                                    className="h-6 w-6 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => setOrderToRemove(order.id)} title="Cancelar pedido"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </RoleGuard>
                               </div>
                             </div>
 

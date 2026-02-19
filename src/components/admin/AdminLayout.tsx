@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore';
 import { AdminRestaurantContext, useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
+import { useCanAccess } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useSessionManager } from '@/hooks/useSessionManager';
@@ -57,6 +58,13 @@ interface NavLeaf {
   featureFlag?: string;
   /** Descrição curta exibida no tooltip do item bloqueado */
   featureLabel?: string;
+  /**
+   * Se preenchido, o item só é visível para usuários com esses cargos
+   * (hierarquia respeitada: roles superiores também têm acesso).
+   * Quando o usuário não tem o cargo, o item é ocultado completamente
+   * (sem cadeado — diferente do featureFlag que exibe bloqueado).
+   */
+  roleRequired?: string[];
 }
 
 interface NavSubMenu {
@@ -115,8 +123,20 @@ const buildNavSections = (base: string): NavSection[] => [
     label: 'Catálogo & Cardápio',
     icon: UtensilsCrossed,
     items: [
-      { kind: 'leaf', name: 'Gestão de Produtos', href: `${base}/products`, icon: Package         },
-      { kind: 'leaf', name: 'Organizar Cardápio', href: `${base}/menu`,     icon: UtensilsCrossed },
+      {
+        kind: 'leaf',
+        name: 'Gestão de Produtos',
+        href: `${base}/products`,
+        icon: Package,
+        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
+      },
+      {
+        kind: 'leaf',
+        name: 'Organizar Cardápio',
+        href: `${base}/menu`,
+        icon: UtensilsCrossed,
+        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
+      },
     ],
   },
   {
@@ -163,7 +183,14 @@ const buildNavSections = (base: string): NavSection[] => [
     kind: 'group',
     label: 'Configurações',
     items: [
-      { kind: 'leaf', name: 'Dados do Restaurante', href: `${base}/settings`, icon: Settings },
+      {
+        kind: 'leaf',
+        name: 'Dados do Restaurante',
+        href: `${base}/settings`,
+        icon: Settings,
+        // Apenas admin pode editar configurações sensíveis do restaurante (matriz: só ✅ para restaurant_admin)
+        roleRequired: ['restaurant_admin', 'super_admin'],
+      },
     ],
   },
 ];
@@ -224,27 +251,36 @@ function LockedNavItem({ item }: { item: NavLeaf }) {
   );
 }
 
-// ─── Componente: wrapper que escolhe NavLinkItem ou LockedNavItem ─────────────
+// ─── Componente: wrapper que escolhe NavLinkItem, LockedNavItem ou null ───────
 
 function GuardedNavItem({ item, isActive }: { item: NavLeaf; isActive: boolean }) {
   const restaurantId = useAdminRestaurantId();
-  // Se não há feature flag definida, renderiza normalmente sem query.
-  const { data: hasAccess, isLoading } = useFeatureAccess(
+
+  // ── Verificação de cargo (RBAC) ──────────────────────────────────────────
+  // Se o item exige um cargo e o usuário não o tem → ocultar completamente.
+  // Nota: useCanAccess retorna `true` otimisticamente durante o carregamento.
+  const hasRoleAccess = useCanAccess(item.roleRequired ?? ['kitchen']); // sem roleRequired = acesso livre
+  const isRoleRestricted = !!item.roleRequired;
+  if (isRoleRestricted && !hasRoleAccess) return null;
+
+  // ── Verificação de feature flag (Planos) ─────────────────────────────────
+  const { data: hasFeatureAccess, isLoading } = useFeatureAccess(
     item.featureFlag ?? '',
     item.featureFlag ? restaurantId : null,
   );
 
-  // Sem flag de feature → sempre acessível.
+  // Sem flag de feature → sempre acessível (do ponto de vista de plano).
   if (!item.featureFlag) {
     return <NavLinkItem item={item} isActive={isActive} />;
   }
 
-  // Durante o carregamento, renderiza o item normalmente (otimista) para evitar saltos.
+  // Durante o carregamento, renderiza normalmente (otimista) para evitar saltos.
   if (isLoading) {
     return <NavLinkItem item={item} isActive={isActive} />;
   }
 
-  return hasAccess
+  // Plano não inclui esta feature → exibe item bloqueado com cadeado.
+  return hasFeatureAccess
     ? <NavLinkItem item={item} isActive={isActive} />
     : <LockedNavItem item={item} />;
 }

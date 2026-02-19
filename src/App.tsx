@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
+import { RoleProtectedRoute } from './components/auth/RoleProtectedRoute';
 import { Toaster } from './components/ui/toaster';
 import { UserRole } from './types';
 import { getSubdomain } from './lib/subdomain';
@@ -43,7 +44,17 @@ const adminRoutes = (
         </ProtectedRoute>
       }
     />
-    <Route path="products" element={<AdminProductsInventory />} />
+    <Route
+      path="products"
+      element={
+        <RoleProtectedRoute
+          allowedRoles={['manager', 'restaurant_admin', 'super_admin']}
+          redirectTo="/admin/orders"
+        >
+          <AdminProductsInventory />
+        </RoleProtectedRoute>
+      }
+    />
     <Route
       path="tables"
       element={
@@ -68,7 +79,17 @@ const adminRoutes = (
         </ProtectedRoute>
       }
     />
-    <Route path="settings" element={<AdminSettings />} />
+    <Route
+      path="settings"
+      element={
+        <RoleProtectedRoute
+          allowedRoles={['restaurant_admin', 'super_admin']}
+          redirectTo="/admin/orders"
+        >
+          <AdminSettings />
+        </RoleProtectedRoute>
+      }
+    />
     {/* Página de upgrade — exibida quando o usuário tenta acessar uma feature bloqueada */}
     <Route path="upgrade" element={<UpgradePage />} />
   </>
