@@ -68,57 +68,73 @@ function ComandaCard({
   selected,
   currency,
   onClick,
+  onDelete,
+  deleting,
 }: {
   comanda: ActiveComanda;
   selected: boolean;
   currency: 'BRL' | 'PYG';
   onClick: () => void;
+  onDelete: (e: React.MouseEvent) => void;
+  deleting: boolean;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={`w-full text-left rounded-xl border-2 p-3 transition-all ${
+    <div
+      className={`relative w-full rounded-xl border-2 p-3 transition-all ${
         selected
           ? 'border-[#F87116] bg-orange-50/60'
           : 'border-border bg-card hover:border-slate-300 hover:shadow-sm'
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className={`font-mono text-xs font-bold tracking-wider ${selected ? 'text-[#F87116]' : 'text-foreground'}`}>
-              {comanda.short_code}
-            </span>
-            {comanda.table_number && (
-              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
-                Mesa {comanda.table_number}
-              </Badge>
-            )}
+      <button
+        onClick={onClick}
+        className="w-full text-left focus:outline-none focus:ring-0"
+      >
+        <div className="flex items-start justify-between gap-2 pr-7">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={`font-mono text-xs font-bold tracking-wider ${selected ? 'text-[#F87116]' : 'text-foreground'}`}>
+                {comanda.short_code}
+              </span>
+              {comanda.table_number && (
+                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
+                  Mesa {comanda.table_number}
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-1 mt-0.5">
+              <User className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+              <span className="text-xs text-muted-foreground truncate">
+                {comanda.customer_name || 'Sem nome'}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-1 mt-0.5">
-            <User className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-            <span className="text-xs text-muted-foreground truncate">
-              {comanda.customer_name || 'Sem nome'}
-            </span>
+          <div className="flex-shrink-0 text-right">
+            <p className="text-sm font-bold text-foreground">
+              {formatCurrency(comanda.total_amount, currency)}
+            </p>
+            <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 justify-end mt-0.5">
+              <Clock className="h-2.5 w-2.5" />
+              {formatDistanceToNow(new Date(comanda.created_at), { addSuffix: false, locale: ptBR })}
+            </p>
           </div>
         </div>
-        <div className="flex-shrink-0 text-right">
-          <p className="text-sm font-bold text-foreground">
-            {formatCurrency(comanda.total_amount, currency)}
-          </p>
-          <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 justify-end mt-0.5">
-            <Clock className="h-2.5 w-2.5" />
-            {formatDistanceToNow(new Date(comanda.created_at), { addSuffix: false, locale: ptBR })}
-          </p>
-        </div>
-      </div>
-      {selected && (
-        <div className="flex items-center gap-1 mt-2 text-[11px] text-[#F87116] font-medium">
-          <ChevronRight className="h-3 w-3" />
-          Visualizando extrato
-        </div>
-      )}
-    </button>
+        {selected && (
+          <div className="flex items-center gap-1 mt-2 text-[11px] text-[#F87116] font-medium">
+            <ChevronRight className="h-3 w-3" />
+            Visualizando extrato
+          </div>
+        )}
+      </button>
+      <button
+        onClick={onDelete}
+        disabled={deleting}
+        className="absolute right-2 top-2.5 h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground/50 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors"
+        title="Excluir comanda e seus dados"
+      >
+        {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+      </button>
+    </div>
   );
 }
 
@@ -138,6 +154,7 @@ function CashierContent() {
   const [loadingDetail,  setLoadingDetail]  = useState(false);
   const [removingId,     setRemovingId]     = useState<string | null>(null);
   const [closing,        setClosing]        = useState(false);
+  const [deletingComandaId, setDeletingComandaId] = useState<string | null>(null);
   const [paymentMethod,  setPaymentMethod]  = useState<PaymentMethod>('cash');
 
   // Scanner
@@ -309,6 +326,31 @@ function CashierContent() {
     scannerRef.current?.focus();
   };
 
+  // ── Excluir comanda (status → cancelled) ────────────────────────────────────
+
+  const handleDeleteComanda = async (comandaId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeletingComandaId(comandaId);
+    try {
+      const { error } = await supabase
+        .from('virtual_comandas')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('id', comandaId);
+
+      if (error) throw error;
+
+      if (selected?.id === comandaId) {
+        setSelected(null);
+      }
+      setActiveComandas(prev => prev.filter(c => c.id !== comandaId));
+      toast({ title: 'Comanda excluída', description: 'A comanda e seus dados foram removidos.', variant: 'default' });
+    } catch (err: any) {
+      toast({ title: 'Erro ao excluir comanda', description: err?.message, variant: 'destructive' });
+    } finally {
+      setDeletingComandaId(null);
+    }
+  };
+
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
@@ -433,6 +475,8 @@ function CashierContent() {
                       selected={selected?.id === comanda.id}
                       currency={currency}
                       onClick={() => selectComanda(comanda)}
+                      onDelete={(e) => handleDeleteComanda(comanda.id, e)}
+                      deleting={deletingComandaId === comanda.id}
                     />
                   ))}
                 </div>
