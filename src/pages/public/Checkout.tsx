@@ -417,7 +417,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start gap-2">
                     <h3 className="font-semibold text-slate-900 text-sm sm:text-base leading-tight flex-1 min-w-0">{item.productName}</h3>
-                    <span className="font-bold text-slate-700 text-sm sm:text-base flex-shrink-0">{formatCurrency(item.unitPrice * item.quantity, currency)}</span>
+                    {!isTableOrder && (
+                      <span className="font-bold text-slate-700 text-sm sm:text-base flex-shrink-0">{formatCurrency(item.unitPrice * item.quantity, currency)}</span>
+                    )}
                   </div>
                   {(item.pizzaSize || item.pizzaFlavors) && (
                     <p className="text-xs sm:text-sm text-slate-500 mt-1 line-clamp-2">
@@ -547,7 +549,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         </Card>
         )}
 
-        {/* Pagamento - Mobile First */}
+        {/* Pagamento - oculto em pedidos de mesa */}
+        {!isTableOrder && (
         <Card className="border-0 shadow-sm bg-white rounded-xl sm:rounded-2xl">
           <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-4 sm:pt-6">
             <CardTitle className="text-base sm:text-lg text-slate-800">{t('checkout.payment')}</CardTitle>
@@ -588,7 +591,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             </RadioGroup>
           </CardContent>
         </Card>
+        )}
 
+        {/* Observações - oculto em pedidos de mesa */}
+        {!isTableOrder && (
         <div className="space-y-1.5 sm:space-y-2">
           <Label htmlFor="notes" className="text-sm sm:text-base">{t('checkout.notesLabel')}</Label>
           <Input 
@@ -599,16 +605,18 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             className="bg-white border-slate-200 h-11 sm:h-12 text-sm sm:text-base touch-manipulation"
           />
         </div>
+        )}
 
         {/* Resumo e Botão Finalizar - Integrado ao conteúdo */}
         <Card className="border-0 shadow-lg bg-white rounded-xl sm:rounded-2xl">
           <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6 pb-4 sm:pb-6 space-y-3 sm:space-y-4">
+            {!isTableOrder && (
             <div className="space-y-2 sm:space-y-2.5">
               <div className="flex justify-between items-center text-sm sm:text-base">
                 <span className="text-slate-500">{t('checkout.subtotal')}</span>
                 <span className="font-semibold text-slate-900">{formatCurrency(subtotal, currency)}</span>
               </div>
-              {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
+              {deliveryType === DeliveryType.DELIVERY && (
                 <div className="flex justify-between items-center text-sm sm:text-base">
                   <span className="text-slate-500">{t('checkout.deliveryFee')}</span>
                   <span className="font-semibold text-red-600">{formatCurrency(deliveryFee, currency)}</span>
@@ -619,6 +627,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 <span className="text-slate-900">{formatCurrency(total, currency)}</span>
               </div>
             </div>
+            )}
             
             <Button 
               size="lg" 
@@ -637,8 +646,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 </span>
               ) : isTableOrder ? (
                 <>
-                  <span className="hidden xs:inline">Enviar para Cozinha</span>
-                  <span className="xs:hidden">Enviar</span>
+                  <span>Fazer Pedido</span>
                   <Send className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                 </>
               ) : (
