@@ -45,5 +45,7 @@ export function useSaasMetrics() {
     // Mantém os dados anteriores visíveis enquanto refetch ocorre em background,
     // evitando que o layout pisque ou fique em branco ao invalidar a query.
     placeholderData: keepPreviousData,
+    // Refetch a cada 2 min enquanto a tela estiver montada — mantém Dashboard BI "ao vivo"
+    refetchInterval: 1000 * 60 * 2,
   });
 }

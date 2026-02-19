@@ -211,6 +211,13 @@ function CashierContent() {
     };
   }, [restaurantId, loadActiveComandas]);
 
+  // Fallback: polling quando Realtime não está conectado (ex: tabela fora da publicação)
+  useEffect(() => {
+    if (!restaurantId || isLive) return;
+    const interval = setInterval(() => loadActiveComandas(), 8000);
+    return () => clearInterval(interval);
+  }, [restaurantId, isLive, loadActiveComandas]);
+
   // ── Real-time: mudanças nos itens da comanda selecionada ──────────────────
 
   useEffect(() => {

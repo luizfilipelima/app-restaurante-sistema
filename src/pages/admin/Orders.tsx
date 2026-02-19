@@ -191,6 +191,13 @@ export default function AdminOrders() {
     };
   }, [restaurantId, handleRealtimeOrder]);
 
+  // Fallback: polling quando Realtime não está conectado (ex: tabela fora da publicação)
+  useEffect(() => {
+    if (!restaurantId || isLive) return;
+    const interval = setInterval(() => refetchOrders(), 8000);
+    return () => clearInterval(interval);
+  }, [restaurantId, isLive, refetchOrders]);
+
   const updateOrderCourier = async (orderId: string, courierId: string | null) => {
     try {
       const { error } = await supabase
