@@ -18,12 +18,17 @@ const ORDERS_SELECT = `
 
 const ORDER_TAB_STATUSES = ['pending', 'preparing', 'ready', 'delivering', 'completed'];
 
+/** Filtro de origem: all | table (mesas) | delivery (cardápio interativo) */
+export type OrderSourceFilter = 'all' | 'table' | 'delivery';
+
 export interface UseOrdersParams {
   restaurantId: string | null;
   /** Página para paginação (0-based). Default 0. */
   page?: number;
   /** Itens por página. Default 50. */
   limit?: number;
+  /** Filtro por origem: mesas ou delivery. Default 'all'. */
+  orderSourceFilter?: OrderSourceFilter;
 }
 
 /** Busca pedidos ativos (exclui cancelados) com paginação. Isolamento por tenant via restaurant_id. */
@@ -31,27 +36,42 @@ async function fetchOrders({
   restaurantId,
   page = 0,
   limit = 50,
+  orderSourceFilter = 'all',
 }: UseOrdersParams): Promise<{ orders: DatabaseOrder[]; hasMore: boolean }> {
   if (!restaurantId) return { orders: [], hasMore: false };
   const from = page * limit;
   const to = from + limit - 1;
-  const { data, error } = await supabase
+
+  let query = supabase
     .from('orders')
     .select(ORDERS_SELECT)
     .eq('restaurant_id', restaurantId)
     .in('status', ORDER_TAB_STATUSES)
     .order('created_at', { ascending: false })
     .range(from, to);
+
+  if (orderSourceFilter === 'table') {
+    query = query.or('order_source.eq.table,table_id.not.is.null');
+  } else if (orderSourceFilter === 'delivery') {
+    query = query.is('table_id', null);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   const orders = (data || []) as unknown as DatabaseOrder[];
   return { orders, hasMore: orders.length === limit };
 }
 
 /** Hook para pedidos do Kanban. Usa paginação. staleTime 30s para refletir mudanças rápido. */
-export function useOrders({ restaurantId, page = 0, limit = 50 }: UseOrdersParams) {
+export function useOrders({
+  restaurantId,
+  page = 0,
+  limit = 50,
+  orderSourceFilter = 'all',
+}: UseOrdersParams) {
   return useQuery({
-    queryKey: ['orders', restaurantId, page, limit],
-    queryFn: () => fetchOrders({ restaurantId, page, limit }),
+    queryKey: ['orders', restaurantId, page, limit, orderSourceFilter],
+    queryFn: () => fetchOrders({ restaurantId, page, limit, orderSourceFilter }),
     enabled: !!restaurantId,
     staleTime: 30 * 1000, // 30 segundos (pedidos mudam com frequência)
   });

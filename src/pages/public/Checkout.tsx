@@ -202,6 +202,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       if (isTableOrder && tableId) {
         orderData.order_source = 'table';
         orderData.table_id = tableId;
+      } else {
+        orderData.order_source = finalDeliveryType === DeliveryType.DELIVERY ? 'delivery' : 'pickup';
       }
 
       const { data: order, error } = await supabase

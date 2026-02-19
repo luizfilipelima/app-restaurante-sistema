@@ -168,7 +168,8 @@
     @apply bg-white border-r border-slate-200/80;
   }
   .admin-sidebar .nav-item-active {
-    @apply bg-slate-100 text-slate-900 border-l-4 border-l-blue-500;
+    @apply bg-slate-100 text-slate-900 border-l-4;
+    border-left-color: #F87116;
   }
   .admin-sidebar .nav-item {
     @apply text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-4 border-l-transparent;

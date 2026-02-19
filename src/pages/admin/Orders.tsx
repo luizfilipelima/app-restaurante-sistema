@@ -19,8 +19,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer } from 'lucide-react';
-import { useCouriers, useOrders, usePrintSettings } from '@/hooks/queries';
+import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed } from 'lucide-react';
+import { useCouriers, useOrders, usePrintSettings, type OrderSourceFilter } from '@/hooks/queries';
 import { usePrinter } from '@/hooks/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
 import {
@@ -119,10 +119,12 @@ export default function AdminOrders() {
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
   const queryClient = useQueryClient();
+  const [orderSourceFilter, setOrderSourceFilter] = useState<OrderSourceFilter>('all');
   const { data: ordersData, isLoading: loading, refetch: refetchOrders } = useOrders({
     restaurantId,
     page: 0,
     limit: 100,
+    orderSourceFilter,
   });
   const orders = ordersData?.orders ?? [];
   const { data: printSettings } = usePrintSettings(restaurantId);
@@ -301,9 +303,36 @@ export default function AdminOrders() {
       <div className="space-y-8 min-w-0">
         <div>
           <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-foreground">Gestão de Pedidos</h1>
-          <p className="text-muted-foreground text-base sm:text-lg">
+          <p className="text-muted-foreground text-base sm:text-lg mb-4">
             Acompanhe e gerencie os pedidos em tempo real
           </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={orderSourceFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setOrderSourceFilter('all')}
+            >
+              Todos
+            </Button>
+            <Button
+              variant={orderSourceFilter === 'table' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setOrderSourceFilter('table')}
+              className={orderSourceFilter === 'table' ? 'bg-amber-600 hover:bg-amber-700' : ''}
+            >
+              <UtensilsCrossed className="h-4 w-4 mr-1.5" />
+              Mesas
+            </Button>
+            <Button
+              variant={orderSourceFilter === 'delivery' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setOrderSourceFilter('delivery')}
+              className={orderSourceFilter === 'delivery' ? 'bg-cyan-600 hover:bg-cyan-700' : ''}
+            >
+              <Bike className="h-4 w-4 mr-1.5" />
+              Delivery
+            </Button>
+          </div>
         </div>
 
         {/* Kanban Board */}
@@ -358,9 +387,20 @@ export default function AdminOrders() {
                         <CardHeader className="pb-3 space-y-2">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <CardTitle className="text-base font-bold truncate">
-                                #{order.id.slice(0, 8).toUpperCase()}
-                              </CardTitle>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <CardTitle className="text-base font-bold truncate">
+                                  #{order.id.slice(0, 8).toUpperCase()}
+                                </CardTitle>
+                                {(order.order_source === 'table' || order.table_id) ? (
+                                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                                    <UtensilsCrossed className="h-3 w-3 mr-1" /> Mesa
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs bg-cyan-50 text-cyan-700 border-cyan-200">
+                                    <Bike className="h-3 w-3 mr-1" /> Delivery
+                                  </Badge>
+                                )}
+                              </div>
                               <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                                 <Clock className="h-3 w-3 flex-shrink-0" />
                                 <span className="truncate">

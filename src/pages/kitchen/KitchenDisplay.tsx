@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Clock, AlertTriangle, ChefHat, ArrowRight, LayoutDashboard } from 'lucide-react';
+import { Clock, AlertTriangle, ChefHat, ArrowRight, LayoutDashboard, UtensilsCrossed, Bike } from 'lucide-react';
 
 export default function KitchenDisplay() {
   const { user } = useAuthStore();
@@ -265,6 +265,7 @@ export default function KitchenDisplay() {
 
 function OrderCard({ order, isNew, onAction, actionLabel, actionColor, variant }: any) {
   const duration = Math.floor((new Date().getTime() - new Date(order.created_at).getTime()) / 1000 / 60);
+  const isTableOrder = order.order_source === 'table' || !!order.table_id;
   
   let borderColor = 'border-slate-700';
   let timerColor = 'bg-slate-800 text-slate-300';
@@ -289,12 +290,36 @@ function OrderCard({ order, isNew, onAction, actionLabel, actionColor, variant }
       )}
       
       <CardHeader className="pb-2 bg-slate-800/50 border-b border-slate-700/50">
-        <div className="flex justify-between items-start">
-          <div>
-            <h3 className="text-2xl font-black text-white">#{order.id.slice(0, 4).toUpperCase()}</h3>
-            <p className="text-slate-400 text-sm font-medium">{order.customer_name}</p>
+        <div className="flex justify-between items-start gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-2xl font-black text-white">#{order.id.slice(0, 4).toUpperCase()}</h3>
+              <Badge
+                variant="outline"
+                className={`shrink-0 border-0 text-xs font-bold ${
+                  isTableOrder
+                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
+                    : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50'
+                }`}
+              >
+                {isTableOrder ? (
+                  <>
+                    <UtensilsCrossed className="h-3 w-3 mr-1" />
+                    MESA {order.customer_name?.replace(/^Mesa\s+/i, '') || ''}
+                  </>
+                ) : (
+                  <>
+                    <Bike className="h-3 w-3 mr-1" />
+                    DELIVERY
+                  </>
+                )}
+              </Badge>
+            </div>
+            {!isTableOrder && (
+              <p className="text-slate-400 text-sm font-medium mt-0.5">{order.customer_name}</p>
+            )}
           </div>
-          <Badge className={`${timerColor} text-lg font-bold border-0 px-3 py-1 rounded-md`}>
+          <Badge className={`${timerColor} text-lg font-bold border-0 px-3 py-1 rounded-md shrink-0`}>
             {duration} min
           </Badge>
         </div>
