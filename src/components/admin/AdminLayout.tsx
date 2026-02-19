@@ -24,7 +24,6 @@ import {
   Copy,
   Bike,
   Scale,
-  Package,
   LayoutGrid,
   Search,
   ChevronDown,
@@ -162,21 +161,12 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
     ],
   },
   {
-    kind: 'collapsible',
-    key: 'catalogo',
-    label: 'Catálogo & Cardápio',
-    icon: UtensilsCrossed,
+    kind: 'group',
+    label: 'Cardápio',
     items: [
       {
         kind: 'leaf',
-        name: 'Gestão de Produtos',
-        href: `${base}/products`,
-        icon: Package,
-        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
-      },
-      {
-        kind: 'leaf',
-        name: 'Organizar Cardápio',
+        name: 'Central do Cardápio',
         href: `${base}/menu`,
         icon: UtensilsCrossed,
         roleRequired: ['manager', 'restaurant_admin', 'super_admin'],

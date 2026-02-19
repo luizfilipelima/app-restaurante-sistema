@@ -1,14 +1,32 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
-import { convertPriceToStorage, convertPriceFromStorage, formatPriceInputPyG, getCurrencySymbol } from '@/lib/priceHelper';
-import { Product, Restaurant, PizzaSize, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide, Category, Subcategory } from '@/types';
+import {
+  convertPriceToStorage,
+  convertPriceFromStorage,
+  formatPriceInputPyG,
+  getCurrencySymbol,
+  formatPrice,
+} from '@/lib/priceHelper';
+import {
+  Product,
+  Restaurant,
+  PizzaSize,
+  PizzaDough,
+  PizzaEdge,
+  MarmitaSize,
+  MarmitaProtein,
+  MarmitaSide,
+  Category,
+  Subcategory,
+} from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +42,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
 import { uploadProductImage } from '@/lib/imageUpload';
@@ -36,20 +62,52 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Plus, Trash2, Loader2, Info, Upload, Copy, Check, Sparkles, Search, UtensilsCrossed, LayoutGrid, Settings, QrCode, ExternalLink } from 'lucide-react';
-import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
-import CategoryManager from '@/components/admin/CategoryManager';
-import ProductRow from '@/components/admin/ProductRow';
 import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Plus,
+  Trash2,
+  Loader2,
+  Info,
+  Upload,
+  Copy,
+  Check,
+  Search,
+  UtensilsCrossed,
+  LayoutGrid,
+  Settings,
+  QrCode,
+  GripVertical,
+  Edit,
+  Download,
+  Package,
+  Pizza,
+  ExternalLink,
+  BarChart2,
+  Eye,
+  EyeOff,
+  ChevronRight,
+} from 'lucide-react';
+import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
 
-// Helper: config do produto a partir da categoria do BD
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const CATEGORY_TYPES = [
+  { id: 'default', label: 'Padrão', is_pizza: false, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
+  { id: 'pizza', label: 'Pizza (tamanhos e sabores)', is_pizza: true, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
+  { id: 'marmita', label: 'Marmitas (monte sua marmita)', is_pizza: false, is_marmita: true, extra_field: null, extra_label: null, extra_placeholder: null },
+  { id: 'volume', label: 'Bebidas (volume)', is_pizza: false, is_marmita: false, extra_field: 'volume', extra_label: 'Volume ou medida', extra_placeholder: 'Ex: 350ml, 1L, 2L' },
+  { id: 'portion', label: 'Sobremesas (porção)', is_pizza: false, is_marmita: false, extra_field: 'portion', extra_label: 'Porção', extra_placeholder: 'Ex: individual, fatia, 500g' },
+  { id: 'detail', label: 'Combos (detalhe)', is_pizza: false, is_marmita: false, extra_field: 'detail', extra_label: 'Detalhe do combo', extra_placeholder: 'Ex: Pizza + Refrigerante' },
+] as const;
+
 const getCategoryConfigFromCategory = (cat: Category | null) => {
   if (!cat) return { isPizza: false, isMarmita: false, priceLabel: 'Preço' as string, extraField: undefined as string | undefined, extraLabel: undefined as string | undefined, extraPlaceholder: undefined as string | undefined };
   return {
@@ -74,34 +132,233 @@ const formDefaults = {
   subcategoryId: '' as string | null,
 };
 
+// ─── SortableCategoryItem ──────────────────────────────────────────────────────
+
+interface SortableCategoryItemProps {
+  category: Category;
+  count: number;
+  isSelected: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+}
+
+function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete }: SortableCategoryItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: category.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${
+        isSelected
+          ? 'bg-primary text-primary-foreground'
+          : 'hover:bg-muted/70 text-foreground'
+      } ${isDragging ? 'shadow-lg z-50' : ''}`}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className={`cursor-grab active:cursor-grabbing touch-none p-0.5 rounded transition-opacity ${
+          isSelected ? 'text-primary-foreground/60 hover:text-primary-foreground' : 'text-muted-foreground/40 hover:text-muted-foreground'
+        } opacity-0 group-hover:opacity-100`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </div>
+
+      <button
+        type="button"
+        className="flex-1 flex items-center gap-1.5 text-left min-w-0"
+        onClick={onSelect}
+      >
+        {category.is_pizza ? (
+          <Pizza className="h-3.5 w-3.5 shrink-0" />
+        ) : category.is_marmita ? (
+          <UtensilsCrossed className="h-3.5 w-3.5 shrink-0" />
+        ) : (
+          <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isSelected ? 'rotate-90' : ''}`} />
+        )}
+        <span className="truncate text-sm font-medium">{category.name}</span>
+        <Badge
+          variant={isSelected ? 'secondary' : 'outline'}
+          className={`ml-auto shrink-0 text-xs h-4 px-1.5 ${isSelected ? 'bg-primary-foreground/20 text-primary-foreground border-0' : ''}`}
+        >
+          {count}
+        </Badge>
+      </button>
+
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        className={`p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
+          isSelected ? 'text-primary-foreground/60 hover:text-primary-foreground' : 'text-muted-foreground/40 hover:text-destructive'
+        }`}
+        title="Excluir categoria"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+// ─── Inline product row for the central view ──────────────────────────────────
+
+interface CentralProductRowProps {
+  product: Product;
+  currency: ReturnType<typeof useAdminCurrency>;
+  showInventory: boolean;
+  onEdit: (p: Product) => void;
+  onDuplicate: (p: Product) => void;
+  onDelete: (id: string) => void;
+  onToggleActive: (id: string, isActive: boolean) => void;
+}
+
+function CentralProductRow({ product, currency, showInventory, onEdit, onDuplicate, onDelete, onToggleActive }: CentralProductRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
+
+  const salePrice = Number(product.price_sale || product.price);
+  const costPrice = product.price_cost ? Number(product.price_cost) : null;
+  const margin = costPrice && salePrice > 0 ? ((salePrice - costPrice) / salePrice) * 100 : null;
+
+  const marginColor = margin === null
+    ? ''
+    : margin >= 40 ? 'text-emerald-600 dark:text-emerald-400'
+    : margin >= 20 ? 'text-amber-600 dark:text-amber-400'
+    : 'text-red-600 dark:text-red-400';
+
+  return (
+    <TableRow ref={setNodeRef} style={style} className={isDragging ? 'bg-muted/80 z-10' : ''}>
+      <TableCell className="w-8 p-1.5">
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing touch-none p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50"
+        >
+          <GripVertical className="h-4 w-4" />
+        </div>
+      </TableCell>
+
+      <TableCell className="w-10 p-1.5">
+        <div className="w-9 h-9 rounded-md overflow-hidden bg-muted flex-shrink-0 border">
+          {product.image_url ? (
+            <img src={product.image_url} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+              {product.is_pizza ? <Pizza className="h-4 w-4" /> : product.is_marmita ? <UtensilsCrossed className="h-4 w-4" /> : '🍽'}
+            </div>
+          )}
+        </div>
+      </TableCell>
+
+      <TableCell className="min-w-0">
+        <div className="font-medium text-sm text-foreground truncate">{product.name}</div>
+        {product.description && (
+          <div className="text-xs text-muted-foreground truncate max-w-[200px]">{product.description}</div>
+        )}
+      </TableCell>
+
+      <TableCell className="whitespace-nowrap font-medium tabular-nums text-sm">
+        {formatPrice(salePrice, currency)}
+      </TableCell>
+
+      {showInventory && (
+        <>
+          <TableCell className="whitespace-nowrap tabular-nums text-sm text-muted-foreground">
+            {costPrice ? formatPrice(costPrice, currency) : <span className="text-muted-foreground/50">—</span>}
+          </TableCell>
+          <TableCell className="whitespace-nowrap text-sm">
+            {margin !== null ? (
+              <span className={`font-semibold ${marginColor}`}>{margin.toFixed(0)}%</span>
+            ) : (
+              <span className="text-muted-foreground/50">—</span>
+            )}
+          </TableCell>
+        </>
+      )}
+
+      <TableCell className="w-12 p-2">
+        <Switch
+          checked={product.is_active}
+          onCheckedChange={() => onToggleActive(product.id, product.is_active)}
+          title={product.is_active ? 'Ativo — clique para desativar' : 'Inativo — clique para ativar'}
+        />
+      </TableCell>
+
+      <TableCell className="w-[120px] p-1.5">
+        <div className="flex items-center gap-0.5">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(product)} title="Editar">
+            <Edit className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDuplicate(product)} title="Duplicar">
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDelete(product.id)} title="Excluir">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────────
+
 export default function AdminMenu() {
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
+
+  // Core data
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategoriesByCategory, setSubcategoriesByCategory] = useState<Record<string, Subcategory[]>>({});
+
+  // UI states
   const [loading, setLoading] = useState(true);
+  const [savingCategoryOrder, setSavingCategoryOrder] = useState(false);
+
+  // Selected category filter (null = All)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+
+  // Product search
+  const [productSearch, setProductSearch] = useState('');
+
+  // Inventory mode toggle
+  const [showInventory, setShowInventory] = useState(false);
+
+  // Product form modal
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [form, setForm] = useState(formDefaults);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategoriesByCategory, setSubcategoriesByCategory] = useState<Record<string, Subcategory[]>>({});
 
-  // Estados para Cardápio Digital
+  // Category add modal
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categoryFormName, setCategoryFormName] = useState('');
+  const [categoryFormType, setCategoryFormType] = useState<string>(CATEGORY_TYPES[0].id);
+
+  // Config modal (Pizza / Marmita)
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [menuConfigLoading, setMenuConfigLoading] = useState(false);
+
+  // QR / Online modal
+  const [showOnlineModal, setShowOnlineModal] = useState(false);
   const [slug, setSlug] = useState('');
   const [slugSaving, setSlugSaving] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [menuLinkCopied, setMenuLinkCopied] = useState(false);
 
-  // Busca de produtos
-  const [productSearch, setProductSearch] = useState('');
-  
-  // Estados para configurações de cardápio (Pizza)
+  // CSV
+  const [showImportModal, setShowImportModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Pizza config
   const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]);
   const [pizzaDoughs, setPizzaDoughs] = useState<PizzaDough[]>([]);
   const [pizzaEdges, setPizzaEdges] = useState<PizzaEdge[]>([]);
-  const [menuConfigLoading, setMenuConfigLoading] = useState(false);
   const [showFormSize, setShowFormSize] = useState(false);
   const [showFormDough, setShowFormDough] = useState(false);
   const [showFormEdge, setShowFormEdge] = useState(false);
@@ -109,7 +366,7 @@ export default function AdminMenu() {
   const [formDough, setFormDough] = useState({ name: '', extra_price: '' });
   const [formEdge, setFormEdge] = useState({ name: '', price: '' });
 
-  // Estados para configurações de cardápio (Marmitas)
+  // Marmita config
   const [marmitaSizes, setMarmitaSizes] = useState<MarmitaSize[]>([]);
   const [marmitaProteins, setMarmitaProteins] = useState<MarmitaProtein[]>([]);
   const [marmitaSides, setMarmitaSides] = useState<MarmitaSide[]>([]);
@@ -120,49 +377,66 @@ export default function AdminMenu() {
   const [formMarmitaProtein, setFormMarmitaProtein] = useState({ name: '', description: '', price_per_gram: '' });
   const [formMarmitaSide, setFormMarmitaSide] = useState({ name: '', description: '', price_per_gram: '', category: '' });
 
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // ─── Data loading ────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (restaurantId) {
       loadRestaurant();
       loadProducts();
-      loadMenuConfig();
       loadCategoriesAndSubcategories();
+      loadMenuConfig();
     }
   }, [restaurantId]);
-
-  const loadCategoriesAndSubcategories = async () => {
-    if (!restaurantId) return;
-    try {
-      const catRes = await supabase.from('categories').select('*').eq('restaurant_id', restaurantId).order('order_index', { ascending: true });
-      if (catRes.data) setCategories(catRes.data);
-      try {
-        const subRes = await supabase.from('subcategories').select('*').eq('restaurant_id', restaurantId).order('order_index', { ascending: true });
-        const byCat: Record<string, Subcategory[]> = {};
-        (subRes.data || []).forEach((s) => {
-          if (!byCat[s.category_id]) byCat[s.category_id] = [];
-          byCat[s.category_id].push(s);
-        });
-        setSubcategoriesByCategory(byCat);
-      } catch {
-        setSubcategoriesByCategory({});
-      }
-    } catch (e) {
-      console.error('Erro ao carregar categorias:', e);
-    }
-  };
 
   const loadRestaurant = async () => {
     if (!restaurantId) return;
     try {
+      const { data } = await supabase.from('restaurants').select('*').eq('id', restaurantId).single();
+      if (data) { setRestaurant(data); setSlug(data.slug || ''); }
+    } catch (e) { console.error(e); }
+  };
+
+  const loadCategoriesAndSubcategories = async () => {
+    if (!restaurantId) return;
+    try {
+      const [catRes, subRes] = await Promise.all([
+        supabase.from('categories').select('*').eq('restaurant_id', restaurantId).order('order_index', { ascending: true }),
+        supabase.from('subcategories').select('*').eq('restaurant_id', restaurantId).order('order_index', { ascending: true }),
+      ]);
+      if (catRes.data) setCategories(catRes.data);
+      const byCat: Record<string, Subcategory[]> = {};
+      (subRes.data || []).forEach((s) => {
+        if (!byCat[s.category_id]) byCat[s.category_id] = [];
+        byCat[s.category_id].push(s);
+      });
+      setSubcategoriesByCategory(byCat);
+    } catch (e) { console.error('Erro ao carregar categorias:', e); }
+  };
+
+  const loadProducts = async () => {
+    if (!restaurantId) return;
+    try {
+      setLoading(true);
       const { data, error } = await supabase
-        .from('restaurants')
+        .from('products')
         .select('*')
-        .eq('id', restaurantId)
-        .single();
+        .eq('restaurant_id', restaurantId)
+        .order('category', { ascending: true })
+        .order('order_index', { ascending: true })
+        .order('name', { ascending: true });
       if (error) throw error;
-      setRestaurant(data);
-      setSlug(data?.slug || '');
+      setProducts(data || []);
     } catch (error) {
-      console.error('Erro ao carregar restaurante:', error);
+      console.error('Erro ao carregar produtos:', error);
+      toast({ title: 'Erro ao carregar cardápio', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -184,61 +458,115 @@ export default function AdminMenu() {
       if (marmitaSizesRes.data) setMarmitaSizes(marmitaSizesRes.data);
       if (marmitaProteinsRes.data) setMarmitaProteins(marmitaProteinsRes.data);
       if (marmitaSidesRes.data) setMarmitaSides(marmitaSidesRes.data);
-    } catch (e) {
-      console.error('Erro ao carregar configuração do cardápio:', e);
-    } finally {
-      setMenuConfigLoading(false);
-    }
+    } catch (e) { console.error('Erro ao carregar config:', e); }
+    finally { setMenuConfigLoading(false); }
   };
 
-  const handleSaveSlug = async () => {
-    if (!restaurantId) return;
-    const slugNormalized = generateSlug(slug) || generateSlug(restaurant?.name || '');
-    if (!slugNormalized) {
-      toast({ title: 'Slug inválido', description: 'O slug não pode ficar vazio.', variant: 'destructive' });
-      return;
-    }
-    setSlugSaving(true);
-    try {
-      const { error } = await supabase
-        .from('restaurants')
-        .update({ slug: slugNormalized })
-        .eq('id', restaurantId);
-      if (error) throw error;
-      setSlug(slugNormalized);
-      toast({ title: 'Slug salvo com sucesso!' });
-    } catch (error) {
-      console.error('Erro ao salvar slug:', error);
-      toast({ title: 'Erro ao salvar slug', variant: 'destructive' });
-    } finally {
-      setSlugSaving(false);
-    }
-  };
+  // ─── Derived data ─────────────────────────────────────────────────────────────
 
-  const copyCardapioLink = () => {
-    const url = getCardapioPublicUrl(slug || restaurant?.slug || '');
-    navigator.clipboard.writeText(url).then(() => {
-      setLinkCopied(true);
-      toast({ title: 'Link copiado!' });
-      setTimeout(() => setLinkCopied(false), 2000);
-    });
-  };
-
-  const selectedCategory = categories.find((c) => c.id === form.categoryId) ?? null;
-  const categoryConfig = getCategoryConfigFromCategory(selectedCategory);
+  const selectedCategory = selectedCategoryId ? categories.find((c) => c.id === selectedCategoryId) ?? null : null;
+  const categoryConfig = getCategoryConfigFromCategory(
+    editingProduct ? (categories.find((c) => c.id === form.categoryId) ?? null) : (selectedCategory ?? (categories[0] ?? null))
+  );
   const subcategoriesOfSelected = (form.categoryId && subcategoriesByCategory[form.categoryId]) || [];
 
-  const openNew = () => {
-    setEditingProduct(null);
-    const firstCatId = categories[0]?.id ?? '';
-    const firstCat = categories[0];
-    setForm({
-      ...formDefaults,
-      categoryId: firstCatId,
-      is_pizza: firstCat?.is_pizza ?? false,
-      is_marmita: firstCat?.is_marmita ?? false,
-      subcategoryId: null,
+  const filteredProducts = useMemo(() => {
+    let result = products;
+    if (selectedCategoryId && selectedCategory) {
+      result = result.filter((p) => p.category === selectedCategory.name);
+    }
+    if (productSearch.trim()) {
+      const q = productSearch.toLowerCase();
+      result = result.filter(
+        (p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || (p.description ?? '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [products, selectedCategoryId, selectedCategory, productSearch]);
+
+  const groupedProducts = useMemo(() => {
+    const grouped = filteredProducts.reduce((acc, p) => {
+      if (!acc[p.category]) acc[p.category] = [];
+      acc[p.category].push(p);
+      return acc;
+    }, {} as Record<string, Product[]>);
+    Object.keys(grouped).forEach((cat) => {
+      grouped[cat].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
     });
+    return grouped;
+  }, [filteredProducts]);
+
+  const categoryOrder = categories.map((c) => c.name);
+  const sortedCategoryNames = categoryOrder.length > 0
+    ? categoryOrder.filter((name) => groupedProducts[name]?.length)
+    : Object.keys(groupedProducts);
+
+  const totalProducts = products.length;
+  const activeProducts = products.filter((p) => p.is_active).length;
+
+  // ─── DnD handlers ─────────────────────────────────────────────────────────────
+
+  const handleCategoryDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = categories.findIndex((c) => c.id === active.id);
+    const newIndex = categories.findIndex((c) => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(categories, oldIndex, newIndex).map((c, i) => ({ ...c, order_index: i }));
+    setCategories(reordered);
+    setSavingCategoryOrder(true);
+    try {
+      const updates = reordered.map((c, i) =>
+        supabase.from('categories').update({ order_index: i }).eq('id', c.id).eq('restaurant_id', restaurantId!)
+      );
+      const results = await Promise.all(updates);
+      const err = results.find((r) => r.error);
+      if (err?.error) throw new Error(err.error.message);
+    } catch {
+      toast({ title: 'Erro ao salvar ordem', variant: 'destructive' });
+      loadCategoriesAndSubcategories();
+    } finally {
+      setSavingCategoryOrder(false);
+    }
+  };
+
+  const handleProductsDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const activeProduct = products.find((p) => p.id === activeId);
+    const overProduct = products.find((p) => p.id === overId);
+    if (!activeProduct || !overProduct || activeProduct.category !== overProduct.category) return;
+    const categoryProducts = products.filter((p) => p.category === activeProduct.category);
+    const oldIndex = categoryProducts.findIndex((p) => p.id === activeId);
+    const newIndex = categoryProducts.findIndex((p) => p.id === overId);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = [...categoryProducts];
+    const [moved] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+    const withNewOrder = reordered.map((p, i) => ({ ...p, order_index: i }));
+    setProducts((prev) => {
+      const others = prev.filter((p) => p.category !== activeProduct.category);
+      return [...others, ...withNewOrder].sort((a, b) => {
+        if (a.category !== b.category) return a.category.localeCompare(b.category);
+        return (a.order_index ?? 0) - (b.order_index ?? 0);
+      });
+    });
+    (async () => {
+      const results = await Promise.all(withNewOrder.map((p) => supabase.from('products').update({ order_index: p.order_index }).eq('id', p.id)));
+      const err = results.find((r) => r.error);
+      if (err?.error) { toast({ title: 'Erro ao salvar ordem', variant: 'destructive' }); loadProducts(); }
+    })();
+  };
+
+  // ─── Product CRUD ─────────────────────────────────────────────────────────────
+
+  const openNew = (preselectedCategoryId?: string) => {
+    setEditingProduct(null);
+    const catId = preselectedCategoryId || selectedCategoryId || categories[0]?.id || '';
+    const cat = categories.find((c) => c.id === catId);
+    setForm({ ...formDefaults, categoryId: catId, is_pizza: cat?.is_pizza ?? false, is_marmita: cat?.is_marmita ?? false, subcategoryId: null });
     setModalOpen(true);
   };
 
@@ -268,7 +596,7 @@ export default function AdminMenu() {
     const cat = categories.find((c) => c.id === categoryId) ?? null;
     setForm((f) => ({
       ...f,
-      categoryId: categoryId,
+      categoryId,
       is_pizza: cat?.is_pizza ?? false,
       is_marmita: cat?.is_marmita ?? false,
       categoryDetail: cat?.extra_field != null ? f.categoryDetail : '',
@@ -276,65 +604,20 @@ export default function AdminMenu() {
     }));
   };
 
-  const loadProducts = async () => {
-    if (!restaurantId) return;
-
-    try {
-      setLoading(true);
-
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('restaurant_id', restaurantId)
-        .order('category', { ascending: true })
-        .order('order_index', { ascending: true })
-        .order('name', { ascending: true });
-
-      if (error) throw error;
-
-      setProducts(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar produtos:', error);
-      toast({
-        title: 'Erro ao carregar cardápio',
-        description: error instanceof Error ? error.message : 'Tente novamente.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId) return;
-
     const name = form.name.trim();
-    const categoryName = selectedCategory?.name ?? '';
+    const formCat = categories.find((c) => c.id === form.categoryId);
+    const categoryName = formCat?.name ?? '';
     const price = convertPriceToStorage(form.price, currency);
-
-    if (!name) {
-      toast({ title: 'Nome obrigatório', variant: 'destructive' });
-      return;
-    }
-    if (!form.categoryId || !categoryName) {
-      toast({ title: 'Selecione uma categoria. Crie uma na aba Categorias se necessário.', variant: 'destructive' });
-      return;
-    }
-    if (Number.isNaN(price) || price < 0) {
-      toast({ title: 'Preço inválido', variant: 'destructive' });
-      return;
-    }
-
-    const isPizza = categoryConfig.isPizza || false;
-    const isMarmita = categoryConfig.isMarmita || false;
-    const descriptionFinal =
-      form.categoryDetail.trim()
-        ? form.description.trim()
-          ? `${form.categoryDetail.trim()} - ${form.description.trim()}`
-          : form.categoryDetail.trim()
-        : form.description.trim() || null;
-
+    if (!name) { toast({ title: 'Nome obrigatório', variant: 'destructive' }); return; }
+    if (!form.categoryId || !categoryName) { toast({ title: 'Selecione uma categoria', variant: 'destructive' }); return; }
+    if (Number.isNaN(price) || price < 0) { toast({ title: 'Preço inválido', variant: 'destructive' }); return; }
+    const cfg = getCategoryConfigFromCategory(formCat ?? null);
+    const descriptionFinal = form.categoryDetail.trim()
+      ? form.description.trim() ? `${form.categoryDetail.trim()} - ${form.description.trim()}` : form.categoryDetail.trim()
+      : form.description.trim() || null;
     setSaving(true);
     try {
       const payload = {
@@ -343,44 +626,27 @@ export default function AdminMenu() {
         category: categoryName,
         description: descriptionFinal,
         price,
-        is_pizza: isPizza,
-        is_marmita: isMarmita,
+        is_pizza: cfg.isPizza,
+        is_marmita: cfg.isMarmita,
         image_url: form.image_url.trim() || null,
         is_active: true,
         subcategory_id: form.subcategoryId || null,
       };
-
       if (editingProduct) {
-        const { error } = await supabase
-          .from('products')
-          .update(payload)
-          .eq('id', editingProduct.id);
-
+        const { error } = await supabase.from('products').update(payload).eq('id', editingProduct.id);
         if (error) throw error;
-        toast({ title: 'Produto atualizado!', variant: 'success' });
+        toast({ title: 'Produto atualizado!' });
       } else {
-        const { data: nextOrder } = await supabase.rpc('get_next_product_order_index', {
-          p_restaurant_id: restaurantId,
-          p_category: categoryName,
-        });
-        const order_index = nextOrder ?? 0;
-        const { error } = await supabase.from('products').insert({ ...payload, order_index });
-
+        const { data: nextOrder } = await supabase.rpc('get_next_product_order_index', { p_restaurant_id: restaurantId, p_category: categoryName });
+        const { error } = await supabase.from('products').insert({ ...payload, order_index: nextOrder ?? 0 });
         if (error) throw error;
-        toast({ title: 'Produto adicionado ao cardápio!', variant: 'success' });
+        toast({ title: 'Produto adicionado ao cardápio!' });
       }
-
       setModalOpen(false);
       loadProducts();
       loadCategoriesAndSubcategories();
     } catch (error) {
-      console.error('Erro ao salvar produto:', error);
-      const msg = error instanceof Error ? error.message : 'Verifique as permissões no Supabase.';
-      toast({
-        title: 'Erro ao salvar produto',
-        description: msg,
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro ao salvar produto', description: error instanceof Error ? error.message : 'Verifique as permissões.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -388,150 +654,175 @@ export default function AdminMenu() {
 
   const toggleProductStatus = async (productId: string, isActive: boolean) => {
     try {
-      const { error } = await supabase
-        .from('products')
-        .update({ is_active: !isActive })
-        .eq('id', productId);
-
+      const { error } = await supabase.from('products').update({ is_active: !isActive }).eq('id', productId);
       if (error) throw error;
-
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.id === productId ? { ...p, is_active: !isActive } : p
-        )
-      );
-    } catch (error) {
-      console.error('Erro ao atualizar produto:', error);
-    }
+      setProducts((prev) => prev.map((p) => p.id === productId ? { ...p, is_active: !isActive } : p));
+    } catch (e) { console.error(e); }
   };
 
   const deleteProduct = async (productId: string) => {
     if (!confirm('Tem certeza que deseja excluir este produto?')) return;
-
     try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId);
-
+      const { error } = await supabase.from('products').delete().eq('id', productId);
       if (error) throw error;
-
       setProducts((prev) => prev.filter((p) => p.id !== productId));
-    } catch (error) {
-      console.error('Erro ao excluir produto:', error);
-    }
+    } catch (e) { console.error(e); }
   };
 
   const duplicateProduct = async (product: Product) => {
     if (!restaurantId) return;
     try {
-      const { data: nextOrder } = await supabase.rpc('get_next_product_order_index', {
-        p_restaurant_id: restaurantId,
-        p_category: product.category,
-      });
-      const order_index = nextOrder ?? 0;
+      const { data: nextOrder } = await supabase.rpc('get_next_product_order_index', { p_restaurant_id: restaurantId, p_category: product.category });
       const { data: newProduct, error } = await supabase
         .from('products')
         .insert({
-          restaurant_id: product.restaurant_id,
-          category: product.category,
-          subcategory_id: product.subcategory_id ?? null,
-          name: `${product.name} (Cópia)`,
-          description: product.description ?? null,
-          price: product.price,
-          price_sale: product.price_sale ?? null,
-          price_cost: product.price_cost ?? null,
-          image_url: product.image_url ?? null,
-          is_pizza: product.is_pizza,
-          is_marmita: product.is_marmita ?? false,
-          is_active: product.is_active,
-          order_index,
+          restaurant_id: product.restaurant_id, category: product.category, subcategory_id: product.subcategory_id ?? null,
+          name: `${product.name} (Cópia)`, description: product.description ?? null, price: product.price,
+          price_sale: product.price_sale ?? null, price_cost: product.price_cost ?? null, image_url: product.image_url ?? null,
+          is_pizza: product.is_pizza, is_marmita: product.is_marmita ?? false, is_active: product.is_active, order_index: nextOrder ?? 0,
         })
-        .select('*')
-        .single();
-
+        .select('*').single();
       if (error) throw error;
-      setProducts((prev) =>
-        [...prev, { ...newProduct, order_index }].sort((a, b) => {
-          if (a.category !== b.category) return a.category.localeCompare(b.category);
-          return (a.order_index ?? 0) - (b.order_index ?? 0);
-        })
-      );
-      toast({ title: 'Produto duplicado!', description: `${newProduct.name} adicionado ao final da categoria.` });
+      setProducts((prev) => [...prev, { ...newProduct, order_index: nextOrder ?? 0 }].sort((a, b) => {
+        if (a.category !== b.category) return a.category.localeCompare(b.category);
+        return (a.order_index ?? 0) - (b.order_index ?? 0);
+      }));
+      toast({ title: 'Produto duplicado!', description: `${newProduct.name} adicionado.` });
       openEdit(newProduct);
-      setModalOpen(true);
     } catch (err) {
-      console.error('Erro ao duplicar:', err);
-      toast({
-        title: 'Erro ao duplicar produto',
-        description: err instanceof Error ? err.message : 'Tente novamente.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro ao duplicar produto', description: err instanceof Error ? err.message : 'Tente novamente.', variant: 'destructive' });
     }
   };
 
-  const handleProductsDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const activeId = String(active.id);
-    const overId = String(over.id);
+  // ─── Category CRUD ────────────────────────────────────────────────────────────
 
-    const activeProduct = products.find((p) => p.id === activeId);
-    const overProduct = products.find((p) => p.id === overId);
-    if (!activeProduct || !overProduct || activeProduct.category !== overProduct.category) return;
-
-    const categoryProducts = products.filter((p) => p.category === activeProduct.category);
-    const oldIndex = categoryProducts.findIndex((p) => p.id === activeId);
-    const newIndex = categoryProducts.findIndex((p) => p.id === overId);
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const reordered = [...categoryProducts];
-    const [moved] = reordered.splice(oldIndex, 1);
-    reordered.splice(newIndex, 0, moved);
-    const withNewOrder = reordered.map((p, i) => ({ ...p, order_index: i }));
-
-    setProducts((prev) => {
-      const others = prev.filter((p) => p.category !== activeProduct.category);
-      return [...others, ...withNewOrder].sort((a, b) => {
-        if (a.category !== b.category) return a.category.localeCompare(b.category);
-        return (a.order_index ?? 0) - (b.order_index ?? 0);
+  const handleAddCategory = async () => {
+    const name = categoryFormName.trim();
+    if (!name) { toast({ title: 'Nome obrigatório', variant: 'destructive' }); return; }
+    if (categories.find((c) => c.name.toLowerCase() === name.toLowerCase())) {
+      toast({ title: 'Já existe uma categoria com esse nome', variant: 'destructive' }); return;
+    }
+    const preset = CATEGORY_TYPES.find((t) => t.id === categoryFormType) || CATEGORY_TYPES[0];
+    try {
+      const { error } = await supabase.from('categories').insert({
+        restaurant_id: restaurantId, name, order_index: categories.length,
+        is_pizza: preset.is_pizza, is_marmita: preset.is_marmita,
+        extra_field: preset.extra_field, extra_label: preset.extra_label, extra_placeholder: preset.extra_placeholder,
       });
-    });
-
-    (async () => {
-      const updatePromises = withNewOrder.map((p) =>
-        supabase.from('products').update({ order_index: p.order_index }).eq('id', p.id)
-      );
-      const results = await Promise.all(updatePromises);
-      const err = results.find((r) => r.error);
-      if (err?.error) {
-        toast({ title: 'Erro ao salvar ordem', variant: 'destructive' });
-        loadProducts();
-      }
-    })();
+      if (error) throw error;
+      setShowCategoryModal(false);
+      setCategoryFormName('');
+      setCategoryFormType(CATEGORY_TYPES[0].id);
+      await loadCategoriesAndSubcategories();
+      toast({ title: 'Categoria adicionada!' });
+    } catch (e) { toast({ title: 'Erro ao adicionar categoria', variant: 'destructive' }); }
   };
 
-  // Funções CRUD para Pizza
+  const handleDeleteCategory = async (category: Category) => {
+    const { data: productsInCat } = await supabase.from('products').select('id').eq('restaurant_id', restaurantId!).eq('category', category.name).limit(1);
+    const hasProducts = (productsInCat?.length ?? 0) > 0;
+    const fallback = categories.find((c) => c.id !== category.id && c.name === 'Outros') || categories.find((c) => c.id !== category.id);
+    const targetCategory = fallback?.name ?? 'Outros';
+    const message = hasProducts
+      ? `Existem produtos em "${category.name}". Eles serão movidos para "${targetCategory}". Deseja continuar?`
+      : `Remover a categoria "${category.name}"?`;
+    if (!confirm(message)) return;
+    try {
+      if (hasProducts) {
+        await supabase.from('products').update({ category: targetCategory, subcategory_id: null }).eq('restaurant_id', restaurantId!).eq('category', category.name);
+      }
+      await supabase.from('categories').delete().eq('id', category.id).eq('restaurant_id', restaurantId!);
+      if (selectedCategoryId === category.id) setSelectedCategoryId(null);
+      await loadCategoriesAndSubcategories();
+      await loadProducts();
+      toast({ title: 'Categoria removida!' });
+    } catch (e) { toast({ title: 'Erro ao remover categoria', variant: 'destructive' }); }
+  };
+
+  // ─── Slug ─────────────────────────────────────────────────────────────────────
+
+  const handleSaveSlug = async () => {
+    if (!restaurantId) return;
+    const slugNormalized = generateSlug(slug) || generateSlug(restaurant?.name || '');
+    if (!slugNormalized) { toast({ title: 'Slug inválido', variant: 'destructive' }); return; }
+    setSlugSaving(true);
+    try {
+      const { error } = await supabase.from('restaurants').update({ slug: slugNormalized }).eq('id', restaurantId);
+      if (error) throw error;
+      setSlug(slugNormalized);
+      toast({ title: 'Slug salvo com sucesso!' });
+    } catch { toast({ title: 'Erro ao salvar slug', variant: 'destructive' }); }
+    finally { setSlugSaving(false); }
+  };
+
+  // ─── CSV ──────────────────────────────────────────────────────────────────────
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !restaurantId) return;
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter((l) => l.trim());
+      if (lines.length < 2) { toast({ title: 'Arquivo CSV inválido', variant: 'destructive' }); return; }
+      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+      const productsToImport: Record<string, unknown>[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map((v) => v.trim());
+        if (values.length < headers.length) continue;
+        const product: Record<string, unknown> = { restaurant_id: restaurantId, is_pizza: false, is_marmita: false, is_active: true };
+        headers.forEach((h, idx) => {
+          const v = values[idx];
+          if (h === 'name') product.name = v;
+          else if (h === 'category') product.category = v;
+          else if (h === 'price') product.price = parseFloat(v) || 0;
+          else if (h === 'price_sale') product.price_sale = parseFloat(v) || product.price;
+          else if (h === 'price_cost') product.price_cost = parseFloat(v) || null;
+          else if (h === 'sku') product.sku = v || null;
+          else if (h === 'description') product.description = v || null;
+          else if (h === 'is_by_weight') product.is_by_weight = v.toLowerCase() === 'true' || v === '1';
+        });
+        if (product.name) productsToImport.push(product);
+      }
+      if (productsToImport.length === 0) { toast({ title: 'Nenhum produto válido no CSV', variant: 'destructive' }); return; }
+      const { error } = await supabase.from('products').insert(productsToImport);
+      if (error) throw error;
+      toast({ title: `${productsToImport.length} produto(s) importado(s) com sucesso!` });
+      setShowImportModal(false);
+      await loadProducts();
+    } catch (e: unknown) {
+      toast({ title: 'Erro ao importar CSV', description: e instanceof Error ? e.message : 'Verifique o arquivo.', variant: 'destructive' });
+    }
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['name', 'category', 'price', 'price_sale', 'price_cost', 'sku', 'description', 'is_by_weight'];
+    const rows = products.map((p) => [
+      p.name, p.category, p.price.toString(), (p.price_sale || p.price).toString(),
+      (p.price_cost || '').toString(), p.sku || '', p.description || '', p.is_by_weight ? 'true' : 'false',
+    ]);
+    const csv = [headers.join(','), ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `produtos_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  // ─── Pizza CRUD ───────────────────────────────────────────────────────────────
+
   const handleSubmitSize = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId) return;
     try {
-      const { error } = await supabase.from('pizza_sizes').insert({
-        restaurant_id: restaurantId,
-        name: formSize.name,
-        max_flavors: formSize.max_flavors,
-        price_multiplier: formSize.price_multiplier,
-        order_index: formSize.order_index,
-      });
+      const { error } = await supabase.from('pizza_sizes').insert({ restaurant_id: restaurantId, ...formSize });
       if (error) throw error;
       setFormSize({ name: '', max_flavors: 1, price_multiplier: 1, order_index: pizzaSizes.length });
       setShowFormSize(false);
       loadMenuConfig();
       toast({ title: 'Tamanho adicionado!' });
-    } catch (err) {
-      console.error(err);
-      toast({ title: 'Erro ao salvar tamanho', variant: 'destructive' });
-    }
+    } catch { toast({ title: 'Erro ao salvar tamanho', variant: 'destructive' }); }
   };
 
   const handleSubmitDough = async (e: React.FormEvent) => {
@@ -539,21 +830,13 @@ export default function AdminMenu() {
     if (!restaurantId) return;
     const extra_price = convertPriceToStorage(String(formDough.extra_price), currency);
     try {
-      const { error } = await supabase.from('pizza_doughs').insert({
-        restaurant_id: restaurantId,
-        name: formDough.name,
-        extra_price,
-        is_active: true,
-      });
+      const { error } = await supabase.from('pizza_doughs').insert({ restaurant_id: restaurantId, name: formDough.name, extra_price, is_active: true });
       if (error) throw error;
       setFormDough({ name: '', extra_price: '' });
       setShowFormDough(false);
       loadMenuConfig();
       toast({ title: 'Massa adicionada!' });
-    } catch (err) {
-      console.error(err);
-      toast({ title: 'Erro ao salvar massa', variant: 'destructive' });
-    }
+    } catch { toast({ title: 'Erro ao salvar massa', variant: 'destructive' }); }
   };
 
   const handleSubmitEdge = async (e: React.FormEvent) => {
@@ -561,844 +844,397 @@ export default function AdminMenu() {
     if (!restaurantId) return;
     const price = convertPriceToStorage(String(formEdge.price), currency);
     try {
-      const { error } = await supabase.from('pizza_edges').insert({
-        restaurant_id: restaurantId,
-        name: formEdge.name,
-        price,
-        is_active: true,
-      });
+      const { error } = await supabase.from('pizza_edges').insert({ restaurant_id: restaurantId, name: formEdge.name, price, is_active: true });
       if (error) throw error;
       setFormEdge({ name: '', price: '' });
       setShowFormEdge(false);
       loadMenuConfig();
       toast({ title: 'Borda adicionada!' });
-    } catch (err) {
-      console.error(err);
-      toast({ title: 'Erro ao salvar borda', variant: 'destructive' });
-    }
+    } catch { toast({ title: 'Erro ao salvar borda', variant: 'destructive' }); }
   };
 
   const deleteSize = async (id: string) => {
     if (!confirm('Excluir este tamanho?')) return;
-    try {
-      await supabase.from('pizza_sizes').delete().eq('id', id);
-      loadMenuConfig();
-      toast({ title: 'Tamanho excluído!' });
-    } catch (e) {
-      console.error(e);
-      toast({ title: 'Erro ao excluir', variant: 'destructive' });
-    }
+    await supabase.from('pizza_sizes').delete().eq('id', id);
+    loadMenuConfig();
+    toast({ title: 'Tamanho excluído!' });
   };
 
   const deleteDough = async (id: string) => {
     if (!confirm('Excluir esta massa?')) return;
-    try {
-      await supabase.from('pizza_doughs').delete().eq('id', id);
-      loadMenuConfig();
-      toast({ title: 'Massa excluída!' });
-    } catch (e) {
-      console.error(e);
-      toast({ title: 'Erro ao excluir', variant: 'destructive' });
-    }
+    await supabase.from('pizza_doughs').delete().eq('id', id);
+    loadMenuConfig();
+    toast({ title: 'Massa excluída!' });
   };
 
   const deleteEdge = async (id: string) => {
     if (!confirm('Excluir esta borda?')) return;
-    try {
-      await supabase.from('pizza_edges').delete().eq('id', id);
-      loadMenuConfig();
-      toast({ title: 'Borda excluída!' });
-    } catch (e) {
-      console.error(e);
-      toast({ title: 'Erro ao excluir', variant: 'destructive' });
-    }
+    await supabase.from('pizza_edges').delete().eq('id', id);
+    loadMenuConfig();
+    toast({ title: 'Borda excluída!' });
   };
 
-  const toggleDoughActive = async (id: string, isActive: boolean) => {
-    try {
-      await supabase.from('pizza_doughs').update({ is_active: !isActive }).eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  // ─── Marmita CRUD ─────────────────────────────────────────────────────────────
 
-  const toggleEdgeActive = async (id: string, isActive: boolean) => {
-    try {
-      await supabase.from('pizza_edges').update({ is_active: !isActive }).eq('id', id);
-      loadMenuConfig();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Funções CRUD para Marmitas
   const handleSubmitMarmitaSize = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId) return;
     const base_price = convertPriceToStorage(String(formMarmitaSize.base_price), currency);
-    // price_per_gram: manter como decimal por enquanto (valor muito pequeno)
-    const price_per_gram = parseFloat(String(formMarmitaSize.price_per_gram).replace(',', '.')) || 0;
+    const price_per_gram = convertPriceToStorage(String(formMarmitaSize.price_per_gram), currency);
     try {
-      const { error } = await supabase.from('marmita_sizes').insert({
-        restaurant_id: restaurantId,
-        name: formMarmitaSize.name,
-        weight_grams: formMarmitaSize.weight_grams,
-        base_price,
-        price_per_gram,
-        order_index: formMarmitaSize.order_index,
-        is_active: true,
-      });
+      const { error } = await supabase.from('marmita_sizes').insert({ restaurant_id: restaurantId, name: formMarmitaSize.name, weight_grams: formMarmitaSize.weight_grams, base_price, price_per_gram, order_index: formMarmitaSize.order_index, is_active: true });
       if (error) throw error;
       setFormMarmitaSize({ name: '', weight_grams: 500, base_price: '', price_per_gram: '', order_index: marmitaSizes.length });
       setShowFormMarmitaSize(false);
       loadMenuConfig();
       toast({ title: 'Tamanho de marmita adicionado!' });
-    } catch (err) {
-      console.error(err);
-      toast({ title: 'Erro ao salvar tamanho', variant: 'destructive' });
-    }
+    } catch { toast({ title: 'Erro ao salvar tamanho', variant: 'destructive' }); }
   };
 
   const handleSubmitMarmitaProtein = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId) return;
-    const price_per_gram = parseFloat(String(formMarmitaProtein.price_per_gram).replace(',', '.')) || 0;
+    const price_per_gram = convertPriceToStorage(String(formMarmitaProtein.price_per_gram), currency);
     try {
-      const { error } = await supabase.from('marmita_proteins').insert({
-        restaurant_id: restaurantId,
-        name: formMarmitaProtein.name,
-        description: formMarmitaProtein.description || null,
-        price_per_gram,
-        is_active: true,
-      });
+      const { error } = await supabase.from('marmita_proteins').insert({ restaurant_id: restaurantId, name: formMarmitaProtein.name, description: formMarmitaProtein.description || null, price_per_gram, is_active: true });
       if (error) throw error;
       setFormMarmitaProtein({ name: '', description: '', price_per_gram: '' });
       setShowFormMarmitaProtein(false);
       loadMenuConfig();
       toast({ title: 'Proteína adicionada!' });
-    } catch (err) {
-      console.error(err);
-      toast({ title: 'Erro ao salvar proteína', variant: 'destructive' });
-    }
+    } catch { toast({ title: 'Erro ao salvar proteína', variant: 'destructive' }); }
   };
 
   const handleSubmitMarmitaSide = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId) return;
-    const price_per_gram = parseFloat(String(formMarmitaSide.price_per_gram).replace(',', '.')) || 0;
+    const price_per_gram = convertPriceToStorage(String(formMarmitaSide.price_per_gram), currency);
     try {
-      const { error } = await supabase.from('marmita_sides').insert({
-        restaurant_id: restaurantId,
-        name: formMarmitaSide.name,
-        description: formMarmitaSide.description || null,
-        price_per_gram,
-        category: formMarmitaSide.category || null,
-        is_active: true,
-      });
+      const { error } = await supabase.from('marmita_sides').insert({ restaurant_id: restaurantId, name: formMarmitaSide.name, description: formMarmitaSide.description || null, price_per_gram, category: formMarmitaSide.category || null, is_active: true });
       if (error) throw error;
       setFormMarmitaSide({ name: '', description: '', price_per_gram: '', category: '' });
       setShowFormMarmitaSide(false);
       loadMenuConfig();
       toast({ title: 'Acompanhamento adicionado!' });
-    } catch (err) {
-      console.error(err);
-      toast({ title: 'Erro ao salvar acompanhamento', variant: 'destructive' });
-    }
+    } catch { toast({ title: 'Erro ao salvar acompanhamento', variant: 'destructive' }); }
   };
 
-  const deleteMarmitaSize = async (id: string) => {
-    if (!confirm('Excluir este tamanho de marmita?')) return;
-    try {
-      await supabase.from('marmita_sizes').delete().eq('id', id);
-      loadMenuConfig();
-      toast({ title: 'Tamanho excluído!' });
-    } catch (e) {
-      console.error(e);
-      toast({ title: 'Erro ao excluir', variant: 'destructive' });
-    }
-  };
+  const deleteMarmitaSize = async (id: string) => { if (!confirm('Excluir?')) return; await supabase.from('marmita_sizes').delete().eq('id', id); loadMenuConfig(); };
+  const deleteMarmitaProtein = async (id: string) => { if (!confirm('Excluir?')) return; await supabase.from('marmita_proteins').delete().eq('id', id); loadMenuConfig(); };
+  const deleteMarmitaSide = async (id: string) => { if (!confirm('Excluir?')) return; await supabase.from('marmita_sides').delete().eq('id', id); loadMenuConfig(); };
 
-  const deleteMarmitaProtein = async (id: string) => {
-    if (!confirm('Excluir esta proteína?')) return;
-    try {
-      await supabase.from('marmita_proteins').delete().eq('id', id);
-      loadMenuConfig();
-      toast({ title: 'Proteína excluída!' });
-    } catch (e) {
-      console.error(e);
-      toast({ title: 'Erro ao excluir', variant: 'destructive' });
-    }
-  };
-
-  const deleteMarmitaSide = async (id: string) => {
-    if (!confirm('Excluir este acompanhamento?')) return;
-    try {
-      await supabase.from('marmita_sides').delete().eq('id', id);
-      loadMenuConfig();
-      toast({ title: 'Acompanhamento excluído!' });
-    } catch (e) {
-      console.error(e);
-      toast({ title: 'Erro ao excluir', variant: 'destructive' });
-    }
-  };
-
-
-  // Agrupar produtos por categoria (ordem da tabela categories)
-  const filteredProducts = useMemo(() => {
-    if (!productSearch.trim()) return products;
-    const q = productSearch.toLowerCase();
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        (p.description ?? '').toLowerCase().includes(q)
-    );
-  }, [products, productSearch]);
-
-  const groupedProducts = filteredProducts.reduce((acc, product) => {
-    if (!acc[product.category]) acc[product.category] = [];
-    acc[product.category].push(product);
-    return acc;
-  }, {} as Record<string, Product[]>);
-  Object.keys(groupedProducts).forEach((cat) => {
-    groupedProducts[cat].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
-  });
-  const categoryOrder = categories.map((c) => c.name);
-  const sortedCategoryNames = categoryOrder.length > 0
-    ? categoryOrder.filter((name) => groupedProducts[name]?.length)
-    : Object.keys(groupedProducts);
-
-  const totalProducts = products.length;
-  const activeProducts = products.filter((p) => p.is_active).length;
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
-      {/* Tabs principais */}
-      <Tabs defaultValue="produtos" className="w-full">
-        <TabsList className="h-auto flex flex-wrap gap-1 p-1 mb-2">
-          <TabsTrigger value="produtos" className="flex items-center gap-1.5">
-            <UtensilsCrossed className="h-4 w-4" />
-            <span>Produtos</span>
-            {totalProducts > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0 h-5">{totalProducts}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="categorias" className="flex items-center gap-1.5">
-            <LayoutGrid className="h-4 w-4" />
-            <span>Categorias</span>
-          </TabsTrigger>
-          <TabsTrigger value="configuracoes" className="flex items-center gap-1.5">
-            <Settings className="h-4 w-4" />
-            <span>Configurações</span>
-          </TabsTrigger>
-          <TabsTrigger value="online" className="flex items-center gap-1.5">
-            <QrCode className="h-4 w-4" />
-            <span>Cardápio Online</span>
-          </TabsTrigger>
-        </TabsList>
+    <div className="space-y-4">
 
-        {/* ── Aba Produtos ── */}
-        <TabsContent value="produtos" className="space-y-5 mt-4">
-          {/* Banner IA */}
-          <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
-            <Sparkles className="h-5 w-5 text-blue-600 shrink-0" />
-            <p className="text-sm text-blue-800">
-              Cadastre o preço de custo para desbloquear a inteligência artificial do seu cardápio.
-            </p>
+      {/* ── Page Header ──────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Central do Cardápio</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {totalProducts} produto{totalProducts !== 1 ? 's' : ''} · {activeProducts} ativo{activeProducts !== 1 ? 's' : ''}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder="Buscar produto..."
+              className="pl-8 h-8 w-44 text-sm"
+            />
           </div>
 
-          {/* Barra de ações */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-wrap">
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  {totalProducts} produto{totalProducts !== 1 ? 's' : ''}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {activeProducts} ativo{activeProducts !== 1 ? 's' : ''} · {totalProducts - activeProducts} inativo{totalProducts - activeProducts !== 1 ? 's' : ''}
-                </p>
-              </div>
-            </div>
-            <div className="flex w-full sm:w-auto items-center gap-2">
-              <div className="relative flex-1 sm:w-56">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  placeholder="Buscar produto..."
-                  className="pl-8 h-9"
-                />
-              </div>
-              <Button onClick={openNew} size="sm" className="shrink-0">
-                <Plus className="h-4 w-4 mr-1.5" />
-                Novo produto
-              </Button>
-            </div>
+          {/* Inventory toggle */}
+          <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${showInventory ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400' : 'border-border text-muted-foreground hover:bg-muted/60'}`}
+            onClick={() => setShowInventory((v) => !v)}
+          >
+            {showInventory ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            <span>Ver Custos</span>
+            <Switch checked={showInventory} onCheckedChange={setShowInventory} className="h-4 w-7 ml-0.5" />
           </div>
 
-          {products.length === 0 ? (
-            <Card>
-              <CardContent className="p-16 text-center space-y-4">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                  <UtensilsCrossed className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground mb-1">Cardápio vazio</p>
-                  <p className="text-sm text-muted-foreground">
-                    Comece adicionando o primeiro produto ao seu cardápio.
-                  </p>
-                </div>
-                <Button onClick={openNew}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar primeiro produto
-                </Button>
-              </CardContent>
-            </Card>
-          ) : sortedCategoryNames.length === 0 ? (
-            <Card>
-              <CardContent className="p-10 text-center">
-                <p className="text-muted-foreground text-sm">Nenhum produto encontrado para <strong>"{productSearch}"</strong>.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleProductsDragEnd}
-            >
-              <div className="space-y-6">
-                {sortedCategoryNames.map((category) => {
-                  const categoryProducts = groupedProducts[category] ?? [];
-                  const catObj = categories.find((c) => c.name === category);
-                  return (
-                    <div key={category} className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-base font-semibold capitalize text-foreground">{category}</h3>
-                        {catObj?.is_pizza && <Badge variant="secondary" className="text-xs">Pizza</Badge>}
-                        {catObj?.is_marmita && <Badge variant="secondary" className="text-xs">Marmita</Badge>}
-                        <Badge variant="outline" className="text-xs">{categoryProducts.length}</Badge>
-                      </div>
-                      <div className="rounded-lg border overflow-hidden">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-muted/40 hover:bg-muted/40">
-                              <TableHead className="w-10" />
-                              <TableHead className="w-[52px]" />
-                              <TableHead>Nome</TableHead>
-                              <TableHead className="text-right">Preço</TableHead>
-                              <TableHead className="w-20 text-center">Status</TableHead>
-                              <TableHead className="w-[180px] text-right">Ações</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            <SortableContext
-                              items={categoryProducts.map((p) => p.id)}
-                              strategy={verticalListSortingStrategy}
-                            >
-                              {categoryProducts.map((product) => (
-                                <ProductRow
-                                  key={product.id}
-                                  product={product}
-                                  currency={currency}
-                                  onEdit={openEdit}
-                                  onDuplicate={duplicateProduct}
-                                  onDelete={deleteProduct}
-                                  onToggleActive={toggleProductStatus}
-                                />
-                              ))}
-                            </SortableContext>
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  );
-                })}
+          {/* Settings */}
+          <Button variant="outline" size="sm" onClick={() => setShowConfigModal(true)} className="h-8 gap-1.5">
+            <Settings className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Configurações</span>
+          </Button>
+
+          {/* Online */}
+          <Button variant="outline" size="sm" onClick={() => setShowOnlineModal(true)} className="h-8 gap-1.5">
+            <QrCode className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Cardápio Online</span>
+          </Button>
+
+          {/* CSV */}
+          <Button variant="outline" size="sm" onClick={() => setShowImportModal(true)} className="h-8 gap-1.5">
+            <Upload className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportCSV} className="h-8 gap-1.5">
+            <Download className="h-3.5 w-3.5" />
+          </Button>
+
+          {/* New product */}
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }} transition={{ duration: 0.15 }} className="inline-flex">
+            <Button size="sm" onClick={() => openNew()} className="h-8 gap-1.5">
+              <Plus className="h-3.5 w-3.5" />
+              Novo Produto
+            </Button>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* ── Two-column master-detail layout ──────────────────────────────────── */}
+      <div className="flex gap-4 items-start min-h-[500px]">
+
+        {/* ── Left: Category Sidebar ──────────────────────────────────────────── */}
+        <div className="w-56 xl:w-64 flex-shrink-0">
+          <Card className="dark:bg-slate-900 sticky top-4">
+            <CardHeader className="pb-2 pt-4 px-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categorias</CardTitle>
+                {savingCategoryOrder && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
               </div>
-            </DndContext>
-          )}
-        </TabsContent>
-
-        {/* ── Aba Categorias ── */}
-        <TabsContent value="categorias" className="space-y-5 mt-4">
-          <div>
-            <h2 className="text-xl font-bold text-foreground">Categorias e Subcategorias</h2>
-            <p className="text-muted-foreground text-sm mt-1">
-              Adicione, remova ou reordene categorias. Expanda para gerenciar subcategorias.
-            </p>
-          </div>
-          {restaurantId && (
-            <CategoryManager restaurantId={restaurantId} onCategoriesChange={loadCategoriesAndSubcategories} />
-          )}
-        </TabsContent>
-
-        {/* ── Aba Configurações ── */}
-        <TabsContent value="configuracoes" className="space-y-8 mt-4">
-          <div>
-            <h2 className="text-xl font-bold text-foreground">Configurações do Cardápio</h2>
-            <p className="text-muted-foreground text-sm mt-1">
-              Configure as opções especiais por tipo de produto.
-            </p>
-          </div>
-
-          {menuConfigLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            </div>
-          ) : (
-            <>
-              {/* ─ Seção Pizza ─ */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
-                    <span className="text-lg">🍕</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">Pizza</h3>
-                    <p className="text-xs text-muted-foreground">Tamanhos, massas e bordas para categorias do tipo Pizza</p>
-                  </div>
-                </div>
-                <div className="h-px bg-border my-2" />
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  {/* Tamanhos */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-semibold">Tamanhos</CardTitle>
-                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormSize(!showFormSize)}>
-                          <Plus className="h-3 w-3 mr-1" /> Add
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-0">
-                      {showFormSize && (
-                        <form onSubmit={handleSubmitSize} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="col-span-2">
-                              <Label className="text-xs">Nome</Label>
-                              <Input value={formSize.name} onChange={(e) => setFormSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Broto, Média" required className="h-8 text-sm" />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Máx. sabores</Label>
-                              <Input type="number" min={1} value={formSize.max_flavors} onChange={(e) => setFormSize((f) => ({ ...f, max_flavors: parseInt(e.target.value, 10) || 1 }))} className="h-8 text-sm" />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Multiplicador</Label>
-                              <Input type="number" step="0.01" min="0" value={formSize.price_multiplier} onChange={(e) => setFormSize((f) => ({ ...f, price_multiplier: parseFloat(e.target.value) || 1 }))} className="h-8 text-sm" />
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormSize(false)} className="flex-1 h-7 text-xs">Cancelar</Button>
-                          </div>
-                        </form>
-                      )}
-                      <ul className="space-y-1.5">
-                        {pizzaSizes.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum tamanho cadastrado.</p>}
-                        {pizzaSizes.map((s) => (
-                          <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
-                            <span className="text-xs"><strong>{s.name}</strong> · {s.max_flavors} sabor(es) · {Number(s.price_multiplier)}x</span>
-                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteSize(s.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-
-                  {/* Massas */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-semibold">Tipos de Massa</CardTitle>
-                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormDough(!showFormDough)}>
-                          <Plus className="h-3 w-3 mr-1" /> Add
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-0">
-                      {showFormDough && (
-                        <form onSubmit={handleSubmitDough} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                          <div>
-                            <Label className="text-xs">Nome</Label>
-                            <Input value={formDough.name} onChange={(e) => setFormDough((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Tradicional" required className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Acréscimo ({getCurrencySymbol(currency)})</Label>
-                            <Input type="text" value={formDough.extra_price} onChange={(e) => setFormDough((f) => ({ ...f, extra_price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))} placeholder="0" className="h-8 text-sm" />
-                          </div>
-                          <div className="flex gap-2">
-                            <Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormDough(false)} className="flex-1 h-7 text-xs">Cancelar</Button>
-                          </div>
-                        </form>
-                      )}
-                      <ul className="space-y-1.5">
-                        {pizzaDoughs.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum tipo cadastrado.</p>}
-                        {pizzaDoughs.map((d) => (
-                          <li key={d.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
-                            <span className="text-xs"><strong>{d.name}</strong> {Number(d.extra_price) > 0 ? `+${formatCurrency(Number(d.extra_price), currency)}` : ''}{!d.is_active && ' · inativo'}</span>
-                            <div className="flex gap-1">
-                              <Button type="button" size="sm" variant="ghost" onClick={() => toggleDoughActive(d.id, d.is_active)} className="h-6 text-xs px-1.5">{d.is_active ? 'Desativar' : 'Ativar'}</Button>
-                              <Button type="button" size="sm" variant="ghost" onClick={() => deleteDough(d.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-
-                  {/* Bordas */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-semibold">Bordas Recheadas</CardTitle>
-                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormEdge(!showFormEdge)}>
-                          <Plus className="h-3 w-3 mr-1" /> Add
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-0">
-                      {showFormEdge && (
-                        <form onSubmit={handleSubmitEdge} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                          <div>
-                            <Label className="text-xs">Nome</Label>
-                            <Input value={formEdge.name} onChange={(e) => setFormEdge((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Catupiry" required className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Preço ({getCurrencySymbol(currency)})</Label>
-                            <Input type="text" value={formEdge.price} onChange={(e) => setFormEdge((f) => ({ ...f, price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))} placeholder={currency === 'PYG' ? '8.000' : '8,00'} required className="h-8 text-sm" />
-                          </div>
-                          <div className="flex gap-2">
-                            <Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormEdge(false)} className="flex-1 h-7 text-xs">Cancelar</Button>
-                          </div>
-                        </form>
-                      )}
-                      <ul className="space-y-1.5">
-                        {pizzaEdges.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhuma borda cadastrada.</p>}
-                        {pizzaEdges.map((e) => (
-                          <li key={e.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
-                            <span className="text-xs"><strong>{e.name}</strong> · {formatCurrency(Number(e.price), currency)}{!e.is_active && ' · inativo'}</span>
-                            <div className="flex gap-1">
-                              <Button type="button" size="sm" variant="ghost" onClick={() => toggleEdgeActive(e.id, e.is_active)} className="h-6 text-xs px-1.5">{e.is_active ? 'Desativar' : 'Ativar'}</Button>
-                              <Button type="button" size="sm" variant="ghost" onClick={() => deleteEdge(e.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-
-              {/* ─ Seção Marmitas ─ */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-green-100 flex items-center justify-center">
-                    <span className="text-lg">🍱</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">Marmitas</h3>
-                    <p className="text-xs text-muted-foreground">Tamanhos, proteínas e acompanhamentos para categorias do tipo Marmita</p>
-                  </div>
-                </div>
-                <div className="h-px bg-border my-2" />
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  {/* Tamanhos de Marmita */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-semibold">Tamanhos (Pesos)</CardTitle>
-                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormMarmitaSize(!showFormMarmitaSize)}>
-                          <Plus className="h-3 w-3 mr-1" /> Add
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-0">
-                      {showFormMarmitaSize && (
-                        <form onSubmit={handleSubmitMarmitaSize} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="col-span-2">
-                              <Label className="text-xs">Nome</Label>
-                              <Input value={formMarmitaSize.name} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: 300g, 500g" required className="h-8 text-sm" />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Peso (g)</Label>
-                              <Input type="number" min={100} step={50} value={formMarmitaSize.weight_grams} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, weight_grams: parseInt(e.target.value, 10) || 500 }))} required className="h-8 text-sm" />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Preço base</Label>
-                              <Input type="text" value={formMarmitaSize.base_price} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, base_price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))} placeholder={currency === 'PYG' ? '15.000' : '15,00'} required className="h-8 text-sm" />
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSize(false)} className="flex-1 h-7 text-xs">Cancelar</Button>
-                          </div>
-                        </form>
-                      )}
-                      <ul className="space-y-1.5">
-                        {marmitaSizes.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum tamanho cadastrado.</p>}
-                        {marmitaSizes.map((s) => (
-                          <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
-                            <span className="text-xs"><strong>{s.name}</strong> · {s.weight_grams}g · {formatCurrency(Number(s.base_price), currency)}</span>
-                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSize(s.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-
-                  {/* Proteínas */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-semibold">Proteínas</CardTitle>
-                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormMarmitaProtein(!showFormMarmitaProtein)}>
-                          <Plus className="h-3 w-3 mr-1" /> Add
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-0">
-                      {showFormMarmitaProtein && (
-                        <form onSubmit={handleSubmitMarmitaProtein} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                          <div>
-                            <Label className="text-xs">Nome</Label>
-                            <Input value={formMarmitaProtein.name} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Frango Grelhado" required className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Descrição (opcional)</Label>
-                            <Input value={formMarmitaProtein.description} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, description: e.target.value }))} placeholder="Ex: Peito grelhado" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Preço/g ({getCurrencySymbol(currency)})</Label>
-                            <Input type="text" value={formMarmitaProtein.price_per_gram} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,08" required className="h-8 text-sm" />
-                          </div>
-                          <div className="flex gap-2">
-                            <Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaProtein(false)} className="flex-1 h-7 text-xs">Cancelar</Button>
-                          </div>
-                        </form>
-                      )}
-                      <ul className="space-y-1.5">
-                        {marmitaProteins.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhuma proteína cadastrada.</p>}
-                        {marmitaProteins.map((p) => (
-                          <li key={p.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
-                            <span className="text-xs"><strong>{p.name}</strong> · {formatCurrency(Number(p.price_per_gram), currency)}/g{!p.is_active && ' · inativo'}</span>
-                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaProtein(p.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-
-                  {/* Acompanhamentos */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-semibold">Acompanhamentos</CardTitle>
-                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormMarmitaSide(!showFormMarmitaSide)}>
-                          <Plus className="h-3 w-3 mr-1" /> Add
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-0">
-                      {showFormMarmitaSide && (
-                        <form onSubmit={handleSubmitMarmitaSide} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                          <div>
-                            <Label className="text-xs">Nome</Label>
-                            <Input value={formMarmitaSide.name} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Arroz Branco" required className="h-8 text-sm" />
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-xs">Categoria</Label>
-                              <Input value={formMarmitaSide.category} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, category: e.target.value }))} placeholder="Ex: Arroz" className="h-8 text-sm" />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Preço/g ({getCurrencySymbol(currency)})</Label>
-                              <Input type="text" value={formMarmitaSide.price_per_gram} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,02" required className="h-8 text-sm" />
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSide(false)} className="flex-1 h-7 text-xs">Cancelar</Button>
-                          </div>
-                        </form>
-                      )}
-                      <ul className="space-y-1.5">
-                        {marmitaSides.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum acompanhamento cadastrado.</p>}
-                        {marmitaSides.map((s) => (
-                          <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
-                            <span className="text-xs"><strong>{s.name}</strong> {s.category && `(${s.category})`} · {formatCurrency(Number(s.price_per_gram), currency)}/g{!s.is_active && ' · inativo'}</span>
-                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSide(s.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </>
-          )}
-        </TabsContent>
-
-        {/* ── Aba Cardápio Online ── */}
-        <TabsContent value="online" className="space-y-6 mt-4">
-          <div>
-            <h2 className="text-xl font-bold text-foreground">Cardápio Online</h2>
-            <p className="text-muted-foreground text-sm mt-1">
-              Configure e compartilhe o link público do seu cardápio.
-            </p>
-          </div>
-
-          {/* Slug config */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Endereço do cardápio</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Defina o slug único que aparece no URL do seu cardápio.
-              </p>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1">
-                  <Label htmlFor="slug">Slug</Label>
-                  <Input
-                    id="slug"
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'))}
-                    placeholder="ex: minha-pizzaria"
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Apenas letras minúsculas, números e hífens.
-                  </p>
-                </div>
-                <div className="flex items-end">
-                  <Button onClick={handleSaveSlug} disabled={slugSaving} className="w-full sm:w-auto">
-                    {slugSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                    Salvar
-                  </Button>
-                </div>
-              </div>
+            <CardContent className="px-2 pb-3 space-y-0.5">
 
-              {(slug || restaurant?.slug) && (
-                <div className="space-y-3 pt-2 border-t">
-                  {/* Link interativo */}
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Label className="text-sm font-medium">Cardápio interativo</Label>
-                      <Badge variant="secondary" className="text-xs">Pedidos habilitados</Badge>
-                    </div>
-                    <div className="flex gap-2">
-                      <Input readOnly value={getCardapioPublicUrl(slug || restaurant?.slug || '')} className="flex-1 text-sm bg-muted/30" />
-                      <Button type="button" variant="outline" size="sm" onClick={copyCardapioLink} className="shrink-0">
-                        {linkCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-                        {linkCopied ? 'Copiado!' : 'Copiar'}
-                      </Button>
-                      <Button type="button" variant="ghost" size="sm" className="shrink-0 px-2" onClick={() => window.open(getCardapioPublicUrl(slug || restaurant?.slug || ''), '_blank')}>
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+              {/* "Todas" */}
+              <button
+                type="button"
+                onClick={() => setSelectedCategoryId(null)}
+                className={`w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors ${
+                  selectedCategoryId === null
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-muted/70 text-foreground'
+                }`}
+              >
+                <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 text-left">Todas</span>
+                <Badge
+                  variant={selectedCategoryId === null ? 'secondary' : 'outline'}
+                  className={`text-xs h-4 px-1.5 ${selectedCategoryId === null ? 'bg-primary-foreground/20 text-primary-foreground border-0' : ''}`}
+                >
+                  {totalProducts}
+                </Badge>
+              </button>
 
-                  {/* Link somente visualização */}
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Label className="text-sm font-medium">Cardápio somente leitura</Label>
-                      <Badge variant="outline" className="text-xs">Sem pedidos</Badge>
-                    </div>
-                    <div className="flex gap-2">
-                      <Input readOnly value={getCardapioPublicUrl(slug || restaurant?.slug || '') + '/menu'} className="flex-1 text-sm bg-muted/30" />
-                      <Button type="button" variant="outline" size="sm" onClick={() => {
-                        const url = getCardapioPublicUrl(slug || restaurant?.slug || '') + '/menu';
-                        navigator.clipboard.writeText(url).then(() => {
-                          setMenuLinkCopied(true);
-                          toast({ title: 'Link copiado!' });
-                          setTimeout(() => setMenuLinkCopied(false), 2000);
-                        });
-                      }} className="shrink-0">
-                        {menuLinkCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-                        {menuLinkCopied ? 'Copiado!' : 'Copiar'}
-                      </Button>
-                      <Button type="button" variant="ghost" size="sm" className="shrink-0 px-2" onClick={() => window.open(getCardapioPublicUrl(slug || restaurant?.slug || '') + '/menu', '_blank')}>
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Ideal para substituir o cardápio físico — sem opção de fazer pedidos.
-                    </p>
-                  </div>
+              {/* Category list with DnD */}
+              {loading ? (
+                <div className="py-3 flex justify-center">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
+              ) : categories.length === 0 ? (
+                <p className="text-xs text-muted-foreground px-2 py-3 text-center">
+                  Nenhuma categoria ainda.
+                </p>
+              ) : (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCategoryDragEnd}>
+                  <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+                    {categories.map((cat) => (
+                      <SortableCategoryItem
+                        key={cat.id}
+                        category={cat}
+                        count={products.filter((p) => p.category === cat.name).length}
+                        isSelected={selectedCategoryId === cat.id}
+                        onSelect={() => setSelectedCategoryId(cat.id)}
+                        onDelete={() => handleDeleteCategory(cat)}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
               )}
+
+              {/* Add category */}
+              <button
+                type="button"
+                onClick={() => setShowCategoryModal(true)}
+                className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors mt-1 border border-dashed border-border/60 hover:border-border"
+              >
+                <Plus className="h-3.5 w-3.5 shrink-0" />
+                <span>Nova Categoria</span>
+              </button>
+
             </CardContent>
           </Card>
+        </div>
 
-          {/* QR Code */}
-          <MenuQRCodeCard slug={slug || restaurant?.slug || ''} />
-        </TabsContent>
-      </Tabs>
+        {/* ── Right: Products panel ────────────────────────────────────────────── */}
+        <div className="flex-1 min-w-0">
 
-      {/* Modal Adicionar/Editar Produto - Melhorado para Mobile */}
+          {/* Panel header */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold text-foreground">
+                {selectedCategory ? selectedCategory.name : 'Todos os Produtos'}
+              </h2>
+              {selectedCategory?.is_pizza && <Badge variant="secondary" className="text-xs">Pizza</Badge>}
+              {selectedCategory?.is_marmita && <Badge variant="secondary" className="text-xs">Marmita</Badge>}
+              <Badge variant="outline" className="text-xs">{filteredProducts.length}</Badge>
+            </div>
+            {selectedCategory && (
+              <Button size="sm" variant="outline" onClick={() => openNew(selectedCategory.id)} className="h-7 text-xs gap-1">
+                <Plus className="h-3 w-3" />
+                Produto nesta categoria
+              </Button>
+            )}
+          </div>
+
+          {/* Inventory mode info banner */}
+          <AnimatePresence>
+            {showInventory && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                transition={{ duration: 0.18 }}
+                className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 overflow-hidden"
+              >
+                <BarChart2 className="h-3.5 w-3.5 shrink-0" />
+                <span>Modo inventário ativado — exibindo custo e margem de lucro. Margem: <strong className="text-emerald-700">≥40% verde</strong>, <strong className="text-amber-600">20–40% amarelo</strong>, <strong className="text-red-600">&lt;20% vermelho</strong>.</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Loading skeleton */}
+          {loading ? (
+            <Card className="dark:bg-slate-900">
+              <CardContent className="p-6 space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-md bg-muted animate-pulse" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-4 bg-muted rounded animate-pulse w-1/3" />
+                      <div className="h-3 bg-muted rounded animate-pulse w-1/5" />
+                    </div>
+                    <div className="h-4 bg-muted rounded animate-pulse w-16" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : filteredProducts.length === 0 ? (
+            <Card className="dark:bg-slate-900">
+              <CardContent className="p-16 text-center space-y-4">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+                  <Package className="h-7 w-7 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground mb-1">
+                    {productSearch ? 'Nenhum produto encontrado' : 'Nenhum produto aqui ainda'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {productSearch
+                      ? `Sem resultados para "${productSearch}"`
+                      : 'Crie o primeiro produto desta categoria.'}
+                  </p>
+                </div>
+                {!productSearch && (
+                  <Button onClick={() => openNew(selectedCategoryId ?? undefined)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Produto
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={selectedCategoryId || 'all'}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] }}
+                className="space-y-5"
+              >
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleProductsDragEnd}>
+                  {sortedCategoryNames.map((categoryName) => {
+                    const catProducts = groupedProducts[categoryName] ?? [];
+                    const catObj = categories.find((c) => c.name === categoryName);
+                    return (
+                      <div key={categoryName} className="space-y-1.5">
+                        {/* Show category header only in "All" mode */}
+                        {!selectedCategoryId && (
+                          <div className="flex items-center gap-2 px-1">
+                            <span className="text-sm font-semibold text-foreground">{categoryName}</span>
+                            {catObj?.is_pizza && <Badge variant="secondary" className="text-xs">Pizza</Badge>}
+                            {catObj?.is_marmita && <Badge variant="secondary" className="text-xs">Marmita</Badge>}
+                            <Badge variant="outline" className="text-xs">{catProducts.length}</Badge>
+                          </div>
+                        )}
+                        <div className="rounded-lg border border-border overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                                <TableHead className="w-8" />
+                                <TableHead className="w-10" />
+                                <TableHead>Nome</TableHead>
+                                <TableHead className="text-right whitespace-nowrap">Preço Venda</TableHead>
+                                {showInventory && (
+                                  <>
+                                    <TableHead className="text-right whitespace-nowrap">Custo</TableHead>
+                                    <TableHead className="text-right whitespace-nowrap">Margem</TableHead>
+                                  </>
+                                )}
+                                <TableHead className="w-12 text-center">Ativo</TableHead>
+                                <TableHead className="w-[120px] text-right">Ações</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              <SortableContext items={catProducts.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                                {catProducts.map((product) => (
+                                  <CentralProductRow
+                                    key={product.id}
+                                    product={product}
+                                    currency={currency}
+                                    showInventory={showInventory}
+                                    onEdit={openEdit}
+                                    onDuplicate={duplicateProduct}
+                                    onDelete={deleteProduct}
+                                    onToggleActive={toggleProductStatus}
+                                  />
+                                ))}
+                              </SortableContext>
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </DndContext>
+              </motion.div>
+            </AnimatePresence>
+          )}
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════════════════
+          MODALS
+      ════════════════════════════════════════════════════════════════════════ */}
+
+      {/* ── Product Form Modal ─────────────────────────────────────────────── */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl sm:text-2xl">
-              {editingProduct ? 'Editar Produto' : 'Novo Produto'}
-            </DialogTitle>
+            <DialogTitle className="text-xl">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSaveProduct} className="space-y-5">
-            {/* Nome e Categoria em Grid Responsivo */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome *</Label>
-                <Input
-                  id="name"
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder={
-                    categoryConfig.isPizza
-                      ? 'Ex: Margherita, Calabresa'
-                      : categoryConfig.extraField === 'volume'
-                      ? 'Ex: Refrigerante, Suco'
-                      : 'Ex: nome do produto'
-                  }
-                  className="text-base"
-                  required
-                />
+                <Label htmlFor="p-name">Nome *</Label>
+                <Input id="p-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder={categoryConfig.isPizza ? 'Ex: Margherita, Calabresa' : 'Ex: nome do produto'} required />
               </div>
-
               <div className="space-y-2">
                 <Label>Categoria *</Label>
-                <Select
-                  value={form.categoryId}
-                  onValueChange={handleCategoryChange}
-                  required
-                >
-                  <SelectTrigger className="text-base">
-                    <SelectValue placeholder={categories.length ? 'Selecione' : 'Crie uma categoria na aba Categorias'} />
-                  </SelectTrigger>
+                <Select value={form.categoryId} onValueChange={handleCategoryChange} required>
+                  <SelectTrigger><SelectValue placeholder={categories.length ? 'Selecione' : 'Crie uma categoria'} /></SelectTrigger>
                   <SelectContent>
                     {categories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
-                        {cat.name}
-                        {cat.is_pizza && ' (tamanhos e sabores)'}
-                        {cat.is_marmita && ' (monte sua marmita)'}
+                        {cat.name}{cat.is_pizza && ' (pizza)'}{cat.is_marmita && ' (marmita)'}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1409,251 +1245,471 @@ export default function AdminMenu() {
             {subcategoriesOfSelected.length > 0 && (
               <div className="space-y-2">
                 <Label>Subcategoria (opcional)</Label>
-                <Select
-                  value={form.subcategoryId ?? 'none'}
-                  onValueChange={(v) => setForm((f) => ({ ...f, subcategoryId: v === 'none' ? null : v }))}
-                >
-                  <SelectTrigger className="text-base">
-                    <SelectValue placeholder="Nenhuma" />
-                  </SelectTrigger>
+                <Select value={form.subcategoryId ?? 'none'} onValueChange={(v) => setForm((f) => ({ ...f, subcategoryId: v === 'none' ? null : v }))}>
+                  <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhuma</SelectItem>
-                    {subcategoriesOfSelected.map((sub) => (
-                      <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
-                    ))}
+                    {subcategoriesOfSelected.map((sub) => <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             )}
 
-            {/* Mensagens informativas */}
             {categoryConfig.isPizza && (
               <div className="flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-                <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                <span>
-                  Produto configurado como <strong>pizza</strong>. O cliente poderá escolher tamanho, sabores e borda na hora do pedido. Configure nas <strong>Configurações</strong>.
-                </span>
+                <Info className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>Produto configurado como <strong>pizza</strong>. Configure tamanhos e bordas em <strong>Configurações Avançadas</strong>.</span>
               </div>
             )}
-
             {categoryConfig.isMarmita && (
               <div className="flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-                <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                <span>
-                  Produto configurado como <strong>marmita</strong>. O cliente poderá escolher tamanho (peso), proteínas e acompanhamentos na hora do pedido. Configure nas <strong>Configurações</strong>.
-                </span>
+                <Info className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>Produto configurado como <strong>marmita</strong>. Configure proteínas e acompanhamentos em <strong>Configurações Avançadas</strong>.</span>
               </div>
             )}
 
-            {/* Campo extra e Descrição em Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {categoryConfig.extraField && (
                 <div className="space-y-2">
-                  <Label htmlFor="categoryDetail">
-                    {categoryConfig.extraLabel}
-                  </Label>
-                  <Input
-                    id="categoryDetail"
-                    value={form.categoryDetail}
-                    onChange={(e) => setForm((f) => ({ ...f, categoryDetail: e.target.value }))}
-                    placeholder={categoryConfig.extraPlaceholder}
-                    className="text-base"
-                  />
+                  <Label>{categoryConfig.extraLabel}</Label>
+                  <Input value={form.categoryDetail} onChange={(e) => setForm((f) => ({ ...f, categoryDetail: e.target.value }))}
+                    placeholder={categoryConfig.extraPlaceholder} />
                 </div>
               )}
-
               <div className="space-y-2">
-                <Label htmlFor="price">
-                  {categoryConfig.priceLabel ? `${categoryConfig.priceLabel} (${getCurrencySymbol(currency)}) *` : `Preço (${getCurrencySymbol(currency)}) *`}
-                </Label>
-                <Input
-                  id="price"
-                  type="text"
-                  inputMode="decimal"
-                  value={form.price}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
-                    }))
-                  }
-                  placeholder={currency === 'PYG' ? '25.000' : '0,00'}
-                  className="text-base"
-                  required
-                />
+                <Label htmlFor="p-price">{categoryConfig.priceLabel || 'Preço'} ({getCurrencySymbol(currency)}) *</Label>
+                <Input id="p-price" type="text" inputMode="decimal" value={form.price}
+                  onChange={(e) => setForm((f) => ({ ...f, price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))}
+                  placeholder={currency === 'PYG' ? '25.000' : '0,00'} required />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder={
-                  categoryConfig.isPizza
-                    ? 'Ex: Molho de tomate, mussarela e manjericão'
-                    : 'Descrição opcional do produto'
-                }
-                rows={3}
-                className="resize-none text-base"
-              />
+              <Label htmlFor="p-desc">Descrição</Label>
+              <Textarea id="p-desc" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder={categoryConfig.isPizza ? 'Ex: Molho de tomate, mussarela e manjericão' : 'Descrição opcional do produto'}
+                rows={3} className="resize-none" />
             </div>
 
-            {/* Imagem - Layout Melhorado */}
-            <div className="space-y-3">
+            {/* Image upload */}
+            <div className="space-y-2">
               <Label>Imagem do produto</Label>
-              <p className="text-xs text-muted-foreground">
-                PNG, JPG, GIF ou WebP. Será convertida para WebP (80%) automaticamente.
-              </p>
-              
               {form.image_url ? (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border rounded-lg bg-muted/30">
-                  <div className="w-24 h-24 rounded-lg overflow-hidden border bg-muted flex-shrink-0">
-                    <img
-                      src={form.image_url}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
+                <div className="flex gap-4 p-3 border rounded-lg bg-muted/30 items-start">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden border bg-muted flex-shrink-0">
+                    <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 space-y-2">
-                    <Input
-                      type="url"
-                      value={form.image_url}
-                      onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
-                      placeholder="Ou cole uma URL"
-                      className="text-base"
-                    />
-                    <div className="flex flex-col sm:flex-row gap-2">
+                    <Input type="url" value={form.image_url} onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))} placeholder="URL da imagem" />
+                    <div className="flex gap-2">
                       <label className="cursor-pointer flex-1">
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
-                          className="sr-only"
-                          disabled={imageUploading || !restaurantId}
+                        <input type="file" accept="image/*" className="sr-only" disabled={imageUploading || !restaurantId}
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file || !restaurantId) return;
                             setImageUploading(true);
-                            try {
-                              const url = await uploadProductImage(restaurantId, file);
-                              setForm((f) => ({ ...f, image_url: url }));
-                              toast({ title: 'Imagem enviada e otimizada!' });
-                            } catch (err) {
-                              toast({
-                                title: 'Erro ao enviar imagem',
-                                description: err instanceof Error ? err.message : 'Tente outro arquivo.',
-                                variant: 'destructive',
-                              });
-                            } finally {
-                              setImageUploading(false);
-                              e.target.value = '';
-                            }
+                            try { const url = await uploadProductImage(restaurantId, file); setForm((f) => ({ ...f, image_url: url })); toast({ title: 'Imagem enviada!' }); }
+                            catch (err) { toast({ title: 'Erro ao enviar imagem', description: err instanceof Error ? err.message : 'Tente outro arquivo.', variant: 'destructive' }); }
+                            finally { setImageUploading(false); e.target.value = ''; }
                           }}
                         />
-                        <Button type="button" variant="outline" className="w-full" disabled={imageUploading}>
-                          {imageUploading ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Enviando...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Trocar imagem
-                            </>
-                          )}
+                        <Button type="button" variant="outline" size="sm" className="w-full" disabled={imageUploading}>
+                          {imageUploading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enviando...</> : <><Upload className="h-4 w-4 mr-2" />Trocar imagem</>}
                         </Button>
                       </label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setForm((f) => ({ ...f, image_url: '' }))}
-                        className="w-full sm:w-auto"
-                      >
-                        Remover
-                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setForm((f) => ({ ...f, image_url: '' }))}>Remover</Button>
                     </div>
                   </div>
                 </div>
               ) : (
                 <label className="cursor-pointer block">
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
-                    className="sr-only"
-                    disabled={imageUploading || !restaurantId}
+                  <input type="file" accept="image/*" className="sr-only" disabled={imageUploading || !restaurantId}
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file || !restaurantId) return;
                       setImageUploading(true);
-                      try {
-                        const url = await uploadProductImage(restaurantId, file);
-                        setForm((f) => ({ ...f, image_url: url }));
-                        toast({ title: 'Imagem enviada e otimizada!' });
-                      } catch (err) {
-                        toast({
-                          title: 'Erro ao enviar imagem',
-                          description: err instanceof Error ? err.message : 'Tente outro arquivo.',
-                          variant: 'destructive',
-                        });
-                      } finally {
-                        setImageUploading(false);
-                        e.target.value = '';
-                      }
+                      try { const url = await uploadProductImage(restaurantId, file); setForm((f) => ({ ...f, image_url: url })); toast({ title: 'Imagem enviada!' }); }
+                      catch (err) { toast({ title: 'Erro ao enviar imagem', description: err instanceof Error ? err.message : 'Tente outro arquivo.', variant: 'destructive' }); }
+                      finally { setImageUploading(false); e.target.value = ''; }
                     }}
                   />
-                  <div className="border-2 border-dashed rounded-lg p-8 text-center hover:bg-muted/50 transition-colors">
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-muted/50 transition-colors">
                     {imageUploading ? (
-                      <div className="flex flex-col items-center gap-2">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <span className="text-sm text-muted-foreground">Enviando e otimizando...</span>
-                      </div>
+                      <div className="flex flex-col items-center gap-2"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="text-sm text-muted-foreground">Enviando...</span></div>
                     ) : (
-                      <div className="flex flex-col items-center gap-2">
-                        <Upload className="h-8 w-8 text-muted-foreground" />
-                        <span className="text-sm font-medium">Clique para fazer upload</span>
-                        <span className="text-xs text-muted-foreground">Ou cole uma URL abaixo</span>
-                      </div>
+                      <div className="flex flex-col items-center gap-1.5"><Upload className="h-6 w-6 text-muted-foreground" /><span className="text-sm font-medium">Clique para fazer upload</span></div>
                     )}
                   </div>
-                  <Input
-                    type="url"
-                    value={form.image_url}
-                    onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
-                    placeholder="Ou cole uma URL da imagem aqui"
-                    className="mt-2 text-base"
-                  />
+                  <Input type="url" value={form.image_url} onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))} placeholder="Ou cole uma URL de imagem" className="mt-2" />
                 </label>
               )}
             </div>
 
-            <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setModalOpen(false)}
-                disabled={saving}
-                className="w-full sm:w-auto"
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={saving} className="w-full sm:w-auto">
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Salvando...
-                  </>
-                ) : editingProduct ? (
-                  'Salvar Alterações'
-                ) : (
-                  'Adicionar ao Cardápio'
-                )}
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={() => setModalOpen(false)} disabled={saving}>Cancelar</Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</> : editingProduct ? 'Salvar Alterações' : 'Adicionar ao Cardápio'}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* ── New Category Modal ──────────────────────────────────────────────── */}
+      <Dialog open={showCategoryModal} onOpenChange={setShowCategoryModal}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Nova Categoria</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Nome da categoria</Label>
+              <Input placeholder="Ex: Pizza, Bebidas, Sobremesas" value={categoryFormName} onChange={(e) => setCategoryFormName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()} />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo / Comportamento</Label>
+              <Select value={categoryFormType} onValueChange={setCategoryFormType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_TYPES.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCategoryModal(false)}>Cancelar</Button>
+            <Button onClick={handleAddCategory} disabled={!categoryFormName.trim()}>Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Advanced Config Modal (Pizza / Marmita) ──────────────────────────── */}
+      <Dialog open={showConfigModal} onOpenChange={setShowConfigModal}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Configurações Avançadas do Cardápio</DialogTitle>
+          </DialogHeader>
+          {menuConfigLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
+          ) : (
+            <Tabs defaultValue="pizza" className="mt-2">
+              <TabsList>
+                <TabsTrigger value="pizza">🍕 Pizza</TabsTrigger>
+                <TabsTrigger value="marmita">🥘 Marmita</TabsTrigger>
+              </TabsList>
+
+              {/* Pizza tab */}
+              <TabsContent value="pizza" className="space-y-5 mt-4">
+                {/* Sizes */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold">Tamanhos</CardTitle>
+                      <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormSize(!showFormSize)}>
+                        <Plus className="h-3 w-3 mr-1" /> Add
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-0">
+                    {showFormSize && (
+                      <form onSubmit={handleSubmitSize} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                        <div className="grid grid-cols-3 gap-2">
+                          <div><Label className="text-xs">Nome</Label><Input value={formSize.name} onChange={(e) => setFormSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Média" required className="h-8 text-sm" /></div>
+                          <div><Label className="text-xs">Máx. Sabores</Label><Input type="number" min={1} value={formSize.max_flavors} onChange={(e) => setFormSize((f) => ({ ...f, max_flavors: +e.target.value }))} className="h-8 text-sm" /></div>
+                          <div><Label className="text-xs">Multiplicador</Label><Input type="number" step="0.01" min={0.1} value={formSize.price_multiplier} onChange={(e) => setFormSize((f) => ({ ...f, price_multiplier: +e.target.value }))} className="h-8 text-sm" /></div>
+                        </div>
+                        <div className="flex gap-2"><Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button><Button type="button" size="sm" variant="outline" onClick={() => setShowFormSize(false)} className="flex-1 h-7 text-xs">Cancelar</Button></div>
+                      </form>
+                    )}
+                    <ul className="space-y-1.5">
+                      {pizzaSizes.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum tamanho cadastrado.</p>}
+                      {pizzaSizes.map((s) => (
+                        <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
+                          <span className="text-xs"><strong>{s.name}</strong> · {s.max_flavors} sabor(es) · ×{s.price_multiplier}</span>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => deleteSize(s.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                {/* Doughs */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold">Massas</CardTitle>
+                      <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormDough(!showFormDough)}>
+                        <Plus className="h-3 w-3 mr-1" /> Add
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-0">
+                    {showFormDough && (
+                      <form onSubmit={handleSubmitDough} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div><Label className="text-xs">Nome</Label><Input value={formDough.name} onChange={(e) => setFormDough((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Fina, Grossa" required className="h-8 text-sm" /></div>
+                          <div><Label className="text-xs">Preço extra ({getCurrencySymbol(currency)})</Label><Input type="text" value={formDough.extra_price} onChange={(e) => setFormDough((f) => ({ ...f, extra_price: e.target.value }))} placeholder="0,00" required className="h-8 text-sm" /></div>
+                        </div>
+                        <div className="flex gap-2"><Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button><Button type="button" size="sm" variant="outline" onClick={() => setShowFormDough(false)} className="flex-1 h-7 text-xs">Cancelar</Button></div>
+                      </form>
+                    )}
+                    <ul className="space-y-1.5">
+                      {pizzaDoughs.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhuma massa cadastrada.</p>}
+                      {pizzaDoughs.map((d) => (
+                        <li key={d.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
+                          <span className="text-xs"><strong>{d.name}</strong> · +{formatCurrency(Number(d.extra_price), currency)}</span>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => deleteDough(d.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                {/* Edges */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold">Bordas</CardTitle>
+                      <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormEdge(!showFormEdge)}>
+                        <Plus className="h-3 w-3 mr-1" /> Add
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-0">
+                    {showFormEdge && (
+                      <form onSubmit={handleSubmitEdge} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div><Label className="text-xs">Nome</Label><Input value={formEdge.name} onChange={(e) => setFormEdge((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Catupiry" required className="h-8 text-sm" /></div>
+                          <div><Label className="text-xs">Preço ({getCurrencySymbol(currency)})</Label><Input type="text" value={formEdge.price} onChange={(e) => setFormEdge((f) => ({ ...f, price: e.target.value }))} placeholder="0,00" required className="h-8 text-sm" /></div>
+                        </div>
+                        <div className="flex gap-2"><Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button><Button type="button" size="sm" variant="outline" onClick={() => setShowFormEdge(false)} className="flex-1 h-7 text-xs">Cancelar</Button></div>
+                      </form>
+                    )}
+                    <ul className="space-y-1.5">
+                      {pizzaEdges.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhuma borda cadastrada.</p>}
+                      {pizzaEdges.map((edge) => (
+                        <li key={edge.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
+                          <span className="text-xs"><strong>{edge.name}</strong> · {formatCurrency(Number(edge.price), currency)}</span>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => deleteEdge(edge.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Marmita tab */}
+              <TabsContent value="marmita" className="space-y-5 mt-4">
+                {/* Sizes */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold">Tamanhos de Marmita</CardTitle>
+                      <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormMarmitaSize(!showFormMarmitaSize)}>
+                        <Plus className="h-3 w-3 mr-1" /> Add
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-0">
+                    {showFormMarmitaSize && (
+                      <form onSubmit={handleSubmitMarmitaSize} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div><Label className="text-xs">Nome</Label><Input value={formMarmitaSize.name} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: P, M, G" required className="h-8 text-sm" /></div>
+                          <div><Label className="text-xs">Peso (g)</Label><Input type="number" value={formMarmitaSize.weight_grams} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, weight_grams: +e.target.value }))} className="h-8 text-sm" /></div>
+                          <div><Label className="text-xs">Preço base ({getCurrencySymbol(currency)})</Label><Input type="text" value={formMarmitaSize.base_price} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, base_price: e.target.value }))} placeholder="0,00" required className="h-8 text-sm" /></div>
+                          <div><Label className="text-xs">Preço/g ({getCurrencySymbol(currency)})</Label><Input type="text" value={formMarmitaSize.price_per_gram} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,02" required className="h-8 text-sm" /></div>
+                        </div>
+                        <div className="flex gap-2"><Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button><Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSize(false)} className="flex-1 h-7 text-xs">Cancelar</Button></div>
+                      </form>
+                    )}
+                    <ul className="space-y-1.5">
+                      {marmitaSizes.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum tamanho cadastrado.</p>}
+                      {marmitaSizes.map((s) => (
+                        <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
+                          <span className="text-xs"><strong>{s.name}</strong> · {s.weight_grams}g · base {formatCurrency(Number(s.base_price), currency)}</span>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSize(s.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                {/* Proteins */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold">Proteínas</CardTitle>
+                      <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormMarmitaProtein(!showFormMarmitaProtein)}>
+                        <Plus className="h-3 w-3 mr-1" /> Add
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-0">
+                    {showFormMarmitaProtein && (
+                      <form onSubmit={handleSubmitMarmitaProtein} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div><Label className="text-xs">Nome</Label><Input value={formMarmitaProtein.name} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Frango" required className="h-8 text-sm" /></div>
+                          <div><Label className="text-xs">Preço/g ({getCurrencySymbol(currency)})</Label><Input type="text" value={formMarmitaProtein.price_per_gram} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,02" required className="h-8 text-sm" /></div>
+                        </div>
+                        <div className="flex gap-2"><Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button><Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaProtein(false)} className="flex-1 h-7 text-xs">Cancelar</Button></div>
+                      </form>
+                    )}
+                    <ul className="space-y-1.5">
+                      {marmitaProteins.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhuma proteína cadastrada.</p>}
+                      {marmitaProteins.map((p) => (
+                        <li key={p.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
+                          <span className="text-xs"><strong>{p.name}</strong> · {formatCurrency(Number(p.price_per_gram), currency)}/g</span>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaProtein(p.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                {/* Sides */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold">Acompanhamentos</CardTitle>
+                      <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormMarmitaSide(!showFormMarmitaSide)}>
+                        <Plus className="h-3 w-3 mr-1" /> Add
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-0">
+                    {showFormMarmitaSide && (
+                      <form onSubmit={handleSubmitMarmitaSide} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div><Label className="text-xs">Nome</Label><Input value={formMarmitaSide.name} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Arroz Branco" required className="h-8 text-sm" /></div>
+                          <div><Label className="text-xs">Categoria</Label><Input value={formMarmitaSide.category} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, category: e.target.value }))} placeholder="Ex: Arroz" className="h-8 text-sm" /></div>
+                          <div><Label className="text-xs">Preço/g ({getCurrencySymbol(currency)})</Label><Input type="text" value={formMarmitaSide.price_per_gram} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,02" required className="h-8 text-sm" /></div>
+                        </div>
+                        <div className="flex gap-2"><Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button><Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSide(false)} className="flex-1 h-7 text-xs">Cancelar</Button></div>
+                      </form>
+                    )}
+                    <ul className="space-y-1.5">
+                      {marmitaSides.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum acompanhamento cadastrado.</p>}
+                      {marmitaSides.map((s) => (
+                        <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
+                          <span className="text-xs"><strong>{s.name}</strong> {s.category && `(${s.category})`} · {formatCurrency(Number(s.price_per_gram), currency)}/g</span>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSide(s.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfigModal(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Cardápio Online Modal ───────────────────────────────────────────── */}
+      <Dialog open={showOnlineModal} onOpenChange={setShowOnlineModal}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Cardápio Online</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Endereço do cardápio</CardTitle>
+                <p className="text-sm text-muted-foreground">Defina o slug único que aparece no URL do seu cardápio.</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Label htmlFor="slug">Slug</Label>
+                    <Input id="slug" value={slug}
+                      onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'))}
+                      placeholder="ex: minha-pizzaria" className="mt-1" />
+                    <p className="text-xs text-muted-foreground mt-1">Apenas letras minúsculas, números e hífens.</p>
+                  </div>
+                  <div className="flex items-end">
+                    <Button onClick={handleSaveSlug} disabled={slugSaving}>
+                      {slugSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                      Salvar
+                    </Button>
+                  </div>
+                </div>
+
+                {(slug || restaurant?.slug) && (
+                  <div className="space-y-3 pt-2 border-t">
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <Label className="text-sm font-medium">Cardápio interativo</Label>
+                        <Badge variant="secondary" className="text-xs">Pedidos habilitados</Badge>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input readOnly value={getCardapioPublicUrl(slug || restaurant?.slug || '')} className="flex-1 text-sm bg-muted/30" />
+                        <Button type="button" variant="outline" size="sm" onClick={() => {
+                          const url = getCardapioPublicUrl(slug || restaurant?.slug || '');
+                          navigator.clipboard.writeText(url).then(() => { setLinkCopied(true); toast({ title: 'Link copiado!' }); setTimeout(() => setLinkCopied(false), 2000); });
+                        }}>
+                          {linkCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                          {linkCopied ? 'Copiado!' : 'Copiar'}
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm" className="px-2" onClick={() => window.open(getCardapioPublicUrl(slug || restaurant?.slug || ''), '_blank')}>
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <Label className="text-sm font-medium">Somente leitura</Label>
+                        <Badge variant="outline" className="text-xs">Sem pedidos</Badge>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input readOnly value={`${getCardapioPublicUrl(slug || restaurant?.slug || '')}/menu`} className="flex-1 text-sm bg-muted/30" />
+                        <Button type="button" variant="outline" size="sm" onClick={() => {
+                          const url = `${getCardapioPublicUrl(slug || restaurant?.slug || '')}/menu`;
+                          navigator.clipboard.writeText(url).then(() => { setMenuLinkCopied(true); toast({ title: 'Link copiado!' }); setTimeout(() => setMenuLinkCopied(false), 2000); });
+                        }}>
+                          {menuLinkCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                          {menuLinkCopied ? 'Copiado!' : 'Copiar'}
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm" className="px-2" onClick={() => window.open(`${getCardapioPublicUrl(slug || restaurant?.slug || '')}/menu`, '_blank')}>
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            <MenuQRCodeCard slug={slug || restaurant?.slug || ''} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOnlineModal(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Import CSV Modal ────────────────────────────────────────────────── */}
+      <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Importar Produtos via CSV</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Formato esperado (separado por vírgulas):<br />
+              <code className="text-xs bg-slate-100 dark:bg-slate-800 p-2 rounded block mt-2">
+                name,category,price,price_sale,price_cost,sku,description,is_by_weight<br />
+                Refrigerante,Bebidas,5.00,6.00,3.50,REF001,Refrigerante gelado,false
+              </code>
+            </p>
+            <div>
+              <Label>Arquivo CSV</Label>
+              <Input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileUpload} className="mt-1" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowImportModal(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
