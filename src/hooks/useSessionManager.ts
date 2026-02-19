@@ -30,10 +30,12 @@ export function useSessionManager(userId: string | null, restaurantId: string | 
       if (sessionIdRef.current) {
         const sessionId = sessionIdRef.current;
         sessionIdRef.current = null;
-        supabase.rpc('remove_session', {
-          p_user_id: userId || '',
-          p_session_id: sessionId,
-        }).catch(console.error);
+        void Promise.resolve(
+          supabase.rpc('remove_session', {
+            p_user_id: userId || '',
+            p_session_id: sessionId,
+          })
+        ).catch(console.error);
       }
       return;
     }
@@ -56,24 +58,24 @@ export function useSessionManager(userId: string | null, restaurantId: string | 
 
     // Heartbeat periódico para manter sessão ativa
     heartbeatIntervalRef.current = setInterval(() => {
-      supabase
-        .rpc('update_session_heartbeat', {
+      void Promise.resolve(
+        supabase.rpc('update_session_heartbeat', {
           p_user_id: userId,
           p_session_id: sessionId,
         })
-        .catch((err) => {
-          console.error('Erro no heartbeat da sessão:', err);
-        });
+      ).catch((err: unknown) => {
+        console.error('Erro no heartbeat da sessão:', err);
+      });
     }, HEARTBEAT_INTERVAL);
 
     // Limpar sessão ao fechar aba/navegador
     const handleBeforeUnload = () => {
-      supabase
-        .rpc('remove_session', {
+      void Promise.resolve(
+        supabase.rpc('remove_session', {
           p_user_id: userId,
           p_session_id: sessionId,
         })
-        .catch(console.error);
+      ).catch(console.error);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -85,12 +87,12 @@ export function useSessionManager(userId: string | null, restaurantId: string | 
       }
       window.removeEventListener('beforeunload', handleBeforeUnload);
       // Remover sessão ao desmontar componente (logout, navegação)
-      supabase
-        .rpc('remove_session', {
+      void Promise.resolve(
+        supabase.rpc('remove_session', {
           p_user_id: userId,
           p_session_id: sessionId,
         })
-        .catch(console.error);
+      ).catch(console.error);
     };
   }, [userId, restaurantId]);
 }
