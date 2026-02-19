@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { convertPriceToStorage, convertPriceFromStorage, formatPriceInputPyG, getCurrencySymbol } from '@/lib/priceHelper';
 import { Product, Restaurant, PizzaSize, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide, Category, Subcategory } from '@/types';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
 import { uploadProductImage } from '@/lib/imageUpload';
@@ -36,7 +38,7 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Plus, Trash2, Loader2, Info, Upload, Copy, Check, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Loader2, Info, Upload, Copy, Check, Sparkles, Search, UtensilsCrossed, LayoutGrid, Settings, QrCode, ExternalLink } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
 import CategoryManager from '@/components/admin/CategoryManager';
 import ProductRow from '@/components/admin/ProductRow';
@@ -91,6 +93,10 @@ export default function AdminMenu() {
   const [slug, setSlug] = useState('');
   const [slugSaving, setSlugSaving] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [menuLinkCopied, setMenuLinkCopied] = useState(false);
+
+  // Busca de produtos
+  const [productSearch, setProductSearch] = useState('');
   
   // Estados para configurações de cardápio (Pizza)
   const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]);
@@ -740,10 +746,19 @@ export default function AdminMenu() {
 
 
   // Agrupar produtos por categoria (ordem da tabela categories)
-  const groupedProducts = products.reduce((acc, product) => {
-    if (!acc[product.category]) {
-      acc[product.category] = [];
-    }
+  const filteredProducts = useMemo(() => {
+    if (!productSearch.trim()) return products;
+    const q = productSearch.toLowerCase();
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        (p.description ?? '').toLowerCase().includes(q)
+    );
+  }, [products, productSearch]);
+
+  const groupedProducts = filteredProducts.reduce((acc, product) => {
+    if (!acc[product.category]) acc[product.category] = [];
     acc[product.category].push(product);
     return acc;
   }, {} as Record<string, Product[]>);
@@ -754,6 +769,9 @@ export default function AdminMenu() {
   const sortedCategoryNames = categoryOrder.length > 0
     ? categoryOrder.filter((name) => groupedProducts[name]?.length)
     : Object.keys(groupedProducts);
+
+  const totalProducts = products.length;
+  const activeProducts = products.filter((p) => p.is_active).length;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -768,133 +786,91 @@ export default function AdminMenu() {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Seção Cardápio Digital */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cardápio Digital</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Configure o endereço público do seu cardápio. Em produção será acessível em <strong>slug.quiero.food</strong>.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
-              <Label htmlFor="slug">Slug do cardápio</Label>
-              <Input
-                id="slug"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'))}
-                placeholder="ex: minha-pizzaria"
-                className="mt-1"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Apenas letras minúsculas, números e hífens.
-              </p>
-            </div>
-            <div className="flex items-end">
-              <Button onClick={handleSaveSlug} disabled={slugSaving} className="w-full sm:w-auto">
-                {slugSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                Salvar Slug
-              </Button>
-            </div>
-          </div>
-          {(slug || restaurant?.slug) && (
-            <>
-              <div>
-                <Label>Link público do cardápio (interativo):</Label>
-                <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                  <Input
-                    readOnly
-                    value={getCardapioPublicUrl(slug || restaurant?.slug || '')}
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={copyCardapioLink}
-                    className="w-full sm:w-auto"
-                  >
-                    {linkCopied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
-                    {linkCopied ? 'Copiado!' : 'Copiar'}
-                  </Button>
-                </div>
-              </div>
-              <div>
-                <Label>Link do cardápio (somente visualização):</Label>
-                <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                  <Input
-                    readOnly
-                    value={getCardapioPublicUrl(slug || restaurant?.slug || '') + '/menu'}
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      const url = getCardapioPublicUrl(slug || restaurant?.slug || '') + '/menu';
-                      navigator.clipboard.writeText(url).then(() => {
-                        toast({ title: 'Link copiado!' });
-                      });
-                    }}
-                    className="w-full sm:w-auto"
-                  >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copiar
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Cardápio sem opção de pedidos, ideal para substituir cardápio físico
-                </p>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* QR Code do Cardápio */}
-      <MenuQRCodeCard slug={slug || restaurant?.slug || ''} />
-
-      {/* Tabs: Produtos, Categorias e Configurações */}
+      {/* Tabs principais */}
       <Tabs defaultValue="produtos" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-lg">
-          <TabsTrigger value="produtos">Produtos</TabsTrigger>
-          <TabsTrigger value="categorias">Categorias</TabsTrigger>
-          <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
+        <TabsList className="h-auto flex flex-wrap gap-1 p-1 mb-2">
+          <TabsTrigger value="produtos" className="flex items-center gap-1.5">
+            <UtensilsCrossed className="h-4 w-4" />
+            <span>Produtos</span>
+            {totalProducts > 0 && (
+              <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0 h-5">{totalProducts}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="categorias" className="flex items-center gap-1.5">
+            <LayoutGrid className="h-4 w-4" />
+            <span>Categorias</span>
+          </TabsTrigger>
+          <TabsTrigger value="configuracoes" className="flex items-center gap-1.5">
+            <Settings className="h-4 w-4" />
+            <span>Configurações</span>
+          </TabsTrigger>
+          <TabsTrigger value="online" className="flex items-center gap-1.5">
+            <QrCode className="h-4 w-4" />
+            <span>Cardápio Online</span>
+          </TabsTrigger>
         </TabsList>
 
-        {/* Aba Produtos */}
-        <TabsContent value="produtos" className="space-y-6 mt-6">
+        {/* ── Aba Produtos ── */}
+        <TabsContent value="produtos" className="space-y-5 mt-4">
+          {/* Banner IA */}
           <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
             <Sparkles className="h-5 w-5 text-blue-600 shrink-0" />
             <p className="text-sm text-blue-800">
               Cadastre o preço de custo para desbloquear a inteligência artificial do seu cardápio.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-foreground">Produtos do Cardápio</h2>
-              <p className="text-muted-foreground text-sm">
-                Gerencie os produtos do seu cardápio
-              </p>
+
+          {/* Barra de ações */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {totalProducts} produto{totalProducts !== 1 ? 's' : ''}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {activeProducts} ativo{activeProducts !== 1 ? 's' : ''} · {totalProducts - activeProducts} inativo{totalProducts - activeProducts !== 1 ? 's' : ''}
+                </p>
+              </div>
             </div>
-            <Button onClick={openNew} className="w-full sm:w-auto">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Produto
-            </Button>
+            <div className="flex w-full sm:w-auto items-center gap-2">
+              <div className="relative flex-1 sm:w-56">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Buscar produto..."
+                  className="pl-8 h-9"
+                />
+              </div>
+              <Button onClick={openNew} size="sm" className="shrink-0">
+                <Plus className="h-4 w-4 mr-1.5" />
+                Novo produto
+              </Button>
+            </div>
           </div>
 
-          {Object.keys(groupedProducts).length === 0 ? (
+          {products.length === 0 ? (
             <Card>
-              <CardContent className="p-12 text-center">
-                <p className="text-muted-foreground mb-4">
-                  Você ainda não tem produtos cadastrados
-                </p>
+              <CardContent className="p-16 text-center space-y-4">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                  <UtensilsCrossed className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground mb-1">Cardápio vazio</p>
+                  <p className="text-sm text-muted-foreground">
+                    Comece adicionando o primeiro produto ao seu cardápio.
+                  </p>
+                </div>
                 <Button onClick={openNew}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Primeiro Produto
+                  Adicionar primeiro produto
                 </Button>
+              </CardContent>
+            </Card>
+          ) : sortedCategoryNames.length === 0 ? (
+            <Card>
+              <CardContent className="p-10 text-center">
+                <p className="text-muted-foreground text-sm">Nenhum produto encontrado para <strong>"{productSearch}"</strong>.</p>
               </CardContent>
             </Card>
           ) : (
@@ -903,45 +879,51 @@ export default function AdminMenu() {
               collisionDetection={closestCenter}
               onDragEnd={handleProductsDragEnd}
             >
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {sortedCategoryNames.map((category) => {
                   const categoryProducts = groupedProducts[category] ?? [];
+                  const catObj = categories.find((c) => c.name === category);
                   return (
-                  <div key={category} className="space-y-2">
-                    <h3 className="text-xl font-semibold capitalize">{category}</h3>
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead className="w-10" />
-                            <TableHead className="w-[52px]" />
-                            <TableHead>Nome</TableHead>
-                            <TableHead className="text-right">Preço</TableHead>
-                            <TableHead className="w-20 text-center">Status</TableHead>
-                            <TableHead className="w-[180px] text-right">Ações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          <SortableContext
-                            items={categoryProducts.map((p) => p.id)}
-                            strategy={verticalListSortingStrategy}
-                          >
-                            {categoryProducts.map((product) => (
-                              <ProductRow
-                                key={product.id}
-                                product={product}
-                                currency={currency}
-                                onEdit={openEdit}
-                                onDuplicate={duplicateProduct}
-                                onDelete={deleteProduct}
-                                onToggleActive={toggleProductStatus}
-                              />
-                            ))}
-                          </SortableContext>
-                        </TableBody>
-                      </Table>
+                    <div key={category} className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-semibold capitalize text-foreground">{category}</h3>
+                        {catObj?.is_pizza && <Badge variant="secondary" className="text-xs">Pizza</Badge>}
+                        {catObj?.is_marmita && <Badge variant="secondary" className="text-xs">Marmita</Badge>}
+                        <Badge variant="outline" className="text-xs">{categoryProducts.length}</Badge>
+                      </div>
+                      <div className="rounded-lg border overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted/40 hover:bg-muted/40">
+                              <TableHead className="w-10" />
+                              <TableHead className="w-[52px]" />
+                              <TableHead>Nome</TableHead>
+                              <TableHead className="text-right">Preço</TableHead>
+                              <TableHead className="w-20 text-center">Status</TableHead>
+                              <TableHead className="w-[180px] text-right">Ações</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <SortableContext
+                              items={categoryProducts.map((p) => p.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {categoryProducts.map((product) => (
+                                <ProductRow
+                                  key={product.id}
+                                  product={product}
+                                  currency={currency}
+                                  onEdit={openEdit}
+                                  onDuplicate={duplicateProduct}
+                                  onDelete={deleteProduct}
+                                  onToggleActive={toggleProductStatus}
+                                />
+                              ))}
+                            </SortableContext>
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
-                  </div>
                   );
                 })}
               </div>
@@ -949,12 +931,12 @@ export default function AdminMenu() {
           )}
         </TabsContent>
 
-        {/* Aba Categorias */}
-        <TabsContent value="categorias" className="space-y-6 mt-6">
+        {/* ── Aba Categorias ── */}
+        <TabsContent value="categorias" className="space-y-5 mt-4">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Categorias e Subcategorias</h2>
-            <p className="text-muted-foreground text-sm">
-              Adicione, remova ou reordene categorias. Expanda uma categoria para gerenciar subcategorias (ex.: configurações de pizza).
+            <h2 className="text-xl font-bold text-foreground">Categorias e Subcategorias</h2>
+            <p className="text-muted-foreground text-sm mt-1">
+              Adicione, remova ou reordene categorias. Expanda para gerenciar subcategorias.
             </p>
           </div>
           {restaurantId && (
@@ -962,72 +944,74 @@ export default function AdminMenu() {
           )}
         </TabsContent>
 
-        {/* Aba Configurações */}
-        <TabsContent value="configuracoes" className="space-y-6 mt-6">
+        {/* ── Aba Configurações ── */}
+        <TabsContent value="configuracoes" className="space-y-8 mt-4">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Configurações do Cardápio</h2>
-            <p className="text-muted-foreground text-sm">
-              Defina opções por categoria. A categoria <strong>Pizza</strong> usa tamanhos, massas e bordas. A categoria <strong>Marmitas</strong> usa tamanhos (pesos), proteínas e acompanhamentos.
+            <h2 className="text-xl font-bold text-foreground">Configurações do Cardápio</h2>
+            <p className="text-muted-foreground text-sm mt-1">
+              Configure as opções especiais por tipo de produto.
             </p>
           </div>
 
-          <Tabs defaultValue="pizza" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 max-w-md">
-              <TabsTrigger value="pizza">Pizza</TabsTrigger>
-              <TabsTrigger value="marmitas">Marmitas</TabsTrigger>
-            </TabsList>
-
-            {/* Configurações Pizza */}
-            <TabsContent value="pizza" className="space-y-8 mt-6">
-              {menuConfigLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          {menuConfigLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+          ) : (
+            <>
+              {/* ─ Seção Pizza ─ */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                    <span className="text-lg">🍕</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Pizza</h3>
+                    <p className="text-xs text-muted-foreground">Tamanhos, massas e bordas para categorias do tipo Pizza</p>
+                  </div>
                 </div>
-              ) : (
-                <>
+                <Separator />
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   {/* Tamanhos */}
                   <Card>
-                    <CardHeader>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <CardTitle className="text-lg">Tamanhos de Pizza</CardTitle>
-                        <Button type="button" size="sm" variant="outline" onClick={() => setShowFormSize(!showFormSize)}>
-                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-semibold">Tamanhos</CardTitle>
+                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormSize(!showFormSize)}>
+                          <Plus className="h-3 w-3 mr-1" /> Add
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3 pt-0">
                       {showFormSize && (
-                        <form onSubmit={handleSubmitSize} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <Label>Nome</Label>
-                              <Input value={formSize.name} onChange={(e) => setFormSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Broto, Média, Grande" required />
+                        <form onSubmit={handleSubmitSize} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="col-span-2">
+                              <Label className="text-xs">Nome</Label>
+                              <Input value={formSize.name} onChange={(e) => setFormSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Broto, Média" required className="h-8 text-sm" />
                             </div>
                             <div>
-                              <Label>Máx. sabores</Label>
-                              <Input type="number" min={1} value={formSize.max_flavors} onChange={(e) => setFormSize((f) => ({ ...f, max_flavors: parseInt(e.target.value, 10) || 1 }))} />
+                              <Label className="text-xs">Máx. sabores</Label>
+                              <Input type="number" min={1} value={formSize.max_flavors} onChange={(e) => setFormSize((f) => ({ ...f, max_flavors: parseInt(e.target.value, 10) || 1 }))} className="h-8 text-sm" />
                             </div>
                             <div>
-                              <Label>Multiplicador de preço</Label>
-                              <Input type="number" step="0.01" min="0" value={formSize.price_multiplier} onChange={(e) => setFormSize((f) => ({ ...f, price_multiplier: parseFloat(e.target.value) || 1 }))} placeholder="1.0" />
-                            </div>
-                            <div>
-                              <Label>Ordem</Label>
-                              <Input type="number" min={0} value={formSize.order_index} onChange={(e) => setFormSize((f) => ({ ...f, order_index: parseInt(e.target.value, 10) || 0 }))} />
+                              <Label className="text-xs">Multiplicador</Label>
+                              <Input type="number" step="0.01" min="0" value={formSize.price_multiplier} onChange={(e) => setFormSize((f) => ({ ...f, price_multiplier: parseFloat(e.target.value) || 1 }))} className="h-8 text-sm" />
                             </div>
                           </div>
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <Button type="submit" size="sm" className="flex-1">Salvar</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormSize(false)} className="flex-1">Cancelar</Button>
+                          <div className="flex gap-2">
+                            <Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormSize(false)} className="flex-1 h-7 text-xs">Cancelar</Button>
                           </div>
                         </form>
                       )}
-                      <ul className="space-y-2">
-                        {pizzaSizes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tamanho. Adicione para o cliente escolher no cardápio.</p>}
+                      <ul className="space-y-1.5">
+                        {pizzaSizes.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum tamanho cadastrado.</p>}
                         {pizzaSizes.map((s) => (
-                          <li key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
-                            <span className="text-sm"><strong>{s.name}</strong> — até {s.max_flavors} sabor(es) — multiplicador {Number(s.price_multiplier)}x</span>
-                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteSize(s.id)} className="text-destructive"><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>
+                          <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
+                            <span className="text-xs"><strong>{s.name}</strong> · {s.max_flavors} sabor(es) · {Number(s.price_multiplier)}x</span>
+                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteSize(s.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
                           </li>
                         ))}
                       </ul>
@@ -1036,41 +1020,39 @@ export default function AdminMenu() {
 
                   {/* Massas */}
                   <Card>
-                    <CardHeader>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <CardTitle className="text-lg">Tipos de Massa</CardTitle>
-                        <Button type="button" size="sm" variant="outline" onClick={() => setShowFormDough(!showFormDough)}>
-                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-semibold">Tipos de Massa</CardTitle>
+                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormDough(!showFormDough)}>
+                          <Plus className="h-3 w-3 mr-1" /> Add
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3 pt-0">
                       {showFormDough && (
-                        <form onSubmit={handleSubmitDough} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <Label>Nome</Label>
-                              <Input value={formDough.name} onChange={(e) => setFormDough((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Tradicional" required />
-                            </div>
-                            <div>
-                              <Label>Acréscimo ({getCurrencySymbol(currency)})</Label>
-                              <Input type="text" value={formDough.extra_price} onChange={(e) => setFormDough((f) => ({ ...f, extra_price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))} placeholder={currency === 'PYG' ? '0' : '0'} />
-                            </div>
+                        <form onSubmit={handleSubmitDough} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                          <div>
+                            <Label className="text-xs">Nome</Label>
+                            <Input value={formDough.name} onChange={(e) => setFormDough((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Tradicional" required className="h-8 text-sm" />
                           </div>
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <Button type="submit" size="sm" className="flex-1">Salvar</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormDough(false)} className="flex-1">Cancelar</Button>
+                          <div>
+                            <Label className="text-xs">Acréscimo ({getCurrencySymbol(currency)})</Label>
+                            <Input type="text" value={formDough.extra_price} onChange={(e) => setFormDough((f) => ({ ...f, extra_price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))} placeholder="0" className="h-8 text-sm" />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormDough(false)} className="flex-1 h-7 text-xs">Cancelar</Button>
                           </div>
                         </form>
                       )}
-                      <ul className="space-y-2">
-                        {pizzaDoughs.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tipo. Adicione (ex: Tradicional, Integral).</p>}
+                      <ul className="space-y-1.5">
+                        {pizzaDoughs.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum tipo cadastrado.</p>}
                         {pizzaDoughs.map((d) => (
-                          <li key={d.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
-                            <span className="text-sm"><strong>{d.name}</strong> {Number(d.extra_price) > 0 ? `+ ${formatCurrency(Number(d.extra_price), currency)}` : '(sem acréscimo)'}{!d.is_active && ' (inativo)'}</span>
+                          <li key={d.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
+                            <span className="text-xs"><strong>{d.name}</strong> {Number(d.extra_price) > 0 ? `+${formatCurrency(Number(d.extra_price), currency)}` : ''}{!d.is_active && ' · inativo'}</span>
                             <div className="flex gap-1">
-                              <Button type="button" size="sm" variant="ghost" onClick={() => toggleDoughActive(d.id, d.is_active)}>{d.is_active ? 'Desativar' : 'Ativar'}</Button>
-                              <Button type="button" size="sm" variant="ghost" onClick={() => deleteDough(d.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                              <Button type="button" size="sm" variant="ghost" onClick={() => toggleDoughActive(d.id, d.is_active)} className="h-6 text-xs px-1.5">{d.is_active ? 'Desativar' : 'Ativar'}</Button>
+                              <Button type="button" size="sm" variant="ghost" onClick={() => deleteDough(d.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
                             </div>
                           </li>
                         ))}
@@ -1080,106 +1062,101 @@ export default function AdminMenu() {
 
                   {/* Bordas */}
                   <Card>
-                    <CardHeader>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <CardTitle className="text-lg">Bordas Recheadas</CardTitle>
-                        <Button type="button" size="sm" variant="outline" onClick={() => setShowFormEdge(!showFormEdge)}>
-                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-semibold">Bordas Recheadas</CardTitle>
+                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormEdge(!showFormEdge)}>
+                          <Plus className="h-3 w-3 mr-1" /> Add
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3 pt-0">
                       {showFormEdge && (
-                        <form onSubmit={handleSubmitEdge} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <Label>Nome</Label>
-                              <Input value={formEdge.name} onChange={(e) => setFormEdge((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Catupiry" required />
-                            </div>
-                            <div>
-                              <Label>Preço ({getCurrencySymbol(currency)})</Label>
-                              <Input type="text" value={formEdge.price} onChange={(e) => setFormEdge((f) => ({ ...f, price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))} placeholder={currency === 'PYG' ? '8.000' : '8,00'} required />
-                            </div>
+                        <form onSubmit={handleSubmitEdge} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                          <div>
+                            <Label className="text-xs">Nome</Label>
+                            <Input value={formEdge.name} onChange={(e) => setFormEdge((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Catupiry" required className="h-8 text-sm" />
                           </div>
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <Button type="submit" size="sm" className="flex-1">Salvar</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormEdge(false)} className="flex-1">Cancelar</Button>
+                          <div>
+                            <Label className="text-xs">Preço ({getCurrencySymbol(currency)})</Label>
+                            <Input type="text" value={formEdge.price} onChange={(e) => setFormEdge((f) => ({ ...f, price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))} placeholder={currency === 'PYG' ? '8.000' : '8,00'} required className="h-8 text-sm" />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormEdge(false)} className="flex-1 h-7 text-xs">Cancelar</Button>
                           </div>
                         </form>
                       )}
-                      <ul className="space-y-2">
-                        {pizzaEdges.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma borda. Adicione (ex: Catupiry, Cheddar).</p>}
+                      <ul className="space-y-1.5">
+                        {pizzaEdges.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhuma borda cadastrada.</p>}
                         {pizzaEdges.map((e) => (
-                          <li key={e.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
-                            <span className="text-sm"><strong>{e.name}</strong> — {formatCurrency(Number(e.price), currency)}{!e.is_active && ' (inativo)'}</span>
+                          <li key={e.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
+                            <span className="text-xs"><strong>{e.name}</strong> · {formatCurrency(Number(e.price), currency)}{!e.is_active && ' · inativo'}</span>
                             <div className="flex gap-1">
-                              <Button type="button" size="sm" variant="ghost" onClick={() => toggleEdgeActive(e.id, e.is_active)}>{e.is_active ? 'Desativar' : 'Ativar'}</Button>
-                              <Button type="button" size="sm" variant="ghost" onClick={() => deleteEdge(e.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                              <Button type="button" size="sm" variant="ghost" onClick={() => toggleEdgeActive(e.id, e.is_active)} className="h-6 text-xs px-1.5">{e.is_active ? 'Desativar' : 'Ativar'}</Button>
+                              <Button type="button" size="sm" variant="ghost" onClick={() => deleteEdge(e.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
                             </div>
                           </li>
                         ))}
                       </ul>
                     </CardContent>
                   </Card>
-                </>
-              )}
-            </TabsContent>
-
-            {/* Configurações Marmitas */}
-            <TabsContent value="marmitas" className="space-y-8 mt-6">
-              {menuConfigLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
                 </div>
-              ) : (
-                <>
+              </div>
+
+              {/* ─ Seção Marmitas ─ */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-green-100 flex items-center justify-center">
+                    <span className="text-lg">🍱</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Marmitas</h3>
+                    <p className="text-xs text-muted-foreground">Tamanhos, proteínas e acompanhamentos para categorias do tipo Marmita</p>
+                  </div>
+                </div>
+                <Separator />
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   {/* Tamanhos de Marmita */}
                   <Card>
-                    <CardHeader>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <CardTitle className="text-lg">Tamanhos (Pesos)</CardTitle>
-                        <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSize(!showFormMarmitaSize)}>
-                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-semibold">Tamanhos (Pesos)</CardTitle>
+                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormMarmitaSize(!showFormMarmitaSize)}>
+                          <Plus className="h-3 w-3 mr-1" /> Add
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3 pt-0">
                       {showFormMarmitaSize && (
-                        <form onSubmit={handleSubmitMarmitaSize} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <Label>Nome</Label>
-                              <Input value={formMarmitaSize.name} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: 300g, 500g, 700g" required />
+                        <form onSubmit={handleSubmitMarmitaSize} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="col-span-2">
+                              <Label className="text-xs">Nome</Label>
+                              <Input value={formMarmitaSize.name} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: 300g, 500g" required className="h-8 text-sm" />
                             </div>
                             <div>
-                              <Label>Peso (gramas)</Label>
-                              <Input type="number" min={100} step={50} value={formMarmitaSize.weight_grams} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, weight_grams: parseInt(e.target.value, 10) || 500 }))} required />
+                              <Label className="text-xs">Peso (g)</Label>
+                              <Input type="number" min={100} step={50} value={formMarmitaSize.weight_grams} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, weight_grams: parseInt(e.target.value, 10) || 500 }))} required className="h-8 text-sm" />
                             </div>
                             <div>
-                              <Label>Preço Base ({getCurrencySymbol(currency)})</Label>
-                              <Input type="text" value={formMarmitaSize.base_price} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, base_price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))} placeholder={currency === 'PYG' ? '15.000' : '15,00'} required />
-                            </div>
-                            <div>
-                              <Label>Preço por Grama ({getCurrencySymbol(currency)})</Label>
-                              <Input type="text" value={formMarmitaSize.price_per_gram} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,05" />
-                            </div>
-                            <div>
-                              <Label>Ordem</Label>
-                              <Input type="number" min={0} value={formMarmitaSize.order_index} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, order_index: parseInt(e.target.value, 10) || 0 }))} />
+                              <Label className="text-xs">Preço base</Label>
+                              <Input type="text" value={formMarmitaSize.base_price} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, base_price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))} placeholder={currency === 'PYG' ? '15.000' : '15,00'} required className="h-8 text-sm" />
                             </div>
                           </div>
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <Button type="submit" size="sm" className="flex-1">Salvar</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSize(false)} className="flex-1">Cancelar</Button>
+                          <div className="flex gap-2">
+                            <Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSize(false)} className="flex-1 h-7 text-xs">Cancelar</Button>
                           </div>
                         </form>
                       )}
-                      <ul className="space-y-2">
-                        {marmitaSizes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum tamanho. Adicione para o cliente escolher no cardápio.</p>}
+                      <ul className="space-y-1.5">
+                        {marmitaSizes.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum tamanho cadastrado.</p>}
                         {marmitaSizes.map((s) => (
-                          <li key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
-                            <span className="text-sm"><strong>{s.name}</strong> — {s.weight_grams}g — Base: {formatCurrency(Number(s.base_price), currency)} {Number(s.price_per_gram) > 0 && `— ${formatCurrency(Number(s.price_per_gram), currency)}/g`}</span>
-                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSize(s.id)} className="text-destructive"><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>
+                          <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
+                            <span className="text-xs"><strong>{s.name}</strong> · {s.weight_grams}g · {formatCurrency(Number(s.base_price), currency)}</span>
+                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSize(s.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
                           </li>
                         ))}
                       </ul>
@@ -1188,43 +1165,41 @@ export default function AdminMenu() {
 
                   {/* Proteínas */}
                   <Card>
-                    <CardHeader>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <CardTitle className="text-lg">Proteínas</CardTitle>
-                        <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaProtein(!showFormMarmitaProtein)}>
-                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-semibold">Proteínas</CardTitle>
+                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormMarmitaProtein(!showFormMarmitaProtein)}>
+                          <Plus className="h-3 w-3 mr-1" /> Add
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3 pt-0">
                       {showFormMarmitaProtein && (
-                        <form onSubmit={handleSubmitMarmitaProtein} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                          <div className="space-y-3">
-                            <div>
-                              <Label>Nome</Label>
-                              <Input value={formMarmitaProtein.name} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Frango Grelhado" required />
-                            </div>
-                            <div>
-                              <Label>Descrição (opcional)</Label>
-                              <Input value={formMarmitaProtein.description} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, description: e.target.value }))} placeholder="Ex: Peito de frango temperado e grelhado" />
-                            </div>
-                            <div>
-                              <Label>Preço por Grama ({getCurrencySymbol(currency)})</Label>
-                              <Input type="text" value={formMarmitaProtein.price_per_gram} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,08" required />
-                            </div>
+                        <form onSubmit={handleSubmitMarmitaProtein} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                          <div>
+                            <Label className="text-xs">Nome</Label>
+                            <Input value={formMarmitaProtein.name} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Frango Grelhado" required className="h-8 text-sm" />
                           </div>
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <Button type="submit" size="sm" className="flex-1">Salvar</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaProtein(false)} className="flex-1">Cancelar</Button>
+                          <div>
+                            <Label className="text-xs">Descrição (opcional)</Label>
+                            <Input value={formMarmitaProtein.description} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, description: e.target.value }))} placeholder="Ex: Peito grelhado" className="h-8 text-sm" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Preço/g ({getCurrencySymbol(currency)})</Label>
+                            <Input type="text" value={formMarmitaProtein.price_per_gram} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,08" required className="h-8 text-sm" />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaProtein(false)} className="flex-1 h-7 text-xs">Cancelar</Button>
                           </div>
                         </form>
                       )}
-                      <ul className="space-y-2">
-                        {marmitaProteins.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma proteína. Adicione (ex: Frango, Carne, Peixe).</p>}
+                      <ul className="space-y-1.5">
+                        {marmitaProteins.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhuma proteína cadastrada.</p>}
                         {marmitaProteins.map((p) => (
-                          <li key={p.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
-                            <span className="text-sm"><strong>{p.name}</strong> — {formatCurrency(Number(p.price_per_gram), currency)}/g{!p.is_active && ' (inativo)'}</span>
-                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaProtein(p.id)} className="text-destructive"><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>
+                          <li key={p.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
+                            <span className="text-xs"><strong>{p.name}</strong> · {formatCurrency(Number(p.price_per_gram), currency)}/g{!p.is_active && ' · inativo'}</span>
+                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaProtein(p.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
                           </li>
                         ))}
                       </ul>
@@ -1233,58 +1208,148 @@ export default function AdminMenu() {
 
                   {/* Acompanhamentos */}
                   <Card>
-                    <CardHeader>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <CardTitle className="text-lg">Acompanhamentos</CardTitle>
-                        <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSide(!showFormMarmitaSide)}>
-                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-semibold">Acompanhamentos</CardTitle>
+                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormMarmitaSide(!showFormMarmitaSide)}>
+                          <Plus className="h-3 w-3 mr-1" /> Add
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3 pt-0">
                       {showFormMarmitaSide && (
-                        <form onSubmit={handleSubmitMarmitaSide} className="p-4 border rounded-lg space-y-3 bg-muted/30">
-                          <div className="space-y-3">
+                        <form onSubmit={handleSubmitMarmitaSide} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                          <div>
+                            <Label className="text-xs">Nome</Label>
+                            <Input value={formMarmitaSide.name} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Arroz Branco" required className="h-8 text-sm" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <Label>Nome</Label>
-                              <Input value={formMarmitaSide.name} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Arroz Branco" required />
+                              <Label className="text-xs">Categoria</Label>
+                              <Input value={formMarmitaSide.category} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, category: e.target.value }))} placeholder="Ex: Arroz" className="h-8 text-sm" />
                             </div>
                             <div>
-                              <Label>Descrição (opcional)</Label>
-                              <Input value={formMarmitaSide.description} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, description: e.target.value }))} placeholder="Ex: Arroz soltinho" />
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div>
-                                <Label>Categoria</Label>
-                                <Input value={formMarmitaSide.category} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, category: e.target.value }))} placeholder="Ex: Arroz, Feijão, Salada" />
-                              </div>
-                              <div>
-                                <Label>Preço por Grama ({getCurrencySymbol(currency)})</Label>
-                                <Input type="text" value={formMarmitaSide.price_per_gram} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,02" required />
-                              </div>
+                              <Label className="text-xs">Preço/g ({getCurrencySymbol(currency)})</Label>
+                              <Input type="text" value={formMarmitaSide.price_per_gram} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,02" required className="h-8 text-sm" />
                             </div>
                           </div>
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <Button type="submit" size="sm" className="flex-1">Salvar</Button>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSide(false)} className="flex-1">Cancelar</Button>
+                          <div className="flex gap-2">
+                            <Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSide(false)} className="flex-1 h-7 text-xs">Cancelar</Button>
                           </div>
                         </form>
                       )}
-                      <ul className="space-y-2">
-                        {marmitaSides.length === 0 && <p className="text-sm text-muted-foreground">Nenhum acompanhamento. Adicione (ex: Arroz, Feijão, Salada).</p>}
+                      <ul className="space-y-1.5">
+                        {marmitaSides.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum acompanhamento cadastrado.</p>}
                         {marmitaSides.map((s) => (
-                          <li key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50">
-                            <span className="text-sm"><strong>{s.name}</strong> {s.category && `(${s.category})`} — {formatCurrency(Number(s.price_per_gram), currency)}/g{!s.is_active && ' (inativo)'}</span>
-                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSide(s.id)} className="text-destructive"><Trash2 className="h-4 w-4 mr-1" /> Excluir</Button>
+                          <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
+                            <span className="text-xs"><strong>{s.name}</strong> {s.category && `(${s.category})`} · {formatCurrency(Number(s.price_per_gram), currency)}/g{!s.is_active && ' · inativo'}</span>
+                            <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSide(s.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
                           </li>
                         ))}
                       </ul>
                     </CardContent>
                   </Card>
-                </>
+                </div>
+              </div>
+            </>
+          )}
+        </TabsContent>
+
+        {/* ── Aba Cardápio Online ── */}
+        <TabsContent value="online" className="space-y-6 mt-4">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Cardápio Online</h2>
+            <p className="text-muted-foreground text-sm mt-1">
+              Configure e compartilhe o link público do seu cardápio.
+            </p>
+          </div>
+
+          {/* Slug config */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Endereço do cardápio</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Defina o slug único que aparece no URL do seu cardápio.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <Label htmlFor="slug">Slug</Label>
+                  <Input
+                    id="slug"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'))}
+                    placeholder="ex: minha-pizzaria"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Apenas letras minúsculas, números e hífens.
+                  </p>
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={handleSaveSlug} disabled={slugSaving} className="w-full sm:w-auto">
+                    {slugSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    Salvar
+                  </Button>
+                </div>
+              </div>
+
+              {(slug || restaurant?.slug) && (
+                <div className="space-y-3 pt-2 border-t">
+                  {/* Link interativo */}
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Label className="text-sm font-medium">Cardápio interativo</Label>
+                      <Badge variant="secondary" className="text-xs">Pedidos habilitados</Badge>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input readOnly value={getCardapioPublicUrl(slug || restaurant?.slug || '')} className="flex-1 text-sm bg-muted/30" />
+                      <Button type="button" variant="outline" size="sm" onClick={copyCardapioLink} className="shrink-0">
+                        {linkCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                        {linkCopied ? 'Copiado!' : 'Copiar'}
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" className="shrink-0 px-2" onClick={() => window.open(getCardapioPublicUrl(slug || restaurant?.slug || ''), '_blank')}>
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Link somente visualização */}
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Label className="text-sm font-medium">Cardápio somente leitura</Label>
+                      <Badge variant="outline" className="text-xs">Sem pedidos</Badge>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input readOnly value={getCardapioPublicUrl(slug || restaurant?.slug || '') + '/menu'} className="flex-1 text-sm bg-muted/30" />
+                      <Button type="button" variant="outline" size="sm" onClick={() => {
+                        const url = getCardapioPublicUrl(slug || restaurant?.slug || '') + '/menu';
+                        navigator.clipboard.writeText(url).then(() => {
+                          setMenuLinkCopied(true);
+                          toast({ title: 'Link copiado!' });
+                          setTimeout(() => setMenuLinkCopied(false), 2000);
+                        });
+                      }} className="shrink-0">
+                        {menuLinkCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                        {menuLinkCopied ? 'Copiado!' : 'Copiar'}
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" className="shrink-0 px-2" onClick={() => window.open(getCardapioPublicUrl(slug || restaurant?.slug || '') + '/menu', '_blank')}>
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Ideal para substituir o cardápio físico — sem opção de fazer pedidos.
+                    </p>
+                  </div>
+                </div>
               )}
-            </TabsContent>
-          </Tabs>
+            </CardContent>
+          </Card>
+
+          {/* QR Code */}
+          <MenuQRCodeCard slug={slug || restaurant?.slug || ''} />
         </TabsContent>
       </Tabs>
 

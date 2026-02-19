@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed } from 'lucide-react';
-import { useCouriers, useOrders, usePrintSettings, type OrderSourceFilter } from '@/hooks/queries';
+import { useCouriers, useOrders, usePrintSettings } from '@/hooks/queries';
 import { usePrinter } from '@/hooks/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
 import {
@@ -119,12 +119,10 @@ export default function AdminOrders() {
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
   const queryClient = useQueryClient();
-  const [orderSourceFilter, setOrderSourceFilter] = useState<OrderSourceFilter>('all');
   const { data: ordersData, isLoading: loading, refetch: refetchOrders } = useOrders({
     restaurantId,
     page: 0,
     limit: 100,
-    orderSourceFilter,
   });
   const orders = ordersData?.orders ?? [];
   const { data: printSettings } = usePrintSettings(restaurantId);
@@ -303,36 +301,9 @@ export default function AdminOrders() {
       <div className="space-y-8 min-w-0">
         <div>
           <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-foreground">Gestão de Pedidos</h1>
-          <p className="text-muted-foreground text-base sm:text-lg mb-4">
+          <p className="text-muted-foreground text-base sm:text-lg">
             Acompanhe e gerencie os pedidos em tempo real
           </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={orderSourceFilter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setOrderSourceFilter('all')}
-            >
-              Todos
-            </Button>
-            <Button
-              variant={orderSourceFilter === 'table' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setOrderSourceFilter('table')}
-              className={orderSourceFilter === 'table' ? 'bg-amber-600 hover:bg-amber-700' : ''}
-            >
-              <UtensilsCrossed className="h-4 w-4 mr-1.5" />
-              Mesas
-            </Button>
-            <Button
-              variant={orderSourceFilter === 'delivery' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setOrderSourceFilter('delivery')}
-              className={orderSourceFilter === 'delivery' ? 'bg-cyan-600 hover:bg-cyan-700' : ''}
-            >
-              <Bike className="h-4 w-4 mr-1.5" />
-              Delivery
-            </Button>
-          </div>
         </div>
 
         {/* Kanban Board */}
@@ -499,8 +470,8 @@ export default function AdminOrders() {
                             </span>
                           </div>
 
-                          {/* Entregador */}
-                          {couriers.length > 0 && (
+                          {/* Entregador - apenas para delivery */}
+                          {couriers.length > 0 && order.order_source !== 'table' && !order.table_id && (
                             <div className="space-y-1.5">
                               <label className="text-xs font-medium flex items-center gap-1.5">
                                 <Bike className="h-3.5 w-3.5 text-muted-foreground" />
@@ -527,23 +498,45 @@ export default function AdminOrders() {
                           )}
 
                           {/* Botão de Ação */}
-                          {config.nextStatus && config.nextIcon && (
-                            <Button
-                              size="sm"
-                              disabled={updatingOrderId === order.id}
-                              className={`w-full bg-gradient-to-r ${config.gradient} text-white border-0 shadow-md hover:shadow-lg transition-all hover:scale-[1.02] font-semibold`}
-                              onClick={() =>
-                                updateOrderStatus(order.id, config.nextStatus!)
-                              }
-                            >
-                              {updatingOrderId === order.id ? (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              ) : (
-                                React.createElement(config.nextIcon, { className: "h-4 w-4 mr-2" })
-                              )}
-                              {config.nextLabel}
-                            </Button>
-                          )}
+                          {(() => {
+                            const isTableOrder = order.order_source === 'table' || !!order.table_id;
+                            // Pedidos de mesa: de "Em Preparo" vai direto para "Concluído"
+                            const tablePreparingOverride =
+                              isTableOrder && status === OrderStatus.PREPARING;
+                            const completedConfig = statusConfig[OrderStatus.COMPLETED];
+                            const nextStatus = tablePreparingOverride
+                              ? OrderStatus.COMPLETED
+                              : config.nextStatus;
+                            const nextLabel = tablePreparingOverride
+                              ? completedConfig.label
+                              : config.nextLabel;
+                            const NextIconComponent = tablePreparingOverride
+                              ? completedConfig.icon
+                              : config.nextIcon;
+                            const gradientClass = tablePreparingOverride
+                              ? completedConfig.gradient
+                              : config.gradient;
+                            // Pedidos de mesa não exibem "Pronto" nem "Em Entrega"
+                            const hideForTable =
+                              isTableOrder &&
+                              (status === OrderStatus.READY || status === OrderStatus.DELIVERING);
+                            if (hideForTable || !nextStatus || !NextIconComponent) return null;
+                            return (
+                              <Button
+                                size="sm"
+                                disabled={updatingOrderId === order.id}
+                                className={`w-full bg-gradient-to-r ${gradientClass} text-white border-0 shadow-md hover:shadow-lg transition-all hover:scale-[1.02] font-semibold`}
+                                onClick={() => updateOrderStatus(order.id, nextStatus)}
+                              >
+                                {updatingOrderId === order.id ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  React.createElement(NextIconComponent, { className: "h-4 w-4 mr-2" })
+                                )}
+                                {nextLabel}
+                              </Button>
+                            );
+                          })()}
                         </CardContent>
                       </Card>
                     ))
