@@ -5,7 +5,14 @@
 -- Objetivo:
 -- 1) Ao cliente confirmar itens na comanda, refletir imediatamente em orders/order_items.
 -- 2) Evitar duplicidade de pedidos ao fechar comanda no caixa.
+--
+-- Nota: orders não possui table_number (apenas table_id). Incluímos order_source 'comanda'.
 -- =============================================================================
+
+-- Permite order_source = 'comanda' (tabela orders usa CHECK)
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_order_source_check;
+ALTER TABLE orders ADD CONSTRAINT orders_order_source_check
+  CHECK (order_source IN ('delivery', 'pickup', 'table', 'buffet', 'comanda'));
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- RPC: sync_virtual_comanda_to_order
@@ -25,6 +32,7 @@ DECLARE
   v_comanda      virtual_comandas%ROWTYPE;
   v_order_id     UUID;
   v_items_count  INTEGER;
+  v_total_int    INTEGER;
 BEGIN
   SELECT * INTO v_comanda
     FROM virtual_comandas
@@ -41,6 +49,10 @@ BEGIN
       USING ERRCODE = 'P0001';
   END IF;
 
+  v_total_int := CASE WHEN get_restaurant_currency(v_comanda.restaurant_id) = 'PYG'
+    THEN ROUND(v_comanda.total_amount)::INTEGER
+    ELSE ROUND(v_comanda.total_amount * 100)::INTEGER END;
+
   -- Reaproveita pedido já existente da comanda, se houver.
   SELECT id INTO v_order_id
     FROM orders
@@ -48,16 +60,18 @@ BEGIN
    ORDER BY created_at DESC
    LIMIT 1;
 
+  -- orders não possui coluna table_number; usa table_id (UUID). Comanda usa notes.
   IF v_order_id IS NULL THEN
     INSERT INTO orders (
       restaurant_id,
       customer_name,
       customer_phone,
-      status,
+      delivery_type,
+      delivery_fee,
+      subtotal,
       total,
       payment_method,
       order_source,
-      table_number,
       notes,
       virtual_comanda_id
     )
@@ -65,21 +79,22 @@ BEGIN
       v_comanda.restaurant_id,
       COALESCE(NULLIF(TRIM(v_comanda.customer_name), ''), 'Comanda ' || v_comanda.short_code),
       '',
-      'pending',
-      v_comanda.total_amount,
+      'pickup',
+      0,
+      v_total_int,
+      v_total_int,
       'cash',
       'comanda',
-      v_comanda.table_number,
-      v_comanda.notes,
+      COALESCE(v_comanda.notes, '') || CASE WHEN v_comanda.table_number IS NOT NULL AND v_comanda.table_number <> '' THEN ' | Mesa: ' || v_comanda.table_number ELSE '' END,
       v_comanda.id
     )
     RETURNING id INTO v_order_id;
   ELSE
     UPDATE orders
        SET customer_name = COALESCE(NULLIF(TRIM(v_comanda.customer_name), ''), 'Comanda ' || v_comanda.short_code),
-           total         = v_comanda.total_amount,
-           notes         = v_comanda.notes,
-           table_number  = v_comanda.table_number,
+           total         = v_total_int,
+           subtotal      = v_total_int,
+           notes         = COALESCE(v_comanda.notes, '') || CASE WHEN v_comanda.table_number IS NOT NULL AND v_comanda.table_number <> '' THEN ' | Mesa: ' || v_comanda.table_number ELSE '' END,
            order_source  = 'comanda',
            updated_at    = NOW()
      WHERE id = v_order_id;
@@ -88,22 +103,14 @@ BEGIN
   -- Mantém order_items espelhado com os itens da comanda.
   DELETE FROM order_items WHERE order_id = v_order_id;
 
-  INSERT INTO order_items (
-    order_id,
-    product_id,
-    product_name,
-    quantity,
-    unit_price,
-    total_price,
-    observations
-  )
+  INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price, observations)
   SELECT
     v_order_id,
     vci.product_id,
     vci.product_name,
     vci.quantity,
-    vci.unit_price,
-    vci.total_price,
+    CASE WHEN get_restaurant_currency(v_comanda.restaurant_id) = 'PYG' THEN ROUND(vci.unit_price)::INTEGER ELSE ROUND(vci.unit_price * 100)::INTEGER END,
+    CASE WHEN get_restaurant_currency(v_comanda.restaurant_id) = 'PYG' THEN ROUND(vci.total_price)::INTEGER ELSE ROUND(vci.total_price * 100)::INTEGER END,
     vci.notes
   FROM virtual_comanda_items vci
   WHERE vci.comanda_id = p_comanda_id;
@@ -142,6 +149,7 @@ DECLARE
   v_comanda       virtual_comandas%ROWTYPE;
   v_order_id      UUID;
   v_existing_stat TEXT;
+  v_total_int     INTEGER;
 BEGIN
   SELECT * INTO v_comanda
     FROM virtual_comandas
@@ -163,22 +171,28 @@ BEGIN
       USING ERRCODE = 'P0001';
   END IF;
 
+  v_total_int := CASE WHEN get_restaurant_currency(v_comanda.restaurant_id) = 'PYG'
+    THEN ROUND(v_comanda.total_amount)::INTEGER
+    ELSE ROUND(v_comanda.total_amount * 100)::INTEGER END;
+
   SELECT id, status INTO v_order_id, v_existing_stat
     FROM orders
    WHERE virtual_comanda_id = p_comanda_id
    ORDER BY created_at DESC
    LIMIT 1;
 
+  -- orders não possui table_number; mesa vai em notes quando existir.
   IF v_order_id IS NULL THEN
     INSERT INTO orders (
       restaurant_id,
       customer_name,
       customer_phone,
-      status,
+      delivery_type,
+      delivery_fee,
+      subtotal,
       total,
       payment_method,
       order_source,
-      table_number,
       notes,
       virtual_comanda_id
     )
@@ -186,23 +200,23 @@ BEGIN
       v_comanda.restaurant_id,
       COALESCE(NULLIF(TRIM(v_comanda.customer_name), ''), 'Comanda ' || v_comanda.short_code),
       '',
-      'pending',
-      v_comanda.total_amount,
+      'pickup',
+      0,
+      v_total_int,
+      v_total_int,
       p_payment_method,
       'comanda',
-      v_comanda.table_number,
-      v_comanda.notes,
+      COALESCE(v_comanda.notes, '') || CASE WHEN v_comanda.table_number IS NOT NULL AND v_comanda.table_number <> '' THEN ' | Mesa: ' || v_comanda.table_number ELSE '' END,
       v_comanda.id
     )
     RETURNING id INTO v_order_id;
   ELSE
     UPDATE orders
        SET customer_name = COALESCE(NULLIF(TRIM(v_comanda.customer_name), ''), 'Comanda ' || v_comanda.short_code),
-           total         = v_comanda.total_amount,
+           total         = v_total_int,
+           subtotal      = v_total_int,
            payment_method= p_payment_method,
-           notes         = v_comanda.notes,
-           table_number  = v_comanda.table_number,
-           -- mantém status corrente se já estiver em fluxo no Kanban
+           notes         = COALESCE(v_comanda.notes, '') || CASE WHEN v_comanda.table_number IS NOT NULL AND v_comanda.table_number <> '' THEN ' | Mesa: ' || v_comanda.table_number ELSE '' END,
            status        = COALESCE(v_existing_stat, 'pending'),
            updated_at    = NOW()
      WHERE id = v_order_id;
@@ -216,8 +230,8 @@ BEGIN
     vci.product_id,
     vci.product_name,
     vci.quantity,
-    vci.unit_price,
-    vci.total_price,
+    CASE WHEN get_restaurant_currency(v_comanda.restaurant_id) = 'PYG' THEN ROUND(vci.unit_price)::INTEGER ELSE ROUND(vci.unit_price * 100)::INTEGER END,
+    CASE WHEN get_restaurant_currency(v_comanda.restaurant_id) = 'PYG' THEN ROUND(vci.total_price)::INTEGER ELSE ROUND(vci.total_price * 100)::INTEGER END,
     vci.notes
   FROM virtual_comanda_items vci
   WHERE vci.comanda_id = p_comanda_id;
