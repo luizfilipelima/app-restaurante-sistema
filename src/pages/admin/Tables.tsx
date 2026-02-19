@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminRestaurant, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
-import { Table, WaiterCall } from '@/types';
+import { useTables, useWaiterCalls } from '@/hooks/queries';
+import { Table } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,22 +39,16 @@ export default function AdminTables() {
   const restaurantId = useAdminRestaurantId();
   const { restaurant } = useAdminRestaurant();
   const currency = useAdminCurrency();
-  const [tables, setTables] = useState<Table[]>([]);
-  const [waiterCalls, setWaiterCalls] = useState<WaiterCall[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: tablesData, isLoading: loading, refetch: refetchTables } = useTables(restaurantId);
+  const { data: waiterCallsData, refetch: refetchWaiterCalls } = useWaiterCalls(restaurantId);
+  const tables = tablesData ?? [];
+  const waiterCalls = waiterCallsData ?? [];
   const [showForm, setShowForm] = useState(false);
   const [formNumber, setFormNumber] = useState('');
   const [attendingCallId, setAttendingCallId] = useState<string | null>(null);
   const [ordersModalTable, setOrdersModalTable] = useState<Table | null>(null);
   const [tableOrders, setTableOrders] = useState<TableOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
-
-  useEffect(() => {
-    if (restaurantId) {
-      loadTables();
-      loadWaiterCalls();
-    }
-  }, [restaurantId]);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -67,46 +62,13 @@ export default function AdminTables() {
           table: 'waiter_calls',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        () => {
-          loadWaiterCalls();
-        }
+        () => refetchWaiterCalls()
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [restaurantId]);
-
-  const loadTables = async () => {
-    if (!restaurantId) return;
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('tables')
-        .select('*')
-        .eq('restaurant_id', restaurantId)
-        .order('order_index', { ascending: true })
-        .order('number', { ascending: true });
-      if (error) throw error;
-      setTables(data || []);
-    } catch (e) {
-      console.error(e);
-      toast({ title: 'Erro ao carregar mesas', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadWaiterCalls = async () => {
-    if (!restaurantId) return;
-    const { data } = await supabase
-      .from('waiter_calls')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-    setWaiterCalls(data || []);
-  };
+  }, [restaurantId, refetchWaiterCalls]);
 
   const loadTableOrders = async (tableId: string) => {
     setLoadingOrders(true);
@@ -163,7 +125,7 @@ export default function AdminTables() {
       if (error) throw error;
       setFormNumber('');
       setShowForm(false);
-      loadTables();
+      refetchTables();
       toast({ title: 'Mesa adicionada!' });
     } catch (e) {
       console.error(e);
@@ -176,7 +138,7 @@ export default function AdminTables() {
     try {
       const { error } = await supabase.from('tables').delete().eq('id', table.id).eq('restaurant_id', restaurantId!);
       if (error) throw error;
-      loadTables();
+      refetchTables();
       toast({ title: 'Mesa excluída!' });
     } catch (e) {
       toast({ title: 'Erro ao excluir', variant: 'destructive' });
@@ -191,7 +153,7 @@ export default function AdminTables() {
         .update({ status: 'attended', attended_at: new Date().toISOString() })
         .eq('id', callId);
       if (error) throw error;
-      loadWaiterCalls();
+      refetchWaiterCalls();
       toast({ title: 'Chamado atendido!' });
     } catch (e) {
       toast({ title: 'Erro', variant: 'destructive' });

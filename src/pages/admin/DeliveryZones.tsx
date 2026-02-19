@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
-import { DeliveryZone } from '@/types';
+import { useDeliveryZones } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,41 +12,13 @@ import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
 export default function AdminDeliveryZones() {
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
-  const [zones, setZones] = useState<DeliveryZone[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: zonesData, isLoading: loading, refetch } = useDeliveryZones(restaurantId);
+  const zones = zonesData ?? [];
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     location_name: '',
     fee: 0,
   });
-
-  useEffect(() => {
-    if (restaurantId) {
-      loadZones();
-    }
-  }, [restaurantId]);
-
-  const loadZones = async () => {
-    if (!restaurantId) return;
-
-    try {
-      setLoading(true);
-
-      const { data, error } = await supabase
-        .from('delivery_zones')
-        .select('*')
-        .eq('restaurant_id', restaurantId)
-        .order('location_name', { ascending: true });
-
-      if (error) throw error;
-
-      setZones(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar zonas:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +36,7 @@ export default function AdminDeliveryZones() {
 
       setFormData({ location_name: '', fee: 0 });
       setShowForm(false);
-      loadZones();
+      refetch();
     } catch (error) {
       console.error('Erro ao criar zona:', error);
       alert('Erro ao criar zona de entrega');
@@ -79,10 +51,7 @@ export default function AdminDeliveryZones() {
         .eq('id', zoneId);
 
       if (error) throw error;
-
-      setZones((prev) =>
-        prev.map((z) => (z.id === zoneId ? { ...z, is_active: !isActive } : z))
-      );
+      refetch();
     } catch (error) {
       console.error('Erro ao atualizar zona:', error);
     }
@@ -98,8 +67,7 @@ export default function AdminDeliveryZones() {
         .eq('id', zoneId);
 
       if (error) throw error;
-
-      setZones((prev) => prev.filter((z) => z.id !== zoneId));
+      refetch();
     } catch (error) {
       console.error('Erro ao excluir zona:', error);
     }

@@ -1,9 +1,8 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { supabase } from '@/lib/supabase';
-import { Restaurant } from '@/types';
 import { AdminRestaurantContext } from '@/contexts/AdminRestaurantContext';
+import { useRestaurant } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useSessionManager } from '@/hooks/useSessionManager';
@@ -59,29 +58,11 @@ export default function AdminLayout({
   const navigate = useNavigate();
   const { user, signOut } = useAuthStore();
   const { toast } = useToast();
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [loadingRestaurant, setLoadingRestaurant] = useState(!!managedRestaurantId);
 
   const restaurantId = managedRestaurantId || user?.restaurant_id || null;
+  const { data: restaurant, isLoading: loadingRestaurant } = useRestaurant(restaurantId);
   const isSuperAdminView = !!managedRestaurantId;
   const navItems = getNavItems(basePath || '/admin');
-
-  useEffect(() => {
-    if (!restaurantId) {
-      setLoadingRestaurant(false);
-      return;
-    }
-    const load = async () => {
-      const { data } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('id', restaurantId)
-        .single();
-      setRestaurant(data || null);
-      setLoadingRestaurant(false);
-    };
-    load();
-  }, [restaurantId]);
 
   // Gerenciar sessões simultâneas (máximo 3 por restaurante)
   useSessionManager(user?.id || null, restaurantId);
@@ -122,7 +103,7 @@ export default function AdminLayout({
 
   const contextValue = {
     restaurantId,
-    restaurant,
+    restaurant: restaurant ?? null,
     isSuperAdminView,
   };
 

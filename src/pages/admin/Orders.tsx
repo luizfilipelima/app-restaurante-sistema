@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { DatabaseOrder, OrderStatus } from '@/types';
@@ -19,10 +20,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer } from 'lucide-react';
-import { useCouriers } from '@/hooks/useCouriers';
+import { useCouriers, useOrders, usePrintSettings } from '@/hooks/queries';
 import { usePrinter } from '@/hooks/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
-import type { PrintPaperWidth } from '@/types';
 import {
   Select,
   SelectContent,
@@ -118,51 +118,25 @@ const ORDER_TAB_STATUSES = [
 export default function AdminOrders() {
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
-  const [orders, setOrders] = useState<DatabaseOrder[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: ordersData, isLoading: loading, refetch: refetchOrders } = useOrders({
+    restaurantId,
+    page: 0,
+    limit: 100,
+  });
+  const orders = ordersData?.orders ?? [];
+  const { data: printSettings } = usePrintSettings(restaurantId);
+  const printSettingsRef = useRef(printSettings);
+  printSettingsRef.current = printSettings;
+
   const [orderToRemove, setOrderToRemove] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const { couriers } = useCouriers(restaurantId);
   const { printOrder, receiptData } = usePrinter();
 
-  type PrintSettings = { name: string; print_auto_on_new_order: boolean; print_paper_width: PrintPaperWidth };
-  const [printSettings, setPrintSettings] = useState<PrintSettings | null>(null);
-  const printSettingsRef = useRef<PrintSettings | null>(null);
-  printSettingsRef.current = printSettings;
-
-  const loadOrders = async (silent = false) => {
-    if (!restaurantId) return;
-
-    try {
-      if (!silent) setLoading(true);
-
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          delivery_zone:delivery_zones(*),
-          order_items(*),
-          courier:couriers(id, name, phone)
-        `)
-        .eq('restaurant_id', restaurantId)
-        .in('status', ORDER_TAB_STATUSES)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      setOrders(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar pedidos:', error);
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (!restaurantId) return;
-    loadOrders();
-
     const channel = supabase
       .channel('orders-changes')
       .on(
@@ -174,7 +148,7 @@ export default function AdminOrders() {
           filter: `restaurant_id=eq.${restaurantId}`,
         },
         async (payload) => {
-          loadOrders(true);
+          queryClient.invalidateQueries({ queryKey: ['orders', restaurantId] });
           if (payload.eventType === 'INSERT' && payload.new?.restaurant_id === restaurantId) {
             const orderId = (payload.new as { id: string }).id;
             const settings = printSettingsRef.current;
@@ -200,41 +174,10 @@ export default function AdminOrders() {
         }
       )
       .subscribe();
-
-    const pollInterval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        loadOrders(true);
-      }
-    }, 5000); // Atualiza a cada 5 segundos
-
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(pollInterval);
     };
-  }, [restaurantId, printOrder]);
-
-  useEffect(() => {
-    if (!restaurantId) return;
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from('restaurants')
-          .select('name, print_auto_on_new_order, print_paper_width')
-          .eq('id', restaurantId)
-          .single();
-        if (data) {
-          const next: PrintSettings = {
-            name: data.name || '',
-            print_auto_on_new_order: !!data.print_auto_on_new_order,
-            print_paper_width: (data.print_paper_width === '58mm' ? '58mm' : '80mm') as PrintPaperWidth,
-          };
-          setPrintSettings(next);
-        }
-      } catch (err) {
-        console.error('Erro ao carregar config impressão:', err);
-      }
-    })();
-  }, [restaurantId]);
+  }, [restaurantId, printOrder, queryClient]);
 
   const updateOrderCourier = async (orderId: string, courierId: string | null) => {
     try {
@@ -243,7 +186,7 @@ export default function AdminOrders() {
         .update({ courier_id: courierId })
         .eq('id', orderId);
       if (error) throw error;
-      await loadOrders(true);
+      await refetchOrders();
       toast({ title: 'Entregador atribuído', variant: 'default' });
     } catch (err) {
       console.error(err);
@@ -261,7 +204,7 @@ export default function AdminOrders() {
 
       if (error) throw error;
 
-      await loadOrders(true);
+      await refetchOrders();
 
       toast({
         title: "✅ Status atualizado!",
@@ -292,7 +235,7 @@ export default function AdminOrders() {
 
       if (error) throw error;
 
-      setOrders((prev) => prev.filter((order) => order.id !== orderId));
+      await refetchOrders();
       setOrderToRemove(null);
       toast({
         title: "Pedido removido",
