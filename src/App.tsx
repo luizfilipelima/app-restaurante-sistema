@@ -12,7 +12,10 @@ import LandingPage from './pages/landing/LandingPage';
 
 import LoginPage from './pages/auth/LoginPage';
 import UnauthorizedPage from './pages/auth/UnauthorizedPage';
-import SuperAdminDashboard from './pages/super-admin/Dashboard';
+import SuperAdminLayout from './components/super-admin/SuperAdminLayout';
+import SaasMetrics from './pages/super-admin/SaasMetrics';
+import SuperAdminRestaurants from './pages/super-admin/Dashboard';
+import Plans from './pages/super-admin/Plans';
 import AdminLayoutWrapper from './components/admin/AdminLayoutWrapper';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminMenu from './pages/admin/Menu';
@@ -126,14 +129,32 @@ function App() {
         <Routes>
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          {/*
+           * ── Super Admin Shell ───────────────────────────────────────────
+           * SuperAdminLayout (dark sidebar) envolve as páginas de gestão do SaaS.
+           * Rotas filhas são renderizadas via <Outlet /> dentro do layout.
+           *
+           * Importante: as rotas de detalhe de restaurante (/:identifier) ficam
+           * FORA deste grupo pois possuem layouts próprios (AdminLayoutWrapper /
+           * RestaurantDetails).  React Router v6 dá preferência às rotas mais
+           * específicas, portanto não há conflito.
+           */}
           <Route
             path="/super-admin"
             element={
               <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
-                <SuperAdminDashboard />
+                <SuperAdminLayout />
               </ProtectedRoute>
             }
-          />
+          >
+            {/* index → Dashboard BI (KPIs + gráficos) */}
+            <Route index element={<SaasMetrics />} />
+            {/* Lista de restaurantes + soft delete */}
+            <Route path="restaurants" element={<SuperAdminRestaurants />} />
+            {/* Edição de planos e preços */}
+            <Route path="plans" element={<Plans />} />
+          </Route>
+
           {/*
            * Gestão de assinatura e features — rota standalone (sem AdminLayout).
            * O parâmetro :identifier aceita tanto o slug amigável do restaurante

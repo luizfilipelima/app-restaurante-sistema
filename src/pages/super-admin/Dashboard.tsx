@@ -42,6 +42,8 @@ import {
   Instagram,
   Printer,
   CreditCard,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Restaurant, DayKey, PrintPaperWidth } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -70,6 +72,10 @@ export default function SuperAdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [showNewRestaurantDialog, setShowNewRestaurantDialog] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Soft delete: qual restaurante está prestes a ser removido
+  const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
+  // Campo de confirmação: o usuário deve digitar o nome exato para habilitar o botão
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -164,6 +170,49 @@ export default function SuperAdminDashboard() {
         description: 'Não foi possível atualizar o status do restaurante.',
         variant: 'destructive',
       });
+    }
+  };
+
+  /**
+   * Soft delete: define deleted_at = NOW() sem apagar os dados reais.
+   * O restaurante some da listagem (filtered by deleted_at IS NULL) mas o
+   * histórico de pedidos e financeiro permanece intacto para BI.
+   */
+  const handleSoftDelete = async () => {
+    if (!restaurantToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', restaurantToDelete.id);
+
+      if (error) throw error;
+
+      // Remove da lista imediatamente para feedback instantâneo
+      setRestaurants((prev) => prev.filter((r) => r.id !== restaurantToDelete.id));
+      setMetrics((m) => ({
+        ...m,
+        totalRestaurants:  m.totalRestaurants - 1,
+        activeRestaurants: restaurantToDelete.is_active
+          ? m.activeRestaurants - 1
+          : m.activeRestaurants,
+      }));
+
+      toast({
+        title: 'Restaurante removido',
+        description: `"${restaurantToDelete.name}" foi removido com segurança. Os dados históricos foram preservados.`,
+      });
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: 'Erro ao remover',
+        description: 'Não foi possível remover o restaurante. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRestaurantToDelete(null);
+      setDeleteConfirmName('');
     }
   };
 
@@ -541,6 +590,18 @@ export default function SuperAdminDashboard() {
                           <Eye className="h-3.5 w-3.5" />
                         )}
                       </Button>
+                      {/* Soft delete: abre modal de confirmação por nome */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                        onClick={() => {
+                          setRestaurantToDelete(restaurant);
+                          setDeleteConfirmName('');
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -549,6 +610,84 @@ export default function SuperAdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* ── Modal de confirmação de exclusão (Danger Modal) ─────────────── */}
+      <Dialog
+        open={!!restaurantToDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRestaurantToDelete(null);
+            setDeleteConfirmName('');
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <DialogTitle className="text-red-700">Remover Restaurante</DialogTitle>
+            </div>
+            <DialogDescription asChild>
+              <div className="space-y-3 text-sm text-slate-600">
+                <p>
+                  Você está prestes a remover permanentemente{' '}
+                  <strong className="text-slate-800">{restaurantToDelete?.name}</strong>.
+                </p>
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="font-semibold text-amber-800 mb-1 flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Esta ação é irreversível na visão do painel
+                  </p>
+                  <p className="text-amber-700 text-xs">
+                    Os dados históricos (pedidos, receita) serão preservados no banco para
+                    fins de BI e auditoria. O restaurante apenas desaparecerá da listagem.
+                  </p>
+                </div>
+                <div className="space-y-2 pt-1">
+                  <Label htmlFor="delete-confirm" className="text-xs font-semibold text-slate-700">
+                    Digite o nome do restaurante para confirmar:
+                  </Label>
+                  <Input
+                    id="delete-confirm"
+                    value={deleteConfirmName}
+                    onChange={(e) => setDeleteConfirmName(e.target.value)}
+                    placeholder={restaurantToDelete?.name}
+                    className="border-red-200 focus-visible:ring-red-400"
+                    autoComplete="off"
+                  />
+                  {deleteConfirmName.length > 0 &&
+                    deleteConfirmName !== restaurantToDelete?.name && (
+                    <p className="text-xs text-red-500">
+                      O nome digitado não corresponde. Verifique maiúsculas e espaços.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-2 gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRestaurantToDelete(null);
+                setDeleteConfirmName('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirmName !== restaurantToDelete?.name}
+              onClick={handleSoftDelete}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              Confirmar Remoção
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog de Novo Restaurante */}
       <Dialog open={showNewRestaurantDialog} onOpenChange={setShowNewRestaurantDialog}>
