@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
@@ -61,6 +62,20 @@ const AREA_OPTIONS = [
   { value: 'buffet', label: 'Buffet' },
 ] as const;
 type AreaValue = 'all' | 'delivery' | 'table' | 'pickup' | 'buffet';
+
+// ─── Variantes de animação stagger para os cards de métrica ─────────────────
+
+const metricContainerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+};
+
+const metricCardVariants = {
+  hidden:  { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] } },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function getDateRange(period: PeriodValue) {
   const end = new Date();
@@ -487,8 +502,13 @@ export default function AdminDashboard() {
         </div>
 
         {/* Cards de Métricas - Estilo Shopeers (brancos, limpos, trend) */}
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 min-w-0">
-          <div className="admin-metric-card">
+        <motion.div
+          className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 min-w-0"
+          variants={metricContainerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div className="admin-metric-card" variants={metricCardVariants}>
             <div className="flex items-start justify-between">
               <p className="text-sm font-medium text-slate-500">Faturamento</p>
               <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -504,9 +524,9 @@ export default function AdminDashboard() {
                 {revPct}% vs. período anterior
               </p>
             )}
-          </div>
+          </motion.div>
 
-          <div className="admin-metric-card">
+          <motion.div className="admin-metric-card" variants={metricCardVariants}>
             <div className="flex items-start justify-between">
               <p className="text-sm font-medium text-slate-500">Pedidos</p>
               <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center">
@@ -520,9 +540,9 @@ export default function AdminDashboard() {
                 {ordPct}% vs. período anterior
               </p>
             )}
-          </div>
+          </motion.div>
 
-          <div className="admin-metric-card">
+          <motion.div className="admin-metric-card" variants={metricCardVariants}>
             <div className="flex items-start justify-between">
               <p className="text-sm font-medium text-slate-500">Ticket Médio</p>
               <div className="h-9 w-9 rounded-lg bg-violet-50 flex items-center justify-center">
@@ -533,9 +553,9 @@ export default function AdminDashboard() {
               {formatCurrency(metrics.averageTicket, currency)}
             </p>
             <p className="text-xs text-slate-400 mt-1">Valor médio por pedido</p>
-          </div>
+          </motion.div>
 
-          <div className="admin-metric-card">
+          <motion.div className="admin-metric-card" variants={metricCardVariants}>
             <div className="flex items-start justify-between">
               <p className="text-sm font-medium text-slate-500">Pendentes</p>
               <div className="h-9 w-9 rounded-lg bg-amber-50 flex items-center justify-center">
@@ -544,8 +564,8 @@ export default function AdminDashboard() {
             </div>
             <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.pendingOrders}</p>
             <p className="text-xs text-slate-400 mt-1">Aguardando preparo</p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* ── Seção Operacional ── */}
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">

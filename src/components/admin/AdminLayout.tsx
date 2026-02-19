@@ -1,5 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { PageTransition } from '@/components/ui/PageTransition';
 import { useAuthStore } from '@/store/authStore';
 import { AdminRestaurantContext, useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
@@ -36,6 +38,20 @@ import {
   QrCode,
   type LucideIcon,
 } from 'lucide-react';
+
+// ─── Variantes de animação (definidas fora do componente para evitar recriação) ─
+
+const sidebarNavVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
+};
+
+const sidebarSectionVariants = {
+  hidden:  { opacity: 0, x: -12 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] } },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface AdminLayoutProps {
   children?: ReactNode;
@@ -484,11 +500,16 @@ export default function AdminLayout({
             </div>
 
             {/* Navegação principal */}
-            <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
+            <motion.nav
+              className="flex-1 px-3 py-4 space-y-5 overflow-y-auto"
+              variants={sidebarNavVariants}
+              initial="hidden"
+              animate="visible"
+            >
               {navSections.map((section) => {
                 if (section.kind === 'group') {
                   return (
-                    <div key={section.label}>
+                    <motion.div key={section.label} variants={sidebarSectionVariants}>
                       <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400 select-none">
                         {section.label}
                       </p>
@@ -501,20 +522,21 @@ export default function AdminLayout({
                           />
                         ))}
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 }
 
                 // Collapsible section
                 return (
-                  <CollapsibleSection
-                    key={section.key}
-                    section={section}
-                    currentPath={location.pathname}
-                  />
+                  <motion.div key={section.key} variants={sidebarSectionVariants}>
+                    <CollapsibleSection
+                      section={section}
+                      currentPath={location.pathname}
+                    />
+                  </motion.div>
                 );
               })}
-            </nav>
+            </motion.nav>
 
             {/* Footer da sidebar */}
             <div className="flex-shrink-0 px-3 py-4 border-t border-slate-100">
@@ -675,7 +697,11 @@ export default function AdminLayout({
         <div className="md:pl-64 min-w-0 flex-1 w-full">
           <main className="pt-[108px] md:pt-20 min-h-screen bg-slate-50">
             <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px] mx-auto min-w-0">
-              {children ?? <Outlet />}
+              <AnimatePresence mode="wait">
+                <PageTransition key={location.pathname}>
+                  {children ?? <Outlet />}
+                </PageTransition>
+              </AnimatePresence>
             </div>
           </main>
         </div>

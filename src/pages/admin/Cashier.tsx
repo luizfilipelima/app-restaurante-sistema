@@ -26,6 +26,7 @@ import {
   Trash2, User, Clock, ShoppingBag, RefreshCw,
   ChevronRight, Wifi, WifiOff,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -670,10 +671,13 @@ function CashierContent() {
 
               {/* Botão: Marcar Concluído */}
               <div className="px-5 pb-5 space-y-2">
-                <button
+                <motion.button
                   onClick={handleComplete}
                   disabled={closing || !hasItems}
-                  className="w-full flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#F87116] to-orange-500 disabled:from-slate-200 disabled:to-slate-200 dark:disabled:from-slate-700 dark:disabled:to-slate-700 disabled:cursor-not-allowed text-white disabled:text-slate-400 text-base font-bold py-4 rounded-xl shadow-md shadow-orange-200/40 hover:brightness-105 transition-all active:scale-[0.99]"
+                  whileHover={!closing && hasItems ? { scale: 1.015 } : {}}
+                  whileTap={!closing && hasItems ? { scale: 0.97 } : {}}
+                  transition={{ duration: 0.15 }}
+                  className="w-full flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#F87116] to-orange-500 disabled:from-slate-200 disabled:to-slate-200 dark:disabled:from-slate-700 dark:disabled:to-slate-700 disabled:cursor-not-allowed text-white disabled:text-slate-400 text-base font-bold py-4 rounded-xl shadow-md shadow-orange-200/40 hover:brightness-105 transition-all"
                 >
                   {closing ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -684,7 +688,7 @@ function CashierContent() {
                     ? 'Encerrando…'
                     : `Marcar Concluído — ${formatCurrency(total, currency)}`
                   }
-                </button>
+                </motion.button>
 
                 {!hasItems && (
                   <p className="text-center text-xs text-muted-foreground">
