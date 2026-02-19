@@ -36,7 +36,7 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Plus, Trash2, Loader2, Info, Upload, Copy, Check } from 'lucide-react';
+import { Plus, Trash2, Loader2, Info, Upload, Copy, Check, Sparkles } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
 import CategoryManager from '@/components/admin/CategoryManager';
 import ProductRow from '@/components/admin/ProductRow';
@@ -866,6 +866,12 @@ export default function AdminMenu() {
 
         {/* Aba Produtos */}
         <TabsContent value="produtos" className="space-y-6 mt-6">
+          <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+            <Sparkles className="h-5 w-5 text-blue-600 shrink-0" />
+            <p className="text-sm text-blue-800">
+              Cadastre o preço de custo para desbloquear a inteligência artificial do seu cardápio.
+            </p>
+          </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold text-foreground">Produtos do Cardápio</h2>

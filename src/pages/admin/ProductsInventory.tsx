@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Upload, Download, Trash2, Edit, Check, X } from 'lucide-react';
+import { Plus, Upload, Download, Trash2, Edit, Check, X, Sparkles } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -283,6 +283,13 @@ export default function ProductsInventory() {
             Novo Produto
           </Button>
         </div>
+      </div>
+
+      <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+        <Sparkles className="h-5 w-5 text-blue-600 shrink-0" />
+        <p className="text-sm text-blue-800">
+          Cadastre o preço de custo para desbloquear a inteligência artificial do seu cardápio.
+        </p>
       </div>
 
       {loading ? (

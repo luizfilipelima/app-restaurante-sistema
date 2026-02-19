@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
-import { useDashboardAnalytics } from '@/hooks/queries';
+import { useDashboardStats } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
-import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2, MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2, MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon, Flame, Bike, HelpCircle, Users, LayoutGrid } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -41,6 +41,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ChurnRecoveryList } from '@/components/admin/ChurnRecoveryList';
+import { MenuMatrixBCG } from '@/components/admin/MenuMatrixBCG';
 const PERIOD_OPTIONS = [
   { value: '30', label: 'Últimos 30 dias' },
   { value: '365', label: 'Último ano' },
@@ -86,14 +88,14 @@ export default function AdminDashboard() {
     return null;
   }, [period, start]);
 
-  const { data: analytics, isLoading: loading } = useDashboardAnalytics({
+  const { data: analytics, isLoading: loading } = useDashboardStats({
     tenantId: restaurantId,
     startDate: start,
     endDate: end,
     areaFilter: areaFilter === 'buffet' ? 'all' : areaFilter,
   });
 
-  const { data: prevAnalytics } = useDashboardAnalytics({
+  const { data: prevAnalytics } = useDashboardStats({
     tenantId: restaurantId,
     startDate: prevRange?.start ?? start,
     endDate: prevRange?.end ?? start,
@@ -122,6 +124,25 @@ export default function AdminDashboard() {
       orders: d.orders,
     }));
   }, [analytics]);
+
+  const operational = analytics?.operational;
+  const financial = analytics?.financial;
+  const avgPrepTime = operational?.avg_prep_time ?? 0;
+  const avgDeliveryTime = operational?.avg_delivery_time ?? 0;
+  const grossProfit = financial?.gross_profit ?? 0;
+  const cancelRate = financial?.cancel_rate ?? 0;
+  const showCancelAlert = cancelRate > 5;
+
+  const movementByHour = useMemo(() => {
+    const heatmap = operational?.idleness_heatmap ?? [];
+    const counts = heatmap.map((h) => h.count).filter((c) => c > 0);
+    const avgCount = counts.length > 0 ? counts.reduce((a, b) => a + b, 0) / counts.length : 0;
+    return heatmap.map((h) => ({
+      hour: `${String(h.hour).padStart(2, '0')}h`,
+      count: h.count,
+      isLowMovement: avgCount > 0 && h.count < avgCount * 0.5,
+    }));
+  }, [operational?.idleness_heatmap]);
 
   const paymentMethods = analytics?.payment_methods ?? [];
   const topZone = analytics?.top_zone ?? null;
@@ -445,6 +466,111 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Secção Operacional */}
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">
+          <div className="admin-card p-6 min-w-0 overflow-hidden">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Tempo de Cozinha vs Entrega</h3>
+            <div className="flex flex-wrap gap-6">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-lg bg-orange-50 flex items-center justify-center">
+                  <Flame className="h-6 w-6 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {Math.round(avgPrepTime)} <span className="text-base font-normal text-slate-500">min</span>
+                  </p>
+                  <p className="text-sm text-slate-500">Tempo de Cozinha</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-lg bg-cyan-50 flex items-center justify-center">
+                  <Bike className="h-6 w-6 text-cyan-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {Math.round(avgDeliveryTime)} <span className="text-base font-normal text-slate-500">min</span>
+                  </p>
+                  <p className="text-sm text-slate-500">Tempo de Entrega</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="admin-card p-6 min-w-0 overflow-hidden">
+            <div className="pb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Movimento por Hora</h3>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Horas em cor diferente sugerem oportunidades de Happy Hour
+              </p>
+            </div>
+            <div className="min-w-0">
+              <div className="w-full min-h-[200px] min-w-0">
+                <ResponsiveContainer width="100%" height={200} minWidth={0}>
+                  <BarChart data={movementByHour}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="hour" stroke="#888" style={{ fontSize: '11px' }} />
+                    <YAxis stroke="#888" style={{ fontSize: '11px' }} />
+                    <Tooltip
+                      formatter={(value: number) => [`${value} pedidos`, 'Quantidade']}
+                      contentStyle={{
+                        borderRadius: '8px',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      }}
+                    />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {movementByHour.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.isLowMovement ? '#f59e0b' : '#3b82f6'}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Secção Financeira */}
+        <div className="flex flex-col sm:flex-row gap-4 min-w-0">
+          <div className="admin-metric-card flex-1 min-w-0">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-slate-500">Lucro Estimado (Baseado no CMV)</p>
+                <span
+                  title="O lucro depende do cadastro do preço de custo dos produtos. Verifique os itens do cardápio."
+                  className="cursor-help text-slate-400 hover:text-slate-600"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-emerald-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 mt-2">
+              {formatCurrency(grossProfit, currency)}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">Receita - CMV</p>
+          </div>
+
+          {showCancelAlert && (
+            <div className="admin-card p-4 flex items-center gap-4 bg-amber-50 border border-amber-200 min-w-0">
+              <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-amber-800">Taxa de cancelamento alta</p>
+                <p className="text-sm text-amber-700">
+                  {cancelRate.toFixed(1)}% dos pedidos foram cancelados. Sugerimos verificar os motivos de cancelamento.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Gráficos - Cards brancos estilo Shopeers */}
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">
           <div className="admin-card p-6 min-w-0 overflow-hidden">
@@ -658,6 +784,39 @@ export default function AdminDashboard() {
             ) : (
               <p className="text-slate-500 text-sm">Sem itens no período</p>
             )}
+          </div>
+        </div>
+
+        {/* Inteligência de Vendas: Recuperação de Clientes e Matriz BCG */}
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">
+          <div className="admin-card p-6 min-w-0 overflow-hidden">
+            <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2 mb-4">
+              <Users className="h-5 w-5 text-emerald-500" />
+              Recuperação de Clientes (Churn)
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Clientes sem pedido há mais de 30 dias. Entre em contacto para recuperá-los.
+            </p>
+            <ChurnRecoveryList
+              clients={analytics?.retention_risk ?? []}
+              currency={currency}
+            />
+          </div>
+
+          <div className="admin-card p-6 min-w-0 overflow-hidden">
+            <div className="pb-4">
+              <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2 mb-1">
+                <LayoutGrid className="h-5 w-5 text-violet-500" />
+                Matriz BCG do Cardápio
+              </h3>
+              <p className="text-sm text-slate-500">
+                Volume de vendas vs margem. Passe o rato sobre os pontos para ver as recomendações.
+              </p>
+            </div>
+            <MenuMatrixBCG
+              menuMatrix={analytics?.menu_matrix}
+              currency={currency}
+            />
           </div>
         </div>
 

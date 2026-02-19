@@ -57,3 +57,42 @@ export interface DashboardAnalyticsResponse {
   top_products?: DashboardProductCount[];
   bottom_products?: DashboardProductCount[];
 }
+
+// ========== get_advanced_dashboard_stats ==========
+
+export interface DashboardOperational {
+  avg_prep_time: number;
+  avg_delivery_time: number;
+  idleness_heatmap: { hour: number; count: number }[];
+}
+
+export interface DashboardFinancial {
+  gross_profit: number;
+  cancel_rate: number;
+  avg_ticket_by_channel: { channel: string; avg_ticket: number }[];
+}
+
+export interface DashboardRetentionRiskItem {
+  nome: string;
+  telefone: string;
+  total_gasto: number;
+}
+
+export interface DashboardMenuMatrixItem {
+  name: string;
+  total_sold: number;
+  avg_margin: number;
+}
+
+export interface DashboardMenuMatrix {
+  items: DashboardMenuMatrixItem[];
+  avg_sales_cut: number;
+  avg_margin_cut: number;
+}
+
+export interface DashboardAdvancedStatsResponse extends DashboardAnalyticsResponse {
+  operational?: DashboardOperational;
+  financial?: DashboardFinancial;
+  retention_risk?: DashboardRetentionRiskItem[];
+  menu_matrix?: DashboardMenuMatrix;
+}
