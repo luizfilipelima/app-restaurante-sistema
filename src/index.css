@@ -37,8 +37,11 @@
     
     /* Cores para status */
     --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
     --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
   }
 
   .dark {
@@ -61,6 +64,13 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 24 95% 53%;
+    /* Status — dark mode: versões levemente mais claras para contrastar no fundo escuro */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 55%;
+    --info-foreground: 0 0% 100%;
   }
 }
 

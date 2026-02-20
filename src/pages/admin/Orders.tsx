@@ -650,28 +650,28 @@ export default function AdminOrders() {
                                     : order.id.slice(0, 8).toUpperCase()}
                                 </span>
                                 {order.order_source === 'comanda' ? (
-                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">
+                                  <Badge variant="outline" className="gap-0.5 text-[10px] px-1.5 py-0.5 h-auto bg-violet-100 text-violet-700 border-violet-200 rounded-full">
                                     <Receipt className="h-2.5 w-2.5" /> Comanda
-                                  </span>
+                                  </Badge>
                                 ) : isTableOrder ? (
-                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                  <Badge variant="warning" className="gap-0.5 text-[10px] px-1.5 py-0.5 h-auto rounded-full">
                                     <UtensilsCrossed className="h-2.5 w-2.5" /> Mesa
-                                  </span>
+                                  </Badge>
                                 ) : (
-                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-cyan-100 text-cyan-700">
+                                  <Badge variant="info" className="gap-0.5 text-[10px] px-1.5 py-0.5 h-auto rounded-full">
                                     <Bike className="h-2.5 w-2.5" /> Delivery
-                                  </span>
+                                  </Badge>
                                 )}
                                 {/* ── Destinos de impressão ── */}
                                 {orderDestinations.hasKitchen && (
-                                  <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 tracking-wider">
+                                  <Badge variant="delivering" className="text-[10px] px-1.5 py-0.5 h-auto font-bold tracking-wider rounded-full">
                                     COZ
-                                  </span>
+                                  </Badge>
                                 )}
                                 {orderDestinations.hasBar && (
-                                  <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 tracking-wider">
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 h-auto font-bold tracking-wider bg-orange-100 text-orange-700 border-orange-200 rounded-full">
                                     BAR
-                                  </span>
+                                  </Badge>
                                 )}
                               </div>
                               <div className="flex items-center gap-0.5 flex-shrink-0">

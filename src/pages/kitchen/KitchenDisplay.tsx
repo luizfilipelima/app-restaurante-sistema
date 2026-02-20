@@ -180,13 +180,12 @@ export default function KitchenDisplay() {
         <p className="text-center text-sm max-w-sm">
           Abra o modo cozinha a partir do painel de restaurantes (botão Cozinha no card) ou do painel admin do restaurante.
         </p>
-        <Link
-          to="/super-admin/restaurants"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium"
-        >
-          <LayoutDashboard className="h-4 w-4" />
-          Ir para restaurantes
-        </Link>
+        <Button asChild variant="ghost" size="sm" className="gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
+          <Link to="/super-admin/restaurants">
+            <LayoutDashboard className="h-4 w-4" />
+            Ir para restaurantes
+          </Link>
+        </Button>
       </div>
     );
   }
@@ -224,22 +223,20 @@ export default function KitchenDisplay() {
             </div>
             <div className="flex items-center gap-4">
               {user?.role === 'restaurant_admin' && (
-                <Link
-                  to={slug ? `/${slug}/painel/orders` : '/admin/orders'}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium transition-colors border border-slate-700"
-                >
-                  <LayoutDashboard className="h-4 w-4" />
-                  Voltar ao painel
-                </Link>
+                <Button asChild variant="ghost" size="sm" className="gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
+                  <Link to={slug ? `/${slug}/painel/orders` : '/admin/orders'}>
+                    <LayoutDashboard className="h-4 w-4" />
+                    Voltar ao painel
+                  </Link>
+                </Button>
               )}
               {user?.role === 'super_admin' && (
-                <Link
-                  to={effectiveRestaurantId ? `/super-admin/restaurants/${effectiveRestaurantId}/orders` : '/super-admin/restaurants'}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium transition-colors border border-slate-700"
-                >
-                  <LayoutDashboard className="h-4 w-4" />
-                  Voltar ao painel
-                </Link>
+                <Button asChild variant="ghost" size="sm" className="gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
+                  <Link to={effectiveRestaurantId ? `/super-admin/restaurants/${effectiveRestaurantId}/orders` : '/super-admin/restaurants'}>
+                    <LayoutDashboard className="h-4 w-4" />
+                    Voltar ao painel
+                  </Link>
+                </Button>
               )}
               <p className="text-3xl font-black font-mono tabular-nums">
                 {now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}

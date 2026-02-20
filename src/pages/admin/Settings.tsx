@@ -4,6 +4,7 @@ import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
 import { useAdminLanguageStore } from '@/store/adminLanguageStore';
 import { DayKey, PrintPaperWidth, type PrintSettingsBySector, type SectorPrintSettings } from '@/types';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -172,11 +173,12 @@ function SaveButton({ saving, onClick, label, savingLabel }: {
   savingLabel?: string;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="brand"
       disabled={saving}
       onClick={onClick}
-      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#F87116] to-orange-500 text-white font-semibold text-sm shadow-md shadow-orange-200/40 hover:brightness-105 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+      className="gap-2 px-5 py-2.5 rounded-xl font-semibold"
     >
       {saving ? (
         <>
@@ -189,7 +191,7 @@ function SaveButton({ saving, onClick, label, savingLabel }: {
           {label ?? 'Salvar alterações'}
         </>
       )}
-    </button>
+    </Button>
   );
 }
 
