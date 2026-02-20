@@ -7,6 +7,7 @@ import { AdminRestaurantContext, useAdminRestaurantId, useAdminBasePath } from '
 import { useRestaurant } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { useCanAccess } from '@/hooks/useUserRole';
+import { useAdminTranslation } from '@/hooks/useAdminTranslation';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useSessionManager } from '@/hooks/useSessionManager';
@@ -120,24 +121,29 @@ type NavSection = NavGroup | NavCollapsible;
 
 // ─── Configuração da navegação ───────────────────────────────────────────────
 
-const buildNavSections = (base: string, restaurantId: string | null, restaurantSlug?: string | null): NavSection[] => [
+type TFn = (key: string) => string;
+
+const buildNavSections = (
+  base: string,
+  restaurantId: string | null,
+  t: TFn,
+  restaurantSlug?: string | null,
+): NavSection[] => [
   {
     kind: 'group',
-    label: 'Visão Geral',
+    label: t('nav.groups.overview'),
     items: [
-      { kind: 'leaf', name: 'Dashboard',  href: base,                icon: LayoutDashboard },
-      { kind: 'leaf', name: 'Pedidos',    href: `${base}/orders`,    icon: ClipboardList   },
+      { kind: 'leaf', name: t('nav.items.dashboard'), href: base,             icon: LayoutDashboard },
+      { kind: 'leaf', name: t('nav.items.orders'),    href: `${base}/orders`, icon: ClipboardList   },
     ],
   },
   {
     kind: 'group',
-    label: 'Operação',
+    label: t('nav.groups.operation'),
     items: [
       {
         kind: 'leaf',
-        name: 'Cozinha (KDS)',
-        // URL canônica: /{slug}/kds (mesma origem, sem abrir nova aba)
-        // Fallback para query-string quando o slug não estiver disponível ainda.
+        name: t('nav.items.kitchen'),
         href: restaurantSlug
           ? `/${restaurantSlug}/kds`
           : restaurantId
@@ -147,7 +153,7 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
       },
       {
         kind: 'leaf',
-        name: 'Buffet / Comandas',
+        name: t('nav.items.buffet'),
         href: `${base}/buffet`,
         icon: Scale,
         featureFlag: 'feature_buffet_module',
@@ -155,7 +161,7 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
       },
       {
         kind: 'leaf',
-        name: 'Caixa / Comanda Digital',
+        name: t('nav.items.cashier'),
         href: `${base}/cashier`,
         icon: ScanBarcode,
         featureFlag: 'feature_virtual_comanda',
@@ -163,8 +169,7 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
       },
       {
         kind: 'leaf',
-        name: 'Expo Screen',
-        // URL canônica: /{slug}/garcom
+        name: t('nav.items.expo'),
         href: restaurantSlug
           ? `/${restaurantSlug}/garcom`
           : restaurantId
@@ -176,18 +181,18 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
   },
   {
     kind: 'group',
-    label: 'Cardápio',
+    label: t('nav.groups.menu'),
     items: [
       {
         kind: 'leaf',
-        name: 'Central do Cardápio',
+        name: t('nav.items.menuCentral'),
         href: `${base}/menu`,
         icon: UtensilsCrossed,
         roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
       },
       {
         kind: 'leaf',
-        name: 'Controle de Estoque',
+        name: t('nav.items.inventory'),
         href: `${base}/inventory`,
         icon: Boxes,
         roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
@@ -197,12 +202,12 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
   {
     kind: 'collapsible',
     key: 'logistica',
-    label: 'Logística & Salão',
+    label: t('nav.groups.logistics'),
     icon: Truck,
     items: [
       {
         kind: 'leaf',
-        name: 'Mesas & QR Codes',
+        name: t('nav.items.tables'),
         href: `${base}/tables`,
         icon: LayoutGrid,
         featureFlag: 'feature_tables',
@@ -210,7 +215,7 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
       },
       {
         kind: 'leaf',
-        name: 'QR Code da Comanda',
+        name: t('nav.items.comandaQr'),
         href: `${base}/comanda-qr`,
         icon: QrCode,
         featureFlag: 'feature_virtual_comanda',
@@ -219,12 +224,12 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
       {
         kind: 'submenu',
         key: 'delivery',
-        name: 'Delivery',
+        name: t('nav.items.delivery'),
         icon: Truck,
         items: [
           {
             kind: 'leaf',
-            name: 'Entregadores',
+            name: t('nav.items.couriers'),
             href: `${base}/couriers`,
             icon: Bike,
             featureFlag: 'feature_couriers',
@@ -232,7 +237,7 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
           },
           {
             kind: 'leaf',
-            name: 'Zonas de Entrega',
+            name: t('nav.items.deliveryZones'),
             href: `${base}/delivery-zones`,
             icon: MapPin,
             featureFlag: 'feature_delivery_zones',
@@ -242,8 +247,6 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
       },
     ],
   },
-  // "Dados do Restaurante" e "Meu Plano" foram removidos da sidebar.
-  // O acesso é feito exclusivamente pelos ícones na top bar direita (Settings + CreditCard).
 ];
 
 /** Retorna todos os hrefs de uma seção (para checar se algum está ativo) */
@@ -424,6 +427,7 @@ export default function AdminLayout({
   const navigate = useNavigate();
   const { user, signOut } = useAuthStore();
   const { toast } = useToast();
+  const { t } = useAdminTranslation();
 
   const restaurantId = managedRestaurantId || user?.restaurant_id || null;
   const { data: restaurant } = useRestaurant(restaurantId);
@@ -432,7 +436,7 @@ export default function AdminLayout({
   const [usersPanelOpen, setUsersPanelOpen] = useState(false);
 
   const base = basePath || '/admin';
-  const navSections = buildNavSections(base, restaurantId, restaurant?.slug);
+  const navSections = buildNavSections(base, restaurantId, t, restaurant?.slug);
 
   // Gerenciar sessões simultâneas (máximo 3 por restaurante)
   useSessionManager(user?.id || null, restaurantId);
@@ -527,7 +531,7 @@ export default function AdminLayout({
                     {restaurant?.name ?? 'Painel Admin'}
                   </p>
                   <p className="text-[11px] text-slate-500 truncate">
-                    Painel administrativo
+                    {t('common.panelAdmin')}
                   </p>
                 </div>
               </Link>
@@ -580,7 +584,7 @@ export default function AdminLayout({
                 onClick={handleSignOut}
               >
                 <LogOut className="mr-3 h-[18px] w-[18px]" />
-                Sair
+                {t('nav.items.logout')}
               </Button>
             </div>
           </div>
@@ -595,7 +599,7 @@ export default function AdminLayout({
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="search"
-                  placeholder="Buscar..."
+                  placeholder={`${t('common.search')}...`}
                   className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 bg-slate-50/50 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F87116]/20 focus:border-[#F87116]"
                 />
                 <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 hidden sm:inline">
@@ -617,7 +621,7 @@ export default function AdminLayout({
                     title="Abrir cardápio público"
                   >
                     <BookOpen className="h-4 w-4 flex-shrink-0" />
-                    <span>Ver Cardápio</span>
+                    <span>{t('common.viewMenu')}</span>
                     <ExternalLink className="h-3 w-3 opacity-60" />
                   </a>
                   <div className="w-px h-5 bg-slate-200" />

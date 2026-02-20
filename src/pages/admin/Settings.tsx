@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
+import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { useAdminLanguageStore } from '@/store/adminLanguageStore';
 import { DayKey, PrintPaperWidth } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,7 +64,6 @@ const PANEL_LANGS: { value: PanelLanguage; label: string }[] = [
   { value: 'en', label: '🇺🇸 English' },
 ];
 
-const LS_PANEL_LANG_KEY = 'quiero_panel_language';
 
 // ─── Utilitários ──────────────────────────────────────────────────────────────
 
@@ -138,7 +139,12 @@ function FieldGroup({ children }: { children: React.ReactNode }) {
 
 // ─── SaveButton ───────────────────────────────────────────────────────────────
 
-function SaveButton({ saving, onClick }: { saving: boolean; onClick: () => void }) {
+function SaveButton({ saving, onClick, label, savingLabel }: {
+  saving: boolean;
+  onClick: () => void;
+  label?: string;
+  savingLabel?: string;
+}) {
   return (
     <button
       type="button"
@@ -149,12 +155,12 @@ function SaveButton({ saving, onClick }: { saving: boolean; onClick: () => void 
       {saving ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          Salvando…
+          {savingLabel ?? 'Salvando…'}
         </>
       ) : (
         <>
           <Save className="h-4 w-4" />
-          Salvar alterações
+          {label ?? 'Salvar alterações'}
         </>
       )}
     </button>
@@ -165,14 +171,15 @@ function SaveButton({ saving, onClick }: { saving: boolean; onClick: () => void 
 
 export default function AdminSettings() {
   const restaurantId = useAdminRestaurantId();
+  const { t }        = useAdminTranslation();
+  const { lang: panelLanguage, setLang: setStoreLang } = useAdminLanguageStore();
   const [loading,       setLoading]       = useState(true);
   const [saving,        setSaving]        = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [panelLanguage, setPanelLanguage] = useState<PanelLanguage>(
-    () => (localStorage.getItem(LS_PANEL_LANG_KEY) as PanelLanguage) || 'pt'
-  );
+  // Local state mirrors the store so the Select shows correctly
+  const [panelLangLocal, setPanelLangLocal] = useState<PanelLanguage>(panelLanguage);
 
   const [formData, setFormData] = useState({
     name:                    '',
@@ -267,9 +274,9 @@ export default function AdminSettings() {
         updated_at:              new Date().toISOString(),
       }).eq('id', restaurantId);
       if (error) throw error;
-      // Persiste o idioma do painel no localStorage
-      localStorage.setItem(LS_PANEL_LANG_KEY, panelLanguage);
-      toast({ title: '✅ Configurações salvas com sucesso!' });
+      // Persiste o idioma do painel via store (localStorage + Zustand → reatividade imediata)
+      setStoreLang(panelLangLocal);
+      toast({ title: '✅ ' + t('settings.title') + ' — ' + t('common.success') });
     } catch (err) {
       console.error('Erro ao salvar:', err);
       toast({ title: 'Erro ao salvar configurações', variant: 'destructive' });
@@ -289,38 +296,47 @@ export default function AdminSettings() {
   const phonePlaceholder = getPhonePlaceholder(formData.phone_country);
 
   return (
-    <div className="w-full max-w-4xl space-y-6 pb-10">
+    <div className="w-full space-y-6 pb-10">
 
       {/* ── Cabeçalho ────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Configurações</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">{t('settings.title')}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Informações e preferências do seu restaurante
+            {t('settings.subtitle')}
           </p>
         </div>
-        <SaveButton saving={saving} onClick={handleSubmit} />
+        <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
       </div>
 
       {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
       <Tabs defaultValue="perfil" className="w-full">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-4 h-auto gap-1 p-1 mb-6 rounded-xl bg-muted w-full">
-          <TabsTrigger value="perfil" className="flex items-center gap-1.5 text-xs sm:text-sm rounded-lg py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <Store className="h-3.5 w-3.5 flex-shrink-0" />
-            Perfil
-          </TabsTrigger>
-          <TabsTrigger value="regionalizacao" className="flex items-center gap-1.5 text-xs sm:text-sm rounded-lg py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <Globe className="h-3.5 w-3.5 flex-shrink-0" />
-            Regional
-          </TabsTrigger>
-          <TabsTrigger value="contato" className="flex items-center gap-1.5 text-xs sm:text-sm rounded-lg py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <Phone className="h-3.5 w-3.5 flex-shrink-0" />
-            Contato
-          </TabsTrigger>
-          <TabsTrigger value="operacao" className="flex items-center gap-1.5 text-xs sm:text-sm rounded-lg py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <Clock className="h-3.5 w-3.5 flex-shrink-0" />
-            Operação
-          </TabsTrigger>
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 h-auto gap-0 p-0 mb-6 rounded-xl bg-muted/60 border border-border w-full overflow-hidden">
+          {(
+            [
+              { value: 'perfil',         icon: Store,     label: t('settings.tabs.profile')   },
+              { value: 'regionalizacao', icon: Globe,     label: t('settings.tabs.regional')  },
+              { value: 'contato',        icon: Phone,     label: t('settings.tabs.contact')   },
+              { value: 'operacao',       icon: Clock,     label: t('settings.tabs.operation') },
+            ] as const
+          ).map(({ value, icon: Icon, label }) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className={`
+                flex items-center justify-center gap-1.5 text-xs sm:text-sm py-2.5 px-2 rounded-none border-b-2 border-transparent
+                font-medium text-muted-foreground transition-all
+                data-[state=active]:bg-background
+                data-[state=active]:text-[#F87116]
+                data-[state=active]:border-b-[#F87116]
+                data-[state=active]:shadow-sm
+                hover:text-foreground hover:bg-background/60
+              `}
+            >
+              <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="truncate">{label}</span>
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         {/* ══════════════════════════════════════════════════════════════════════
@@ -462,7 +478,7 @@ export default function AdminSettings() {
 
           {/* Rodapé salvar */}
           <div className="flex justify-end">
-            <SaveButton saving={saving} onClick={handleSubmit} />
+            <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
           </div>
         </TabsContent>
 
@@ -471,24 +487,26 @@ export default function AdminSettings() {
         ══════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="regionalizacao" className="mt-0 space-y-5">
 
+          {/* Seletores principais — 2 colunas em desktop */}
           <div className="rounded-2xl border border-border bg-card p-5 space-y-5">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
                 <Globe className="h-[18px] w-[18px] text-muted-foreground" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-foreground">Regionalização</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t('settings.regional.title')}</h2>
                 <p className="text-[11px] text-muted-foreground">
-                  Idioma, moeda e origem geográfica do seu restaurante
+                  {t('settings.regional.subtitle')}
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {/* Grid 2 cols em sm e 4 em xl, para telas largas */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-5">
 
               {/* Moeda */}
               <FieldGroup>
-                <SectionLabel>Moeda base</SectionLabel>
+                <SectionLabel>{t('settings.regional.currency')}</SectionLabel>
                 <Select
                   value={formData.currency}
                   onValueChange={(v) => set('currency', v as CurrencyCode)}
@@ -506,13 +524,13 @@ export default function AdminSettings() {
                   </SelectContent>
                 </Select>
                 <p className="text-[10px] text-muted-foreground">
-                  Usada em preços do cardápio e pedidos
+                  {t('settings.regional.currencyDesc')}
                 </p>
               </FieldGroup>
 
               {/* País de origem */}
               <FieldGroup>
-                <SectionLabel>País de origem</SectionLabel>
+                <SectionLabel>{t('settings.regional.country')}</SectionLabel>
                 <Select
                   value={formData.phone_country}
                   onValueChange={(v) => set('phone_country', v as PhoneCountry)}
@@ -527,13 +545,13 @@ export default function AdminSettings() {
                   </SelectContent>
                 </Select>
                 <p className="text-[10px] text-muted-foreground">
-                  Define o código e máscara dos telefones
+                  {t('settings.regional.countryDesc')}
                 </p>
               </FieldGroup>
 
               {/* Idioma do cardápio */}
               <FieldGroup>
-                <SectionLabel>Idioma do cardápio (cliente)</SectionLabel>
+                <SectionLabel>{t('settings.regional.menuLang')}</SectionLabel>
                 <Select
                   value={formData.language}
                   onValueChange={(v) => set('language', v as CardapioLanguage)}
@@ -548,22 +566,24 @@ export default function AdminSettings() {
                   </SelectContent>
                 </Select>
                 <p className="text-[10px] text-muted-foreground">
-                  Interface que o cliente vê ao abrir o cardápio
+                  {t('settings.regional.menuLangDesc')}
                 </p>
               </FieldGroup>
 
-              {/* Idioma do painel */}
+              {/* Idioma do painel — atualiza o painel instantaneamente */}
               <FieldGroup>
-                <SectionLabel>Idioma do painel (admin)</SectionLabel>
+                <SectionLabel>{t('settings.regional.panelLang')}</SectionLabel>
                 <Select
-                  value={panelLanguage}
+                  value={panelLangLocal}
                   onValueChange={(v) => {
                     const lang = v as PanelLanguage;
-                    setPanelLanguage(lang);
-                    localStorage.setItem(LS_PANEL_LANG_KEY, lang);
+                    setPanelLangLocal(lang);
+                    // Atualiza o Zustand → todo o painel re-renderiza imediatamente
+                    setStoreLang(lang);
                     toast({
-                      title: 'Idioma do painel atualizado',
-                      description: 'As traduções completas serão ativadas em breve.',
+                      title: lang === 'pt' ? '🇧🇷 Idioma do painel atualizado'
+                           : lang === 'es' ? '🇦🇷 Idioma del panel actualizado'
+                           : '🇺🇸 Panel language updated',
                     });
                   }}
                 >
@@ -577,21 +597,21 @@ export default function AdminSettings() {
                   </SelectContent>
                 </Select>
                 <p className="text-[10px] text-muted-foreground">
-                  Salvo localmente — traduções completas em breve
+                  {t('settings.regional.panelLangDesc')}
                 </p>
               </FieldGroup>
             </div>
           </div>
 
-          {/* Preview de como os preços aparecem */}
+          {/* Preview de formatação de preços */}
           <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
                 <Languages className="h-[18px] w-[18px] text-muted-foreground" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-foreground">Preview de Formatação</h2>
-                <p className="text-[11px] text-muted-foreground">Como os valores serão exibidos no cardápio</p>
+                <h2 className="text-sm font-semibold text-foreground">{t('settings.regional.formatPreview')}</h2>
+                <p className="text-[11px] text-muted-foreground">{t('settings.regional.formatPreviewDesc')}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -603,7 +623,7 @@ export default function AdminSettings() {
                 else display = `$ ${(val / 100).toFixed(2)}`;
                 return (
                   <div key={val} className="bg-muted/50 rounded-xl p-3 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">Banco: {val}</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t('settings.regional.bankValue')}: {val}</p>
                     <p className="text-sm font-bold text-foreground">{display}</p>
                   </div>
                 );
@@ -612,7 +632,7 @@ export default function AdminSettings() {
           </div>
 
           <div className="flex justify-end">
-            <SaveButton saving={saving} onClick={handleSubmit} />
+            <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
           </div>
         </TabsContent>
 
@@ -725,7 +745,7 @@ export default function AdminSettings() {
           </div>
 
           <div className="flex justify-end">
-            <SaveButton saving={saving} onClick={handleSubmit} />
+            <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
           </div>
         </TabsContent>
 
@@ -870,7 +890,7 @@ export default function AdminSettings() {
           </div>
 
           <div className="flex justify-end">
-            <SaveButton saving={saving} onClick={handleSubmit} />
+            <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
           </div>
         </TabsContent>
       </Tabs>

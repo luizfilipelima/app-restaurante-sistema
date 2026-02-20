@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { useAdminTranslation } from '@/hooks/useAdminTranslation';
 import { useDashboardStats, useDashboardKPIs, useDashboardAnalytics, useRestaurant } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,20 +48,9 @@ import {
 import { ChurnRecoveryList } from '@/components/admin/ChurnRecoveryList';
 import { MenuMatrixBCG } from '@/components/admin/MenuMatrixBCG';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
-const PERIOD_OPTIONS = [
-  { value: '30', label: 'Últimos 30 dias' },
-  { value: '365', label: 'Último ano' },
-  { value: 'max', label: 'Máximo (todos)' },
-] as const;
 type PeriodValue = '30' | '365' | 'max';
 
-const AREA_OPTIONS = [
-  { value: 'all', label: 'Todos' },
-  { value: 'delivery', label: 'Delivery' },
-  { value: 'table', label: 'Mesas' },
-  { value: 'pickup', label: 'Retirada' },
-  { value: 'buffet', label: 'Buffet' },
-] as const;
+const AREA_VALUES = ['all', 'delivery', 'table', 'pickup', 'buffet'] as const;
 type AreaValue = 'all' | 'delivery' | 'table' | 'pickup' | 'buffet';
 
 // ─── Variantes de animação stagger para os cards de métrica ─────────────────
@@ -87,6 +77,7 @@ function getDateRange(period: PeriodValue) {
 }
 
 export default function AdminDashboard() {
+  const { t } = useAdminTranslation();
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
   const queryClient = useQueryClient();
@@ -177,8 +168,17 @@ export default function AdminDashboard() {
   const grossProfit = financial?.gross_profit ?? 0;
 
   const restaurantName = restaurant?.name ?? 'Restaurante';
-  const periodLabel = period === '30' ? 'últimos 30 dias' : period === '365' ? 'último ano' : 'todo o período';
-  const areaLabel = AREA_OPTIONS.find((o) => o.value === areaFilter)?.label ?? 'Todos';
+  const periodLabel = period === '30' ? t('dashboard.filters.last30') : period === '365' ? t('dashboard.filters.lastYear') : t('dashboard.filters.allTime');
+  const areaLabel = ((): string => {
+    const map: Record<AreaValue, string> = {
+      all:      t('dashboard.filters.all'),
+      delivery: t('dashboard.filters.delivery'),
+      table:    t('dashboard.filters.table'),
+      pickup:   t('dashboard.filters.pickup'),
+      buffet:   t('dashboard.filters.buffet'),
+    };
+    return map[areaFilter] ?? t('dashboard.filters.all');
+  })();
 
   const handleExport = async (fmt: 'csv' | 'xlsx') => {
     if (!analytics) return;
@@ -436,7 +436,7 @@ export default function AdminDashboard() {
         {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Dashboard BI</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t('dashboard.title')}</h1>
             <p className="text-slate-500 text-sm mt-0.5">
               {periodLabel}{areaFilter !== 'all' ? ` · ${areaLabel}` : ''}
               {restaurantName && <> · <span className="font-medium">{restaurantName}</span></>}
@@ -445,22 +445,22 @@ export default function AdminDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <Select value={areaFilter} onValueChange={(v) => setAreaFilter(v as AreaValue)}>
               <SelectTrigger className="w-full sm:w-[150px] h-9 bg-white border-slate-200 text-sm">
-                <SelectValue placeholder="Área" />
+                <SelectValue placeholder={t('common.all')} />
               </SelectTrigger>
               <SelectContent>
-                {AREA_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                {AREA_VALUES.map((v) => (
+                  <SelectItem key={v} value={v}>{t(`dashboard.filters.${v === 'all' ? 'all' : v === 'table' ? 'table' : v === 'pickup' ? 'pickup' : v}`)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Select value={period} onValueChange={(v) => setPeriod(v as PeriodValue)}>
               <SelectTrigger className="w-full sm:w-[170px] h-9 bg-white border-slate-200 text-sm">
-                <SelectValue placeholder="Período" />
+                <SelectValue placeholder={t('common.period')} />
               </SelectTrigger>
               <SelectContent>
-                {PERIOD_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
+                <SelectItem value="30">{t('dashboard.filters.last30')}</SelectItem>
+                <SelectItem value="365">{t('dashboard.filters.lastYear')}</SelectItem>
+                <SelectItem value="max">{t('dashboard.filters.allTime')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -477,7 +477,7 @@ export default function AdminDashboard() {
                     ? <Loader2 className="h-4 w-4 animate-spin" />
                     : <Download className="h-4 w-4" />
                   }
-                  Exportar
+                  {t('common.export')}
                   <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                 </Button>
               </DropdownMenuTrigger>
@@ -487,136 +487,187 @@ export default function AdminDashboard() {
                   onClick={() => handleExport('csv')}
                 >
                   <FileText className="h-4 w-4 text-slate-500" />
-                  Exportar CSV
+                  {t('dashboard.exportCSV')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="gap-2 cursor-pointer"
                   onClick={() => handleExport('xlsx')}
                 >
                   <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                  Exportar XLSX
+                  {t('dashboard.exportXLSX')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
 
-        {/* Cards de Métricas - Estilo Shopeers (brancos, limpos, trend) */}
+        {/* ══ LINHA 1: KPIs Críticos — Faturamento, Lucro, Ticket Médio ══ */}
         <motion.div
-          className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 min-w-0"
+          className="grid gap-4 grid-cols-1 sm:grid-cols-3 min-w-0"
           variants={metricContainerVariants}
           initial="hidden"
           animate="visible"
         >
+          {/* Faturamento */}
           <motion.div className="admin-metric-card" variants={metricCardVariants}>
             <div className="flex items-start justify-between">
-              <p className="text-sm font-medium text-slate-500">Faturamento</p>
+              <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.revenue')}</p>
               <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
                 <DollarSign className="h-4 w-4 text-blue-600" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-slate-900 mt-2">
+            <p className="text-3xl font-bold text-slate-900 mt-2">
               {formatCurrency(metrics.totalRevenue, currency)}
             </p>
             {prevMetrics.totalRevenue > 0 && (
               <p className={`text-xs font-medium mt-1 flex items-center gap-1 ${Number(revPct) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 {Number(revPct) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {revPct}% vs. período anterior
+                {revPct}% {t('common.vsPrevious')}
               </p>
             )}
           </motion.div>
 
+          {/* Lucro Estimado (movido para a linha 1) */}
           <motion.div className="admin-metric-card" variants={metricCardVariants}>
             <div className="flex items-start justify-between">
-              <p className="text-sm font-medium text-slate-500">Pedidos</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.profit')}</p>
+                <span
+                  title="O lucro depende do cadastro do preço de custo dos produtos. Verifique os itens do cardápio."
+                  className="cursor-help text-slate-400 hover:text-slate-600"
+                >
+                  <HelpCircle className="h-3.5 w-3.5" />
+                </span>
+              </div>
               <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <ShoppingCart className="h-4 w-4 text-emerald-600" />
+                <TrendingUp className="h-4 w-4 text-emerald-600" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.totalOrders}</p>
-            {prevMetrics.totalOrders > 0 && (
-              <p className={`text-xs font-medium mt-1 flex items-center gap-1 ${Number(ordPct) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {Number(ordPct) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {ordPct}% vs. período anterior
-              </p>
-            )}
+            <p className={`text-3xl font-bold mt-2 ${grossProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+              {formatCurrency(grossProfit, currency)}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">{t('dashboard.kpis.profitDesc')}</p>
           </motion.div>
 
+          {/* Ticket Médio */}
           <motion.div className="admin-metric-card" variants={metricCardVariants}>
             <div className="flex items-start justify-between">
-              <p className="text-sm font-medium text-slate-500">Ticket Médio</p>
+              <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.avgTicket')}</p>
               <div className="h-9 w-9 rounded-lg bg-violet-50 flex items-center justify-center">
                 <TrendingUp className="h-4 w-4 text-violet-600" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-slate-900 mt-2">
+            <p className="text-3xl font-bold text-slate-900 mt-2">
               {formatCurrency(metrics.averageTicket, currency)}
             </p>
-            <p className="text-xs text-slate-400 mt-1">Valor médio por pedido</p>
-          </motion.div>
-
-          <motion.div className="admin-metric-card" variants={metricCardVariants}>
-            <div className="flex items-start justify-between">
-              <p className="text-sm font-medium text-slate-500">Pendentes</p>
-              <div className="h-9 w-9 rounded-lg bg-amber-50 flex items-center justify-center">
-                <Clock className="h-4 w-4 text-amber-600" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.pendingOrders}</p>
-            <p className="text-xs text-slate-400 mt-1">Aguardando preparo</p>
+            <p className="text-xs text-slate-400 mt-1">{t('dashboard.kpis.avgOrderDesc')}</p>
           </motion.div>
         </motion.div>
 
-        {/* ── Seção Operacional ── */}
+        {/* ══ LINHA 1b: KPIs Secundários — Pedidos + Pendentes ══ */}
+        <motion.div
+          className="grid gap-4 grid-cols-2 min-w-0"
+          variants={metricContainerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div className="admin-metric-card py-4" variants={metricCardVariants}>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.orders')}</p>
+              <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <ShoppingCart className="h-3.5 w-3.5 text-emerald-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 mt-1">{metrics.totalOrders}</p>
+            {prevMetrics.totalOrders > 0 && (
+              <p className={`text-xs font-medium mt-0.5 flex items-center gap-1 ${Number(ordPct) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {Number(ordPct) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {ordPct}% {t('common.vsPrevious')}
+              </p>
+            )}
+          </motion.div>
+          <motion.div className="admin-metric-card py-4" variants={metricCardVariants}>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.pending')}</p>
+              <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center">
+                <Clock className="h-3.5 w-3.5 text-amber-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 mt-1">{metrics.pendingOrders}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{t('dashboard.kpis.awaitingPrep')}</p>
+          </motion.div>
+        </motion.div>
+
+        {/* ══ LINHA 2: Operação — Tempos + Movimento por Hora ══ */}
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">
+          {/* Tempos Operacionais + Horas Economizadas */}
           <div className="admin-card p-6 min-w-0 overflow-hidden">
             <h3 className="text-base font-semibold text-slate-700 mb-4 flex items-center gap-2">
               <Flame className="h-4 w-4 text-orange-500" />
-              Tempos Operacionais
+              {t('dashboard.operational.title')}
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-orange-50 border border-orange-100 px-4 py-3 flex flex-col gap-1">
                 <div className="flex items-center gap-1.5 text-orange-600">
                   <Flame className="h-4 w-4" />
-                  <span className="text-xs font-medium">Cozinha</span>
+                  <span className="text-xs font-medium">{t('dashboard.operational.kitchen')}</span>
                 </div>
                 {avgPrepTime > 0 ? (
                   <p className="text-2xl font-bold text-slate-900 mt-1">
                     {Math.round(avgPrepTime)}<span className="text-sm font-normal text-slate-500"> min</span>
                   </p>
                 ) : (
-                  <p className="text-sm text-slate-400 italic mt-1">Sem dados</p>
+                  <p className="text-sm text-slate-400 italic mt-1">{t('dashboard.operational.noData')}</p>
                 )}
-                <p className="text-[11px] text-slate-400">Tempo médio de preparo</p>
+                <p className="text-[11px] text-slate-400">{t('dashboard.operational.avgPrepTime')}</p>
               </div>
               <div className="rounded-xl bg-cyan-50 border border-cyan-100 px-4 py-3 flex flex-col gap-1">
                 <div className="flex items-center gap-1.5 text-cyan-600">
                   <Bike className="h-4 w-4" />
-                  <span className="text-xs font-medium">Entrega</span>
+                  <span className="text-xs font-medium">{t('dashboard.operational.delivery')}</span>
                 </div>
                 {avgDeliveryTime > 0 ? (
                   <p className="text-2xl font-bold text-slate-900 mt-1">
                     {Math.round(avgDeliveryTime)}<span className="text-sm font-normal text-slate-500"> min</span>
                   </p>
                 ) : (
-                  <p className="text-sm text-slate-400 italic mt-1">Sem dados</p>
+                  <p className="text-sm text-slate-400 italic mt-1">{t('dashboard.operational.noData')}</p>
                 )}
-                <p className="text-[11px] text-slate-400">Tempo médio de entrega</p>
+                <p className="text-[11px] text-slate-400">{t('dashboard.operational.avgDeliveryTime')}</p>
               </div>
             </div>
+
+            {/* Horas Economizadas — Total pedidos × 4 min */}
+            {metrics.totalOrders > 0 && (() => {
+              const totalMin  = metrics.totalOrders * 4;
+              const hours     = Math.floor(totalMin / 60);
+              const mins      = totalMin % 60;
+              const display   = hours > 0 ? `${hours}h ${mins > 0 ? `${mins}min` : ''}` : `${mins}min`;
+              return (
+                <div className="mt-3 rounded-xl bg-indigo-50 border border-indigo-100 px-4 py-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-indigo-700">{t('dashboard.operational.hoursSaved')}</p>
+                    <p className="text-[11px] text-indigo-500 mt-0.5">{t('dashboard.operational.hoursSavedDesc')}</p>
+                  </div>
+                  <p className="text-2xl font-black text-indigo-700 shrink-0">{display}</p>
+                </div>
+              );
+            })()}
+
             <p className="text-[11px] text-slate-400 mt-3">
-              * Baseado em pedidos com timestamps de preparo e entrega registados
+              {t('dashboard.operational.note')}
             </p>
           </div>
 
+          {/* Movimento por Hora */}
           <div className="admin-card p-6 min-w-0 overflow-hidden">
             <div className="pb-4">
               <h3 className="text-base font-semibold text-slate-700 flex items-center gap-2">
                 <Clock className="h-4 w-4 text-blue-500" />
-                Movimento por Hora
+                {t('dashboard.charts.hourlyMovement')}
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Barras <span className="text-amber-500 font-medium">amarelas</span> = baixo movimento — oportunidade de Happy Hour
+                {t('dashboard.charts.hourlyMovementDesc')}
               </p>
             </div>
             <div className="min-w-0">
@@ -627,12 +678,8 @@ export default function AdminDashboard() {
                     <XAxis dataKey="hour" stroke="#888" style={{ fontSize: '11px' }} />
                     <YAxis stroke="#888" style={{ fontSize: '11px' }} />
                     <Tooltip
-                      formatter={(value: number) => [`${value} pedidos`, 'Quantidade']}
-                      contentStyle={{
-                        borderRadius: '8px',
-                        border: 'none',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                      }}
+                      formatter={(value: number) => [`${value} ${t('dashboard.pedidos')}`, t('dashboard.quantity')]}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                     />
                     <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                       {movementByHour.map((entry, index) => (
@@ -649,38 +696,16 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* ── Seção Financeira ── */}
-        <div className="admin-metric-card min-w-0">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-slate-500">Lucro Estimado (Baseado no CMV)</p>
-              <span
-                title="O lucro depende do cadastro do preço de custo dos produtos. Verifique os itens do cardápio."
-                className="cursor-help text-slate-400 hover:text-slate-600"
-              >
-                <HelpCircle className="h-4 w-4" />
-              </span>
-            </div>
-            <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center">
-              <TrendingUp className="h-4 w-4 text-emerald-600" />
-            </div>
-          </div>
-          <p className={`text-2xl font-bold mt-2 ${grossProfit >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
-            {formatCurrency(grossProfit, currency)}
-          </p>
-          <p className="text-xs text-slate-400 mt-1">Receita − CMV dos produtos</p>
-        </div>
-
         {/* Gráficos - Cards brancos estilo Shopeers */}
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">
           <div className="admin-card p-6 min-w-0 overflow-hidden">
             <div className="pb-4">
               <h3 className="text-base font-semibold text-slate-700 flex items-center gap-2">
                 <TrendingUpIcon className="h-4 w-4 text-orange-500" />
-                Faturamento Diário — últimos 7 dias
+                {t('dashboard.charts.dailyRevenue')}
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Desempenho de vendas dia a dia
+                {t('dashboard.charts.dailyRevenueDesc')}
               </p>
             </div>
             <div className="min-w-0">
@@ -714,10 +739,10 @@ export default function AdminDashboard() {
           <div className="admin-card p-6 min-w-0 overflow-hidden">
             <div className="pb-4">
               <h3 className="text-lg font-semibold text-slate-900">
-                Clientes Novos vs Recorrentes
+                {t('dashboard.charts.newVsRecurring')}
               </h3>
               <p className="text-sm text-slate-500 mt-0.5">
-                Identificados pelo número de WhatsApp/telefone
+                {t('dashboard.charts.newVsRecurringDesc')}
               </p>
             </div>
             <div className="min-w-0">
@@ -760,7 +785,7 @@ export default function AdminDashboard() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-[300px] text-slate-400 gap-2">
                   <Users className="h-10 w-10 opacity-20" />
-                  <p className="text-sm">Sem dados de retenção no período</p>
+                  <p className="text-sm">{t('dashboard.noRetention')}</p>
                 </div>
               )}
             </div>
@@ -768,8 +793,8 @@ export default function AdminDashboard() {
 
           <div className="admin-card p-6 min-w-0 overflow-hidden">
             <div className="pb-4">
-              <h3 className="text-lg font-semibold text-slate-900">Formas de Pagamento</h3>
-              <p className="text-sm text-slate-500 mt-0.5">Distribuição do volume faturado por método</p>
+              <h3 className="text-lg font-semibold text-slate-900">{t('dashboard.charts.paymentMethods')}</h3>
+              <p className="text-sm text-slate-500 mt-0.5">{t('dashboard.charts.paymentMethodsDesc')}</p>
             </div>
             <div className="min-w-0">
               {paymentMethods.length > 0 ? (
@@ -816,7 +841,7 @@ export default function AdminDashboard() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-[300px] text-slate-400 gap-2">
                   <DollarSign className="h-10 w-10 opacity-20" />
-                  <p className="text-sm">Sem dados de pagamento</p>
+                  <p className="text-sm">{t('dashboard.noPayments')}</p>
                 </div>
               )}
             </div>
@@ -831,7 +856,7 @@ export default function AdminDashboard() {
               <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
                 <MapPin className="h-4 w-4 text-blue-500" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-700">Região mais pedida</h3>
+              <h3 className="text-sm font-semibold text-slate-700">{t('dashboard.bi.topRegion')}</h3>
             </div>
             {topZone ? (
               <div>
@@ -851,7 +876,7 @@ export default function AdminDashboard() {
               <div className="h-8 w-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
                 <Clock className="h-4 w-4 text-violet-500" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-700">Horários de pico</h3>
+              <h3 className="text-sm font-semibold text-slate-700">{t('dashboard.bi.peakHours')}</h3>
             </div>
             {peakHours.length > 0 ? (
               <ul className="space-y-1.5">
@@ -882,7 +907,7 @@ export default function AdminDashboard() {
               <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
                 <TrendingUp className="h-4 w-4 text-emerald-500" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-700">Itens mais pedidos</h3>
+              <h3 className="text-sm font-semibold text-slate-700">{t('dashboard.bi.topItems')}</h3>
             </div>
             {topProducts.length > 0 ? (
               <ul className="space-y-1.5">
@@ -907,7 +932,7 @@ export default function AdminDashboard() {
               <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
                 <TrendingDown className="h-4 w-4 text-amber-500" />
               </div>
-              <h3 className="text-sm font-semibold text-slate-700">Itens menos pedidos</h3>
+              <h3 className="text-sm font-semibold text-slate-700">{t('dashboard.bi.bottomItems')}</h3>
             </div>
             {bottomProducts.length > 0 ? (
               <ul className="space-y-1.5">
@@ -931,10 +956,10 @@ export default function AdminDashboard() {
             <div className="pb-4">
               <h3 className="text-base font-semibold text-slate-700 flex items-center gap-2">
                 <Users className="h-4 w-4 text-emerald-500" />
-                Recuperação de Clientes — Churn
+                {t('dashboard.bi.churnTitle')}
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Clientes sem pedido há mais de 30 dias — identificados por WhatsApp/telefone
+                {t('dashboard.bi.churnDesc')}
               </p>
             </div>
             <ChurnRecoveryList
@@ -947,10 +972,10 @@ export default function AdminDashboard() {
             <div className="pb-4">
               <h3 className="text-base font-semibold text-slate-700 flex items-center gap-2">
                 <LayoutGrid className="h-4 w-4 text-violet-500" />
-                Matriz BCG do Cardápio
+                {t('dashboard.bi.bcgTitle')}
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Volume de vendas vs margem por produto — passe o cursor para recomendações
+                {t('dashboard.bi.bcgDesc')}
               </p>
             </div>
             <MenuMatrixBCG
