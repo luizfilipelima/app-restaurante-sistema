@@ -38,6 +38,7 @@ export const TEMPLATE_VARS = {
   ] as TemplateVariable[],
 
   courier_dispatch: [
+    { key: 'codigo_pedido',     label: 'Código do pedido',     example: '#F8737EBC',          description: 'Código único do pedido (ex: #F8737EBC)' },
     { key: 'cliente_nome',      label: 'Nome do cliente',      example: 'João Silva',        description: 'Nome completo do cliente' },
     { key: 'detalhes_endereco', label: 'Detalhes do endereço', example: 'Apto 12, Bloco B',  description: 'Complemento/referência do endereço' },
     { key: 'endereco',          label: 'Endereço / Coords',    example: '-23.550520, -46.633308', description: 'Coordenadas GPS do endereço' },
@@ -78,6 +79,7 @@ export const DEFAULT_TEMPLATES = {
   courier_dispatch:
 `🛵 *Novo pedido para entrega*
 
+*Pedido:* {{codigo_pedido}}
 *Cliente:* {{cliente_nome}}
 *Detalhes da Entrega:* {{detalhes_endereco}}
 *Google Maps:* {{mapa}}

@@ -133,8 +133,22 @@ const buildNavSections = (
     kind: 'group',
     label: t('nav.groups.overview'),
     items: [
-      { kind: 'leaf', name: t('nav.items.dashboard'), href: base,             icon: LayoutDashboard },
-      { kind: 'leaf', name: t('nav.items.orders'),    href: `${base}/orders`, icon: ClipboardList   },
+      {
+        kind: 'leaf',
+        name: t('nav.items.dashboard'),
+        href: base,
+        icon: LayoutDashboard,
+        // Dashboard financeiro: visível apenas para proprietário e acima
+        roleRequired: ['owner', 'restaurant_admin', 'super_admin'],
+      },
+      {
+        kind: 'leaf',
+        name: t('nav.items.orders'),
+        href: `${base}/orders`,
+        icon: ClipboardList,
+        // Pedidos: garçom e acima (exclui cozinha que só usa KDS)
+        roleRequired: ['waiter'],
+      },
     ],
   },
   {
@@ -151,6 +165,7 @@ const buildNavSections = (
             : '/kitchen',
         icon: ChefHat,
         external: true,
+        // KDS: acessível para cozinha e acima (sem roleRequired = nível mínimo kitchen)
       },
       {
         kind: 'leaf',
@@ -162,6 +177,8 @@ const buildNavSections = (
             : '/expo',
         icon: ConciergeBell,
         external: true,
+        // Expedição: garçom e acima (cozinha fica só no KDS)
+        roleRequired: ['waiter'],
       },
       {
         kind: 'leaf',
@@ -170,6 +187,8 @@ const buildNavSections = (
         icon: Scale,
         featureFlag: 'feature_buffet_module',
         featureLabel: 'Plano Enterprise',
+        // Buffet: caixa e acima
+        roleRequired: ['cashier'],
       },
       {
         kind: 'leaf',
@@ -178,6 +197,8 @@ const buildNavSections = (
         icon: ScanBarcode,
         featureFlag: 'feature_virtual_comanda',
         featureLabel: 'Plano Enterprise',
+        // Caixa: caixa e acima
+        roleRequired: ['cashier'],
       },
     ],
   },
@@ -190,6 +211,7 @@ const buildNavSections = (
         name: t('nav.items.menuCentral'),
         href: `${base}/menu`,
         icon: UtensilsCrossed,
+        // Cardápio: gerente e acima
         roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
       },
       {
@@ -197,6 +219,7 @@ const buildNavSections = (
         name: t('nav.items.inventory'),
         href: `${base}/inventory`,
         icon: Boxes,
+        // Estoque: gerente e acima
         roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
       },
     ],
@@ -214,6 +237,8 @@ const buildNavSections = (
         icon: LayoutGrid,
         featureFlag: 'feature_tables',
         featureLabel: 'Plano Standard',
+        // Mesas: garçom e acima
+        roleRequired: ['waiter'],
       },
       {
         kind: 'submenu',
@@ -228,6 +253,8 @@ const buildNavSections = (
             icon: Bike,
             featureFlag: 'feature_couriers',
             featureLabel: 'Plano Standard',
+            // Entregadores: gerente e acima
+            roleRequired: ['manager'],
           },
           {
             kind: 'leaf',
@@ -236,6 +263,8 @@ const buildNavSections = (
             icon: MapPin,
             featureFlag: 'feature_delivery_zones',
             featureLabel: 'Plano Standard',
+            // Zonas de entrega: gerente e acima
+            roleRequired: ['manager'],
           },
         ],
       },
@@ -425,7 +454,15 @@ export default function AdminLayout({
 
   const restaurantId = managedRestaurantId || user?.restaurant_id || null;
   const { data: restaurant } = useRestaurant(restaurantId);
-  const isSuperAdminView = !!managedRestaurantId;
+
+  // isSuperAdminView = true SOMENTE quando um super_admin está gerenciando outro restaurante.
+  // Antes esse flag era !!managedRestaurantId, o que fazia com que todos os usuários acessando
+  // rotas com slug (/:slug/painel/*) vissem o painel como "super-admin", expondo a Gestão de
+  // Usuários e outros controles exclusivos. Agora verificamos o papel do usuário logado.
+  const isSuperAdminView = user?.role === 'super_admin' && !!managedRestaurantId;
+
+  // Permissão para gerenciar usuários (proprietário ou super-admin)
+  const canManageUsers = useCanAccess(['owner', 'restaurant_admin', 'super_admin']);
 
   const [usersPanelOpen, setUsersPanelOpen] = useState(false);
 
@@ -629,26 +666,30 @@ export default function AdminLayout({
                 </div>
               )}
 
-              {/* Dados do Restaurante — atalho rápido para configurações */}
-              <Link
-                to={`${base}/settings`}
-                title="Dados do Restaurante"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-orange-50 hover:text-[#F87116] hover:border-orange-200 transition-colors"
-              >
-                <Settings className="h-4 w-4" />
-              </Link>
+              {/* Dados do Restaurante — somente proprietário/admin */}
+              {canManageUsers && (
+                <Link
+                  to={`${base}/settings`}
+                  title="Dados do Restaurante"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-orange-50 hover:text-[#F87116] hover:border-orange-200 transition-colors"
+                >
+                  <Settings className="h-4 w-4" />
+                </Link>
+              )}
 
-              {/* Meu Plano — atalho para upgrade/assinatura */}
-              <Link
-                to={`${base}/upgrade`}
-                title="Meu Plano"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-orange-50 hover:text-[#F87116] hover:border-orange-200 transition-colors"
-              >
-                <CreditCard className="h-4 w-4" />
-              </Link>
+              {/* Meu Plano — somente proprietário/admin */}
+              {canManageUsers && (
+                <Link
+                  to={`${base}/upgrade`}
+                  title="Meu Plano"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-orange-50 hover:text-[#F87116] hover:border-orange-200 transition-colors"
+                >
+                  <CreditCard className="h-4 w-4" />
+                </Link>
+              )}
 
-              {/* Gestão de Usuários — visível somente para super-admin */}
-              {isSuperAdminView && (
+              {/* Gestão de Usuários — proprietário ou super-admin */}
+              {(isSuperAdminView || canManageUsers) && (
                 <button
                   onClick={() => setUsersPanelOpen(true)}
                   title="Gerenciar usuários do restaurante"
@@ -697,8 +738,8 @@ export default function AdminLayout({
                   <span className="hidden xs:inline">Cardápio</span>
                 </a>
               )}
-              {/* Gestão de Usuários — mobile, somente super-admin */}
-              {isSuperAdminView && (
+              {/* Gestão de Usuários — mobile, proprietário ou super-admin */}
+              {(isSuperAdminView || canManageUsers) && (
                 <button
                   onClick={() => setUsersPanelOpen(true)}
                   title="Gerenciar usuários"
@@ -762,8 +803,8 @@ export default function AdminLayout({
 
       </div>{/* fecha min-h-screen */}
 
-      {/* ── Painel de Gestão de Usuários (super-admin only) ─────────────── */}
-      {isSuperAdminView && restaurantId && (
+      {/* ── Painel de Gestão de Usuários (proprietário ou super-admin) ─────────────── */}
+      {(isSuperAdminView || canManageUsers) && restaurantId && (
         <RestaurantUsersPanel
           open={usersPanelOpen}
           onClose={() => setUsersPanelOpen(false)}

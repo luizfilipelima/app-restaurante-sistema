@@ -308,6 +308,7 @@ export default function AdminOrders() {
       const dispatchMessage = processTemplate(
         getTemplate('courier_dispatch', localWaTemplates),
         {
+          codigo_pedido:     `#${dispatchOrder.id.slice(0, 8).toUpperCase()}`,
           cliente_nome:      dispatchOrder.customer_name,
           detalhes_endereco: dispatchOrder.address_details ?? '',
           endereco:          dispatchOrder.latitude != null ? `${dispatchOrder.latitude},${dispatchOrder.longitude}` : '',

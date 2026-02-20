@@ -55,6 +55,7 @@ const SAMPLE_VARS: Record<TemplateKey, Record<string, string>> = {
     restaurante_nome: 'Pizzaria da Vitória',
   },
   courier_dispatch: {
+    codigo_pedido:     '#F8737EBC',
     cliente_nome:      'João Silva',
     detalhes_endereco: 'Apto 12, Bloco B',
     endereco:          '-23.550520, -46.633308',

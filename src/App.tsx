@@ -79,25 +79,57 @@ function LoadingScreen() {
 
 const adminRoutes = (
   <>
-    <Route index element={<AdminDashboard />} />
-    <Route path="orders" element={<AdminOrders />} />
-    <Route path="menu" element={<AdminMenu />} />
-    <Route path="inventory" element={<AdminInventory />} />
+    {/* Dashboard financeiro — somente proprietário e acima */}
+    <Route
+      index
+      element={
+        <RoleProtectedRoute allowedRoles={['owner', 'restaurant_admin', 'super_admin']}>
+          <AdminDashboard />
+        </RoleProtectedRoute>
+      }
+    />
+    {/* Pedidos — garçom e acima (cozinha fica no KDS) */}
+    <Route
+      path="orders"
+      element={
+        <RoleProtectedRoute allowedRoles={['waiter']}>
+          <AdminOrders />
+        </RoleProtectedRoute>
+      }
+    />
+    {/* Cardápio — gerente e acima */}
+    <Route
+      path="menu"
+      element={
+        <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
+          <AdminMenu />
+        </RoleProtectedRoute>
+      }
+    />
+    {/* Estoque — gerente e acima */}
+    <Route
+      path="inventory"
+      element={
+        <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
+          <AdminInventory />
+        </RoleProtectedRoute>
+      }
+    />
+    {/* Buffet — caixa e acima + feature flag */}
     <Route
       path="buffet"
       element={
-        <ProtectedRoute requiredFeature="feature_buffet_module">
-          <AdminBuffet />
-        </ProtectedRoute>
+        <RoleProtectedRoute allowedRoles={['cashier']}>
+          <ProtectedRoute requiredFeature="feature_buffet_module">
+            <AdminBuffet />
+          </ProtectedRoute>
+        </RoleProtectedRoute>
       }
     />
     <Route
       path="products"
       element={
-        <RoleProtectedRoute
-          allowedRoles={['manager', 'restaurant_admin', 'super_admin']}
-          redirectTo="/admin/orders"
-        >
+        <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
           <AdminProductsInventory />
         </RoleProtectedRoute>
       }
@@ -105,44 +137,69 @@ const adminRoutes = (
     <Route
       path="tables"
       element={
-        <ProtectedRoute requiredFeature="feature_tables">
-          <AdminTables />
-        </ProtectedRoute>
+        <RoleProtectedRoute allowedRoles={['waiter']}>
+          <ProtectedRoute requiredFeature="feature_tables">
+            <AdminTables />
+          </ProtectedRoute>
+        </RoleProtectedRoute>
       }
     />
     <Route
       path="delivery-zones"
       element={
-        <ProtectedRoute requiredFeature="feature_delivery_zones">
-          <AdminDeliveryZones />
-        </ProtectedRoute>
+        <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
+          <ProtectedRoute requiredFeature="feature_delivery_zones">
+            <AdminDeliveryZones />
+          </ProtectedRoute>
+        </RoleProtectedRoute>
       }
     />
     <Route
       path="couriers"
       element={
-        <ProtectedRoute requiredFeature="feature_couriers">
-          <AdminCouriers />
-        </ProtectedRoute>
+        <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
+          <ProtectedRoute requiredFeature="feature_couriers">
+            <AdminCouriers />
+          </ProtectedRoute>
+        </RoleProtectedRoute>
       }
     />
+    {/* Configurações — proprietário e acima */}
     <Route
       path="settings"
       element={
-        <RoleProtectedRoute
-          allowedRoles={['restaurant_admin', 'super_admin']}
-          redirectTo="/admin/orders"
-        >
+        <RoleProtectedRoute allowedRoles={['owner', 'restaurant_admin', 'super_admin']}>
           <AdminSettings />
         </RoleProtectedRoute>
       }
     />
-    {/* Caixa — leitura de Comandas Digitais e encerramento (Enterprise) */}
-    <Route path="cashier" element={<AdminCashier />} />
-    {/* QR Code para impressão — link de entrada das Comandas Digitais (Enterprise) */}
-    <Route path="comanda-qr" element={<AdminComandaQRCode />} />
-    {/* Página de upgrade — exibida quando o usuário tenta acessar uma feature bloqueada */}
-    <Route path="upgrade" element={<UpgradePage />} />
+    {/* Caixa — caixa e acima + feature flag */}
+    <Route
+      path="cashier"
+      element={
+        <RoleProtectedRoute allowedRoles={['cashier']}>
+          <AdminCashier />
+        </RoleProtectedRoute>
+      }
+    />
+    {/* QR Code para impressão — caixa e acima */}
+    <Route
+      path="comanda-qr"
+      element={
+        <RoleProtectedRoute allowedRoles={['cashier']}>
+          <AdminComandaQRCode />
+        </RoleProtectedRoute>
+      }
+    />
+    {/* Página de upgrade — somente proprietário/admin */}
+    <Route
+      path="upgrade"
+      element={
+        <RoleProtectedRoute allowedRoles={['owner', 'restaurant_admin', 'super_admin']}>
+          <UpgradePage />
+        </RoleProtectedRoute>
+      }
+    />
   </>
 );
 

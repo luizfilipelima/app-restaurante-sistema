@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
           if (normLogin) row.login = normLogin;
           await admin.from('users').upsert(row, { onConflict: 'id' });
           await admin.from('restaurant_user_roles').upsert(
-            { user_id: existing.id, restaurant_id, role: restaurant_role },
+            { user_id: existing.id, restaurant_id, role: restaurant_role, is_active: true },
             { onConflict: 'user_id,restaurant_id' }
           );
           return ok({ message: 'Usuário já existia; perfil atualizado.', user_id: existing.id });
@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
 
     // ── Vincula cargo em restaurant_user_roles ────────────────────────────────
     await admin.from('restaurant_user_roles').upsert(
-      { user_id: userId, restaurant_id, role: restaurant_role },
+      { user_id: userId, restaurant_id, role: restaurant_role, is_active: true },
       { onConflict: 'user_id,restaurant_id' }
     );
 
