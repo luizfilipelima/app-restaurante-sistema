@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from '@/components/ui/toaster';
 import PublicMenu from '@/pages/public/Menu';
 import PublicCheckout from '@/pages/public/Checkout';
 import MenuViewOnly from '@/pages/public/MenuViewOnly';
@@ -63,7 +62,6 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
         <Route path="/bio" element={<LinkBio tenantSlug={tenantSlug} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <Toaster />
     </BrowserRouter>
   );
 }

@@ -30,12 +30,11 @@ import { convertBetweenCurrencies, type CurrencyCode } from '@/lib/priceHelper';
 import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
-import { toast } from '@/hooks/use-toast';
 import {
   ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote,
   Send, Trash2, MapPin, Map, Loader2, Gift, Minus, Plus,
   User, StickyNote, Check, X as XIcon, ShoppingBag,
-  QrCode, Landmark, Info, Copy,
+  QrCode, Landmark, Info, Copy, AlertCircle,
 } from 'lucide-react';
 import MapAddressPicker from '@/components/public/MapAddressPicker';
 import { fetchLoyaltyStatus, redeemLoyalty } from '@/hooks/queries';
@@ -108,6 +107,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
   const [pixCopied, setPixCopied] = useState(false);
   const [bankCopied, setBankCopied] = useState(false);
+
+  // ── Feedback inline (substitui toasts) ──
+  const [formError, setFormError] = useState<string | null>(null);
+  const [geoFeedback, setGeoFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
   const geoStorageKey = `checkout_geo_${restaurantId || 'default'}`;
@@ -197,16 +200,18 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
-      toast({ title: 'Seu navegador não suporta geolocalização.', variant: 'destructive' });
+      setGeoFeedback({ type: 'error', text: 'Seu navegador não suporta geolocalização.' });
       return;
     }
     setGeolocating(true);
+    setGeoFeedback(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLatitude(pos.coords.latitude);
         setLongitude(pos.coords.longitude);
         setGeolocating(false);
-        toast({ title: '📍 Localização obtida! Ajuste o pino se necessário.' });
+        setGeoFeedback({ type: 'success', text: 'Localização obtida! Ajuste o pino se necessário.' });
+        setTimeout(() => setGeoFeedback(null), 4000);
       },
       (err) => {
         setGeolocating(false);
@@ -218,7 +223,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             : err.code === err.TIMEOUT
             ? 'Tempo esgotado. Verifique o sinal do GPS e tente novamente.'
             : 'Não foi possível obter a localização. Preencha o endereço abaixo.';
-        toast({ title: msg, variant: 'destructive' });
+        setGeoFeedback({ type: 'error', text: msg });
       },
       { enableHighAccuracy: true, timeout: 30000, maximumAge: 60000 }
     );
@@ -237,6 +242,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const totalItemCount = items.reduce((acc, i) => acc + i.quantity, 0);
 
   const handleCheckout = async () => {
+    setFormError(null);
     const nameToUse = isTableOrder ? `Mesa ${tableNumber}` : customerName;
     const phoneToUse = isTableOrder
       ? ((currentRestaurant?.phone || '').replace(/\D/g, '').length >= 9
@@ -245,7 +251,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       : customerPhone;
 
     if (!isTableOrder && (!customerName.trim() || !customerPhone.trim())) {
-      toast({ title: t('checkout.errorFillNamePhone'), variant: 'destructive' });
+      setFormError(t('checkout.errorFillNamePhone'));
       return;
     }
 
@@ -262,21 +268,17 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     }
 
     if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && zones.length > 0 && !selectedZoneId) {
-      toast({ title: t('checkout.errorSelectZone'), variant: 'destructive' });
+      setFormError(t('checkout.errorSelectZone'));
       return;
     }
 
     if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && latitude == null && !addressDetails?.trim()) {
-      toast({
-        title: 'Informe o endereço',
-        description: 'Use "Minha localização" ou preencha o endereço completo.',
-        variant: 'destructive',
-      });
+      setFormError('Informe o endereço de entrega. Use sua localização atual ou preencha o endereço completo.');
       return;
     }
 
     if (!restaurantId) {
-      toast({ title: t('checkout.errorInvalidCart'), description: t('checkout.errorInvalidCartDesc'), variant: 'destructive' });
+      setFormError(t('checkout.errorInvalidCart'));
       handleBackToMenu();
       return;
     }
@@ -290,7 +292,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         : hasHours ? isWithinOpeningHours(currentRestaurant.opening_hours as Record<string, { open: string; close: string } | null>)
         : true;
       if (!isOpen) {
-        toast({ title: t('checkout.errorRestaurantClosed'), description: t('checkout.errorRestaurantClosedDesc'), variant: 'destructive' });
+        setFormError(t('checkout.errorRestaurantClosed'));
         return;
       }
     }
@@ -465,32 +467,14 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         if (confirmPath && newOrderId) {
           sessionStorage.setItem(`order_just_placed_${newOrderId}`, '1');
-          const isPix = paymentMethod === PaymentMethod.PIX;
-          toast({
-            title: '✅ ' + t('checkout.successOrderTitle'),
-            description: isPix
-              ? `${t('checkout.successOrderDesc')} Lembre-se de enviar o comprovante de pagamento PIX pelo WhatsApp após confirmar o pedido.`
-              : t('checkout.successOrderDesc'),
-            className: 'bg-green-50 border-green-200',
-          });
           window.open(generateWhatsAppLink(whatsappNumber, message), '_blank', 'noopener,noreferrer');
           window.location.assign(window.location.origin + confirmPath);
         } else {
-          toast({
-            title: '✅ ' + t('checkout.successOrderTitle'),
-            description: t('checkout.successOrderDesc'),
-            className: 'bg-green-50 border-green-200',
-          });
           window.open(generateWhatsAppLink(whatsappNumber, message), '_blank', 'noopener,noreferrer');
           setTimeout(() => handleBackToMenu(), 800);
         }
       } else {
         clearCart();
-        toast({
-          title: '✅ Pedido enviado!',
-          description: `Seu pedido chegou na cozinha. Mesa ${tableNumber}`,
-          className: 'bg-green-50 border-green-200',
-        });
         setTimeout(() => handleBackToMenu(), 1500);
       }
     } catch (error: unknown) {
@@ -498,7 +482,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       const msg = error && typeof error === 'object' && 'message' in error
         ? String((error as { message: string }).message)
         : t('checkout.errorGeneric');
-      toast({ title: t('checkout.errorFinalizeTitle'), description: msg, variant: 'destructive' });
+      setFormError(msg);
     } finally {
       setLoading(false);
     }
@@ -714,45 +698,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
         )}
 
-        {/* ── 3. Zona de entrega (apenas delivery, não-mesa) ── */}
-        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
-          <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
-              <div className="h-6 w-6 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
-                <Map className="h-3.5 w-3.5 text-teal-600" />
-              </div>
-              <span className="text-sm font-semibold text-slate-800">{t('checkout.zoneLabel')}</span>
-              {zones.length > 0 && selectedZoneId && (
-                <Check className="h-4 w-4 text-teal-500 ml-auto flex-shrink-0" />
-              )}
-            </div>
-            <div className="p-4">
-              {zones.length > 0 ? (
-                <Select value={selectedZoneId} onValueChange={setSelectedZoneId}>
-                  <SelectTrigger className="h-12 bg-slate-50 border-slate-200 rounded-xl text-sm focus:bg-white">
-                    <SelectValue placeholder={t('checkout.zonePlaceholder')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {zones.map((zone) => (
-                      <SelectItem key={zone.id} value={zone.id}>
-                        <div className="flex items-center justify-between gap-6 w-full">
-                          <span>{zone.location_name}</span>
-                          <span className="text-muted-foreground text-xs font-semibold">
-                            {zone.fee === 0 ? 'Grátis' : formatCurrency(convertForDisplay(zone.fee), displayCurrency)}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="text-sm text-slate-500">{t('checkout.zoneNoZones')}</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── 4. Dados do cliente (não-mesa) ── */}
+        {/* ── 3. Dados do cliente (não-mesa) ── */}
         {!isTableOrder && (
           <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
@@ -769,7 +715,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 <Input
                   id="name"
                   value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
+                  onChange={(e) => { setCustomerName(e.target.value); setFormError(null); }}
                   placeholder={t('checkout.namePlaceholder')}
                   autoComplete="name"
                   className="h-12 text-base bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
@@ -793,7 +739,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   <Input
                     id="phone"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    onChange={(e) => { setCustomerPhone(e.target.value); setFormError(null); }}
                     placeholder={phonePlaceholder}
                     className="flex-1 h-12 text-base bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
                     type="tel"
@@ -806,7 +752,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
         )}
 
-        {/* ── 5. Endereço (apenas delivery, não-mesa) ── */}
+        {/* ── 4. Endereço (apenas delivery, não-mesa) ── */}
         {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
           <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
@@ -858,6 +804,21 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 </div>
               )}
 
+              {/* Feedback inline da geolocalização */}
+              {geoFeedback && (
+                <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm ${
+                  geoFeedback.type === 'success'
+                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                    : 'bg-red-50 border border-red-200 text-red-700'
+                }`}>
+                  {geoFeedback.type === 'success'
+                    ? <Check className="h-4 w-4 flex-shrink-0" />
+                    : <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  }
+                  <span>{geoFeedback.text}</span>
+                </div>
+              )}
+
               {/* Endereço manual */}
               <div>
                 <Label htmlFor="addressDetails" className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
@@ -867,13 +828,51 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 <Input
                   id="addressDetails"
                   value={addressDetails}
-                  onChange={(e) => setAddressDetails(e.target.value)}
+                  onChange={(e) => { setAddressDetails(e.target.value); setFormError(null); }}
                   placeholder={latitude != null
                     ? 'Apto, Bloco, Ponto de referência...'
                     : 'Rua, número, bairro, ponto de referência...'}
                   className="h-12 bg-slate-50 border-slate-200 rounded-xl text-base focus:bg-white"
                 />
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 5. Zona de entrega (apenas delivery, não-mesa) ── */}
+        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
+          <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
+              <div className="h-6 w-6 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
+                <Map className="h-3.5 w-3.5 text-teal-600" />
+              </div>
+              <span className="text-sm font-semibold text-slate-800">{t('checkout.zoneLabel')}</span>
+              {zones.length > 0 && selectedZoneId && (
+                <Check className="h-4 w-4 text-teal-500 ml-auto flex-shrink-0" />
+              )}
+            </div>
+            <div className="p-4">
+              {zones.length > 0 ? (
+                <Select value={selectedZoneId} onValueChange={(v) => { setSelectedZoneId(v); setFormError(null); }}>
+                  <SelectTrigger className="h-12 bg-slate-50 border-slate-200 rounded-xl text-sm focus:bg-white">
+                    <SelectValue placeholder={t('checkout.zonePlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {zones.map((zone) => (
+                      <SelectItem key={zone.id} value={zone.id}>
+                        <div className="flex items-center justify-between gap-6 w-full">
+                          <span>{zone.location_name}</span>
+                          <span className="text-muted-foreground text-xs font-semibold">
+                            {zone.fee === 0 ? 'Grátis' : formatCurrency(convertForDisplay(zone.fee), displayCurrency)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm text-slate-500">{t('checkout.zoneNoZones')}</p>
+              )}
             </div>
           </div>
         )}
@@ -955,10 +954,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                                     try {
                                       await navigator.clipboard.writeText(currentRestaurant.pix_key!);
                                       setPixCopied(true);
-                                      toast({ title: 'Chave PIX copiada!', variant: 'default' });
                                       setTimeout(() => setPixCopied(false), 2000);
                                     } catch {
-                                      toast({ title: 'Não foi possível copiar', variant: 'destructive' });
+                                      // silencioso — botão mostra estado visual
                                     }
                                   }}
                                   className="flex-shrink-0 h-10 w-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition-colors touch-manipulation"
@@ -1012,10 +1010,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                                   try {
                                     await navigator.clipboard.writeText(text);
                                     setBankCopied(true);
-                                    toast({ title: 'Dados bancários copiados!', variant: 'default' });
                                     setTimeout(() => setBankCopied(false), 2000);
                                   } catch {
-                                    toast({ title: 'Não foi possível copiar', variant: 'destructive' });
+                                    // silencioso — botão mostra estado visual
                                   }
                                 }}
                                 className="mt-2 flex items-center gap-2 text-xs font-medium text-indigo-700 hover:text-indigo-800 transition-colors touch-manipulation"
@@ -1163,7 +1160,23 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         className="fixed bottom-0 left-0 right-0 z-30 bg-white/97 backdrop-blur-md border-t border-slate-100 px-4 pt-3 shadow-2xl shadow-slate-900/10"
         style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
       >
-        <div className="max-w-xl mx-auto">
+        <div className="max-w-xl mx-auto space-y-2.5">
+
+          {/* Banner de erro inline */}
+          {formError && (
+            <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-red-50 border border-red-200">
+              <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700 font-medium leading-snug">{formError}</p>
+              <button
+                onClick={() => setFormError(null)}
+                className="ml-auto p-0.5 text-red-400 hover:text-red-600 transition-colors flex-shrink-0"
+                aria-label="Fechar erro"
+              >
+                <XIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
           <Button
             size="lg"
             className={`w-full font-bold h-14 rounded-2xl shadow-lg flex items-center justify-center gap-2.5 text-base touch-manipulation active:scale-[0.98] transition-all ${
@@ -1193,6 +1206,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               </>
             )}
           </Button>
+
         </div>
       </div>
 
@@ -1217,10 +1231,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               onClick={async () => {
                 setLoyaltyRedeemed(true);
                 setShowRedeemDialog(false);
-                toast({
-                  title: t('loyalty.redeemSuccess'),
-                  description: t('loyalty.redeemSuccessDesc', { reward: loyaltyStatus?.reward_description ?? '' }),
-                });
                 await handleCheckout();
               }}
             >

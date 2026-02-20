@@ -86,6 +86,7 @@ import {
   ChefHat,
   Wine,
   Tag,
+  ShoppingCart,
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
 import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/ProductAddonsSection';
@@ -1952,82 +1953,152 @@ export default function AdminMenu() {
 
       {/* ── Cardápio Online Modal ───────────────────────────────────────────── */}
       <Dialog open={showOnlineModal} onOpenChange={setShowOnlineModal}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Cardápio Online</DialogTitle>
+        <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden flex flex-col max-h-[92vh]">
+
+          {/* Cabeçalho */}
+          <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-5 border-b border-border/60">
+            <div className="flex items-center gap-3 pr-6">
+              <div className="w-9 h-9 rounded-xl bg-orange-100 dark:bg-orange-950/40 flex items-center justify-center shrink-0">
+                <QrCode className="h-4 w-4 text-orange-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-semibold leading-tight">Cardápio Online</DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">Configure o endereço e os QR Codes do seu cardápio</p>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="space-y-5">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Endereço do cardápio</CardTitle>
-                <p className="text-sm text-muted-foreground">Defina o slug único que aparece no URL do seu cardápio.</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <Label htmlFor="slug">Slug</Label>
-                    <Input id="slug" value={slug}
-                      onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'))}
-                      placeholder="ex: minha-pizzaria" className="mt-1" />
-                    <p className="text-xs text-muted-foreground mt-1">Apenas letras minúsculas, números e hífens.</p>
-                  </div>
-                  <div className="flex items-end">
-                    <Button onClick={handleSaveSlug} disabled={slugSaving}>
-                      {slugSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                      Salvar
+
+          {/* Corpo — 2 colunas no desktop */}
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px] divide-y lg:divide-y-0 lg:divide-x divide-border/50 min-h-full">
+
+              {/* ── Coluna esquerda: Slug + Links ── */}
+              <div className="p-6 space-y-6">
+
+                {/* Slug */}
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-0.5">Endereço do Cardápio</h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Defina o slug único que aparece no URL do seu cardápio.
+                  </p>
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1 space-y-1.5">
+                      <Label htmlFor="slug-online" className="text-xs text-muted-foreground">Slug</Label>
+                      <Input
+                        id="slug-online"
+                        value={slug}
+                        onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'))}
+                        placeholder="ex: minha-pizzaria"
+                        className="font-mono text-sm h-10"
+                      />
+                      <p className="text-[11px] text-muted-foreground">Apenas letras minúsculas, números e hífens.</p>
+                    </div>
+                    <Button onClick={handleSaveSlug} disabled={slugSaving} className="h-10 shrink-0 mb-[22px]">
+                      {slugSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
                     </Button>
                   </div>
                 </div>
 
-                {(slug || restaurant?.slug) && (
-                  <div className="space-y-3 pt-2 border-t">
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <Label className="text-sm font-medium">Cardápio interativo</Label>
-                        <Badge variant="secondary" className="text-xs">Pedidos habilitados</Badge>
+                {/* Links — aparece apenas quando o slug está definido */}
+                {(slug || restaurant?.slug) && (() => {
+                  const activeSlug = slug || restaurant?.slug || '';
+                  const interactiveUrl = getCardapioPublicUrl(activeSlug);
+                  const viewOnlyUrl = `${interactiveUrl}/menu`;
+                  return (
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-semibold text-foreground">Links do Cardápio</h3>
+
+                      {/* Cardápio Interativo */}
+                      <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-orange-100 dark:bg-orange-950/40 flex items-center justify-center shrink-0">
+                              <ShoppingCart className="h-3.5 w-3.5 text-orange-600" />
+                            </div>
+                            <span className="text-sm font-medium text-foreground">Cardápio Interativo</span>
+                          </div>
+                          <Badge className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 shrink-0">
+                            Pedidos habilitados
+                          </Badge>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Input readOnly value={interactiveUrl} className="flex-1 font-mono text-xs h-8 bg-background" />
+                          <Button
+                            type="button" variant="outline" size="sm" className="h-8 px-2.5 shrink-0"
+                            title="Copiar link"
+                            onClick={() => {
+                              navigator.clipboard.writeText(interactiveUrl).then(() => {
+                                setLinkCopied(true);
+                                toast({ title: 'Link copiado!' });
+                                setTimeout(() => setLinkCopied(false), 2000);
+                              });
+                            }}
+                          >
+                            {linkCopied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                          </Button>
+                          <Button
+                            type="button" variant="outline" size="sm" className="h-8 px-2.5 shrink-0"
+                            title="Abrir cardápio"
+                            onClick={() => window.open(interactiveUrl, '_blank')}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Input readOnly value={getCardapioPublicUrl(slug || restaurant?.slug || '')} className="flex-1 text-sm bg-muted/30" />
-                        <Button type="button" variant="outline" size="sm" onClick={() => {
-                          const url = getCardapioPublicUrl(slug || restaurant?.slug || '');
-                          navigator.clipboard.writeText(url).then(() => { setLinkCopied(true); toast({ title: 'Link copiado!' }); setTimeout(() => setLinkCopied(false), 2000); });
-                        }}>
-                          {linkCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-                          {linkCopied ? 'Copiado!' : 'Copiar'}
-                        </Button>
-                        <Button type="button" variant="ghost" size="sm" className="px-2" onClick={() => window.open(getCardapioPublicUrl(slug || restaurant?.slug || ''), '_blank')}>
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
+
+                      {/* Somente Visualização */}
+                      <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                              <Eye className="h-3.5 w-3.5 text-slate-500" />
+                            </div>
+                            <span className="text-sm font-medium text-foreground">Somente Visualização</span>
+                          </div>
+                          <Badge variant="outline" className="text-[10px] shrink-0">Sem pedidos</Badge>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Input readOnly value={viewOnlyUrl} className="flex-1 font-mono text-xs h-8 bg-background" />
+                          <Button
+                            type="button" variant="outline" size="sm" className="h-8 px-2.5 shrink-0"
+                            title="Copiar link"
+                            onClick={() => {
+                              navigator.clipboard.writeText(viewOnlyUrl).then(() => {
+                                setMenuLinkCopied(true);
+                                toast({ title: 'Link copiado!' });
+                                setTimeout(() => setMenuLinkCopied(false), 2000);
+                              });
+                            }}
+                          >
+                            {menuLinkCopied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                          </Button>
+                          <Button
+                            type="button" variant="outline" size="sm" className="h-8 px-2.5 shrink-0"
+                            title="Abrir cardápio"
+                            onClick={() => window.open(viewOnlyUrl, '_blank')}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <Label className="text-sm font-medium">Somente leitura</Label>
-                        <Badge variant="outline" className="text-xs">Sem pedidos</Badge>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input readOnly value={`${getCardapioPublicUrl(slug || restaurant?.slug || '')}/menu`} className="flex-1 text-sm bg-muted/30" />
-                        <Button type="button" variant="outline" size="sm" onClick={() => {
-                          const url = `${getCardapioPublicUrl(slug || restaurant?.slug || '')}/menu`;
-                          navigator.clipboard.writeText(url).then(() => { setMenuLinkCopied(true); toast({ title: 'Link copiado!' }); setTimeout(() => setMenuLinkCopied(false), 2000); });
-                        }}>
-                          {menuLinkCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-                          {menuLinkCopied ? 'Copiado!' : 'Copiar'}
-                        </Button>
-                        <Button type="button" variant="ghost" size="sm" className="px-2" onClick={() => window.open(`${getCardapioPublicUrl(slug || restaurant?.slug || '')}/menu`, '_blank')}>
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            <MenuQRCodeCard slug={slug || restaurant?.slug || ''} />
+                  );
+                })()}
+              </div>
+
+              {/* ── Coluna direita: QR Codes ── */}
+              <div className="p-6">
+                <MenuQRCodeCard slug={slug || restaurant?.slug || ''} />
+              </div>
+
+            </div>
           </div>
-          <DialogFooter>
+
+          {/* Rodapé */}
+          <div className="flex-shrink-0 flex justify-end px-6 py-4 border-t border-border/60 bg-muted/10">
             <Button variant="outline" onClick={() => setShowOnlineModal(false)}>Fechar</Button>
-          </DialogFooter>
+          </div>
+
         </DialogContent>
       </Dialog>
 
