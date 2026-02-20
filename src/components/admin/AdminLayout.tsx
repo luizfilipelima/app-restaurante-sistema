@@ -369,18 +369,16 @@ function LockedNavItem({ item }: { item: NavLeaf }) {
 function GuardedNavItem({ item, isActive }: { item: NavLeaf; isActive: boolean }) {
   const restaurantId = useAdminRestaurantId();
 
-  // ── Verificação de cargo (RBAC) ──────────────────────────────────────────
-  // Se o item exige um cargo e o usuário não o tem → ocultar completamente.
-  // Nota: useCanAccess retorna `true` otimisticamente durante o carregamento.
-  const hasRoleAccess = useCanAccess(item.roleRequired ?? ['kitchen']); // sem roleRequired = acesso livre
-  const isRoleRestricted = !!item.roleRequired;
-  if (isRoleRestricted && !hasRoleAccess) return null;
-
-  // ── Verificação de feature flag (Planos) ─────────────────────────────────
+  // IMPORTANTE: Todos os hooks devem ser chamados incondicionalmente, antes de qualquer return,
+  // para respeitar as regras dos Hooks do React. Caso contrário ocorre Error #300.
+  const hasRoleAccess = useCanAccess(item.roleRequired ?? ['kitchen']);
   const { data: hasFeatureAccess, isLoading } = useFeatureAccess(
     item.featureFlag ?? '',
     item.featureFlag ? restaurantId : null,
   );
+
+  const isRoleRestricted = !!item.roleRequired;
+  if (isRoleRestricted && !hasRoleAccess) return null;
 
   // Sem flag de feature → sempre acessível (do ponto de vista de plano).
   if (!item.featureFlag) {
