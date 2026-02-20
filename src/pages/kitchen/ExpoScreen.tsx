@@ -468,7 +468,13 @@ export default function ExpoScreen() {
           Acesse esta tela pelo painel admin ou adicione <code className="bg-slate-800 px-1 rounded">?restaurant_id=...</code> na URL.
         </p>
         <Link
-          to={slug ? `/${slug}/painel/orders` : '/admin/orders'}
+          to={
+            user?.role === 'super_admin' && restaurantIdFromUrl
+              ? `/super-admin/restaurants/${restaurantIdFromUrl}/orders`
+              : slug
+                ? `/${slug}/painel/orders`
+                : '/admin/orders'
+          }
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium"
         >
           <LayoutDashboard className="h-4 w-4" />
@@ -563,13 +569,19 @@ export default function ExpoScreen() {
                 {new Date(now).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
 
-              {/* Link Kanban */}
+              {/* Voltar ao painel */}
               <Link
-                to={slug ? `/${slug}/painel/orders` : '/admin/orders'}
+                to={
+                  user?.role === 'super_admin' && restaurantId
+                    ? `/super-admin/restaurants/${restaurantId}/orders`
+                    : slug
+                      ? `/${slug}/painel/orders`
+                      : '/admin/orders'
+                }
                 className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors border border-slate-700"
               >
                 <LayoutDashboard className="h-3.5 w-3.5" />
-                Kanban
+                Voltar ao painel
               </Link>
             </div>
           </div>

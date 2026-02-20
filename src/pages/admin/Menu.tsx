@@ -158,107 +158,116 @@ interface SortableCategoryItemProps {
 function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete, onToggleInventory, onChangeDest }: SortableCategoryItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: category.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
+  const dest = category.print_destination ?? 'kitchen';
+  const isBar = dest === 'bar';
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${
+      className={`group relative rounded-xl border transition-all ${
         isSelected
-          ? 'bg-primary text-primary-foreground'
-          : 'hover:bg-muted/70 text-foreground'
+          ? 'bg-primary border-primary shadow-sm'
+          : 'bg-background border-border hover:border-primary/40 hover:bg-muted/40'
       } ${isDragging ? 'shadow-lg z-50' : ''}`}
     >
-      <div
-        {...attributes}
-        {...listeners}
-        className={`cursor-grab active:cursor-grabbing touch-none p-0.5 rounded transition-opacity ${
-          isSelected ? 'text-primary-foreground/60 hover:text-primary-foreground' : 'text-muted-foreground/40 hover:text-muted-foreground'
-        } opacity-0 group-hover:opacity-100`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical className="h-3.5 w-3.5" />
+      {/* Linha principal: drag + seleção */}
+      <div className="flex items-center gap-1.5 px-2 py-2">
+        {/* Handle de drag — sempre visível como alça sutil */}
+        <div
+          {...attributes}
+          {...listeners}
+          className={`cursor-grab active:cursor-grabbing touch-none p-1 rounded transition-colors ${
+            isSelected ? 'text-primary-foreground/50 hover:text-primary-foreground/80' : 'text-muted-foreground/30 hover:text-muted-foreground/70'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </div>
+
+        {/* Botão principal de seleção */}
+        <button
+          type="button"
+          className="flex-1 flex items-center gap-2 text-left min-w-0"
+          onClick={onSelect}
+        >
+          {/* Ícone de tipo */}
+          <span className={`flex-shrink-0 ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
+            {category.is_pizza ? (
+              <Pizza className="h-3.5 w-3.5" />
+            ) : category.is_marmita ? (
+              <UtensilsCrossed className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isSelected ? 'rotate-90 text-primary-foreground' : ''}`} />
+            )}
+          </span>
+
+          {/* Nome */}
+          <span className={`truncate text-sm font-semibold flex-1 ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
+            {category.name}
+          </span>
+
+          {/* Contagem */}
+          <span className={`flex-shrink-0 text-xs font-bold min-w-[1.25rem] text-center ${
+            isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'
+          }`}>
+            {count}
+          </span>
+        </button>
       </div>
 
-      <button
-        type="button"
-        className="flex-1 flex items-center gap-1.5 text-left min-w-0"
-        onClick={onSelect}
-      >
-        {category.is_pizza ? (
-          <Pizza className="h-3.5 w-3.5 shrink-0" />
-        ) : category.is_marmita ? (
-          <UtensilsCrossed className="h-3.5 w-3.5 shrink-0" />
-        ) : (
-          <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isSelected ? 'rotate-90' : ''}`} />
-        )}
-        <span className="truncate text-sm font-medium">{category.name}</span>
-        {category.has_inventory && (
-          <span title="Estoque ativo">
-            <Boxes className={`h-3 w-3 shrink-0 ml-0.5 ${isSelected ? 'text-primary-foreground/70' : 'text-primary/70'}`} />
-          </span>
-        )}
-        {/* Badge de destino de impressão */}
-        <span
-          className={`shrink-0 text-[9px] font-bold px-1 py-0.5 rounded tracking-wider ${
-            (category.print_destination ?? 'kitchen') === 'bar'
-              ? isSelected ? 'bg-orange-300/30 text-orange-200' : 'bg-orange-100 text-orange-700'
-              : isSelected ? 'bg-blue-300/30 text-blue-200' : 'bg-blue-100 text-blue-700'
+      {/* Linha de meta: badges de destino + estoque + ações */}
+      <div className={`flex items-center gap-1.5 px-2 pb-1.5 border-t ${isSelected ? 'border-primary-foreground/20' : 'border-border/60'}`}>
+        {/* Badge destino de impressão — clicável para alternar */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onChangeDest(category.id, isBar ? 'kitchen' : 'bar');
+          }}
+          title={isBar ? 'Destino: Garçom/Bar — clique para mudar para Cozinha' : 'Destino: Cozinha — clique para mudar para Bar'}
+          className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-colors cursor-pointer ${
+            isBar
+              ? isSelected ? 'bg-orange-300/30 text-orange-200 hover:bg-orange-300/50' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+              : isSelected ? 'bg-blue-300/30 text-blue-200 hover:bg-blue-300/50' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
           }`}
-          title={(category.print_destination ?? 'kitchen') === 'bar' ? 'Garçom / Bar' : 'Cozinha Central'}
         >
-          {(category.print_destination ?? 'kitchen') === 'bar' ? 'BAR' : 'COZ'}
-        </span>
-        <Badge
-          variant={isSelected ? 'secondary' : 'outline'}
-          className={`ml-auto shrink-0 text-xs h-4 px-1.5 ${isSelected ? 'bg-primary-foreground/20 text-primary-foreground border-0' : ''}`}
+          <Printer className="h-2.5 w-2.5" />
+          {isBar ? 'BAR' : 'COZ'}
+        </button>
+
+        {/* Badge estoque — clicável para alternar */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onToggleInventory(category.id, !!category.has_inventory); }}
+          title={category.has_inventory ? 'Estoque ativo — clique para desativar' : 'Ativar controle de estoque'}
+          className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-colors cursor-pointer ${
+            category.has_inventory
+              ? isSelected ? 'bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+              : isSelected ? 'bg-primary-foreground/10 text-primary-foreground/50 hover:bg-primary-foreground/20' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          }`}
         >
-          {count}
-        </Badge>
-      </button>
+          <Boxes className="h-2.5 w-2.5" />
+          {category.has_inventory ? 'EST' : 'est'}
+        </button>
 
-      {/* Toggle de estoque — aparece no hover */}
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onToggleInventory(category.id, !!category.has_inventory); }}
-        className={`p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
-          category.has_inventory
-            ? isSelected ? 'text-primary-foreground/80 hover:text-primary-foreground' : 'text-primary/70 hover:text-primary'
-            : isSelected ? 'text-primary-foreground/40 hover:text-primary-foreground' : 'text-muted-foreground/40 hover:text-primary'
-        }`}
-        title={category.has_inventory ? 'Estoque ativo — clique para desativar' : 'Ativar controle de estoque nesta categoria'}
-      >
-        <Boxes className="h-3.5 w-3.5" />
-      </button>
+        {/* Spacer */}
+        <div className="flex-1" />
 
-      {/* Toggle destino de impressão — aparece no hover */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          const next = (category.print_destination ?? 'kitchen') === 'kitchen' ? 'bar' : 'kitchen';
-          onChangeDest(category.id, next);
-        }}
-        className={`p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
-          (category.print_destination ?? 'kitchen') === 'bar'
-            ? isSelected ? 'text-orange-300/80 hover:text-orange-200' : 'text-orange-500 hover:text-orange-600'
-            : isSelected ? 'text-blue-300/80 hover:text-blue-200' : 'text-blue-400/60 hover:text-blue-600'
-        }`}
-        title={(category.print_destination ?? 'kitchen') === 'bar' ? 'Destino: Bar — clique para mudar para Cozinha' : 'Destino: Cozinha — clique para mudar para Bar'}
-      >
-        <Printer className="h-3.5 w-3.5" />
-      </button>
-
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        className={`p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
-          isSelected ? 'text-primary-foreground/60 hover:text-primary-foreground' : 'text-muted-foreground/40 hover:text-destructive'
-        }`}
-        title="Excluir categoria"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
+        {/* Botão excluir */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className={`p-0.5 rounded transition-colors ${
+            isSelected
+              ? 'text-primary-foreground/40 hover:text-primary-foreground'
+              : 'text-muted-foreground/40 hover:text-destructive'
+          }`}
+          title="Excluir categoria"
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -1069,12 +1078,15 @@ export default function AdminMenu() {
           </div>
 
           {/* Inventory toggle */}
-          <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${showInventory ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400' : 'border-border text-muted-foreground hover:bg-muted/60'}`}
+          <div
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors select-none ${showInventory ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400' : 'border-border text-muted-foreground hover:bg-muted/60'}`}
             onClick={() => setShowInventory((v) => !v)}
           >
             {showInventory ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
             <span>Ver Custos</span>
-            <Switch checked={showInventory} onCheckedChange={setShowInventory} className="h-4 w-7 ml-0.5" />
+            <div onClick={(e) => e.stopPropagation()} className="ml-0.5">
+              <Switch checked={showInventory} onCheckedChange={setShowInventory} className="h-4 w-7" />
+            </div>
           </div>
 
           {/* Settings */}

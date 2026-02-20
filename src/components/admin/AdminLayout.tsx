@@ -150,6 +150,7 @@ const buildNavSections = (
             ? `/kitchen?restaurant_id=${restaurantId}`
             : '/kitchen',
         icon: ChefHat,
+        external: true,
       },
       {
         kind: 'leaf',
@@ -176,6 +177,7 @@ const buildNavSections = (
             ? `/expo?restaurant_id=${restaurantId}`
             : '/expo',
         icon: ConciergeBell,
+        external: true,
       },
     ],
   },

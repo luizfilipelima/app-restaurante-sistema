@@ -233,6 +233,10 @@ export default function AdminOrders() {
     }
   }, [restaurantId, queryClient, printOrder, currency, refetchOrders, buildDualSlots]);
 
+  // Ref estável para evitar que mudanças no callback recriem o canal Realtime
+  const handleRealtimeOrderRef = useRef(handleRealtimeOrder);
+  useEffect(() => { handleRealtimeOrderRef.current = handleRealtimeOrder; }, [handleRealtimeOrder]);
+
   useEffect(() => {
     // Só subscreve quando temos UUID válido (evita undefined/slug malformado na montagem)
     if (!restaurantId || !isUUID(restaurantId)) return;
@@ -246,7 +250,7 @@ export default function AdminOrders() {
           table: 'orders',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        handleRealtimeOrder
+        (payload) => handleRealtimeOrderRef.current(payload)
       )
       .subscribe((status, err) => {
         setIsLive(status === 'SUBSCRIBED');
@@ -258,7 +262,7 @@ export default function AdminOrders() {
       supabase.removeChannel(channel);
       setIsLive(false);
     };
-  }, [restaurantId, handleRealtimeOrder]);
+  }, [restaurantId]); // apenas restaurantId — evita re-subscrição desnecessária
 
   // Fallback: polling quando Realtime não está conectado (ex: tabela fora da publicação)
   useEffect(() => {
