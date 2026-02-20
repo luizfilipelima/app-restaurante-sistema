@@ -42,6 +42,12 @@ ALTER TABLE loyalty_points   ENABLE ROW LEVEL SECURITY;
 -- (restaurant_admin com restaurant_id correspondente, ou super_admin)
 
 -- loyalty_programs: admin do restaurante pode ler e modificar
+DROP POLICY IF EXISTS "loyalty_programs_select" ON loyalty_programs;
+DROP POLICY IF EXISTS "loyalty_programs_insert" ON loyalty_programs;
+DROP POLICY IF EXISTS "loyalty_programs_update" ON loyalty_programs;
+DROP POLICY IF EXISTS "loyalty_programs_delete" ON loyalty_programs;
+DROP POLICY IF EXISTS "loyalty_programs_owner"  ON loyalty_programs;
+
 CREATE POLICY "loyalty_programs_select" ON loyalty_programs FOR SELECT
   USING (
     EXISTS (
@@ -92,6 +98,11 @@ CREATE POLICY "loyalty_programs_delete" ON loyalty_programs FOR DELETE
 
 -- loyalty_points: somente admin/super_admin pode ler diretamente
 -- (clientes acessam via RPC SECURITY DEFINER)
+DROP POLICY IF EXISTS "loyalty_points_select" ON loyalty_points;
+DROP POLICY IF EXISTS "loyalty_points_insert" ON loyalty_points;
+DROP POLICY IF EXISTS "loyalty_points_update" ON loyalty_points;
+DROP POLICY IF EXISTS "loyalty_points_owner"  ON loyalty_points;
+
 CREATE POLICY "loyalty_points_select" ON loyalty_points FOR SELECT
   USING (
     EXISTS (
