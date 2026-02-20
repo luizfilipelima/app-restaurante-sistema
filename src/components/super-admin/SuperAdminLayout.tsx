@@ -1,10 +1,13 @@
 /**
  * Layout do painel Super Admin.
  *
- * Segue o mesmo padrão visual do AdminLayout:
- *   — Sidebar escura (#0d1a10) com texto claro
- *   — Painel de conteúdo flutuante (fundo claro com margem que expõe o fundo escuro)
- *   — Badge "Super Admin" para distinguir da visão de restaurante
+ * Design deliberadamente espelhado do AdminLayout (restaurante):
+ *   — Mesma sidebar branca com logo quiero.food
+ *   — Mesmo esquema de cores laranja para itens ativos
+ *   — Badge "Super Admin" abaixo do logo para distinguir da visão de restaurante
+ *
+ * Isso garante consistência visual entre os dois painéis,
+ * enquanto o badge e as rotas diferentes deixam claro ao usuário em qual contexto está.
  */
 
 import { ReactNode } from 'react';
@@ -28,7 +31,7 @@ import {
   MonitorSmartphone,
 } from 'lucide-react';
 
-// ─── Variantes de animação ─────────────────────────────────────────────────
+// ─── Variantes de animação do sidebar ─────────────────────────────────────────
 
 const navContainerVariants = {
   hidden: {},
@@ -90,14 +93,14 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       : location.pathname.startsWith(item.href);
 
   return (
-    <div className="min-h-screen bg-[#0d1a10] overflow-x-hidden">
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
 
-      {/* ── Sidebar ───────────────────────────────────────────────────────── */}
+      {/* ── Sidebar ──────────────────────────────────────────────────────── */}
       <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 z-20">
-        <div className="flex flex-col flex-grow bg-[#0d1a10] overflow-y-auto">
+        <div className="flex flex-col flex-grow bg-white border-r border-slate-100 overflow-y-auto">
 
           {/* Logo + Badge "Super Admin" */}
-          <div className="flex flex-col flex-shrink-0 px-5 pt-6 pb-4 border-b border-white/[0.06]">
+          <div className="flex flex-col flex-shrink-0 px-5 pt-6 pb-4 border-b border-slate-100">
             <Link to="/super-admin" className="flex items-center gap-2 min-w-0">
               <img
                 src="/quierofood-logo-f.svg"
@@ -105,9 +108,10 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                 className="h-9 w-auto object-contain flex-shrink-0"
               />
             </Link>
+            {/* Badge: identifica a visão de "Dono do SaaS" */}
             <div className="mt-2 flex items-center gap-1.5">
-              <ShieldCheck className="h-3 w-3 text-orange-400 flex-shrink-0" />
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-orange-400">
+              <ShieldCheck className="h-3 w-3 text-[#F87116] flex-shrink-0" />
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[#F87116]">
                 Super Admin
               </span>
             </div>
@@ -122,7 +126,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
           >
             <motion.p
               variants={navItemVariants}
-              className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500 select-none"
+              className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400 select-none"
             >
               Gestão
             </motion.p>
@@ -134,16 +138,16 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                   <Link
                     to={item.href}
                     onMouseEnter={isRestaurants ? prefetchRestaurants : undefined}
-                    className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150 border-l-[3px] ${
+                    className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors border-l-[3px] ${
                       active
-                        ? 'bg-orange-500/10 text-orange-300 border-l-orange-400'
-                        : 'text-slate-300 hover:bg-white/[0.06] hover:text-white border-l-transparent'
+                        ? 'bg-orange-50 text-[#F87116] border-l-[#F87116]'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-transparent'
                     }`}
                   >
                     <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
                     <span className="flex-1 truncate">{item.label}</span>
                     {active && (
-                      <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-orange-400/60" />
+                      <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-[#F87116]/60" />
                     )}
                   </Link>
                 </motion.div>
@@ -151,17 +155,19 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
             })}
           </motion.nav>
 
-          {/* Footer: info do usuário + Sair */}
-          <div className="flex-shrink-0 px-3 py-4 border-t border-white/[0.06] space-y-1">
-            <div className="px-3 py-2 rounded-lg bg-white/[0.04]">
-              <p className="text-xs font-medium text-slate-300 truncate">
+          {/* Footer: e-mail do usuário + Sair */}
+          <div className="flex-shrink-0 px-3 py-4 border-t border-slate-100 space-y-1">
+            {/* Info do usuário */}
+            <div className="px-3 py-2 rounded-lg bg-slate-50">
+              <p className="text-xs font-medium text-slate-700 truncate">
                 {user?.login || user?.email}
               </p>
-              <p className="text-[10px] text-slate-500 mt-0.5">Acesso total ao SaaS</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Acesso total ao SaaS</p>
             </div>
+            {/* Sair */}
             <Button
               variant="ghost"
-              className="w-full justify-start text-slate-400 hover:bg-white/[0.06] hover:text-white"
+              className="w-full justify-start text-slate-500 hover:bg-slate-100 hover:text-slate-700"
               onClick={handleSignOut}
             >
               <LogOut className="mr-3 h-[18px] w-[18px]" />
@@ -172,17 +178,13 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       </div>
 
       {/* ── Conteúdo principal ────────────────────────────────────────────── */}
-      <div className="md:pl-64 min-w-0 flex-1 w-full">
-        {/* Painel flutuante: margem expõe o fundo escuro */}
-        <div className="md:ml-2 md:mr-3 md:mt-3 bg-slate-50 md:rounded-tl-2xl overflow-x-hidden min-h-screen">
-          <AnimatePresence mode="wait">
-            <PageTransition key={location.pathname}>
-              {children ?? <Outlet />}
-            </PageTransition>
-          </AnimatePresence>
-        </div>
+      <div className="md:pl-64 flex-1 overflow-y-auto">
+        <AnimatePresence mode="wait">
+          <PageTransition key={location.pathname}>
+            {children ?? <Outlet />}
+          </PageTransition>
+        </AnimatePresence>
       </div>
-
     </div>
   );
 }

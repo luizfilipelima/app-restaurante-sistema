@@ -44,7 +44,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-// ─── Variantes de animação ─────────────────────────────────────────────────
+// ─── Variantes de animação (definidas fora do componente para evitar recriação) ─
 
 const sidebarNavVariants = {
   hidden: {},
@@ -60,20 +60,38 @@ const sidebarSectionVariants = {
 
 interface AdminLayoutProps {
   children?: ReactNode;
+  /** Quando preenchido, super-admin está gerenciando este restaurante */
   managedRestaurantId?: string | null;
+  /** Base path para links (ex: /super-admin/restaurants/xxx) */
   basePath?: string;
 }
 
-// ─── Tipos da estrutura de navegação ─────────────────────────────────────────
+// ─── Tipos da estrutura de navegação ────────────────────────────────────────
 
 interface NavLeaf {
   kind: 'leaf';
   name: string;
   href: string;
   icon: LucideIcon;
+  /**
+   * Se true, o item abre em nova aba via <a target="_blank"> em vez de
+   * usar o React Router <Link> (útil para links que saem do SPA, ex: KDS).
+   */
   external?: boolean;
+  /**
+   * Se preenchido, o item é protegido por plano de assinatura.
+   * Quando o restaurante não tem a feature, o item é exibido como bloqueado
+   * (tom cinza + ícone de cadeado) em vez de ser ocultado.
+   */
   featureFlag?: string;
+  /** Descrição curta exibida no tooltip do item bloqueado */
   featureLabel?: string;
+  /**
+   * Se preenchido, o item só é visível para usuários com esses cargos
+   * (hierarquia respeitada: roles superiores também têm acesso).
+   * Quando o usuário não tem o cargo, o item é ocultado completamente
+   * (sem cadeado — diferente do featureFlag que exibe bloqueado).
+   */
   roleRequired?: string[];
 }
 
@@ -101,7 +119,7 @@ interface NavCollapsible {
 
 type NavSection = NavGroup | NavCollapsible;
 
-// ─── Configuração da navegação ────────────────────────────────────────────────
+// ─── Configuração da navegação ───────────────────────────────────────────────
 
 type TFn = (key: string) => string;
 
@@ -231,6 +249,7 @@ const buildNavSections = (
   },
 ];
 
+/** Retorna todos os hrefs de uma seção (para checar se algum está ativo) */
 const collectHrefs = (section: NavSection): string[] => {
   const hrefs: string[] = [];
   section.items.forEach((item) => {
@@ -240,17 +259,21 @@ const collectHrefs = (section: NavSection): string[] => {
   return hrefs;
 };
 
+/** Retorna todos os hrefs de um submenu */
 const submenuHrefs = (sub: NavSubMenu): string[] => sub.items.map((i) => i.href);
 
-// ─── NavLinkItem ──────────────────────────────────────────────────────────────
+// ─── Componente: item de navegação folha (link direto) ───────────────────────
 
 function NavLinkItem({ item, isActive }: { item: NavLeaf; isActive: boolean }) {
-  const className = `group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150 border-l-[3px] ${
+  const className = `group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors border-l-[3px] ${
     isActive
-      ? 'bg-orange-500/10 text-orange-300 border-l-orange-400'
-      : 'text-slate-300 hover:bg-white/[0.06] hover:text-white border-l-transparent'
+      ? 'bg-orange-50 text-[#F87116] border-l-[#F87116]'
+      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-transparent'
   }`;
 
+  // Links externos (ex: KDS) abrem em nova aba.
+  // Injetamos o token da sessão atual no hash da URL para que o KDS
+  // (subdomínio diferente, localStorage separado) não exija login novamente.
   if (item.external) {
     const handleExternalClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
       e.preventDefault();
@@ -261,7 +284,7 @@ function NavLinkItem({ item, isActive }: { item: NavLeaf; isActive: boolean }) {
           url += `#access_token=${session.access_token}&refresh_token=${session.refresh_token}&expires_in=${session.expires_in}&token_type=bearer&type=recovery`;
         }
       } catch {
-        // abre sem token se falhar
+        // Se falhar, abre sem token (o KDS pedirá login normalmente)
       }
       window.open(url, '_blank', 'noopener,noreferrer');
     };
@@ -275,7 +298,7 @@ function NavLinkItem({ item, isActive }: { item: NavLeaf; isActive: boolean }) {
       >
         <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
         <span className="truncate">{item.name}</span>
-        <ExternalLink className="h-3 w-3 ml-auto opacity-30 group-hover:opacity-60" />
+        <ExternalLink className="h-3 w-3 ml-auto opacity-40 group-hover:opacity-70" />
       </a>
     );
   }
@@ -288,7 +311,8 @@ function NavLinkItem({ item, isActive }: { item: NavLeaf; isActive: boolean }) {
   );
 }
 
-// ─── LockedNavItem ────────────────────────────────────────────────────────────
+// ─── Componente: item bloqueado (sem plano) ──────────────────────────────────
+// Clicável: leva para a página de planos com contexto da feature bloqueada.
 
 function LockedNavItem({ item }: { item: NavLeaf }) {
   const basePath = useAdminBasePath();
@@ -298,53 +322,60 @@ function LockedNavItem({ item }: { item: NavLeaf }) {
       state={item.featureFlag ? { feature: item.featureFlag } : undefined}
       title={`${item.featureLabel ?? 'Plano superior'} — clique para ver os planos disponíveis`}
       className="group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg
-                 border-l-[3px] border-l-transparent text-slate-500 hover:bg-amber-500/10
-                 hover:text-amber-300 hover:border-l-amber-500 transition-all duration-150 select-none"
+                 border-l-[3px] border-l-transparent text-slate-400 hover:bg-amber-50
+                 hover:text-amber-700 hover:border-l-amber-400 transition-colors select-none"
     >
-      <item.icon className="h-[18px] w-[18px] flex-shrink-0 opacity-40 group-hover:opacity-70" />
-      <span className="flex-1 truncate opacity-60 group-hover:opacity-90">{item.name}</span>
+      <item.icon className="h-[18px] w-[18px] flex-shrink-0 opacity-50 group-hover:opacity-70" />
+      <span className="flex-1 truncate opacity-70 group-hover:opacity-90">{item.name}</span>
       <span className="flex items-center gap-1 shrink-0">
         {item.featureLabel && (
           <span className="hidden group-hover:inline-flex items-center gap-0.5 text-[9px] font-semibold
-                           bg-amber-500/10 text-amber-300 px-1.5 py-0.5 rounded-full leading-none">
+                           bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full leading-none">
             <Sparkles className="h-2.5 w-2.5" />
             {item.featureLabel}
           </span>
         )}
-        <Lock className="h-3 w-3 opacity-30 group-hover:opacity-60" />
+        <Lock className="h-3 w-3 opacity-40 group-hover:opacity-70" />
       </span>
     </Link>
   );
 }
 
-// ─── GuardedNavItem ───────────────────────────────────────────────────────────
+// ─── Componente: wrapper que escolhe NavLinkItem, LockedNavItem ou null ───────
 
 function GuardedNavItem({ item, isActive }: { item: NavLeaf; isActive: boolean }) {
   const restaurantId = useAdminRestaurantId();
 
-  const hasRoleAccess = useCanAccess(item.roleRequired ?? ['kitchen']);
+  // ── Verificação de cargo (RBAC) ──────────────────────────────────────────
+  // Se o item exige um cargo e o usuário não o tem → ocultar completamente.
+  // Nota: useCanAccess retorna `true` otimisticamente durante o carregamento.
+  const hasRoleAccess = useCanAccess(item.roleRequired ?? ['kitchen']); // sem roleRequired = acesso livre
   const isRoleRestricted = !!item.roleRequired;
   if (isRoleRestricted && !hasRoleAccess) return null;
 
+  // ── Verificação de feature flag (Planos) ─────────────────────────────────
   const { data: hasFeatureAccess, isLoading } = useFeatureAccess(
     item.featureFlag ?? '',
     item.featureFlag ? restaurantId : null,
   );
 
+  // Sem flag de feature → sempre acessível (do ponto de vista de plano).
   if (!item.featureFlag) {
     return <NavLinkItem item={item} isActive={isActive} />;
   }
 
+  // Durante o carregamento, renderiza normalmente (otimista) para evitar saltos.
   if (isLoading) {
     return <NavLinkItem item={item} isActive={isActive} />;
   }
 
+  // Plano não inclui esta feature → exibe item bloqueado com cadeado.
   return hasFeatureAccess
     ? <NavLinkItem item={item} isActive={isActive} />
     : <LockedNavItem item={item} />;
 }
 
-// ─── SubMenuSection ───────────────────────────────────────────────────────────
+// ─── Componente: sub-menu colapsável de segundo nível (ex: Delivery) ─────────
 
 function SubMenuSection({
   sub,
@@ -360,22 +391,22 @@ function SubMenuSection({
     <div>
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150 border-l-[3px] ${
+        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors border-l-[3px] ${
           hasActiveChild
-            ? 'text-orange-300 border-l-orange-400 bg-orange-500/10'
-            : 'text-slate-300 hover:bg-white/[0.06] hover:text-white border-l-transparent'
+            ? 'text-[#F87116] border-l-[#F87116] bg-orange-50/60'
+            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-transparent'
         }`}
       >
         <sub.icon className="h-[18px] w-[18px] flex-shrink-0" />
         <span className="flex-1 truncate text-left">{sub.name}</span>
         {open
-          ? <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 opacity-40" />
-          : <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 opacity-40" />
+          ? <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 opacity-60" />
+          : <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 opacity-60" />
         }
       </button>
 
       {open && (
-        <div className="mt-0.5 ml-4 pl-3 border-l border-white/[0.08] space-y-0.5">
+        <div className="mt-0.5 ml-4 pl-3 border-l border-slate-200 space-y-0.5">
           {sub.items.map((leaf) => (
             <GuardedNavItem key={leaf.href} item={leaf} isActive={currentPath === leaf.href} />
           ))}
@@ -385,7 +416,7 @@ function SubMenuSection({
   );
 }
 
-// ─── AdminLayout ──────────────────────────────────────────────────────────────
+// ─── Componente principal: AdminLayout ───────────────────────────────────────
 
 export default function AdminLayout({
   children,
@@ -407,6 +438,7 @@ export default function AdminLayout({
   const base = basePath || '/admin';
   const navSections = buildNavSections(base, restaurantId, t, restaurant?.slug);
 
+  // Gerenciar sessões simultâneas (máximo 3 por restaurante)
   useSessionManager(user?.id || null, restaurantId);
 
   const handleSignOut = async () => {
@@ -429,11 +461,17 @@ export default function AdminLayout({
 
   if (!restaurantId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0d1a10]">
-        <p className="text-slate-400">Nenhum restaurante selecionado.</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Nenhum restaurante selecionado.</p>
       </div>
     );
   }
+
+  // Não bloqueamos o layout enquanto `loadingRestaurant` é true.
+  // O React Query serve do cache instantaneamente em navegações subsequentes
+  // (staleTime 5 min). Na primeira visita, o layout renderiza normalmente
+  // com placeholders; o nome/slug do restaurante aparece em seguida.
+  // Isso evita que a sidebar e o header "sumam" durante a transição de rota.
 
   const contextValue = {
     restaurantId,
@@ -442,6 +480,7 @@ export default function AdminLayout({
     basePath: base,
   };
 
+  // Itens planos para o nav mobile (scroll horizontal)
   const mobileItems: NavLeaf[] = navSections.flatMap((section) =>
     section.items.flatMap((item) =>
       item.kind === 'leaf'
@@ -454,20 +493,19 @@ export default function AdminLayout({
 
   return (
     <AdminRestaurantContext.Provider value={contextValue}>
-      {/* Fundo escuro global — mesma cor da sidebar */}
-      <div className="min-h-screen bg-[#0d1a10] overflow-x-hidden">
+      <div className="min-h-screen bg-slate-50 overflow-x-hidden">
 
-        {/* ── Sidebar Desktop ──────────────────────────────────────────────── */}
-        <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col md:flex-shrink-0">
-          <div className="flex flex-col h-full overflow-y-auto bg-[#0d1a10]">
+        {/* ── Sidebar Desktop ─────────────────────────────────────────────── */}
+        <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col md:flex-shrink-0 admin-sidebar">
+          <div className="flex flex-col h-full overflow-y-auto">
 
-            {/* Logo + Nome do restaurante */}
-            <div className="flex flex-col flex-shrink-0 px-4 pt-5 pb-4 border-b border-white/[0.06]">
+            {/* Logo + Nome do restaurante — layout compacto */}
+            <div className="flex flex-col flex-shrink-0 px-4 pt-5 pb-4 border-b border-slate-100">
               {isSuperAdminView && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mb-3 w-full justify-start text-slate-400 hover:bg-white/10 hover:text-white"
+                  className="mb-3 w-full justify-start text-slate-500 hover:bg-slate-100"
                   onClick={handleBackToRestaurants}
                 >
                   <ArrowLeft className="mr-2 h-4 w-4 shrink-0" />
@@ -479,20 +517,20 @@ export default function AdminLayout({
                   <img
                     src={restaurant.logo}
                     alt={restaurant?.name ?? 'Restaurante'}
-                    className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl object-cover border border-white/10 shadow-sm flex-shrink-0 group-hover:ring-2 group-hover:ring-orange-400/30 transition-all"
+                    className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl object-cover border border-slate-200 shadow-sm flex-shrink-0 group-hover:ring-2 group-hover:ring-orange-200 transition-all"
                   />
                 ) : (
-                  <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center flex-shrink-0 shadow-sm border border-orange-500/20">
+                  <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center flex-shrink-0 shadow-sm border border-orange-200">
                     <span className="text-lg font-bold text-white select-none">
                       {restaurant?.name?.charAt(0)?.toUpperCase() ?? '?'}
                     </span>
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-white truncate leading-tight">
+                  <p className="text-sm font-semibold text-slate-900 truncate leading-tight">
                     {restaurant?.name ?? 'Painel Admin'}
                   </p>
-                  <p className="text-[11px] text-slate-400 truncate">
+                  <p className="text-[11px] text-slate-500 truncate">
                     {t('common.panelAdmin')}
                   </p>
                 </div>
@@ -510,7 +548,7 @@ export default function AdminLayout({
                 if (section.kind === 'group') {
                   return (
                     <motion.div key={section.label} variants={sidebarSectionVariants}>
-                      <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500 select-none">
+                      <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400 select-none">
                         {section.label}
                       </p>
                       <div className="space-y-0.5">
@@ -526,6 +564,7 @@ export default function AdminLayout({
                   );
                 }
 
+                // Collapsible section
                 return (
                   <motion.div key={section.key} variants={sidebarSectionVariants}>
                     <CollapsibleSection
@@ -538,10 +577,10 @@ export default function AdminLayout({
             </motion.nav>
 
             {/* Footer da sidebar */}
-            <div className="flex-shrink-0 px-3 py-4 border-t border-white/[0.06]">
+            <div className="flex-shrink-0 px-3 py-4 border-t border-slate-100">
               <Button
                 variant="ghost"
-                className="w-full justify-start text-slate-400 hover:bg-white/[0.06] hover:text-white"
+                className="w-full justify-start text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                 onClick={handleSignOut}
               >
                 <LogOut className="mr-3 h-[18px] w-[18px]" />
@@ -551,83 +590,87 @@ export default function AdminLayout({
           </div>
         </div>
 
-        {/* ── Top Bar Desktop ───────────────────────────────────────────────── */}
-        {/* Posicionada com gap de 12px do topo e 8px do sidebar — efeito painel flutuante */}
-        <div className="hidden md:flex fixed top-3 left-[264px] right-3 z-30 h-16
-                        bg-white/95 backdrop-blur-sm border-b border-slate-200/60
-                        rounded-tl-2xl items-center px-6 gap-4 shadow-sm">
-          {/* Campo de busca */}
-          <div className="flex-1 max-w-md">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input
-                type="search"
-                placeholder={`${t('common.search')}...`}
-                className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 bg-slate-50/50 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F87116]/20 focus:border-[#F87116]"
-              />
-              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 hidden sm:inline">
-                ⌘K
-              </kbd>
-            </div>
-          </div>
-
-          {/* Ações rápidas */}
-          <div className="flex items-center gap-2">
-            {cardapioUrl && (
-              <div className="flex items-center gap-1 border border-slate-200 rounded-lg overflow-hidden">
-                <a
-                  href={cardapioUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 h-9 text-sm font-medium text-[#F87116] hover:bg-orange-50 transition-colors"
-                  title="Abrir cardápio público"
-                >
-                  <BookOpen className="h-4 w-4 flex-shrink-0" />
-                  <span>{t('common.viewMenu')}</span>
-                  <ExternalLink className="h-3 w-3 opacity-60" />
-                </a>
-                <div className="w-px h-5 bg-slate-200" />
-                <button
-                  onClick={copyCardapioLink}
-                  className="flex items-center justify-center w-9 h-9 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-                  title="Copiar link"
-                >
-                  <Copy className="h-4 w-4" />
-                </button>
+        {/* ── Top Bar Desktop ─────────────────────────────────────────────── */}
+        <div className="hidden md:block fixed top-0 left-64 right-0 z-30 h-16 bg-white border-b border-slate-200/80">
+          <div className="h-full px-6 flex items-center justify-between gap-4">
+            {/* Campo de busca */}
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="search"
+                  placeholder={`${t('common.search')}...`}
+                  className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 bg-slate-50/50 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F87116]/20 focus:border-[#F87116]"
+                />
+                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 hidden sm:inline">
+                  ⌘K
+                </kbd>
               </div>
-            )}
+            </div>
 
-            <Link
-              to={`${base}/settings`}
-              title="Dados do Restaurante"
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-orange-50 hover:text-[#F87116] hover:border-orange-200 transition-colors"
-            >
-              <Settings className="h-4 w-4" />
-            </Link>
+            {/* Ações rápidas do header */}
+            <div className="flex items-center gap-2">
+              {/* Botão "Ver Cardápio" — ação utilitária no header */}
+              {cardapioUrl && (
+                <div className="flex items-center gap-1 border border-slate-200 rounded-lg overflow-hidden">
+                  <a
+                    href={cardapioUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 h-9 text-sm font-medium text-[#F87116] hover:bg-orange-50 transition-colors"
+                    title="Abrir cardápio público"
+                  >
+                    <BookOpen className="h-4 w-4 flex-shrink-0" />
+                    <span>{t('common.viewMenu')}</span>
+                    <ExternalLink className="h-3 w-3 opacity-60" />
+                  </a>
+                  <div className="w-px h-5 bg-slate-200" />
+                  <button
+                    onClick={copyCardapioLink}
+                    className="flex items-center justify-center w-9 h-9 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+                    title="Copiar link"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
 
-            <Link
-              to={`${base}/upgrade`}
-              title="Meu Plano"
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-orange-50 hover:text-[#F87116] hover:border-orange-200 transition-colors"
-            >
-              <CreditCard className="h-4 w-4" />
-            </Link>
-
-            {isSuperAdminView && (
-              <button
-                onClick={() => setUsersPanelOpen(true)}
-                title="Gerenciar usuários do restaurante"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-200 text-indigo-500 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700 hover:border-indigo-300 transition-colors"
+              {/* Dados do Restaurante — atalho rápido para configurações */}
+              <Link
+                to={`${base}/settings`}
+                title="Dados do Restaurante"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-orange-50 hover:text-[#F87116] hover:border-orange-200 transition-colors"
               >
-                <Users className="h-4 w-4" />
-              </button>
-            )}
+                <Settings className="h-4 w-4" />
+              </Link>
+
+              {/* Meu Plano — atalho para upgrade/assinatura */}
+              <Link
+                to={`${base}/upgrade`}
+                title="Meu Plano"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-orange-50 hover:text-[#F87116] hover:border-orange-200 transition-colors"
+              >
+                <CreditCard className="h-4 w-4" />
+              </Link>
+
+              {/* Gestão de Usuários — visível somente para super-admin */}
+              {isSuperAdminView && (
+                <button
+                  onClick={() => setUsersPanelOpen(true)}
+                  title="Gerenciar usuários do restaurante"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-200 text-indigo-500 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700 hover:border-indigo-300 transition-colors"
+                >
+                  <Users className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* ── Mobile Header ─────────────────────────────────────────────────── */}
+        {/* ── Mobile Header ───────────────────────────────────────────────── */}
         <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-200/80">
           <div className="flex items-center justify-between gap-3 px-4 py-3 min-w-0">
+            {/* Logo do restaurante 1:1 no mobile */}
             <div className="min-w-0 flex-1 flex items-center gap-2.5">
               {restaurant?.logo ? (
                 <img
@@ -647,6 +690,7 @@ export default function AdminLayout({
               </span>
             </div>
 
+            {/* Botão "Ver Cardápio" no mobile header */}
             <div className="flex items-center gap-1">
               {cardapioUrl && (
                 <a
@@ -659,6 +703,7 @@ export default function AdminLayout({
                   <span className="hidden xs:inline">Cardápio</span>
                 </a>
               )}
+              {/* Gestão de Usuários — mobile, somente super-admin */}
               {isSuperAdminView && (
                 <button
                   onClick={() => setUsersPanelOpen(true)}
@@ -683,7 +728,7 @@ export default function AdminLayout({
             </div>
           )}
 
-          {/* Nav mobile: scroll horizontal */}
+          {/* Nav mobile: scroll horizontal com itens planos */}
           <div className="overflow-x-auto px-4 pb-3 scrollbar-hide">
             <div className="flex gap-1.5 w-max">
               {mobileItems.map((item) => {
@@ -707,25 +752,22 @@ export default function AdminLayout({
           </div>
         </div>
 
-        {/* ── Main Content ─────────────────────────────────────────────────── */}
+        {/* ── Main Content ────────────────────────────────────────────────── */}
         <div className="md:pl-64 min-w-0 flex-1 w-full">
-          {/* Painel flutuante: margem que expõe o fundo escuro */}
-          <div className="md:ml-2 md:mr-3 md:mt-3 bg-slate-50 md:rounded-tl-2xl overflow-x-hidden min-h-screen">
-            <main className="pt-[108px] md:pt-[72px] min-h-screen">
-              <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px] mx-auto min-w-0">
-                <AnimatePresence mode="wait">
-                  <PageTransition key={location.pathname}>
-                    {children ?? <Outlet />}
-                  </PageTransition>
-                </AnimatePresence>
-              </div>
-            </main>
-          </div>
+          <main className="pt-[108px] md:pt-20 min-h-screen bg-slate-50">
+            <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px] mx-auto min-w-0">
+              <AnimatePresence mode="wait">
+                <PageTransition key={location.pathname}>
+                  {children ?? <Outlet />}
+                </PageTransition>
+              </AnimatePresence>
+            </div>
+          </main>
         </div>
 
-      </div>
+      </div>{/* fecha min-h-screen */}
 
-      {/* ── Painel de Gestão de Usuários (super-admin) ─────────────────────── */}
+      {/* ── Painel de Gestão de Usuários (super-admin only) ─────────────── */}
       {isSuperAdminView && restaurantId && (
         <RestaurantUsersPanel
           open={usersPanelOpen}
@@ -739,7 +781,8 @@ export default function AdminLayout({
   );
 }
 
-// ─── CollapsibleSection ───────────────────────────────────────────────────────
+// ─── Componente: seção colapsável de primeiro nível ──────────────────────────
+// Declarado fora do AdminLayout para evitar recriação a cada render.
 
 function CollapsibleSection({
   section,
@@ -755,19 +798,19 @@ function CollapsibleSection({
     <div>
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150 border-l-[3px] ${
+        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors border-l-[3px] ${
           hasActiveChild && !open
-            ? 'text-orange-300 border-l-orange-400 bg-orange-500/10'
-            : 'text-slate-400 hover:bg-white/[0.06] hover:text-white border-l-transparent'
+            ? 'text-[#F87116] border-l-[#F87116] bg-orange-50/60'
+            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border-l-transparent'
         }`}
       >
         <section.icon className="h-[18px] w-[18px] flex-shrink-0" />
-        <span className="flex-1 truncate text-left text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+        <span className="flex-1 truncate text-left text-[11px] font-semibold uppercase tracking-widest text-slate-400">
           {section.label}
         </span>
         {open
-          ? <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-slate-500" />
-          : <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-slate-500" />
+          ? <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+          : <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
         }
       </button>
 
