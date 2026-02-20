@@ -82,14 +82,12 @@ import {
   Copy,
   Check,
   Search,
-  UtensilsCrossed,
   LayoutGrid,
   Settings,
   QrCode,
   GripVertical,
   Edit,
   Package,
-  Pizza,
   ExternalLink,
   BarChart2,
   Eye,
@@ -430,7 +428,7 @@ export default function AdminMenu() {
   // Combo: itens do combo (só quando categoria é Combo - extra_field detail)
   const [comboItems, setComboItems] = useState<Array<{ product_id: string; product: Product; quantity: number }>>([]);
   const [comboSearch, setComboSearch] = useState('');
-  const isComboCategory = categoryConfig.extraField === 'detail';
+  const isComboCategory = (categories.find((c) => c.id === (form.categoryId || selectedCategoryId || categories[0]?.id))?.extra_field) === 'detail';
   const { comboItems: existingComboItems } = useProductComboItems(isComboCategory ? editingProduct?.id ?? null : null);
 
   // Receita de ingredientes (para CMV preciso no BI)
@@ -734,12 +732,16 @@ export default function AdminMenu() {
           .select('ingredient_id, quantity_per_unit, unit, ingredients(name)')
           .eq('product_id', product.id);
         if (data?.length) {
-          setProductRecipeItems(data.map((pi: { ingredient_id: string; quantity_per_unit: number; unit: string; ingredients: { name: string } | null }) => ({
-            ingredient_id: pi.ingredient_id,
-            ingredient_name: (pi.ingredients as { name: string } | null)?.name ?? '',
-            quantity_per_unit: Number(pi.quantity_per_unit),
-            unit: pi.unit ?? 'un',
-          })));
+          setProductRecipeItems(data.map((pi: { ingredient_id: string; quantity_per_unit: number; unit: string; ingredients?: { name: string } | { name: string }[] | null }) => {
+            const ing = pi.ingredients;
+            const name = Array.isArray(ing) ? ing[0]?.name : ing?.name;
+            return {
+              ingredient_id: pi.ingredient_id,
+              ingredient_name: name ?? '',
+              quantity_per_unit: Number(pi.quantity_per_unit),
+              unit: pi.unit ?? 'un',
+            };
+          }));
         }
       } catch { /* silencioso */ }
     }
@@ -1335,7 +1337,6 @@ export default function AdminMenu() {
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleProductsDragEnd}>
                   {sortedCategoryNames.map((categoryName) => {
                     const catProducts = groupedProducts[categoryName] ?? [];
-                    const catObj = categories.find((c) => c.name === categoryName);
                     return (
                       <div key={categoryName} className="space-y-1.5">
                         {/* Show category header only in "All" mode */}

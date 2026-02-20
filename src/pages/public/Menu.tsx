@@ -110,7 +110,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         marmitaSizes: [] as MarmitaSize[],
         marmitaProteins: [] as MarmitaProtein[],
         marmitaSides: [] as MarmitaSide[],
-        productComboItemsMap: {} as Record<string, Array<{ product: Product }>>,
+        productComboItemsMap: {} as Record<string, Array<{ product: Product; quantity: number }>>,
       };
     }
     const p = menuData.products.length > 0 ? menuData.products : MOCK_PRODUCTS;
@@ -210,7 +210,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         productName: product.name,
         quantity: 1,
         unitPrice: product.price,
-      
+      });
       toast({
         title: "✅ Adicionado ao carrinho!",
         description: `${product.name} foi adicionado`,

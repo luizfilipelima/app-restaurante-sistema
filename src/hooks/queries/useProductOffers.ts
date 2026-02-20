@@ -5,7 +5,6 @@ import type { ProductOffer, Product } from '@/types';
 /** Ofertas ativas/agendadas do restaurante (admin) */
 async function fetchOffers(restaurantId: string | null): Promise<ProductOffer[]> {
   if (!restaurantId) return [];
-  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from('product_offers')
     .select(`
