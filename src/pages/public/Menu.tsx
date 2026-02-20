@@ -251,6 +251,25 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     }
   };
 
+  // Agrupamento por categoria para o modo "Todos" — memoizado para não recalcular
+  // em cada re-render (ex: abrir carrinho, modal, etc.)
+  const groupedByCategory = useMemo(() => {
+    return categories
+      .map((categoryName) => {
+        const categoryProducts = products.filter((p) => p.category === categoryName);
+        if (categoryProducts.length === 0) return null;
+        const catFromDb = categoriesFromDb.find((c) => c.name === categoryName);
+        const subcatsForCategory = (
+          catFromDb ? subcategories.filter((s) => s.category_id === catFromDb.id) : []
+        ).sort((a, b) => a.order_index - b.order_index);
+        const productsWithSub = categoryProducts.filter((p) => p.subcategory_id);
+        const productsWithoutSub = categoryProducts.filter((p) => !p.subcategory_id);
+        const hasSubs = subcatsForCategory.length > 0 && productsWithSub.length > 0;
+        return { categoryName, categoryProducts, subcatsForCategory, productsWithSub, productsWithoutSub, hasSubs };
+      })
+      .filter((g): g is NonNullable<typeof g> => g !== null);
+  }, [categories, products, categoriesFromDb, subcategories]);
+
   // Filtrar e ordenar produtos — memoizado para não recalcular a cada render
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -463,85 +482,75 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         {/* Lista de produtos - Mobile First */}
         <section className="space-y-6 sm:space-y-8">
           {selectedCategory === 'all' ? (
-            // Exibir agrupado por categoria (e subcategoria quando houver) quando "Todos" está selecionado
-            categories.map((categoryName) => {
-              const categoryProducts = products.filter((p) => p.category === categoryName);
-              if (categoryProducts.length === 0) return null;
-              const catFromDb = categoriesFromDb.find((c) => c.name === categoryName);
-              const subcatsForCategory = (catFromDb ? subcategories.filter((s) => s.category_id === catFromDb.id) : []).sort((a, b) => a.order_index - b.order_index);
-              const productsWithSub = categoryProducts.filter((p) => p.subcategory_id);
-              const productsWithoutSub = categoryProducts.filter((p) => !p.subcategory_id);
-              const hasSubs = subcatsForCategory.length > 0 && productsWithSub.length > 0;
-
-              return (
-                <div key={categoryName} className="space-y-3 sm:space-y-5">
-                  <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
-                    {categoryName}
-                  </h2>
-                  {hasSubs ? (
-                    <>
-                      {subcatsForCategory.map((sub) => {
-                        const subProducts = categoryProducts.filter((p) => p.subcategory_id === sub.id);
-                        if (subProducts.length === 0) return null;
-                        return (
-                          <div key={sub.id} className="space-y-2">
-                            <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                              {subProducts.map((product) => {
-                                const offer = productIdToOffer.get(product.id);
-                                return (
-                                  <ProductCard
-                                    key={product.id}
-                                    product={product}
-                                    onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
-                                    currency={currency}
-                                    comboItems={productComboItemsMap?.[product.id]}
-                                    offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
-                                  />
-                                );
-                              })}
-                            </div>
+            // Estrutura pré-computada via useMemo — sem filtros inline a cada render
+            groupedByCategory.map(({ categoryName, categoryProducts, subcatsForCategory, productsWithSub, productsWithoutSub, hasSubs }) => (
+              <div key={categoryName} className="space-y-3 sm:space-y-5">
+                <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
+                  {categoryName}
+                </h2>
+                {hasSubs ? (
+                  <>
+                    {subcatsForCategory.map((sub) => {
+                      const subProducts = productsWithSub.filter((p) => p.subcategory_id === sub.id);
+                      if (subProducts.length === 0) return null;
+                      return (
+                        <div key={sub.id} className="space-y-2">
+                          <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {subProducts.map((product) => {
+                              const offer = productIdToOffer.get(product.id);
+                              return (
+                                <ProductCard
+                                  key={product.id}
+                                  product={product}
+                                  onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
+                                  currency={currency}
+                                  comboItems={productComboItemsMap?.[product.id]}
+                                  offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
+                                />
+                              );
+                            })}
+                          </div>
                         </div>
-                        );
-                      })}
-                      {productsWithoutSub.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {productsWithoutSub.map((product) => {
-                            const offer = productIdToOffer.get(product.id);
-                            return (
-                              <ProductCard
-                                key={product.id}
-                                product={product}
-                                onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
-                                currency={currency}
-                                comboItems={productComboItemsMap?.[product.id]}
-                                offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
-                              />
-                            );
-                          })}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {categoryProducts.map((product) => {
-                        const offer = productIdToOffer.get(product.id);
-                        return (
-                          <ProductCard
-                            key={product.id}
-                            product={product}
-                            onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
-                            currency={currency}
-                            comboItems={productComboItemsMap?.[product.id]}
-                            offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })
+                      );
+                    })}
+                    {productsWithoutSub.length > 0 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {productsWithoutSub.map((product) => {
+                          const offer = productIdToOffer.get(product.id);
+                          return (
+                            <ProductCard
+                              key={product.id}
+                              product={product}
+                              onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
+                              currency={currency}
+                              comboItems={productComboItemsMap?.[product.id]}
+                              offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {categoryProducts.map((product) => {
+                      const offer = productIdToOffer.get(product.id);
+                      return (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
+                          currency={currency}
+                          comboItems={productComboItemsMap?.[product.id]}
+                          offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))
           ) : (
             // Exibir apenas produtos da categoria selecionada
             <>

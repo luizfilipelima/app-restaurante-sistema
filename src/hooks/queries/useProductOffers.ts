@@ -130,13 +130,16 @@ export function useProductOffers(restaurantId: string | null) {
   };
 }
 
+const FIVE_MIN = 5 * 60 * 1000;
+
 /** Hook para ofertas vigentes no cardápio público (por slug — faz 2 requests: slug→id→offers) */
 export function useActiveOffers(restaurantSlug: string | null) {
   return useQuery({
     queryKey: ['active-offers', restaurantSlug],
     queryFn: () => fetchActiveOffersBySlug(restaurantSlug),
     enabled: !!restaurantSlug,
-    staleTime: 60 * 1000,
+    staleTime: FIVE_MIN,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -150,6 +153,7 @@ export function useActiveOffersByRestaurantId(restaurantId: string | null | unde
     queryKey: ['active-offers-by-id', restaurantId],
     queryFn: () => fetchActiveOffersForMenu(restaurantId ?? null),
     enabled: !!restaurantId,
-    staleTime: 60 * 1000,
+    staleTime: FIVE_MIN,
+    refetchOnWindowFocus: false,
   });
 }

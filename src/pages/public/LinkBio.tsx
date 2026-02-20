@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { getSubdomain } from '@/lib/subdomain';
 import { isWithinOpeningHours } from '@/lib/utils';
-import { motion, AnimatePresence, type Variants } from 'framer-motion';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -20,6 +20,18 @@ interface BioRestaurant {
   is_manually_closed?: boolean;
   always_open?: boolean;
   opening_hours?: Record<string, { open: string; close: string } | null>;
+}
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+
+async function fetchBioRestaurant(slug: string): Promise<BioRestaurant | null> {
+  const { data } = await supabase
+    .from('restaurants')
+    .select('id, name, slug, logo, whatsapp, phone, phone_country, language, is_active, is_manually_closed, always_open, opening_hours')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .single();
+  return (data as BioRestaurant) ?? null;
 }
 
 // ── Translations ──────────────────────────────────────────────────────────────
@@ -78,55 +90,31 @@ function buildWhatsAppUrl(restaurant: BioRestaurant, lang: Lang): string {
   return `https://wa.me/${number}?text=${msg}`;
 }
 
-// ── Animation variants ────────────────────────────────────────────────────────
+// ── SVG icons ─────────────────────────────────────────────────────────────────
 
-const pageVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.05 },
-  },
-};
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+    </svg>
+  );
+}
 
-const logoVariants: Variants = {
-  hidden: { scale: 0.7, opacity: 0, y: 10 },
-  visible: {
-    scale: 1,
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring', damping: 18, stiffness: 260 },
-  },
-};
-
-const itemVariants: Variants = {
-  hidden: { y: 18, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: { type: 'spring', damping: 26, stiffness: 320 },
-  },
-};
-
-const buttonVariants: Variants = {
-  hidden: { y: 22, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: { type: 'spring', damping: 24, stiffness: 300 },
-  },
-};
+function ArrowIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" className={className} fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M4 10h12M11 5l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 // ── Language Toggle ───────────────────────────────────────────────────────────
 
 function LangToggle({ lang, onToggle }: { lang: Lang; onToggle: () => void }) {
   return (
-    <motion.button
-      initial={{ opacity: 0, y: -6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.45, duration: 0.3 }}
+    <button
       onClick={onToggle}
-      whileTap={{ scale: 0.93 }}
-      className="absolute top-4 right-4 z-30 flex items-center bg-white/90 backdrop-blur-sm border border-white/60 rounded-full p-1 shadow-md"
+      className="absolute top-4 right-4 z-30 flex items-center bg-white/90 backdrop-blur-sm border border-white/60 rounded-full p-1 shadow-md active:scale-[0.93] transition-transform duration-150"
       style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.10)' }}
     >
       {(['pt', 'es'] as Lang[]).map((l) => (
@@ -141,27 +129,7 @@ function LangToggle({ lang, onToggle }: { lang: Lang; onToggle: () => void }) {
           {l.toUpperCase()}
         </span>
       ))}
-    </motion.button>
-  );
-}
-
-// ── WhatsApp SVG icon ─────────────────────────────────────────────────────────
-
-function WhatsAppIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-    </svg>
-  );
-}
-
-// ── Arrow Icon ────────────────────────────────────────────────────────────────
-
-function ArrowIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 20 20" className={className} fill="none" stroke="currentColor" strokeWidth={2}>
-      <path d="M4 10h12M11 5l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    </button>
   );
 }
 
@@ -181,32 +149,32 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
     params.restaurantSlug ??
     (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
 
-  const [restaurant, setRestaurant] = useState<BioRestaurant | null>(null);
-  const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<Lang>('pt');
+  // `mounted` dispara as CSS transitions de entrada — só ativa após o dado carregar
+  const [mounted, setMounted] = useState(false);
+
+  const { data: restaurant, isLoading: loading } = useQuery({
+    queryKey: ['bio-restaurant', restaurantSlug],
+    queryFn: () => fetchBioRestaurant(restaurantSlug!),
+    enabled: !!restaurantSlug,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
-    if (!restaurantSlug) { setLoading(false); return; }
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from('restaurants')
-          .select('id, name, slug, logo, whatsapp, phone, phone_country, language, is_active, is_manually_closed, always_open, opening_hours')
-          .eq('slug', restaurantSlug)
-          .eq('is_active', true)
-          .single();
-        if (data) {
-          setRestaurant(data as BioRestaurant);
-          setLang((data.language === 'es' ? 'es' : 'pt') as Lang);
-          document.title = data.name;
-        }
-      } catch {
-        // silencioso
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [restaurantSlug]);
+    if (restaurant) {
+      setLang((restaurant.language === 'es' ? 'es' : 'pt') as Lang);
+      document.title = restaurant.name;
+    }
+  }, [restaurant]);
+
+  // Dispara as animações de entrada no próximo frame após os dados chegarem
+  useEffect(() => {
+    if (!restaurant) return;
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, [restaurant]);
 
   const t = TEXTS[lang];
 
@@ -224,11 +192,7 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
   if (loading) {
     return (
       <div className="h-[100dvh] flex items-center justify-center bg-white">
-        <motion.div
-          animate={{ opacity: [0.3, 1, 0.3] }}
-          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-          className="w-10 h-10 rounded-2xl bg-orange-100"
-        />
+        <div className="w-10 h-10 rounded-2xl bg-orange-100 animate-pulse" />
       </div>
     );
   }
@@ -237,13 +201,9 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
   if (!restaurant) {
     return (
       <div className="h-[100dvh] flex flex-col items-center justify-center gap-3 bg-white px-6 text-center">
-        <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-lg font-semibold text-slate-700"
-        >
+        <p className="text-lg font-semibold text-slate-700 animate-[fadeIn_0.35s_ease_forwards]">
           {t.notFound}
-        </motion.p>
+        </p>
         <a href="https://quiero.food" className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
           quiero.food
         </a>
@@ -283,18 +243,17 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
       <LangToggle lang={lang} onToggle={() => setLang((l) => (l === 'pt' ? 'es' : 'pt'))} />
 
       {/* ── Layout principal ── */}
-      <motion.div
-        variants={pageVariants}
-        initial="hidden"
-        animate="visible"
-        className="relative z-10 flex-1 flex flex-col items-center justify-between w-full max-w-sm mx-auto px-6 pt-12 pb-[max(1.75rem,env(safe-area-inset-bottom))]"
-      >
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-between w-full max-w-sm mx-auto px-6 pt-12 pb-[max(1.75rem,env(safe-area-inset-bottom))]">
 
         {/* ── Hero: logo + nome + status ── */}
         <div className="flex flex-col items-center gap-5 w-full pt-6">
 
           {/* Logo */}
-          <motion.div variants={logoVariants} className="relative">
+          <div
+            className={`relative transition-all duration-500 ease-out ${
+              mounted ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-75 translate-y-2'
+            }`}
+          >
             {/* Anel de glow */}
             <div
               className="absolute inset-0 rounded-[28px] z-0"
@@ -307,6 +266,8 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
                 <img
                   src={restaurant.logo}
                   alt={restaurant.name}
+                  width={120}
+                  height={120}
                   className="w-full h-full object-cover rounded-[28px] border border-white/80"
                   style={{ boxShadow: '0 12px 40px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.08)' }}
                 />
@@ -321,50 +282,47 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
 
-          {/* Nome */}
-          <motion.div variants={itemVariants} className="flex flex-col items-center gap-2.5 text-center">
+          {/* Nome + badge */}
+          <div
+            className={`flex flex-col items-center gap-2.5 text-center transition-all duration-500 delay-100 ease-out ${
+              mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            }`}
+          >
             <h1 className="text-[26px] sm:text-[28px] font-extrabold text-slate-900 tracking-tight leading-tight">
               {restaurant.name}
             </h1>
 
             {/* Badge aberto/fechado */}
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={isOpen ? 'open' : 'closed'}
-                initial={{ opacity: 0, scale: 0.88, y: 4 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.88, y: -4 }}
-                transition={{ duration: 0.2 }}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[12px] font-semibold tracking-wide border ${
-                  isOpen
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                    : 'bg-slate-100 border-slate-200 text-slate-500'
+            <span
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[12px] font-semibold tracking-wide border transition-colors duration-300 ${
+                isOpen
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  : 'bg-slate-100 border-slate-200 text-slate-500'
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                  isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
                 }`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                    isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
-                  }`}
-                />
-                {isOpen ? t.openNow : t.closedNow}
-              </motion.span>
-            </AnimatePresence>
-          </motion.div>
+              />
+              {isOpen ? t.openNow : t.closedNow}
+            </span>
+          </div>
         </div>
 
         {/* ── Botões de ação ── */}
         <div className="flex flex-col gap-3 w-full py-8 sm:py-10">
 
           {/* Delivery */}
-          <motion.a
-            variants={buttonVariants}
-            whileTap={{ scale: 0.975 }}
+          <a
             href={menuUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="group relative flex items-center gap-4 w-full bg-white rounded-2xl px-4 py-4 overflow-hidden"
+            className={`group relative flex items-center gap-4 w-full bg-white rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 delay-150 ease-out ${
+              mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+            }`}
             style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05)' }}
           >
             {/* Borda de destaque no hover */}
@@ -390,32 +348,28 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
               </p>
             </div>
 
-            {/* Seta animada */}
-            <motion.div
-              className="relative z-10 flex-shrink-0"
-              animate={{ x: [0, 3, 0] }}
-              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <ArrowIcon className="w-4 h-4 text-slate-300 group-hover:text-orange-400 transition-colors duration-200" />
-            </motion.div>
-          </motion.a>
+            {/* Seta — anima no hover */}
+            <div className="relative z-10 flex-shrink-0">
+              <ArrowIcon className="w-4 h-4 text-slate-300 group-hover:text-orange-400 group-hover:translate-x-1 transition-all duration-200" />
+            </div>
+          </a>
 
           {/* WhatsApp */}
           {hasWhatsApp && (
-            <motion.a
-              variants={buttonVariants}
-              whileTap={{ scale: 0.975 }}
+            <a
               href={whatsAppUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="group relative flex items-center gap-4 w-full rounded-2xl px-4 py-4 overflow-hidden"
+              className={`group relative flex items-center gap-4 w-full rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 delay-200 ease-out ${
+                mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+              }`}
               style={{
                 background: 'linear-gradient(135deg, #25D366 0%, #1fba57 100%)',
                 boxShadow: '0 4px 20px rgba(37,211,102,0.35), 0 1px 4px rgba(0,0,0,0.08)',
               }}
             >
               {/* Overlay brilho no hover */}
-              <div className="absolute inset-0 rounded-2xl bg-white/0 group-hover:bg-white/8 transition-all duration-200" />
+              <div className="absolute inset-0 rounded-2xl bg-white/0 group-hover:bg-white/[0.08] transition-all duration-200" />
 
               {/* Ícone */}
               <div className="relative z-10 w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
@@ -432,33 +386,32 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
                 </p>
               </div>
 
-              {/* Seta animada */}
-              <motion.div
-                className="relative z-10 flex-shrink-0"
-                animate={{ x: [0, 3, 0] }}
-                transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
-              >
-                <ArrowIcon className="w-4 h-4 text-white/50" />
-              </motion.div>
-            </motion.a>
+              {/* Seta — anima no hover */}
+              <div className="relative z-10 flex-shrink-0">
+                <ArrowIcon className="w-4 h-4 text-white/50 group-hover:translate-x-1 transition-transform duration-200" />
+              </div>
+            </a>
           )}
         </div>
 
         {/* ── Footer ── */}
-        <motion.a
-          variants={itemVariants}
+        <a
           href="https://quiero.food"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-shrink-0 flex items-center justify-center pb-1 group"
+          className={`flex-shrink-0 flex items-center justify-center pb-1 group transition-all duration-500 delay-300 ease-out ${
+            mounted ? 'opacity-100' : 'opacity-0'
+          }`}
         >
           <img
             src="/quierofood-logo-f.svg"
             alt="Quiero.food"
+            width={80}
+            height={18}
             className="h-[18px] w-auto object-contain opacity-20 group-hover:opacity-35 transition-opacity duration-300"
           />
-        </motion.a>
-      </motion.div>
+        </a>
+      </div>
     </div>
   );
 }
