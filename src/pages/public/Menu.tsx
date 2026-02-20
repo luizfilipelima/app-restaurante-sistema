@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { getSubdomain } from '@/lib/subdomain';
 import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide, Category, Subcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
-import { isWithinOpeningHours, formatCurrency } from '@/lib/utils';
+import { isWithinOpeningHours, formatCurrency, normalizePhoneWithCountryCode } from '@/lib/utils';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import ProductCard from '@/components/public/ProductCard';
@@ -82,6 +82,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -162,6 +163,20 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       if (saved) setSavedPhone(saved);
     } catch { /* ignore */ }
   }, [cartRestaurantId]);
+
+  // Capturar telefone da URL (?phone=, ?wa=, ?tel=) quando usuário vem do WhatsApp — vincula fidelidade
+  useEffect(() => {
+    const rid = restaurant?.id;
+    if (!rid) return;
+    const raw = searchParams.get('phone') ?? searchParams.get('wa') ?? searchParams.get('tel') ?? '';
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length < 8) return;
+    const normalized = normalizePhoneWithCountryCode(raw, 'BR');
+    try {
+      localStorage.setItem(`checkout_phone_${rid}`, normalized);
+      setSavedPhone(normalized);
+    } catch { /* ignore */ }
+  }, [restaurant?.id, searchParams]);
 
   useEffect(() => {
     if (!menuData?.restaurant) return;

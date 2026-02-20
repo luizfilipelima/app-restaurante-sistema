@@ -780,6 +780,18 @@ export default function AdminMenu() {
       // Adicionais do produto (sempre salva para garantir sincronia, inclusive ao limpar)
       if (savedProductId) {
         const addonGroups = addonSectionRef.current?.getGroups() ?? [];
+        const addonWithStockMissingIngredient = addonGroups.some((g) =>
+          g.items.some((it) => it.in_stock && !it.ingredient_id)
+        );
+        if (addonWithStockMissingIngredient) {
+          toast({
+            title: 'Ingrediente obrigatório',
+            description: 'Adicionais com controle de estoque ativado devem ter um item de estoque vinculado. Selecione o ingrediente em cada adicional.',
+            variant: 'destructive',
+          });
+          setSaving(false);
+          return;
+        }
         const groupsToSave = addonGroups
           .filter((g) => g.name.trim())
           .map((g) => ({

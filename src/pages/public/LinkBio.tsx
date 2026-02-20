@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { getSubdomain } from '@/lib/subdomain';
 import { isWithinOpeningHours } from '@/lib/utils';
@@ -162,6 +162,7 @@ interface LinkBioProps {
 
 export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {}) {
   const params = useParams<{ restaurantSlug?: string }>();
+  const [searchParams] = useSearchParams();
   const subdomain = getSubdomain();
 
   const restaurantSlug =
@@ -239,7 +240,9 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
     );
   }
 
-  const menuUrl = buildMenuUrl(restaurant.slug);
+  // Propagar ?phone= para o cardápio — vincula fidelidade quando usuário vem do WhatsApp
+  const phoneParam = searchParams.get('phone') ?? searchParams.get('wa') ?? searchParams.get('tel');
+  const menuUrl = buildMenuUrl(restaurant.slug) + (phoneParam ? `?phone=${encodeURIComponent(phoneParam)}` : '');
   const whatsAppUrl = buildWhatsAppUrl(restaurant, lang);
   const hasWhatsApp = !!(restaurant.whatsapp || restaurant.phone);
 

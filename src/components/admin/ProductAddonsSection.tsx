@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Package, AlertCircle } from 'lucide-react';
 import { convertPriceToStorage, convertPriceFromStorage, getCurrencySymbol } from '@/lib/priceHelper';
 import type { ProductAddonGroupWithItems } from '@/hooks/queries/useProductAddons';
 import type { CostCurrencyCode } from '@/lib/priceHelper';
@@ -193,103 +193,129 @@ const ProductAddonsSectionInner = ({
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="space-y-2">
-                {g.items.map((it, ii) => (
+              <div className="space-y-3">
+                {g.items.map((it, ii) => {
+                  const needsIngredient = it.in_stock && !it.ingredient_id;
+                  const hasIngredients = ingredients.length > 0;
+                  return (
                   <div
                     key={it.id}
-                    className="flex flex-wrap items-center gap-2 py-2 px-3 rounded-md bg-muted/30 border border-border/60"
+                    className={`rounded-lg border p-4 space-y-3 ${
+                      needsIngredient ? 'border-amber-300 bg-amber-50/50 dark:border-amber-600 dark:bg-amber-950/20' : 'border-border bg-muted/20'
+                    }`}
                   >
-                    <Input
-                      value={it.name}
-                      onChange={(e) => updateItem(gi, ii, { name: e.target.value })}
-                      placeholder="Nome (ex: Borda Catupiry)"
-                      className="flex-1 min-w-[120px] h-8 text-sm"
-                    />
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Preço</Label>
+                    <div className="flex items-start gap-2">
                       <Input
-                        type="text"
-                        inputMode="decimal"
-                        value={it.priceDisplay}
-                        onChange={(e) => {
-                          const raw = currency === 'PYG' ? e.target.value.replace(/\D/g, '') : e.target.value;
-                          const val = convertPriceToStorage(raw, currency);
-                          updateItem(gi, ii, {
-                            priceDisplay: raw,
-                            price: Number.isNaN(val) ? 0 : val,
-                          });
-                        }}
-                        placeholder={getCurrencySymbol(currency)}
-                        className="w-24 h-8 text-sm tabular-nums"
+                        value={it.name}
+                        onChange={(e) => updateItem(gi, ii, { name: e.target.value })}
+                        placeholder="Nome (ex: Borda Catupiry)"
+                        className="flex-1 h-9 text-sm font-medium"
                       />
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Custo</Label>
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        value={it.costDisplay}
-                        onChange={(e) => {
-                          const raw = it.cost_currency === 'PYG' ? e.target.value.replace(/\D/g, '') : e.target.value;
-                          const val = convertPriceToStorage(raw, it.cost_currency);
-                          updateItem(gi, ii, {
-                            costDisplay: raw,
-                            cost: Number.isNaN(val) ? 0 : val,
-                          });
-                        }}
-                        placeholder={getCurrencySymbol(it.cost_currency)}
-                        className="w-20 h-8 text-sm tabular-nums"
-                      />
-                    </div>
-                    <Select
-                      value={it.cost_currency}
-                      onValueChange={(v) => updateItem(gi, ii, { cost_currency: v as CostCurrencyCode })}
-                    >
-                      <SelectTrigger className="w-16 h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="BRL">R$</SelectItem>
-                        <SelectItem value="PYG">Gs</SelectItem>
-                        <SelectItem value="ARS">AR$</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <label className="flex items-center gap-1.5 text-xs">
-                      <Switch
-                        checked={it.in_stock}
-                        onCheckedChange={(v) => updateItem(gi, ii, { in_stock: v })}
-                      />
-                      <span>Estoque</span>
-                    </label>
-                    {it.in_stock && ingredients.length > 0 && (
-                      <Select
-                        value={it.ingredient_id ?? ''}
-                        onValueChange={(v) => updateItem(gi, ii, { ingredient_id: v || null })}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeItem(gi, ii)}
+                        className="text-destructive hover:text-destructive h-9 w-9 p-0 shrink-0"
                       >
-                        <SelectTrigger className="w-36 h-8 text-xs">
-                          <SelectValue placeholder="Ingrediente" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">Nenhum</SelectItem>
-                          {ingredients.map((ing) => (
-                            <SelectItem key={ing.id} value={ing.id}>
-                              {ing.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeItem(gi, ii)}
-                      className="text-destructive hover:text-destructive h-8 w-8 p-0"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Preço</Label>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={it.priceDisplay}
+                          onChange={(e) => {
+                            const raw = currency === 'PYG' ? e.target.value.replace(/\D/g, '') : e.target.value;
+                            const val = convertPriceToStorage(raw, currency);
+                            updateItem(gi, ii, { priceDisplay: raw, price: Number.isNaN(val) ? 0 : val });
+                          }}
+                          placeholder={getCurrencySymbol(currency)}
+                          className="h-9 text-sm tabular-nums"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Custo</Label>
+                        <div className="flex gap-1">
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={it.costDisplay}
+                            onChange={(e) => {
+                              const raw = it.cost_currency === 'PYG' ? e.target.value.replace(/\D/g, '') : e.target.value;
+                              const val = convertPriceToStorage(raw, it.cost_currency);
+                              updateItem(gi, ii, { costDisplay: raw, cost: Number.isNaN(val) ? 0 : val });
+                            }}
+                            placeholder={getCurrencySymbol(it.cost_currency)}
+                            className="h-9 text-sm tabular-nums flex-1"
+                          />
+                          <Select
+                            value={it.cost_currency}
+                            onValueChange={(v) => updateItem(gi, ii, { cost_currency: v as CostCurrencyCode })}
+                          >
+                            <SelectTrigger className="w-14 h-9 text-xs shrink-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="BRL">R$</SelectItem>
+                              <SelectItem value="PYG">Gs</SelectItem>
+                              <SelectItem value="ARS">AR$</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-border/60">
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Switch
+                          checked={it.in_stock}
+                          onCheckedChange={(v) => updateItem(gi, ii, { in_stock: v, ingredient_id: v ? it.ingredient_id : null })}
+                        />
+                        <span className="font-medium">Controle de estoque</span>
+                        <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                      </label>
+
+                      {it.in_stock && (
+                        <div className="flex-1 min-w-[200px] space-y-1">
+                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            Item de estoque relacionado
+                            <span className="text-amber-600">*</span>
+                          </Label>
+                          {hasIngredients ? (
+                            <Select
+                              value={it.ingredient_id ?? ''}
+                              onValueChange={(v) => updateItem(gi, ii, { ingredient_id: v || null })}
+                            >
+                              <SelectTrigger className={`h-9 text-sm ${needsIngredient ? 'border-amber-400' : ''}`}>
+                                <SelectValue placeholder="Selecione o ingrediente" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {ingredients.map((ing) => (
+                                  <SelectItem key={ing.id} value={ing.id}>
+                                    {ing.name}
+                                    {ing.unit && ing.unit !== 'un' && (
+                                      <span className="text-muted-foreground ml-1">({ing.unit})</span>
+                                    )}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="flex items-center gap-2 py-2 px-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm">
+                              <AlertCircle className="h-4 w-4 shrink-0" />
+                              <span>Cadastre ingredientes em Estoque → Ingredientes para vincular.</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                ))}
+                );})}
                 <Button
                   type="button"
                   variant="outline"

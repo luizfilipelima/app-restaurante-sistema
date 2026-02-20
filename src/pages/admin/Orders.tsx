@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { formatCurrency, formatPhone, normalizePhoneWithCountryCode } from '@/lib/utils';
+import { formatCurrency, formatPhone, getCardapioPublicUrl, normalizePhoneWithCountryCode } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff, QrCode, Landmark, Store } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff, QrCode, Landmark, Store, BookOpen } from 'lucide-react';
 import { WhatsAppTemplatesModal } from '@/components/admin/WhatsAppTemplatesModal';
 import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
 import type { WhatsAppTemplates } from '@/types';
@@ -683,6 +683,19 @@ export default function AdminOrders() {
                                 >
                                   <Printer className="h-3.5 w-3.5" />
                                 </Button>
+                                {restaurant?.slug && order.customer_phone && (
+                                  <a
+                                    href={`https://wa.me/${order.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                      `Olá! Acesse nosso cardápio e faça seu pedido: ${getCardapioPublicUrl(restaurant.slug)}?phone=${encodeURIComponent(normalizePhoneWithCountryCode(order.customer_phone, 'BR'))}`
+                                    )}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    title="Enviar cardápio via WhatsApp (vincula fidelidade)"
+                                  >
+                                    <BookOpen className="h-3.5 w-3.5" />
+                                  </a>
+                                )}
                                 <RoleGuard allowedRoles={[...ROLES_CANCEL_ORDER]}>
                                   <Button
                                     type="button" variant="ghost" size="icon"
