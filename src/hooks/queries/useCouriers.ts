@@ -7,7 +7,7 @@ async function fetchCouriers(restaurantId: string | null): Promise<Courier[]> {
   if (!restaurantId) return [];
   const { data, error } = await supabase
     .from('couriers')
-    .select('id, restaurant_id, name, phone, status, vehicle_plate, active, created_at, updated_at')
+    .select('id, restaurant_id, name, phone, phone_country, status, vehicle_plate, active, created_at, updated_at')
     .eq('restaurant_id', restaurantId)
     .order('name', { ascending: true });
   if (error) throw error;
@@ -30,6 +30,7 @@ export function useCouriers(restaurantId: string | null) {
     mutationFn: async (payload: {
       name: string;
       phone?: string;
+      phone_country?: 'BR' | 'PY' | 'AR' | null;
       status?: CourierStatus;
       vehicle_plate?: string;
     }) => {
@@ -40,6 +41,7 @@ export function useCouriers(restaurantId: string | null) {
           restaurant_id: restaurantId,
           name: payload.name,
           phone: payload.phone || null,
+          phone_country: payload.phone_country || 'BR',
           status: payload.status || 'offline',
           vehicle_plate: payload.vehicle_plate || null,
           active: true,
@@ -58,7 +60,7 @@ export function useCouriers(restaurantId: string | null) {
       payload,
     }: {
       id: string;
-      payload: Partial<Pick<Courier, 'name' | 'phone' | 'status' | 'vehicle_plate' | 'active'>>;
+      payload: Partial<Pick<Courier, 'name' | 'phone' | 'phone_country' | 'status' | 'vehicle_plate' | 'active'>>;
     }) => {
       const { error } = await supabase.from('couriers').update(payload).eq('id', id);
       if (error) throw error;

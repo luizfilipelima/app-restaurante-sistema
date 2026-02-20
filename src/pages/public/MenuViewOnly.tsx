@@ -39,15 +39,16 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
 
   const { data: menuData, isLoading: loading, isError } = useRestaurantMenuData(restaurantSlug);
 
-  const { restaurant, products, categories, categoriesFromDb, subcategories } = useMemo(() => {
+  const { restaurant, products, categories, categoriesFromDb, subcategories, productComboItemsMap } = useMemo(() => {
     if (!menuData)
-      return { restaurant: null, products: [], categories: [], categoriesFromDb: [], subcategories: [] };
+      return { restaurant: null, products: [], categories: [], categoriesFromDb: [], subcategories: [], productComboItemsMap: {} as Record<string, Array<{ product: { name: string }; quantity: number }>> };
     return {
       restaurant: menuData.restaurant,
       products: menuData.products,
       categories: menuData.categories,
       categoriesFromDb: menuData.categoriesFromDb,
       subcategories: menuData.subcategories,
+      productComboItemsMap: menuData.productComboItemsMap ?? {},
     };
   }, [menuData]);
 
@@ -238,7 +239,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                             <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                               {subProducts.map((product) => (
-                                <ProductCardViewOnly key={product.id} product={product} currency={currency} />
+                                <ProductCardViewOnly key={product.id} product={product} currency={currency} comboItems={productComboItemsMap?.[product.id]} />
                               ))}
                             </div>
                           </div>
@@ -247,7 +248,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                       {productsWithoutSub.length > 0 && (
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                           {productsWithoutSub.map((product) => (
-                            <ProductCardViewOnly key={product.id} product={product} currency={currency} />
+                            <ProductCardViewOnly key={product.id} product={product} currency={currency} comboItems={productComboItemsMap?.[product.id]} />
                           ))}
                         </div>
                       )}
@@ -255,7 +256,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                   ) : (
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                       {categoryProducts.map((product) => (
-                        <ProductCardViewOnly key={product.id} product={product} currency={currency} />
+                        <ProductCardViewOnly key={product.id} product={product} currency={currency} comboItems={productComboItemsMap?.[product.id]} />
                       ))}
                     </div>
                   )}
@@ -274,6 +275,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                     key={product.id}
                     product={product}
                     currency={currency}
+                    comboItems={productComboItemsMap?.[product.id]}
                   />
                 ))}
               </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import {
   convertPriceToStorage,
   convertPriceFromStorage,
@@ -100,9 +101,10 @@ import {
   Printer,
   ChefHat,
   Wine,
+  Tag,
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
-import { useProductUpsells, useSaveProductUpsells } from '@/hooks/queries';
+import { useProductUpsells, useSaveProductUpsells, useProductComboItems } from '@/hooks/queries';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -194,13 +196,7 @@ function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete 
         onClick={onSelect}
       >
         <span className={`flex-shrink-0 ${isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-          {category.is_pizza ? (
-            <Pizza className="h-3.5 w-3.5" />
-          ) : category.is_marmita ? (
-            <UtensilsCrossed className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isSelected ? 'rotate-90' : ''}`} />
-          )}
+          <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isSelected ? 'rotate-90' : ''}`} />
         </span>
         <span className={`truncate text-sm font-medium flex-1 ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
           {category.name}
@@ -236,9 +232,10 @@ interface CentralProductRowProps {
   onDuplicate: (p: Product) => void;
   onDelete: (id: string) => void;
   onToggleActive: (id: string, isActive: boolean) => void;
+  offersBasePath?: string;
 }
 
-function CentralProductRow({ product, currency, exchangeRates, showInventory, onEdit, onDuplicate, onDelete, onToggleActive }: CentralProductRowProps) {
+function CentralProductRow({ product, currency, exchangeRates, showInventory, onEdit, onDuplicate, onDelete, onToggleActive, offersBasePath }: CentralProductRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
 
@@ -274,7 +271,7 @@ function CentralProductRow({ product, currency, exchangeRates, showInventory, on
             <img src={product.image_url} alt="" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-              {product.is_pizza ? <Pizza className="h-4 w-4" /> : product.is_marmita ? <UtensilsCrossed className="h-4 w-4" /> : '🍽'}
+              {product.is_combo ? <Boxes className="h-4 w-4" /> : <Package className="h-4 w-4" />}
             </div>
           )}
         </div>
@@ -325,8 +322,15 @@ function CentralProductRow({ product, currency, exchangeRates, showInventory, on
         />
       </TableCell>
 
-      <TableCell className="w-[120px] p-1.5">
+      <TableCell className="w-[140px] p-1.5">
         <div className="flex items-center gap-0.5">
+          {offersBasePath && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Adicionar à oferta">
+              <Link to={`${offersBasePath}?productId=${product.id}`}>
+                <Tag className="h-3.5 w-3.5 text-orange-500" />
+              </Link>
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(product)} title="Editar">
             <Edit className="h-3.5 w-3.5" />
           </Button>
@@ -346,6 +350,7 @@ function CentralProductRow({ product, currency, exchangeRates, showInventory, on
 
 export default function AdminMenu() {
   const restaurantId = useAdminRestaurantId();
+  const basePath = useAdminBasePath();
   const { restaurant: ctxRestaurant } = useAdminRestaurant();
   const currency = useAdminCurrency();
   const exchangeRates = ctxRestaurant?.exchange_rates ?? { pyg_per_brl: 3600, ars_per_brl: 1150 };
@@ -422,6 +427,12 @@ export default function AdminMenu() {
   const { data: existingUpsells } = useProductUpsells(editingProduct?.id ?? null);
   const saveUpsellsMutation = useSaveProductUpsells(restaurantId);
 
+  // Combo: itens do combo (só quando categoria é Combo - extra_field detail)
+  const [comboItems, setComboItems] = useState<Array<{ product_id: string; product: Product; quantity: number }>>([]);
+  const [comboSearch, setComboSearch] = useState('');
+  const isComboCategory = categoryConfig.extraField === 'detail';
+  const { comboItems: existingComboItems } = useProductComboItems(isComboCategory ? editingProduct?.id ?? null : null);
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -434,6 +445,15 @@ export default function AdminMenu() {
       setSelectedUpsellIds(existingUpsells.map((u) => u.upsell_product_id));
     }
   }, [existingUpsells]);
+
+  // Quando existingComboItems carrega (ao abrir edição de combo), sincroniza
+  useEffect(() => {
+    if (isComboCategory && existingComboItems?.length) {
+      setComboItems(existingComboItems.map((ci) => ({ product_id: ci.product_id, product: ci.product!, quantity: ci.quantity })));
+    } else if (!isComboCategory || !editingProduct) {
+      setComboItems([]);
+    }
+  }, [isComboCategory, editingProduct?.id, existingComboItems]);
 
   // ─── Data loading ────────────────────────────────────────────────────────────
 
@@ -617,6 +637,8 @@ export default function AdminMenu() {
   const openNew = (preselectedCategoryId?: string) => {
     setUpsellSearch('');
     setSelectedUpsellIds([]);
+    setComboItems([]);
+    setComboSearch('');
     setEditingProduct(null);
     const catId = preselectedCategoryId || selectedCategoryId || categories[0]?.id || '';
     const cat = categories.find((c) => c.id === catId);
@@ -649,6 +671,8 @@ export default function AdminMenu() {
     let invMinQuantity = '5';
     let invUnit = 'un';
     let invExpiry = '';
+    let priceCost = product.price_cost ? convertPriceFromStorage(Number(product.price_cost), (product.cost_currency ?? currency) as CostCurrencyCode) : '';
+    let costCurrency = (product.cost_currency ?? currency) as CostCurrencyCode;
 
     if (restaurantId) {
       try {
@@ -664,6 +688,11 @@ export default function AdminMenu() {
           invMinQuantity = String(Number(inv.min_quantity));
           invUnit        = inv.unit ?? 'un';
           invExpiry      = inv.expiry_date ?? '';
+          // Prioridade: valores do estoque (sobrepõem o produto)
+          priceCost   = inv.cost_price && inv.cost_price > 0
+            ? convertPriceFromStorage(inv.cost_price, (inv.cost_currency ?? product.cost_currency ?? currency) as CostCurrencyCode)
+            : (product.price_cost ? convertPriceFromStorage(Number(product.price_cost), (product.cost_currency ?? currency) as CostCurrencyCode) : '');
+          costCurrency = (inv.cost_currency ?? product.cost_currency ?? currency) as CostCurrencyCode;
         }
       } catch { /* silencioso */ }
     }
@@ -673,8 +702,8 @@ export default function AdminMenu() {
       categoryId: cat?.id ?? '',
       description: description?.trim() || '',
       price: convertPriceFromStorage(Number(product.price), currency),
-      priceCost: product.price_cost ? convertPriceFromStorage(Number(product.price_cost), (product.cost_currency ?? currency) as CostCurrencyCode) : '',
-      costCurrency: (product.cost_currency ?? currency) as CostCurrencyCode,
+      priceCost,
+      costCurrency,
       is_pizza: cat?.is_pizza ?? false,
       is_marmita: cat?.is_marmita ?? false,
       image_url: product.image_url || '',
@@ -692,6 +721,8 @@ export default function AdminMenu() {
 
   const handleCategoryChange = (categoryId: string) => {
     const cat = categories.find((c) => c.id === categoryId) ?? null;
+    const isNowCombo = cat?.extra_field === 'detail';
+    if (!isNowCombo) setComboItems([]);
     setForm((f) => ({
       ...f,
       categoryId,
@@ -699,7 +730,6 @@ export default function AdminMenu() {
       is_marmita: cat?.is_marmita ?? false,
       categoryDetail: cat?.extra_field != null ? f.categoryDetail : '',
       subcategoryId: null,
-      // Herda destino de impressão da nova categoria como sugestão
       printDest: (cat?.print_destination ?? f.printDest) as 'kitchen' | 'bar',
     }));
   };
@@ -722,6 +752,7 @@ export default function AdminMenu() {
     try {
       const costCurrency = form.costCurrency;
       const costPrice = form.priceCost.trim() ? convertPriceToStorage(form.priceCost, costCurrency) : null;
+      const isCombo = isComboCategory && comboItems.length > 0;
       const payload = {
         restaurant_id: restaurantId,
         name,
@@ -732,6 +763,7 @@ export default function AdminMenu() {
         cost_currency: costPrice != null ? costCurrency : null,
         is_pizza: cfg.isPizza,
         is_marmita: cfg.isMarmita,
+        is_combo: isCombo,
         image_url: form.image_url.trim() || null,
         is_active: true,
         subcategory_id: form.subcategoryId || null,
@@ -760,16 +792,32 @@ export default function AdminMenu() {
         await saveUpsellsMutation.mutateAsync({ productId: savedProductId, upsellIds: selectedUpsellIds });
       }
 
-      // Upsert de estoque por produto (independente da categoria)
+      // Salvar itens do combo
+      if (savedProductId && isCombo && comboItems.length > 0) {
+        await supabase.from('product_combo_items').delete().eq('combo_product_id', savedProductId);
+        await supabase.from('product_combo_items').insert(
+          comboItems.map((ci, i) => ({ combo_product_id: savedProductId, product_id: ci.product_id, quantity: ci.quantity, sort_order: i }))
+        );
+      } else if (savedProductId && (editingProduct?.is_combo || isCombo) && comboItems.length === 0) {
+        await supabase.from('product_combo_items').delete().eq('combo_product_id', savedProductId);
+      }
+
+      // Upsert de estoque por produto (independente da categoria) — sincroniza custo e venda
       if (form.hasInventory && savedProductId) {
         const invQty    = parseFloat((form.invQuantity || '0').replace(',', '.')) || 0;
         const invMinQty = parseFloat((form.invMinQuantity || '5').replace(',', '.')) || 0;
+        const costCur   = form.costCurrency;
+        const costVal   = form.priceCost.trim() ? convertPriceToStorage(form.priceCost, costCur) : 0;
+        const saleVal   = price; // preço de venda do produto
         await supabase.from('inventory_items').upsert({
           restaurant_id: restaurantId,
           product_id:    savedProductId,
           quantity:      invQty,
           min_quantity:  invMinQty,
           unit:          form.invUnit || 'un',
+          cost_price:    costVal,
+          cost_currency: costVal > 0 ? costCur : null,
+          sale_price:    saleVal,
           expiry_date:   form.invExpiry || null,
           updated_at:    new Date().toISOString(),
         }, { onConflict: 'restaurant_id,product_id' });
@@ -1057,6 +1105,14 @@ export default function AdminMenu() {
             <span className="hidden sm:inline">Configurações</span>
           </Button>
 
+          {/* Gestão de Ofertas */}
+          <Button variant="outline" size="sm" asChild className="h-8 gap-1.5">
+            <Link to={basePath ? `${basePath}/offers` : '#'}>
+              <Tag className="h-3.5 w-3.5 text-orange-500" />
+              <span className="hidden sm:inline">Gestão de Ofertas</span>
+            </Link>
+          </Button>
+
           {/* Online */}
           <Button variant="outline" size="sm" onClick={() => setShowOnlineModal(true)} className="h-8 gap-1.5">
             <QrCode className="h-3.5 w-3.5" />
@@ -1244,8 +1300,6 @@ export default function AdminMenu() {
                         {!selectedCategoryId && (
                           <div className="flex items-center gap-2 px-1">
                             <span className="text-sm font-semibold text-foreground">{categoryName}</span>
-                            {catObj?.is_pizza && <Badge variant="secondary" className="text-xs">Pizza</Badge>}
-                            {catObj?.is_marmita && <Badge variant="secondary" className="text-xs">Marmita</Badge>}
                             <Badge variant="outline" className="text-xs">{catProducts.length}</Badge>
                           </div>
                         )}
@@ -1280,6 +1334,7 @@ export default function AdminMenu() {
                                     onDuplicate={duplicateProduct}
                                     onDelete={deleteProduct}
                                     onToggleActive={toggleProductStatus}
+                                    offersBasePath={basePath ? `${basePath}/offers` : undefined}
                                   />
                                 ))}
                               </SortableContext>
@@ -1439,8 +1494,86 @@ export default function AdminMenu() {
               </div>
             )}
 
-            {/* Extra field se categoria tiver */}
-            {categoryConfig.extraField && (
+            {/* Combo Builder (categoria Combos) */}
+            {isComboCategory && (
+              <div className="rounded-xl border border-primary/25 bg-primary/5 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-primary/20">
+                  <Boxes className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-primary">Composição do Combo</span>
+                  <span className="text-xs text-muted-foreground">— selecione os produtos incluídos</span>
+                </div>
+                <div className="p-4 space-y-3">
+                  {comboItems.length > 0 && (
+                    <div className="space-y-2">
+                      {comboItems.map((ci, idx) => (
+                        <div key={ci.product_id} className="flex items-center gap-2 rounded-lg border border-border bg-background p-2">
+                          {ci.product.image_url ? (
+                            <img src={ci.product.image_url} alt="" className="w-8 h-8 rounded object-cover" />
+                          ) : (
+                            <div className="w-8 h-8 rounded bg-muted flex items-center justify-center"><Package className="h-4 w-4 text-muted-foreground" /></div>
+                          )}
+                          <span className="flex-1 text-sm font-medium truncate">{ci.product.name}</span>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" min={0.5} step={0.5} value={ci.quantity}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value) || 1;
+                                setComboItems((prev) => prev.map((p, i) => i === idx ? { ...p, quantity: Math.max(0.5, v) } : p));
+                              }}
+                              className="w-14 h-8 text-center text-sm" />
+                            <button type="button" onClick={() => setComboItems((prev) => prev.filter((_, i) => i !== idx))}
+                              className="text-muted-foreground hover:text-destructive p-1">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <p className="text-xs text-muted-foreground">
+                        Preço sugerido: {formatCurrency(comboItems.reduce((s, ci) => s + (Number(ci.product.price_sale || ci.product.price) || 0) * ci.quantity, 0), currency)}
+                        <button type="button" className="ml-2 text-primary font-medium hover:underline"
+                          onClick={() => {
+                            const sum = comboItems.reduce((s, ci) => s + (Number(ci.product.price_sale || ci.product.price) || 0) * ci.quantity, 0);
+                            setForm((f) => ({ ...f, price: convertPriceFromStorage(sum, currency) }));
+                          }}>
+                          Aplicar ao preço
+                        </button>
+                      </p>
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input value={comboSearch} onChange={(e) => setComboSearch(e.target.value)}
+                        placeholder="Buscar produto para incluir no combo..."
+                        className="pl-8 h-9" />
+                    </div>
+                    {comboSearch.trim() && (
+                      <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-background divide-y divide-border/60">
+                        {products
+                          .filter((p) => p.is_active && p.id !== editingProduct?.id && !comboItems.some((c) => c.product_id === p.id) &&
+                            (p.name.toLowerCase().includes(comboSearch.toLowerCase()) || p.category.toLowerCase().includes(comboSearch.toLowerCase())))
+                          .slice(0, 10)
+                          .map((p) => (
+                            <button key={p.id} type="button"
+                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 text-left"
+                              onClick={() => {
+                                setComboItems((prev) => [...prev, { product_id: p.id, product: p, quantity: 1 }]);
+                                setComboSearch('');
+                              }}>
+                              {p.image_url ? <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover" /> : <div className="w-8 h-8 rounded bg-muted flex items-center justify-center"><Package className="h-4 w-4" /></div>}
+                              <span className="flex-1 text-sm font-medium truncate">{p.name}</span>
+                              <span className="text-xs text-muted-foreground">{formatCurrency(Number(p.price_sale || p.price), currency)}</span>
+                              <Plus className="h-4 w-4 text-primary" />
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Extra field (não-Combo) se categoria tiver */}
+            {categoryConfig.extraField && !isComboCategory && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{categoryConfig.extraLabel}</Label>
                 <Input value={form.categoryDetail} onChange={(e) => setForm((f) => ({ ...f, categoryDetail: e.target.value }))}

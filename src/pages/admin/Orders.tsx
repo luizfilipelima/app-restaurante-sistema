@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { formatCurrency, formatPhone } from '@/lib/utils';
+import { formatCurrency, formatPhone, normalizePhoneWithCountryCode } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff, QrCode, Landmark } from 'lucide-react';
 import { WhatsAppTemplatesModal } from '@/components/admin/WhatsAppTemplatesModal';
 import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
 import type { WhatsAppTemplates } from '@/types';
@@ -212,7 +212,7 @@ export default function AdminOrders() {
             *,
             delivery_zone:delivery_zones(*),
             order_items(*),
-            courier:couriers(id, name, phone)
+            courier:couriers(id, name, phone, phone_country)
           `)
           .eq('id', orderId)
           .single();
@@ -318,9 +318,9 @@ export default function AdminOrders() {
         },
       );
 
-      const phone = courier.phone.replace(/\D/g, '');
-      const withCountry = phone.length <= 11 ? '55' + phone : phone;
-      const waUrl = `https://wa.me/${withCountry}?text=${encodeURIComponent(dispatchMessage)}`;
+      const country = (courier as { phone_country?: 'BR' | 'PY' | 'AR' | null })?.phone_country ?? 'BR';
+      const fullPhone = normalizePhoneWithCountryCode(courier.phone, country);
+      const waUrl = `https://wa.me/${fullPhone}?text=${encodeURIComponent(dispatchMessage)}`;
       window.open(waUrl, '_blank');
 
       setDispatchOrder(null);
@@ -434,6 +434,8 @@ export default function AdminOrders() {
     card: 'Cartão',
     cash: 'Dinheiro',
     table: 'Pagar na mesa',
+    qrcode: 'QR Code',
+    bank_transfer: 'Transferência',
   };
 
   if (loading) {
@@ -737,6 +739,10 @@ export default function AdminOrders() {
                                   <Smartphone className="h-3 w-3 flex-shrink-0" />
                                 ) : order.payment_method === 'card' ? (
                                   <CreditCard className="h-3 w-3 flex-shrink-0" />
+                                ) : order.payment_method === 'qrcode' ? (
+                                  <QrCode className="h-3 w-3 flex-shrink-0" />
+                                ) : order.payment_method === 'bank_transfer' ? (
+                                  <Landmark className="h-3 w-3 flex-shrink-0" />
                                 ) : (
                                   <Banknote className="h-3 w-3 flex-shrink-0" />
                                 )}

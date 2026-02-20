@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Bike, Plus, Pencil, Trash2, Phone, User, Loader2, Package, Clock, DollarSign } from 'lucide-react';
-import { generateWhatsAppLink, formatCurrency } from '@/lib/utils';
+import { generateWhatsAppLink, formatCurrency, normalizePhoneWithCountryCode } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useCourierMetrics } from '@/hooks/queries';
 import { useAdminCurrency } from '@/contexts/AdminRestaurantContext';
@@ -40,6 +40,22 @@ const STATUS_COLORS: Record<CourierStatus, string> = {
   offline: 'bg-slate-200 text-slate-600 border-slate-200',
 };
 
+type PhoneCountry = 'BR' | 'PY' | 'AR';
+
+const PHONE_COUNTRY_OPTIONS: { value: PhoneCountry; label: string; flag: string }[] = [
+  { value: 'BR', label: 'Brasil', flag: '🇧🇷' },
+  { value: 'PY', label: 'Paraguai', flag: '🇵🇾' },
+  { value: 'AR', label: 'Argentina', flag: '🇦🇷' },
+];
+
+function getPhonePlaceholder(country: PhoneCountry): string {
+  return country === 'BR' ? '(11) 99999-9999' : country === 'PY' ? '981 123 456' : '11 15 1234-5678';
+}
+
+function getPhoneFlag(country: PhoneCountry): string {
+  return country === 'BR' ? '🇧🇷' : country === 'PY' ? '🇵🇾' : '🇦🇷';
+}
+
 export default function AdminCouriers() {
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
@@ -49,24 +65,33 @@ export default function AdminCouriers() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCourier, setEditingCourier] = useState<Courier | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    name: string;
+    phone: string;
+    phone_country: PhoneCountry;
+    status: CourierStatus;
+    vehicle_plate: string;
+  }>({
     name: '',
     phone: '',
-    status: 'offline' as CourierStatus,
+    phone_country: 'BR',
+    status: 'offline',
     vehicle_plate: '',
   });
 
   const openCreate = () => {
     setEditingCourier(null);
-    setForm({ name: '', phone: '', status: 'offline', vehicle_plate: '' });
+    setForm({ name: '', phone: '', phone_country: 'BR', status: 'offline', vehicle_plate: '' });
     setDialogOpen(true);
   };
 
   const openEdit = (c: Courier) => {
     setEditingCourier(c);
+    const country = (c.phone_country as PhoneCountry) || 'BR';
     setForm({
       name: c.name,
       phone: c.phone || '',
+      phone_country: country,
       status: c.status,
       vehicle_plate: c.vehicle_plate || '',
     });
@@ -82,6 +107,7 @@ export default function AdminCouriers() {
         await updateCourier(editingCourier.id, {
           name: form.name,
           phone: form.phone || undefined,
+          phone_country: form.phone_country,
           status: form.status,
           vehicle_plate: form.vehicle_plate || undefined,
         });
@@ -89,6 +115,7 @@ export default function AdminCouriers() {
         await createCourier({
           name: form.name,
           phone: form.phone || undefined,
+          phone_country: form.phone_country,
           status: form.status,
           vehicle_plate: form.vehicle_plate || undefined,
         });
@@ -138,10 +165,10 @@ export default function AdminCouriers() {
     }
   };
 
-  const whatsappLink = (phone: string) => {
-    const digits = phone.replace(/\D/g, '');
-    const withCountry = digits.length <= 11 ? '55' + digits : digits;
-    return generateWhatsAppLink(withCountry, '');
+  const whatsappLink = (phone: string, phone_country?: 'BR' | 'PY' | 'AR' | null) => {
+    const country = phone_country ?? 'BR';
+    const fullPhone = normalizePhoneWithCountryCode(phone, country);
+    return generateWhatsAppLink(fullPhone, '');
   };
 
   if (loading) {
@@ -158,7 +185,7 @@ export default function AdminCouriers() {
         <div>
           <h1 className="text-3xl font-bold">Entregadores</h1>
           <p className="text-muted-foreground">
-            Cadastre motoboys e atribua pedidos a eles
+            Cadastre motoboys e atribua pedidos a eles. O país do telefone define o código para contato.
           </p>
         </div>
         <Button onClick={openCreate}>
@@ -239,12 +266,12 @@ export default function AdminCouriers() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
-            <div className="w-full min-w-[600px]">
+            <div className="w-full min-w-[640px]">
               <table className="w-full">
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="text-left p-4 font-medium">Nome</th>
-                    <th className="text-left p-4 font-medium">Telefone</th>
+                    <th className="text-left p-4 font-medium">Telefone / País</th>
                     <th className="text-left p-4 font-medium">Status</th>
                     <th className="text-left p-4 font-medium">Placa</th>
                     <th className="text-right p-4 font-medium">Ações</th>
@@ -265,13 +292,16 @@ export default function AdminCouriers() {
                       <td className="p-4">
                         {c.phone ? (
                           <a
-                            href={whatsappLink(c.phone)}
+                            href={whatsappLink(c.phone, c.phone_country)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1.5 text-primary hover:underline"
                           >
                             <Phone className="h-4 w-4" />
                             {c.phone}
+                            <span className="text-xs text-muted-foreground" title="País do contato">
+                              {getPhoneFlag((c.phone_country as PhoneCountry) ?? 'BR')}
+                            </span>
                           </a>
                         ) : (
                           <span className="text-muted-foreground">—</span>
@@ -309,7 +339,7 @@ export default function AdminCouriers() {
           <DialogHeader>
             <DialogTitle>{editingCourier ? 'Editar entregador' : 'Novo entregador'}</DialogTitle>
             <DialogDescription>
-              Preencha os dados do motoboy. O telefone será usado para contato e WhatsApp.
+              Preencha os dados do motoboy. Escolha o país do telefone para garantir contato correto por WhatsApp (BR, PY ou AR).
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -324,12 +354,33 @@ export default function AdminCouriers() {
               />
             </div>
             <div>
+              <Label>País do contato</Label>
+              <Select
+                value={form.phone_country}
+                onValueChange={(v) => setForm({ ...form, phone_country: v as PhoneCountry })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PHONE_COUNTRY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.flag} {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Brasil (+55), Paraguai (+595) ou Argentina (+54)
+              </p>
+            </div>
+            <div>
               <Label htmlFor="courier-phone">Telefone / WhatsApp</Label>
               <Input
                 id="courier-phone"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="(11) 99999-9999"
+                placeholder={getPhonePlaceholder(form.phone_country)}
               />
             </div>
             <div>

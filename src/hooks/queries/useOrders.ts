@@ -14,7 +14,7 @@ const ORDERS_SELECT = `
   delivery_zone:delivery_zones(id, location_name, fee),
   virtual_comandas(short_code),
   order_items(id, order_id, product_name, quantity, unit_price, total_price, observations, pizza_size, pizza_flavors, pizza_dough, pizza_edge),
-  courier:couriers(id, name, phone)
+  courier:couriers(id, name, phone, phone_country)
 `;
 
 const ORDER_TAB_STATUSES = ['pending', 'preparing', 'ready', 'delivering', 'completed'];

@@ -14,9 +14,10 @@ import { Plus, X } from 'lucide-react';
 interface ProductCardViewOnlyProps {
   product: Product;
   currency: CurrencyCode;
+  comboItems?: Array<{ product: { name: string }; quantity: number }>;
 }
 
-export default function ProductCardViewOnly({ product, currency }: ProductCardViewOnlyProps) {
+export default function ProductCardViewOnly({ product, currency, comboItems }: ProductCardViewOnlyProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
@@ -75,9 +76,11 @@ export default function ProductCardViewOnly({ product, currency }: ProductCardVi
                 {product.name}
               </DialogTitle>
             </DialogHeader>
-            {product.description && (
+            {(product.description || (comboItems && comboItems.length > 0)) && (
               <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-                {product.description}
+                {comboItems && comboItems.length > 0
+                  ? `Inclui: ${comboItems.map((ci) => (ci.quantity > 1 ? `${ci.quantity}x ` : '') + ci.product.name).join(', ')}`
+                  : product.description}
               </p>
             )}
             <p className="text-slate-900 font-bold text-lg sm:text-xl tabular-nums mt-1">

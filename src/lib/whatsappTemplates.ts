@@ -24,6 +24,7 @@ export const TEMPLATE_VARS = {
     { key: 'endereco',           label: 'Endereço / Coords',    example: '-23.550520, -46.633308', description: 'Coordenadas GPS ou endereço' },
     { key: 'detalhes_endereco',  label: 'Detalhes do endereço', example: 'Apto 12, Bloco B',  description: 'Complemento do endereço' },
     { key: 'pagamento',          label: 'Pagamento',            example: 'PIX',               description: 'Método de pagamento' },
+    { key: 'pagamento_detalhes', label: 'Detalhes do pagamento', example: 'Chave PIX: 11999999999', description: 'Chave PIX do cliente ou conta para transferência' },
     { key: 'troco',              label: 'Troco para',           example: 'R$ 50,00',          description: 'Valor do troco (dinheiro)' },
     { key: 'subtotal',           label: 'Subtotal',             example: 'R$ 38,90',          description: 'Subtotal do pedido' },
     { key: 'taxa_entrega',       label: 'Taxa de entrega',      example: 'Taxa entrega: R$ 5,00', description: 'Linha com a taxa de entrega' },
@@ -62,6 +63,7 @@ export const DEFAULT_TEMPLATES = {
 📋 *Detalhes:* {{detalhes_endereco}}
 
 💳 *Pagamento:* {{pagamento}}
+{{pagamento_detalhes}}
 🔄 *Troco para:* {{troco}}
 
 📋 *Resumo:*

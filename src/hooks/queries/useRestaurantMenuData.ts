@@ -26,6 +26,15 @@ const CATEGORY_ORDER: Record<string, number> = {
   Outros: 8,
 };
 
+export interface ProductComboItemWithProduct {
+  id: string;
+  combo_product_id: string;
+  product_id: string;
+  quantity: number;
+  sort_order: number;
+  product: Product;
+}
+
 export interface RestaurantMenuData {
   restaurant: Restaurant;
   products: Product[];
@@ -39,6 +48,8 @@ export interface RestaurantMenuData {
   marmitaSizes: MarmitaSize[];
   marmitaProteins: MarmitaProtein[];
   marmitaSides: MarmitaSide[];
+  /** Mapa combo_product_id -> itens do combo (para exibir no cardápio) */
+  productComboItemsMap: Record<string, ProductComboItemWithProduct[]>;
 }
 
 async function fetchRestaurantMenuData(restaurantSlug: string): Promise<RestaurantMenuData | null> {
@@ -90,6 +101,8 @@ async function fetchRestaurantMenuData(restaurantSlug: string): Promise<Restaura
   let products: Product[] = [];
   let categories: string[] = [];
 
+  let productComboItemsMap: Record<string, ProductComboItemWithProduct[]> = {};
+
   if (productsData.length > 0) {
     const sorted = [...productsData].sort((a: Product, b: Product) => {
       const orderA = categoryOrderMap.get(a.category) ?? CATEGORY_ORDER[a.category] ?? 999;
@@ -104,6 +117,24 @@ async function fetchRestaurantMenuData(restaurantSlug: string): Promise<Restaura
       const orderB = categoryOrderMap.get(b) ?? CATEGORY_ORDER[b] ?? 999;
       return orderA - orderB;
     });
+
+    const comboIds = productsData.filter((p: Product) => p.is_combo).map((p: Product) => p.id);
+    if (comboIds.length > 0) {
+      try {
+        const { data: comboData } = await supabase
+          .from('product_combo_items')
+          .select('id, combo_product_id, product_id, quantity, sort_order, product:products(id, name, price, price_sale)')
+          .in('combo_product_id', comboIds)
+          .order('sort_order', { ascending: true });
+        (comboData ?? []).forEach((row: any) => {
+          const key = row.combo_product_id;
+          if (!productComboItemsMap[key]) productComboItemsMap[key] = [];
+          productComboItemsMap[key].push({ ...row, product: row.product });
+        });
+      } catch {
+        productComboItemsMap = {};
+      }
+    }
   }
 
   return {
@@ -119,6 +150,7 @@ async function fetchRestaurantMenuData(restaurantSlug: string): Promise<Restaura
     marmitaSizes: (marmitaSizesRes.data ?? []) as MarmitaSize[],
     marmitaProteins: (marmitaProteinsRes.data ?? []) as MarmitaProtein[],
     marmitaSides: (marmitaSidesRes.data ?? []) as MarmitaSide[],
+    productComboItemsMap,
   };
 }
 

@@ -53,6 +53,7 @@ import {
   Plus,
   Minus,
   Search,
+  Info,
   Loader2,
   Calendar,
   Clock,
@@ -574,13 +575,20 @@ export default function AdminInventory() {
     setEditProduct(product);
     const inv = product.inventoryItem;
     const costCur = (inv?.cost_currency ?? product.cost_currency ?? currency) as 'BRL' | 'PYG' | 'ARS';
+    const saleFromInv = inv?.sale_price && inv.sale_price > 0;
+    const saleFromProd = Number(product.price_sale || product.price) || 0;
+    const saleDisplay = saleFromInv
+      ? convertPriceFromStorage(inv.sale_price, currency)
+      : saleFromProd > 0 ? convertPriceFromStorage(saleFromProd, currency) : '';
     setForm({
       quantity: inv ? String(Number(inv.quantity)) : '0',
       min_quantity: inv ? String(Number(inv.min_quantity)) : '5',
       unit: inv?.unit ?? 'un',
-      cost_price: inv?.cost_price ? convertPriceFromStorage(inv.cost_price, costCur) : '',
+      cost_price: (inv?.cost_price && inv.cost_price > 0)
+        ? convertPriceFromStorage(inv.cost_price, costCur)
+        : (product.price_cost ? convertPriceFromStorage(Number(product.price_cost), (product.cost_currency ?? costCur) as 'BRL' | 'PYG' | 'ARS') : ''),
       cost_currency: costCur,
-      sale_price: inv?.sale_price ? convertPriceFromStorage(inv.sale_price, currency) : '',
+      sale_price: saleDisplay,
       expiry_date: inv?.expiry_date ?? '',
       notes: inv?.notes ?? '',
     });
@@ -613,6 +621,17 @@ export default function AdminInventory() {
           .eq('id', existing.id);
         if (error) throw error;
 
+        // Sincroniza produto: custo e preço de venda (estoque sobrepõe o produto)
+        const productUpdate: { price_cost?: number | null; cost_currency?: string | null; price?: number } = {};
+        if (payload.cost_price > 0) {
+          productUpdate.price_cost = payload.cost_price;
+          productUpdate.cost_currency = payload.cost_currency;
+        }
+        if (payload.sale_price > 0) productUpdate.price = payload.sale_price;
+        if (Object.keys(productUpdate).length > 0) {
+          await supabase.from('products').update(productUpdate).eq('id', editProduct.id);
+        }
+
         // Se a quantidade foi alterada, registra movimentação
         const oldQty = Number(existing.quantity);
         const newQty = payload.quantity;
@@ -639,6 +658,16 @@ export default function AdminInventory() {
             movement_type: 'restock',
             notes: 'Cadastro inicial do estoque',
           });
+        }
+        // Sincroniza produto no cadastro inicial
+        const productUpdate: { price_cost?: number | null; cost_currency?: string | null; price?: number } = {};
+        if (payload.cost_price > 0) {
+          productUpdate.price_cost = payload.cost_price;
+          productUpdate.cost_currency = payload.cost_currency;
+        }
+        if (payload.sale_price > 0) productUpdate.price = payload.sale_price;
+        if (Object.keys(productUpdate).length > 0) {
+          await supabase.from('products').update(productUpdate).eq('id', editProduct.id);
         }
       }
 
@@ -1032,75 +1061,105 @@ export default function AdminInventory() {
           MODAL: Editar / Cadastrar Item de Estoque
       ═══════════════════════════════════════════════════════════════════════ */}
       <Dialog open={editModal} onOpenChange={setEditModal}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editProduct?.inventoryItem ? 'Editar Estoque' : 'Cadastrar no Estoque'}
-            </DialogTitle>
-            {editProduct && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {editProduct.name}
-                {editProduct.sku && <span className="ml-2 text-xs bg-muted px-1.5 py-0.5 rounded">SKU: {editProduct.sku}</span>}
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
+          {/* Header com produto */}
+          <div className="flex items-center gap-3 px-6 pt-6 pb-4 border-b border-slate-100">
+            <div className="h-12 w-12 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200">
+              {editProduct?.image_url ? (
+                <img src={editProduct.image_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-400">
+                  {editProduct?.is_pizza ? <Pizza className="h-6 w-6" /> : editProduct?.is_marmita ? <UtensilsCrossed className="h-6 w-6" /> : <Package className="h-6 w-6" />}
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-semibold text-foreground truncate">
+                {editProduct?.inventoryItem ? 'Editar Estoque' : 'Cadastrar no Estoque'}
+              </h2>
+              <p className="text-sm text-muted-foreground truncate">
+                {editProduct?.name}
+                {editProduct?.sku && <span className="ml-1.5 text-xs text-slate-400">• SKU: {editProduct.sku}</span>}
               </p>
-            )}
-          </DialogHeader>
+            </div>
+          </div>
 
-          <div className="space-y-5 py-2">
+          <div className="px-6 py-4 space-y-5 overflow-y-auto">
 
-            {/* Quantidade e mínimo */}
-            <div className="grid grid-cols-2 gap-4 items-start">
-              <div className="space-y-2">
-                <Label className="block">Quantidade atual</Label>
-                <div className="flex gap-1.5 items-stretch">
+            {/* ── Seção: Quantidade ── */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-7 w-7 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <Package className="h-3.5 w-3.5 text-blue-600" />
+                </div>
+                <span className="text-sm font-semibold text-foreground">Quantidade</span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">Quantidade atual</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={form.quantity}
+                      onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
+                      placeholder="0"
+                      className="flex-1 h-11"
+                    />
+                    <Select value={form.unit} onValueChange={(v) => setForm((f) => ({ ...f, unit: v }))}>
+                      <SelectTrigger className="w-[72px] h-11 shrink-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['un', 'kg', 'g', 'L', 'ml', 'cx', 'pç', 'por'].map((u) => (
+                          <SelectItem key={u} value={u}>{u}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground" title="Alerta de baixo estoque">
+                    Qtd. mínima
+                  </Label>
                   <Input
                     type="text"
                     inputMode="decimal"
-                    value={form.quantity}
-                    onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
-                    placeholder="0"
-                    className="flex-1 h-10"
+                    value={form.min_quantity}
+                    onChange={(e) => setForm((f) => ({ ...f, min_quantity: e.target.value }))}
+                    placeholder="5"
+                    className="h-11"
                   />
-                  <Select value={form.unit} onValueChange={(v) => setForm((f) => ({ ...f, unit: v }))}>
-                    <SelectTrigger className="w-20 h-10 shrink-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {['un', 'kg', 'g', 'L', 'ml', 'cx', 'pç', 'por'].map((u) => (
-                        <SelectItem key={u} value={u}>{u}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="block" title="Alerta de baixo estoque">Qtd. mínima</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={form.min_quantity}
-                  onChange={(e) => setForm((f) => ({ ...f, min_quantity: e.target.value }))}
-                  placeholder="5"
-                  className="h-10"
-                />
               </div>
             </div>
 
-            {/* Preços */}
-            <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-3.5 space-y-3">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                <BarChart2 className="h-3.5 w-3.5" />
-                Precificação
-                <span className="font-normal normal-case text-muted-foreground ml-1">(sobrepõe o produto)</span>
+            {/* ── Seção: Precificação ── */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-emerald-100 flex items-center justify-center">
+                    <BarChart2 className="h-3.5 w-3.5 text-emerald-600" />
+                  </div>
+                  <span className="text-sm font-semibold text-foreground">Precificação</span>
+                </div>
+                <span
+                  className="text-[10px] text-muted-foreground flex items-center gap-1"
+                  title="Valores sincronizam automaticamente com o produto no cardápio"
+                >
+                  <Info className="h-3 w-3" />
+                  Sincroniza com o produto
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <Label className="block">Preço de custo ({getCurrencySymbol(form.cost_currency)})</Label>
+                    <Label className="text-xs font-medium text-muted-foreground">Custo</Label>
                     <Select
                       value={form.cost_currency}
                       onValueChange={(v) => setForm((f) => ({ ...f, cost_currency: v as 'BRL' | 'PYG' | 'ARS' }))}
                     >
-                      <SelectTrigger className="h-7 w-[100px] text-xs">
+                      <SelectTrigger className="h-8 w-[90px] text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1119,11 +1178,13 @@ export default function AdminInventory() {
                       cost_price: form.cost_currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
                     }))}
                     placeholder={form.cost_currency === 'PYG' ? '25.000' : '0,00'}
-                    className="h-10"
+                    className="h-11 bg-white border-slate-200"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="block">Preço de venda ({getCurrencySymbol(currency)})</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Preço de venda ({getCurrencySymbol(currency)})
+                  </Label>
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -1133,7 +1194,7 @@ export default function AdminInventory() {
                       sale_price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
                     }))}
                     placeholder={currency === 'PYG' ? '25.000' : '0,00'}
-                    className="h-10"
+                    className="h-11 bg-white border-slate-200"
                   />
                 </div>
               </div>
@@ -1148,48 +1209,53 @@ export default function AdminInventory() {
                   : m >= 20 ? 'text-amber-700 bg-amber-50 border-amber-200'
                   : 'text-red-700 bg-red-50 border-red-200';
                 return (
-                  <div className={`rounded-md border px-3 py-2 text-xs font-semibold ${color}`}>
-                    Margem calculada: {m.toFixed(1)}%
+                  <div className={`rounded-lg border px-3 py-2.5 flex items-center justify-between ${color}`}>
+                    <span className="text-xs font-medium">Margem calculada</span>
+                    <span className="text-sm font-bold tabular-nums">{m.toFixed(1)}%</span>
                   </div>
                 );
               })()}
             </div>
 
-            {/* Validade */}
-            <div className="space-y-2">
-              <Label className="block">Data de validade <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-              <Input
-                type="date"
-                value={form.expiry_date}
-                onChange={(e) => setForm((f) => ({ ...f, expiry_date: e.target.value }))}
-                min={new Date().toISOString().split('T')[0]}
-                className="h-10"
-              />
-              {form.expiry_date && (() => {
-                const days = getDaysUntilExpiry(form.expiry_date);
-                if (days === null) return null;
-                const color = days <= 0 ? 'text-rose-600' : days <= 7 ? 'text-red-600' : days <= 30 ? 'text-amber-600' : 'text-emerald-600';
-                const msg = days < 0 ? `Já vencido há ${Math.abs(days)} dia(s)`
-                  : days === 0 ? 'Vence hoje!'
-                  : `Vence em ${days} dia(s)`;
-                return <p className={`text-xs font-medium ${color}`}>{msg}</p>;
-              })()}
-            </div>
-
-            {/* Notas */}
-            <div className="space-y-2">
-              <Label className="block">Observações internas</Label>
-              <Textarea
-                value={form.notes}
-                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                placeholder="Fornecedor, lote, localização no estoque..."
-                rows={2}
-                className="resize-none"
-              />
+            {/* ── Seção: Validade e Notas ── */}
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Data de validade <span className="font-normal">(opcional)</span>
+                  </Label>
+                </div>
+                <Input
+                  type="date"
+                  value={form.expiry_date}
+                  onChange={(e) => setForm((f) => ({ ...f, expiry_date: e.target.value }))}
+                  className="h-11"
+                />
+                {form.expiry_date && (() => {
+                  const days = getDaysUntilExpiry(form.expiry_date);
+                  if (days === null) return null;
+                  const color = days <= 0 ? 'text-rose-600' : days <= 7 ? 'text-red-600' : days <= 30 ? 'text-amber-600' : 'text-emerald-600';
+                  const msg = days < 0 ? `Vencido há ${Math.abs(days)} dia(s)`
+                    : days === 0 ? 'Vence hoje!'
+                    : `Vence em ${days} dia(s)`;
+                  return <p className={`text-xs font-medium ${color}`}>{msg}</p>;
+                })()}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">Observações internas</Label>
+                <Textarea
+                  value={form.notes}
+                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="Fornecedor, lote, localização no estoque..."
+                  rows={2}
+                  className="resize-none text-sm"
+                />
+              </div>
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="px-6 py-4 border-t border-slate-100 bg-slate-50/30 gap-2">
             <Button variant="outline" onClick={() => setEditModal(false)}>Cancelar</Button>
             <Button onClick={handleSaveItem} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

@@ -275,20 +275,30 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
   }
 
   if (error || !data) {
+    const isTechnicalError = error?.toLowerCase().includes('record') || error?.toLowerCase().includes('not assigned');
+    const displayError = isTechnicalError ? t('tracking.notFoundDesc') : (error ?? t('tracking.notFoundDesc'));
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-orange-50 to-slate-100 p-6">
         <XCircle className="h-16 w-16 text-red-400" />
         <h2 className="text-xl font-bold text-slate-700">{t('tracking.notFound')}</h2>
-        <p className="text-sm text-slate-500 text-center">{error ?? t('tracking.notFoundDesc')}</p>
-        {restaurantSlug && (
+        <p className="text-sm text-slate-500 text-center max-w-xs">{displayError}</p>
+        <div className="flex flex-col sm:flex-row gap-3 mt-2">
           <button
-            onClick={() => navigate(`/${restaurantSlug}`)}
-            className="mt-2 flex items-center gap-2 text-sm font-medium text-orange-600 hover:underline"
+            onClick={() => { setError(null); setLoading(true); fetchOrder(); }}
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-orange-100 text-orange-700 font-semibold text-sm hover:bg-orange-200 transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" />
-            {t('tracking.backToMenu')}
+            {t('tracking.retry')}
           </button>
-        )}
+          {restaurantSlug && (
+            <button
+              onClick={() => navigate(`/${restaurantSlug}`)}
+              className="flex items-center gap-2 text-sm font-medium text-orange-600 hover:underline"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {t('tracking.backToMenu')}
+            </button>
+          )}
+        </div>
       </div>
     );
   }

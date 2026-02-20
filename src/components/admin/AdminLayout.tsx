@@ -43,6 +43,7 @@ import {
   Boxes,
   ConciergeBell,
   Instagram,
+  Tag,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -213,7 +214,13 @@ const buildNavSections = (
         name: t('nav.items.menuCentral'),
         href: `${base}/menu`,
         icon: UtensilsCrossed,
-        // Cardápio: gerente e acima
+        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
+      },
+      {
+        kind: 'leaf',
+        name: t('nav.items.offers'),
+        href: `${base}/offers`,
+        icon: Tag,
         roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
       },
       {

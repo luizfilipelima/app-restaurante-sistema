@@ -65,7 +65,11 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
         ? 'PIX'
         : order.payment_method === 'card'
           ? 'Cartão'
-          : 'Dinheiro';
+          : order.payment_method === 'qrcode'
+            ? 'QR Code'
+            : order.payment_method === 'bank_transfer'
+              ? 'Transferência'
+              : 'Dinheiro';
 
   const widthClass = paperWidth === '58mm' ? 'receipt-width-58' : 'receipt-width-80';
 

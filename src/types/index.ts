@@ -21,6 +21,10 @@ export enum PaymentMethod {
   CASH = 'cash',
   /** Pedido de mesa: cliente paga posteriormente no local */
   TABLE = 'table',
+  /** QR Code na entrega */
+  QRCODE = 'qrcode',
+  /** Transferência bancária */
+  BANK_TRANSFER = 'bank_transfer',
 }
 
 export enum DeliveryType {
@@ -58,6 +62,8 @@ export interface Courier {
   restaurant_id: string;
   name: string;
   phone?: string;
+  /** País do número de telefone: BR, PY ou AR */
+  phone_country?: 'BR' | 'PY' | 'AR' | null;
   status: CourierStatus;
   vehicle_plate?: string;
   active: boolean;
@@ -157,6 +163,8 @@ export interface Product {
   subcategory_id?: string | null;
   /** Destino de impressão do cupom por produto: 'kitchen' = Cozinha Central | 'bar' = Garçom/Bar */
   print_destination?: 'kitchen' | 'bar' | null;
+  /** Se true, produto é um combo; composição em product_combo_items */
+  is_combo?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -223,6 +231,33 @@ export interface MarmitaProtein {
   created_at: string;
 }
 
+export interface ProductOffer {
+  id: string;
+  restaurant_id: string;
+  product_id: string;
+  offer_price: number;
+  original_price: number;
+  starts_at: string;
+  ends_at: string;
+  label?: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+  product?: Product;
+}
+
+export interface ProductComboItem {
+  id: string;
+  combo_product_id: string;
+  product_id: string;
+  quantity: number;
+  sort_order: number;
+  created_at?: string;
+  /** Populated via join — produto incluído no combo */
+  product?: Product;
+}
+
 export interface MarmitaSide {
   id: string;
   restaurant_id: string;
@@ -271,6 +306,10 @@ export interface Order {
   total: number;
   payment_method: PaymentMethod;
   payment_change_for?: number; // Se pagamento em dinheiro, quanto o cliente vai pagar
+  /** Chave PIX do cliente (quando pagamento PIX) */
+  payment_pix_key?: string | null;
+  /** Dados da conta bancária do cliente para transferência (PYG/ARS) */
+  payment_bank_account?: { bank_name?: string; agency?: string; account?: string; holder?: string } | null;
   status: OrderStatus;
   notes?: string;
   is_paid: boolean; // Se pagamento foi confirmado (para priorização na cozinha)

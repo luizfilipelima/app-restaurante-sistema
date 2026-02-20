@@ -6,6 +6,8 @@ export type { CourierMetrics } from './useCourierMetrics';
 export { useOrderCoordinates } from './useOrderCoordinates';
 export type { OrderCoordinate } from './useOrderCoordinates';
 export { useProductUpsells, useSaveProductUpsells, fetchUpsellsForProducts } from './useProductUpsells';
+export { useProductComboItems, useProductComboItemsMap, useSaveProductComboItems } from './useProductComboItems';
+export { useProductOffers, useActiveOffers, fetchActiveOffersBySlug } from './useProductOffers';
 export type { UpsellRow } from './useProductUpsells';
 export { useDeliveryZones } from './useDeliveryZones';
 export { useRestaurantMenuData } from './useRestaurantMenuData';

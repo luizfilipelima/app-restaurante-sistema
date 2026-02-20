@@ -24,6 +24,8 @@ const paymentMethodLabels: Record<string, string> = {
   card: 'Cartão',
   cash: 'Dinheiro',
   table: 'Mesa',
+  qrcode: 'QR Code',
+  bank_transfer: 'Transferência',
 };
 
 function getOrderType(order: DatabaseOrder): { label: string; icon: React.ReactNode } {

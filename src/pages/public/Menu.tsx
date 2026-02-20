@@ -4,7 +4,7 @@ import { getSubdomain } from '@/lib/subdomain';
 import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide, Category, Subcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
-import { useRestaurantMenuData } from '@/hooks/queries';
+import { useRestaurantMenuData, useActiveOffers } from '@/hooks/queries';
 import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -88,8 +88,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const [marmitaModalOpen, setMarmitaModalOpen] = useState(false);
 
   const { data: menuData, isLoading: loading, isError } = useRestaurantMenuData(restaurantSlug);
+  const { data: activeOffers = [] } = useActiveOffers(restaurantSlug);
+  const productIdToOffer = useMemo(() => {
+    const m = new Map<string, typeof activeOffers[0]>();
+    activeOffers.forEach((o) => m.set(o.product_id, o));
+    return m;
+  }, [activeOffers]);
 
-  const { restaurant, products, categories, categoriesFromDb, subcategories, pizzaSizes, pizzaFlavors, pizzaDoughs, pizzaEdges, marmitaSizes, marmitaProteins, marmitaSides } = useMemo(() => {
+  const { restaurant, products, categories, categoriesFromDb, subcategories, pizzaSizes, pizzaFlavors, pizzaDoughs, pizzaEdges, marmitaSizes, marmitaProteins, marmitaSides, productComboItemsMap } = useMemo(() => {
     if (!menuData) {
       return {
         restaurant: null as Restaurant | null,
@@ -104,6 +110,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         marmitaSizes: [] as MarmitaSize[],
         marmitaProteins: [] as MarmitaProtein[],
         marmitaSides: [] as MarmitaSide[],
+        productComboItemsMap: {} as Record<string, Array<{ product: Product }>>,
       };
     }
     const p = menuData.products.length > 0 ? menuData.products : MOCK_PRODUCTS;
@@ -121,6 +128,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       marmitaSizes: menuData.marmitaSizes,
       marmitaProteins: menuData.marmitaProteins,
       marmitaSides: menuData.marmitaSides,
+      productComboItemsMap: menuData.productComboItemsMap ?? {},
     };
   }, [menuData]);
 
@@ -168,6 +176,26 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   }, [restaurant?.name, t]);
   useSharingMeta(restaurant ? { name: restaurant.name, logo: restaurant.logo } : null);
 
+  const handleOfferProductClick = (offer: { product: Product; offer_price: number; original_price: number; label?: string | null }) => {
+    const p = offer.product;
+    const isPizza = p.is_pizza || p.category?.toLowerCase() === 'pizza';
+    if (isPizza) {
+      setSelectedProduct({ ...p, price: offer.offer_price });
+      setPizzaModalOpen(true);
+    } else if (p.is_marmita) {
+      setSelectedProduct({ ...p, price: offer.offer_price });
+      setMarmitaModalOpen(true);
+    } else {
+      useCartStore.getState().addItem({
+        productId: p.id,
+        productName: p.name,
+        quantity: 1,
+        unitPrice: offer.offer_price,
+      });
+      toast({ title: '✅ Adicionado ao carrinho!', description: `${p.name} foi adicionado`, className: 'bg-green-50 border-green-200' });
+    }
+  };
+
   const handleProductClick = (product: Product) => {
     const isPizzaProduct = product.is_pizza || product.category?.toLowerCase() === 'pizza';
     if (isPizzaProduct) {
@@ -182,7 +210,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         productName: product.name,
         quantity: 1,
         unitPrice: product.price,
-      });
       
       toast({
         title: "✅ Adicionado ao carrinho!",
@@ -366,6 +393,32 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           </div>
         </div>
 
+        {/* ── Seção Ofertas (chamativa) ── */}
+        {activeOffers.length > 0 && (
+          <section className="rounded-2xl overflow-hidden border-2 border-orange-200 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 shadow-lg">
+            <div className="px-4 py-3 border-b border-orange-200/80 bg-orange-500/10 flex items-center gap-2">
+              <span className="text-lg">🔥</span>
+              <h2 className="text-base sm:text-lg font-bold text-orange-800 uppercase tracking-wider">Ofertas</h2>
+              <span className="text-xs font-semibold text-orange-600 bg-orange-200/60 px-2 py-0.5 rounded-full">{activeOffers.length}</span>
+            </div>
+            <div className="p-4 overflow-x-auto">
+              <div className="flex gap-4 pb-2 -mx-1 min-w-0">
+                {activeOffers.map((offer) => (
+                  <div key={offer.id} className="flex-shrink-0 w-[min(280px,85vw)]">
+                    <ProductCard
+                      product={offer.product}
+                      onClick={() => handleOfferProductClick(offer)}
+                      currency={currency}
+                      comboItems={productComboItemsMap?.[offer.product.id]}
+                      offer={{ price: offer.offer_price, originalPrice: offer.original_price, label: offer.label }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Lista de produtos - Mobile First */}
         <section className="space-y-6 sm:space-y-8">
           {selectedCategory === 'all' ? (
@@ -393,41 +446,56 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                           <div key={sub.id} className="space-y-2">
                             <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                              {subProducts.map((product) => (
-                                <ProductCard
-                                  key={product.id}
-                                  product={product}
-                                  onClick={() => handleProductClick(product)}
-                                  currency={currency}
-                                />
-                              ))}
+                              {subProducts.map((product) => {
+                                const offer = productIdToOffer.get(product.id);
+                                return (
+                                  <ProductCard
+                                    key={product.id}
+                                    product={product}
+                                    onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
+                                    currency={currency}
+                                    comboItems={productComboItemsMap?.[product.id]}
+                                    offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
+                                  />
+                                );
+                              })}
                             </div>
                         </div>
                         );
                       })}
                       {productsWithoutSub.length > 0 && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {productsWithoutSub.map((product) => (
-                            <ProductCard
-                              key={product.id}
-                              product={product}
-                              onClick={() => handleProductClick(product)}
-                              currency={currency}
-                            />
-                          ))}
+                          {productsWithoutSub.map((product) => {
+                            const offer = productIdToOffer.get(product.id);
+                            return (
+                              <ProductCard
+                                key={product.id}
+                                product={product}
+                                onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
+                                currency={currency}
+                                comboItems={productComboItemsMap?.[product.id]}
+                                offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
+                              />
+                            );
+                          })}
                         </div>
                       )}
                     </>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {categoryProducts.map((product) => (
-                        <ProductCard
-                          key={product.id}
-                          product={product}
-                          onClick={() => handleProductClick(product)}
-                          currency={currency}
-                        />
-                      ))}
+                      {categoryProducts.map((product) => {
+                        const offer = productIdToOffer.get(product.id);
+                        return (
+                          <ProductCard
+                            key={product.id}
+                            product={product}
+                            onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
+                            currency={currency}
+                            comboItems={productComboItemsMap?.[product.id]}
+                            offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
+                          />
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -440,14 +508,19 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 {selectedCategory}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onClick={() => handleProductClick(product)}
-                    currency={currency}
-                  />
-                ))}
+                {filteredProducts.map((product) => {
+                  const offer = productIdToOffer.get(product.id);
+                  return (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
+                      currency={currency}
+                      comboItems={productComboItemsMap?.[product.id]}
+                      offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
+                    />
+                  );
+                })}
               </div>
             </>
           )}

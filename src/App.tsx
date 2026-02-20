@@ -42,6 +42,7 @@ const LandingPageEditor     = lazyWithRetry(() => import('./pages/super-admin/La
 // Admin (painel do restaurante)
 const AdminDashboard        = lazyWithRetry(() => import('./pages/admin/Dashboard'));
 const AdminMenu             = lazyWithRetry(() => import('./pages/admin/Menu'));
+const AdminOffers           = lazyWithRetry(() => import('./pages/admin/Offers'));
 const AdminOrders           = lazyWithRetry(() => import('./pages/admin/Orders'));
 const AdminSettings         = lazyWithRetry(() => import('./pages/admin/Settings'));
 const AdminDeliveryZones    = lazyWithRetry(() => import('./pages/admin/DeliveryZones'));
@@ -104,6 +105,15 @@ const adminRoutes = (
       element={
         <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
           <AdminMenu />
+        </RoleProtectedRoute>
+      }
+    />
+    {/* Gestão de Ofertas */}
+    <Route
+      path="offers"
+      element={
+        <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
+          <AdminOffers />
         </RoleProtectedRoute>
       }
     />

@@ -7,8 +7,6 @@ import { DeliveryZone, PaymentMethod, DeliveryType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
   SelectContent,
@@ -33,13 +31,17 @@ import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote, Send, Trash2, MapPin, Loader2, Gift } from 'lucide-react';
+import {
+  ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote,
+  Send, Trash2, MapPin, Loader2, Gift, Minus, Plus,
+  User, StickyNote, Check, X as XIcon, ShoppingBag,
+  QrCode, Landmark, Info,
+} from 'lucide-react';
 import MapAddressPicker from '@/components/public/MapAddressPicker';
 import { fetchLoyaltyStatus, redeemLoyalty } from '@/hooks/queries';
 import LoyaltyCard from '@/components/public/LoyaltyCard';
 
 interface PublicCheckoutProps {
-  /** Quando renderizado dentro de StoreLayout (subdomínio), o slug é passado por prop */
   tenantSlug?: string;
 }
 
@@ -52,10 +54,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
 
   const navigate = useNavigate();
-  const { items, restaurantId, updateQuantity, getSubtotal, clearCart } =
-    useCartStore();
+  const { items, restaurantId, updateQuantity, getSubtotal, clearCart } = useCartStore();
   const { t } = useTranslation();
   const { currentRestaurant } = useRestaurantStore();
+
+  // ── Moeda / câmbio ──
   const rawCurrency = (currentRestaurant as { currency?: string })?.currency;
   const baseCurrency: CurrencyCode = ['BRL', 'PYG', 'ARS', 'USD'].includes(rawCurrency || '') ? (rawCurrency as CurrencyCode) : 'BRL';
   const paymentCurrencies: CurrencyCode[] = (() => {
@@ -69,19 +72,17 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const convertForDisplay = (value: number) =>
     displayCurrency === baseCurrency ? value : convertBetweenCurrencies(value, baseCurrency, displayCurrency, exchangeRates);
 
-  const [loading, setLoading] = useState(false);
-  const [zones, setZones] = useState<DeliveryZone[]>([]);
+  // ── Dados do cliente ──
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [phoneCountry, setPhoneCountry] = useState<'BR' | 'PY'>('BR');
+  const [phoneCountry, setPhoneCountry] = useState<'BR' | 'PY' | 'AR'>('BR');
 
   // ── Fidelidade ──
   const [loyaltyStatus, setLoyaltyStatus] = useState<{ points: number; orders_required: number; reward_description: string; enabled: boolean; redeemed_count: number } | null>(null);
   const [showRedeemDialog, setShowRedeemDialog] = useState(false);
   const [loyaltyRedeemed, setLoyaltyRedeemed] = useState(false);
-  
-  // Delivery State
-  const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
+
+  // ── Mesa ──
   const [searchParams] = useSearchParams();
   const tableIdFromUrl = searchParams.get('tableId');
   const tableNumberFromUrl = searchParams.get('tableNumber');
@@ -89,44 +90,52 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const tableId = tableIdFromUrl || tableIdStore;
   const tableNumber = tableNumberFromUrl ? parseInt(tableNumberFromUrl, 10) : tableNumberStore;
   const isTableOrder = !!(tableId && tableNumber);
+
+  // ── Entrega ──
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
+  const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [addressDetails, setAddressDetails] = useState('');
   const [geolocating, setGeolocating] = useState(false);
 
+  // ── Pagamento ──
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.PIX);
+  const [changeFor, setChangeFor] = useState('');
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // PIX e Transferência: dados salvos do cliente
+  const paymentPrefsKey = `checkout_payment_${restaurantId || 'default'}`;
+  const [pixKey, setPixKey] = useState('');
+  const [savePixKey, setSavePixKey] = useState(false);
+  const [bankAccount, setBankAccount] = useState({ bank_name: '', agency: '', account: '', holder: '' });
+  const [saveBankAccount, setSaveBankAccount] = useState(false);
+
+  const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
   const geoStorageKey = `checkout_geo_${restaurantId || 'default'}`;
 
+  // ── Efeitos ──
   useEffect(() => {
     try {
       const saved = localStorage.getItem(geoStorageKey);
       if (saved) {
         const data = JSON.parse(saved) as { lat?: number; lng?: number; details?: string };
-        if (data.lat != null && data.lng != null) {
-          setLatitude(data.lat);
-          setLongitude(data.lng);
-        }
+        if (data.lat != null && data.lng != null) { setLatitude(data.lat); setLongitude(data.lng); }
         if (data.details) setAddressDetails(data.details);
       }
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }, [restaurantId, geoStorageKey]);
 
   useEffect(() => {
     if (latitude != null && longitude != null) {
       try {
-        localStorage.setItem(
-          geoStorageKey,
-          JSON.stringify({ lat: latitude, lng: longitude, details: addressDetails })
-        );
-      } catch {
-        // ignore
-      }
+        localStorage.setItem(geoStorageKey, JSON.stringify({ lat: latitude, lng: longitude, details: addressDetails }));
+      } catch { /* ignore */ }
     }
   }, [latitude, longitude, addressDetails, geoStorageKey]);
-  
-  // Carregar telefone salvo e dados de fidelidade
+
   useEffect(() => {
     if (!restaurantId) return;
     try {
@@ -134,44 +143,36 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       const savedName = localStorage.getItem(`checkout_name_${restaurantId}`);
       if (savedPhone) setCustomerPhone(savedPhone);
       if (savedName) setCustomerName(savedName);
-    } catch { /* ignore */ }
-  }, [restaurantId]);
 
-  // Buscar status de fidelidade quando telefone muda (debounce implícito pelo useEffect)
+      const prefs = localStorage.getItem(paymentPrefsKey);
+      if (prefs) {
+        const data = JSON.parse(prefs) as { pix_key?: string; bank_account?: typeof bankAccount };
+        if (data.pix_key) setPixKey(data.pix_key);
+        if (data.bank_account) setBankAccount(data.bank_account);
+      }
+    } catch { /* ignore */ }
+  }, [restaurantId, paymentPrefsKey]);
+
+  // Cartão e QR Code só na entrega — ao mudar para retirada, trocar para PIX
+  useEffect(() => {
+    if (deliveryType === DeliveryType.PICKUP && (paymentMethod === PaymentMethod.CARD || paymentMethod === PaymentMethod.QRCODE)) {
+      setPaymentMethod(PaymentMethod.PIX);
+    }
+  }, [deliveryType]);
+
   useEffect(() => {
     const phone = customerPhone.replace(/\D/g, '');
     if (!restaurantId || phone.length < 8) { setLoyaltyStatus(null); return; }
     fetchLoyaltyStatus(restaurantId, customerPhone).then((s) => setLoyaltyStatus(s));
   }, [customerPhone, restaurantId]);
 
-  // Payment State
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.PIX);
-  const [changeFor, setChangeFor] = useState('');
-  const [notes, setNotes] = useState('');
-  const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
-
-  const handleBackToMenu = () => {
-    if (isTableOrder && isSubdomain) {
-      navigate(`/cardapio/${tableNumber}`);
-    } else if (isTableOrder && restaurantSlug) {
-      navigate(`/${restaurantSlug}/cardapio/${tableNumber}`);
-    } else if (isSubdomain) {
-      navigate('/');
-    } else {
-      navigate(`/${restaurantSlug}`);
-    }
-  };
-
   useEffect(() => {
-    if (restaurantId) {
-      loadZones();
-    }
+    if (restaurantId) loadZones();
   }, [restaurantId]);
 
-  // Garantir restaurante no store (ex.: usuário entrou direto no checkout)
   useEffect(() => {
     if (!restaurantId || currentRestaurant?.id === restaurantId) return;
-    const loadRestaurant = async () => {
+    const load = async () => {
       const { data } = await supabase.from('restaurants').select('*').eq('id', restaurantId).single();
       if (data) {
         useRestaurantStore.getState().setCurrentRestaurant(data);
@@ -180,33 +181,71 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         setStoredMenuLanguage(lang);
       }
     };
-    loadRestaurant();
+    load();
   }, [restaurantId, currentRestaurant?.id]);
 
-  // Atualizar título e meta tags de compartilhamento (logo do restaurante como imagem destacada)
   useEffect(() => {
-    if (currentRestaurant?.name) {
-      document.title = `${currentRestaurant.name} - ${t('checkout.title')}`;
-    } else {
-      document.title = t('checkout.title');
-    }
+    document.title = currentRestaurant?.name
+      ? `${currentRestaurant.name} - ${t('checkout.title')}`
+      : t('checkout.title');
   }, [currentRestaurant?.name, t]);
+
   useSharingMeta(currentRestaurant ? { name: currentRestaurant.name, logo: currentRestaurant.logo } : null);
 
   const loadZones = async () => {
     if (!restaurantId) return;
     const { data } = await supabase
-      .from('delivery_zones')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .eq('is_active', true);
+      .from('delivery_zones').select('*').eq('restaurant_id', restaurantId).eq('is_active', true);
     if (data) setZones(data);
+  };
+
+  const handleBackToMenu = () => {
+    if (isTableOrder && isSubdomain) navigate(`/cardapio/${tableNumber}`);
+    else if (isTableOrder && restaurantSlug) navigate(`/${restaurantSlug}/cardapio/${tableNumber}`);
+    else if (isSubdomain) navigate('/');
+    else navigate(`/${restaurantSlug}`);
+  };
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ title: 'Seu navegador não suporta geolocalização.', variant: 'destructive' });
+      return;
+    }
+    setGeolocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLatitude(pos.coords.latitude);
+        setLongitude(pos.coords.longitude);
+        setGeolocating(false);
+        toast({ title: '📍 Localização obtida! Ajuste o pino se necessário.' });
+      },
+      (err) => {
+        setGeolocating(false);
+        const msg =
+          err.code === err.PERMISSION_DENIED
+            ? 'Permissão negada. Habilite o GPS nas configurações do dispositivo.'
+            : err.code === err.POSITION_UNAVAILABLE
+            ? 'GPS indisponível. Verifique se está ativado e tente novamente.'
+            : err.code === err.TIMEOUT
+            ? 'Tempo esgotado. Verifique o sinal do GPS e tente novamente.'
+            : 'Não foi possível obter a localização. Preencha o endereço abaixo.';
+        toast({ title: msg, variant: 'destructive' });
+      },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 60000 }
+    );
+  };
+
+  const clearLocation = () => {
+    setLatitude(null);
+    setLongitude(null);
+    try { localStorage.removeItem(geoStorageKey); } catch { /* ignore */ }
   };
 
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
   const deliveryFee = deliveryType === DeliveryType.DELIVERY ? (selectedZone?.fee || 0) : 0;
   const subtotal = getSubtotal();
   const total = subtotal + deliveryFee;
+  const totalItemCount = items.reduce((acc, i) => acc + i.quantity, 0);
 
   const handleCheckout = async () => {
     const nameToUse = isTableOrder ? `Mesa ${tableNumber}` : customerName;
@@ -216,20 +255,31 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           : '0000000000')
       : customerPhone;
 
-    if (!isTableOrder && (!customerName || !customerPhone)) {
+    if (!isTableOrder && (!customerName.trim() || !customerPhone.trim())) {
       toast({ title: t('checkout.errorFillNamePhone'), variant: 'destructive' });
       return;
     }
 
-    // Salvar phone/name no localStorage para uso futuro (fidelidade)
     if (!isTableOrder && restaurantId) {
       try {
         localStorage.setItem(`checkout_phone_${restaurantId}`, customerPhone);
         localStorage.setItem(`checkout_name_${restaurantId}`, customerName);
+        if (savePixKey && pixKey.trim()) {
+          const prefs = JSON.parse(localStorage.getItem(paymentPrefsKey) || '{}');
+          prefs.pix_key = pixKey.trim();
+          localStorage.setItem(paymentPrefsKey, JSON.stringify(prefs));
+        }
+        if (saveBankAccount && (displayCurrency === 'PYG' || displayCurrency === 'ARS')) {
+          const ba = bankAccount;
+          if (ba.bank_name || ba.agency || ba.account || ba.holder) {
+            const prefs = JSON.parse(localStorage.getItem(paymentPrefsKey) || '{}');
+            prefs.bank_account = ba;
+            localStorage.setItem(paymentPrefsKey, JSON.stringify(prefs));
+          }
+        }
       } catch { /* ignore */ }
     }
 
-    // Verificar se pode resgatar fidelidade (antes de continuar)
     if (!isTableOrder && loyaltyStatus?.enabled && loyaltyStatus.points >= loyaltyStatus.orders_required && !loyaltyRedeemed) {
       setShowRedeemDialog(true);
       return;
@@ -240,48 +290,31 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       return;
     }
 
-    // Delivery: exige localização (mapa) OU detalhes do endereço (fluxo tradicional)
-    if (
-      !isTableOrder &&
-      deliveryType === DeliveryType.DELIVERY &&
-      (latitude == null || longitude == null) &&
-      !addressDetails?.trim()
-    ) {
+    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && latitude == null && !addressDetails?.trim()) {
       toast({
-        title: 'Defina o endereço',
-        description: 'Use "Minha Localização Atual" ou preencha os detalhes do endereço.',
+        title: 'Informe o endereço',
+        description: 'Use "Minha localização" ou preencha o endereço completo.',
         variant: 'destructive',
       });
       return;
     }
 
     if (!restaurantId) {
-      toast({
-        title: t('checkout.errorInvalidCart'),
-        description: t('checkout.errorInvalidCartDesc'),
-        variant: 'destructive',
-      });
+      toast({ title: t('checkout.errorInvalidCart'), description: t('checkout.errorInvalidCartDesc'), variant: 'destructive' });
       handleBackToMenu();
       return;
     }
 
-    // Horário de funcionamento: bloquear se o restaurante estiver fechado
     if (currentRestaurant) {
       const hasHours = currentRestaurant.opening_hours && Object.keys(currentRestaurant.opening_hours).length > 0;
       const alwaysOpen = !!currentRestaurant.always_open;
       const isOpen = currentRestaurant.is_manually_closed
         ? false
-        : alwaysOpen
-          ? true
-          : hasHours
-            ? isWithinOpeningHours(currentRestaurant.opening_hours as Record<string, { open: string; close: string } | null>)
-            : true;
+        : alwaysOpen ? true
+        : hasHours ? isWithinOpeningHours(currentRestaurant.opening_hours as Record<string, { open: string; close: string } | null>)
+        : true;
       if (!isOpen) {
-        toast({
-          title: t('checkout.errorRestaurantClosed'),
-          description: t('checkout.errorRestaurantClosedDesc'),
-          variant: 'destructive',
-        });
+        toast({ title: t('checkout.errorRestaurantClosed'), description: t('checkout.errorRestaurantClosedDesc'), variant: 'destructive' });
         return;
       }
     }
@@ -312,7 +345,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         subtotal,
         total: finalTotal,
         payment_method: isTableOrder ? PaymentMethod.TABLE : paymentMethod,
-        payment_change_for: isTableOrder ? null : (changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null),
+        payment_change_for: isTableOrder ? null : (paymentMethod === PaymentMethod.CASH && changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null),
+        payment_pix_key: !isTableOrder && (paymentMethod === PaymentMethod.PIX || paymentMethod === PaymentMethod.QRCODE) && pixKey.trim() ? pixKey.trim() : null,
+        payment_bank_account: !isTableOrder && paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS') && (bankAccount.bank_name || bankAccount.agency || bankAccount.account || bankAccount.holder) ? bankAccount : null,
         order_source: isTableOrder ? 'table' : (finalDeliveryType === DeliveryType.DELIVERY ? 'delivery' : 'pickup'),
         table_id: isTableOrder && tableId ? tableId : null,
         status: 'pending',
@@ -341,7 +376,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         };
       });
 
-      // Usa RPC SECURITY DEFINER que bypassa RLS — funciona para clientes anônimos
       const { data: rpcResult, error: rpcError } = await supabase.rpc('place_order', {
         p_order: orderPayload,
         p_items: orderItemsPayload,
@@ -350,48 +384,57 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       if (rpcError) throw rpcError;
       if (!rpcResult?.ok) throw new Error(rpcResult?.error ?? 'Erro ao registrar pedido.');
 
-      // Se o cliente resgatou, executar o débito de pontos no banco
       if (loyaltyRedeemed && restaurantId) {
         await redeemLoyalty(restaurantId, normalizePhoneWithCountryCode(customerPhone, phoneCountry));
         setLoyaltyRedeemed(false);
       }
 
-      if (isTableOrder) {
-        clearTable();
-      }
+      if (isTableOrder) clearTable();
 
-      // WhatsApp: apenas para pedidos não-mesa (delivery/pickup)
       if (!isTableOrder) {
-      const itemsText = items
-        .map((i) => {
+        const itemsText = items.map((i) => {
           const itemTotal =
             i.unitPrice * i.quantity +
             (i.pizzaEdgePrice ?? 0) * i.quantity +
             (i.pizzaDoughPrice ?? 0) * i.quantity;
           return `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''} — ${formatCurrency(itemTotal, baseCurrency)}`;
-        })
-        .join('\n');
+        }).join('\n');
 
-      const bairro = deliveryType === DeliveryType.DELIVERY && selectedZoneId
-        ? (zones.find((z) => z.id === selectedZoneId)?.location_name ?? '')
-        : '';
-      const endereco =
-        deliveryType === DeliveryType.DELIVERY
+        const bairro = deliveryType === DeliveryType.DELIVERY && selectedZoneId
+          ? (zones.find((z) => z.id === selectedZoneId)?.location_name ?? '')
+          : '';
+        const endereco = deliveryType === DeliveryType.DELIVERY
           ? latitude != null && longitude != null
             ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
             : addressDetails?.trim() ?? ''
           : '';
-      const trocoRaw = paymentMethod === PaymentMethod.CASH && changeFor
-        ? changeFor.replace(/\D/g, '')
-        : '';
-      const trocoFormatted = trocoRaw ? formatCurrency(parseInt(trocoRaw, 10), baseCurrency) : '';
-      const paymentLabel = paymentMethod === 'pix' ? 'PIX' : paymentMethod === 'card' ? 'Cartão na entrega' : 'Dinheiro';
-      const taxaLine = deliveryFee > 0 ? `Taxa entrega: ${formatCurrency(deliveryFee, baseCurrency)}` : '';
+        const trocoRaw = paymentMethod === PaymentMethod.CASH && changeFor ? changeFor.replace(/\D/g, '') : '';
+        const trocoFormatted = trocoRaw ? formatCurrency(parseInt(trocoRaw, 10), baseCurrency) : '';
+        const paymentLabels: Record<string, string> = {
+          pix: 'PIX',
+          card: 'Cartão na entrega',
+          cash: 'Dinheiro',
+          qrcode: 'QR Code na entrega',
+          bank_transfer: 'Transferência Bancária',
+        };
+        const paymentLabel = paymentLabels[paymentMethod] ?? paymentMethod;
 
-      const restaurantTemplates = (currentRestaurant as { whatsapp_templates?: Record<string, string> | null })?.whatsapp_templates;
-      const message = processTemplate(
-        getTemplate('new_order', restaurantTemplates),
-        {
+        let pagamentoDetalhes = '';
+        if (paymentMethod === PaymentMethod.PIX || paymentMethod === PaymentMethod.QRCODE) {
+          if (pixKey.trim()) pagamentoDetalhes = `Chave PIX do cliente: ${pixKey.trim()}`;
+          if (paymentMethod === PaymentMethod.PIX) pagamentoDetalhes += (pagamentoDetalhes ? '\n' : '') + '📤 Cliente deve enviar o comprovante de pagamento PIX após confirmar o pedido.';
+        }
+        if (paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS')) {
+          const ba = bankAccount;
+          if (ba.bank_name || ba.agency || ba.account || ba.holder) {
+            pagamentoDetalhes = ['Banco: ' + ba.bank_name, 'Agência: ' + ba.agency, 'Conta: ' + ba.account, 'Titular: ' + ba.holder].filter((s) => !s.endsWith(': ')).join(' | ');
+          }
+        }
+
+        const taxaLine = deliveryFee > 0 ? `Taxa entrega: ${formatCurrency(deliveryFee, baseCurrency)}` : '';
+
+        const restaurantTemplates = (currentRestaurant as { whatsapp_templates?: Record<string, string> | null })?.whatsapp_templates;
+        const message = processTemplate(getTemplate('new_order', restaurantTemplates), {
           cliente_nome:      customerName,
           cliente_telefone:  '+' + normalizePhoneWithCountryCode(customerPhone, phoneCountry),
           tipo_entrega:      deliveryType === DeliveryType.DELIVERY ? 'Entrega' : 'Retirada',
@@ -399,99 +442,85 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           endereco,
           detalhes_endereco: deliveryType === DeliveryType.DELIVERY ? (addressDetails?.trim() ?? '') : '',
           pagamento:         paymentLabel,
+          pagamento_detalhes: pagamentoDetalhes,
           troco:             trocoFormatted,
           subtotal:          formatCurrency(subtotal, baseCurrency),
           taxa_entrega:      taxaLine,
           total:             formatCurrency(total, baseCurrency),
           itens:             itemsText,
           observacoes:       notes?.trim() ?? '',
-        },
-      );
-      
-      // Obter e validar número do WhatsApp do restaurante
-      const restaurantWhatsApp = (currentRestaurant?.whatsapp || '').replace(/\D/g, '');
-      const country = (currentRestaurant as { phone_country?: 'BR' | 'PY' })?.phone_country || 'BR';
-      const prefix = country === 'PY' ? '595' : '55';
-      
-      let whatsappNumber: string;
-      
-      if (!restaurantWhatsApp || restaurantWhatsApp.length < 9) {
-        // Se não houver WhatsApp configurado, usar o telefone do restaurante como fallback
-        const restaurantPhone = (currentRestaurant?.phone || '').replace(/\D/g, '');
-        if (restaurantPhone && restaurantPhone.length >= 9) {
-          const hasPhonePrefix = restaurantPhone.startsWith('55') || restaurantPhone.startsWith('595');
-          whatsappNumber = hasPhonePrefix ? restaurantPhone : prefix + restaurantPhone;
+        });
+
+        const restaurantWhatsApp = (currentRestaurant?.whatsapp || '').replace(/\D/g, '');
+        const country = (currentRestaurant as { phone_country?: 'BR' | 'PY' })?.phone_country || 'BR';
+        const prefix = country === 'PY' ? '595' : '55';
+        let whatsappNumber: string;
+        if (!restaurantWhatsApp || restaurantWhatsApp.length < 9) {
+          const restaurantPhone = (currentRestaurant?.phone || '').replace(/\D/g, '');
+          if (restaurantPhone && restaurantPhone.length >= 9) {
+            const hasPhonePrefix = restaurantPhone.startsWith('55') || restaurantPhone.startsWith('595');
+            whatsappNumber = hasPhonePrefix ? restaurantPhone : prefix + restaurantPhone;
+          } else {
+            throw new Error('WhatsApp do restaurante não configurado. Entre em contato com o estabelecimento.');
+          }
         } else {
-          // Se não houver telefone também, mostrar erro
-          throw new Error('WhatsApp do restaurante não configurado. Entre em contato com o estabelecimento.');
+          const hasPrefix = restaurantWhatsApp.startsWith('55') || restaurantWhatsApp.startsWith('595');
+          whatsappNumber = hasPrefix ? restaurantWhatsApp : prefix + restaurantWhatsApp;
+        }
+
+        clearCart();
+        const isPix = paymentMethod === PaymentMethod.PIX;
+        toast({
+          title: '✅ ' + t('checkout.successOrderTitle'),
+          description: isPix
+            ? `${t('checkout.successOrderDesc')} Lembre-se de enviar o comprovante de pagamento PIX pelo WhatsApp após confirmar o pedido.`
+            : t('checkout.successOrderDesc'),
+          className: 'bg-green-50 border-green-200',
+        });
+        window.open(generateWhatsAppLink(whatsappNumber, message), '_blank', 'noopener,noreferrer');
+
+        const newOrderId = (rpcResult as { order_id?: string })?.order_id;
+        if (newOrderId) {
+          const trackPath = isSubdomain ? `/track/${newOrderId}` : `/${restaurantSlug}/track/${newOrderId}`;
+          setTimeout(() => navigate(trackPath), 600);
+        } else {
+          setTimeout(() => handleBackToMenu(), 800);
         }
       } else {
-        const hasPrefix = restaurantWhatsApp.startsWith('55') || restaurantWhatsApp.startsWith('595');
-        whatsappNumber = hasPrefix ? restaurantWhatsApp : prefix + restaurantWhatsApp;
-      }
-      
-      // Gerar link do WhatsApp
-      const link = generateWhatsAppLink(whatsappNumber, message);
-      
-      // Limpar carrinho antes de redirecionar
-      clearCart();
-
-      // Mostrar toast de sucesso
-      toast({ 
-        title: '✅ ' + t('checkout.successOrderTitle'), 
-        description: t('checkout.successOrderDesc'),
-        className: 'bg-green-50 border-green-200'
-      });
-      
-      // Abrir WhatsApp em nova aba
-      window.open(link, '_blank', 'noopener,noreferrer');
-
-      // Redirecionar para a tela de rastreamento do pedido
-      const newOrderId = (rpcResult as { order_id?: string })?.order_id;
-      if (newOrderId) {
-        const trackPath = isSubdomain
-          ? `/track/${newOrderId}`
-          : `/${restaurantSlug}/track/${newOrderId}`;
-        setTimeout(() => navigate(trackPath), 600);
-      } else {
-        setTimeout(() => handleBackToMenu(), 800);
-      }
-      } else {
-        // Pedido de mesa: não abre WhatsApp
         clearCart();
         toast({
           title: '✅ Pedido enviado!',
-          description: 'Seu pedido foi enviado para a cozinha. Mesa ' + tableNumber,
+          description: `Seu pedido chegou na cozinha. Mesa ${tableNumber}`,
           className: 'bg-green-50 border-green-200',
         });
         setTimeout(() => handleBackToMenu(), 1500);
       }
     } catch (error: unknown) {
       console.error('[Checkout] Erro ao finalizar pedido:', error);
-      const message = error && typeof error === 'object' && 'message' in error
+      const msg = error && typeof error === 'object' && 'message' in error
         ? String((error as { message: string }).message)
         : t('checkout.errorGeneric');
-      toast({
-        title: t('checkout.errorFinalizeTitle'),
-        description: message,
-        variant: 'destructive',
-      });
+      toast({ title: t('checkout.errorFinalizeTitle'), description: msg, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Carrinho vazio ──
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 safe-area-inset-bottom">
-        <div className="text-center space-y-4 sm:space-y-6">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
-            <Store className="h-8 w-8 sm:h-10 sm:w-10 text-orange-500" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 safe-area-inset-bottom">
+        <div className="text-center space-y-5">
+          <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
+            <ShoppingBag className="h-10 w-10 text-orange-500" />
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">{t('checkout.emptyTitle')}</h2>
-          <Button 
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">{t('checkout.emptyTitle')}</h2>
+            <p className="text-sm text-slate-500 mt-1">Adicione itens ao carrinho para continuar</p>
+          </div>
+          <Button
             onClick={handleBackToMenu}
-            className="bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white rounded-xl h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base touch-manipulation active:scale-95"
+            className="bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12 px-8 font-semibold touch-manipulation"
           >
             {t('checkout.backToMenu')}
           </Button>
@@ -500,372 +529,579 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     );
   }
 
+  // ── Labels de moeda ──
+  const currencyLabel = (c: CurrencyCode) =>
+    c === 'BRL' ? 'R$ Real' : c === 'PYG' ? 'Gs. Guaraní' : c === 'ARS' ? 'ARS Peso' : 'USD';
+
+  const phonePlaceholder =
+    phoneCountry === 'BR' ? '(11) 99999-9999'
+    : phoneCountry === 'PY' ? '981 123 456'
+    : '11 15 1234-5678';
+
+  const phoneFlagLabel =
+    phoneCountry === 'BR' ? '🇧🇷' : phoneCountry === 'PY' ? '🇵🇾' : '🇦🇷';
+
   return (
-    <div className="min-h-screen bg-slate-50 pb-36 safe-area-inset-bottom">
-      {/* Header - Mobile First */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-30 safe-area-inset-top">
-        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center gap-3 sm:gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigate(-1)} 
-            className="-ml-1 sm:-ml-2 h-10 w-10 sm:h-11 sm:w-11 touch-manipulation active:scale-95"
+    <div className="min-h-screen bg-slate-50 safe-area-inset-bottom">
+
+      {/* ── Header sticky ── */}
+      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-slate-200/80 safe-area-inset-top">
+        <div className="max-w-xl mx-auto px-4 h-14 flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 active:scale-95 transition-all touch-manipulation flex-shrink-0"
+            aria-label="Voltar"
           >
-            <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6 text-slate-600" />
-          </Button>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900">{t('checkout.title')}</h1>
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+
+          {currentRestaurant?.logo ? (
+            <img src={currentRestaurant.logo} className="h-8 w-8 rounded-lg object-cover flex-shrink-0" alt="" />
+          ) : currentRestaurant?.name ? (
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center flex-shrink-0">
+              <span className="text-sm font-bold text-white">{currentRestaurant.name[0].toUpperCase()}</span>
+            </div>
+          ) : null}
+
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-bold text-slate-900 leading-tight truncate">
+              {isTableOrder ? `Mesa ${tableNumber}` : t('checkout.title')}
+            </h1>
+            {currentRestaurant?.name && (
+              <p className="text-xs text-slate-400 truncate leading-tight">{currentRestaurant.name}</p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 px-2.5 h-8 rounded-lg bg-orange-50 border border-orange-100 flex-shrink-0">
+            <ShoppingBag className="h-3.5 w-3.5 text-orange-500" />
+            <span className="text-xs font-bold text-orange-600 tabular-nums">{totalItemCount}</span>
+          </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-3 sm:px-4 mt-3 sm:mt-5 mb-6 sm:mb-8 max-w-xl space-y-3">
+      {/* ── Conteúdo ── */}
+      <div className="max-w-xl mx-auto px-4 pt-4 pb-36 space-y-3">
 
-        {/* Lista de Itens */}
-        <Card className="border-0 shadow-sm bg-white rounded-xl overflow-hidden">
-          <CardHeader className="pb-2 bg-slate-50/50 border-b border-slate-100 px-4 pt-3">
-            <CardTitle className="text-sm font-semibold text-slate-600 uppercase tracking-wide">{t('checkout.orderItems')}</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-2 space-y-1 px-4 pb-3">
-            {items.map((item, index) => (
-              <div key={index} className="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
-                <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 font-bold text-xs flex-shrink-0">
-                  {item.quantity}x
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-900 text-sm leading-tight">{item.productName}</p>
-                  {(item.pizzaSize || item.pizzaFlavors) && (
-                    <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
-                      {[item.pizzaSize, item.pizzaFlavors?.join(', ')].filter(Boolean).join(' · ')}
-                    </p>
-                  )}
-                  {item.observations && (
-                    <p className="text-xs text-orange-500 mt-0.5 italic line-clamp-1">Obs: {item.observations}</p>
-                  )}
-                </div>
-{!isTableOrder && (
-                <span className="font-bold text-slate-700 text-sm flex-shrink-0">{formatCurrency(convertForDisplay(item.unitPrice * item.quantity), displayCurrency)}</span>
-              )}
-                <button
-                  onClick={() => updateQuantity(index, 0)}
-                  className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 active:scale-95 transition-all touch-manipulation flex-shrink-0"
-                  aria-label={t('checkout.remove')}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        {/* ── 1. Sacola ── */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
+            <div className="h-6 w-6 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+              <ShoppingBag className="h-3.5 w-3.5 text-orange-600" />
+            </div>
+            <span className="text-sm font-semibold text-slate-800">Sua sacola</span>
+            <span className="ml-auto text-xs text-slate-400">
+              {totalItemCount} {totalItemCount === 1 ? 'item' : 'itens'}
+            </span>
+          </div>
 
-        {/* Pedido de mesa: badge */}
+          <div className="divide-y divide-slate-50">
+            {items.map((item, index) => {
+              const itemTotal =
+                item.unitPrice * item.quantity +
+                (item.pizzaEdgePrice ?? 0) * item.quantity +
+                (item.pizzaDoughPrice ?? 0) * item.quantity;
+              const unitDisplay = convertForDisplay(item.unitPrice + (item.pizzaEdgePrice ?? 0) + (item.pizzaDoughPrice ?? 0));
+
+              return (
+                <div key={index} className="flex items-start gap-3 px-4 py-3.5">
+                  {/* Emoji/avatar */}
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100/60 flex items-center justify-center flex-shrink-0 text-xl mt-0.5">
+                    {item.isPizza ? '🍕' : item.isMarmita ? '🍱' : '🍽️'}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-900 text-sm leading-tight">{item.productName}</p>
+
+                    {(item.pizzaSize || item.pizzaFlavors?.length) && (
+                      <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">
+                        {[item.pizzaSize, item.pizzaFlavors?.join(', ')].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                    {item.marmitaSize && (
+                      <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
+                        {[item.marmitaSize, item.marmitaProteins?.join(', ')].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                    {item.observations && (
+                      <p className="text-xs text-orange-500 mt-0.5 italic line-clamp-1">📝 {item.observations}</p>
+                    )}
+
+                    {/* Controles de quantidade */}
+                    <div className="flex items-center gap-2 mt-2.5">
+                      <button
+                        onClick={() => updateQuantity(index, item.quantity - 1)}
+                        className={`h-7 w-7 rounded-lg border flex items-center justify-center active:scale-90 transition-all touch-manipulation ${
+                          item.quantity <= 1
+                            ? 'border-red-200 text-red-400 hover:bg-red-50 hover:border-red-300'
+                            : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                        }`}
+                        aria-label={item.quantity <= 1 ? 'Remover item' : 'Diminuir quantidade'}
+                      >
+                        {item.quantity <= 1 ? <Trash2 className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
+                      </button>
+
+                      <span className="text-sm font-bold text-slate-900 w-6 text-center tabular-nums select-none">
+                        {item.quantity}
+                      </span>
+
+                      <button
+                        onClick={() => updateQuantity(index, item.quantity + 1)}
+                        className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-600 active:scale-90 transition-all touch-manipulation"
+                        aria-label="Aumentar quantidade"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Preço */}
+                  {!isTableOrder && (
+                    <div className="flex flex-col items-end gap-0.5 flex-shrink-0 ml-1">
+                      <span className="text-sm font-bold text-slate-900 tabular-nums">
+                        {formatCurrency(convertForDisplay(itemTotal), displayCurrency)}
+                      </span>
+                      {item.quantity > 1 && (
+                        <span className="text-[10px] text-slate-400 tabular-nums">
+                          {formatCurrency(unitDisplay, displayCurrency)} cada
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Mesa badge ── */}
         {isTableOrder && (
-          <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
-            <Store className="h-5 w-5 text-amber-600" />
-            <span className="font-semibold">Pedido da Mesa {tableNumber}</span>
+          <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-200">
+            <div className="h-9 w-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <Store className="h-[18px] w-[18px] text-amber-700" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-amber-900">Mesa {tableNumber}</p>
+              <p className="text-xs text-amber-700">Pedido vai direto para a cozinha</p>
+            </div>
           </div>
         )}
 
-        {/* Tipo de Entrega - oculto em pedidos de mesa */}
+        {/* ── 2. Tipo de entrega (não-mesa) ── */}
         {!isTableOrder && (
-        <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-200/40 rounded-xl">
-          <button
-            onClick={() => setDeliveryType(DeliveryType.DELIVERY)}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all touch-manipulation active:scale-95 ${
-              deliveryType === DeliveryType.DELIVERY
-                ? 'bg-white text-orange-600 shadow-sm ring-1 ring-orange-100'
-                : 'text-slate-500 active:bg-white/50'
-            }`}
-          >
-            <Bike className="h-4 w-4" /> {t('checkout.delivery')}
-          </button>
-          <button
-            onClick={() => setDeliveryType(DeliveryType.PICKUP)}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all touch-manipulation active:scale-95 ${
-              deliveryType === DeliveryType.PICKUP
-                ? 'bg-white text-orange-600 shadow-sm ring-1 ring-orange-100'
-                : 'text-slate-500 active:bg-white/50'
-            }`}
-          >
-            <Store className="h-4 w-4" /> {t('checkout.pickup')}
-          </button>
-        </div>
+          <div className="flex gap-2">
+            {[
+              { type: DeliveryType.DELIVERY, icon: Bike, label: t('checkout.delivery'), sub: 'No seu endereço' },
+              { type: DeliveryType.PICKUP, icon: Store, label: t('checkout.pickup'), sub: 'Retirar no local' },
+            ].map(({ type, icon: Icon, label, sub }) => (
+              <button
+                key={type}
+                onClick={() => setDeliveryType(type)}
+                className={`flex-1 flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 font-semibold text-sm transition-all touch-manipulation active:scale-[0.98] ${
+                  deliveryType === type
+                    ? 'border-orange-500 bg-orange-50 text-orange-700'
+                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                <Icon className={`h-5 w-5 ${deliveryType === type ? 'text-orange-600' : 'text-slate-400'}`} />
+                <span>{label}</span>
+                <span className="text-[10px] font-normal opacity-70">{sub}</span>
+              </button>
+            ))}
+          </div>
         )}
 
-        {/* Formulário de Entrega - oculto em pedidos de mesa */}
+        {/* ── 3. Dados do cliente (não-mesa) ── */}
         {!isTableOrder && (
-        <Card className="border-0 shadow-sm bg-white rounded-xl">
-          <CardContent className="pt-4 space-y-3 px-4 pb-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="name" className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.yourName')}</Label>
-                <Input 
-                  id="name" 
-                  value={customerName} 
-                  onChange={(e) => setCustomerName(e.target.value)} 
-                  placeholder={t('checkout.namePlaceholder')} 
-                  className="bg-slate-50 border-slate-200 h-11 text-base touch-manipulation" 
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
+              <div className="h-6 w-6 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <User className="h-3.5 w-3.5 text-blue-600" />
+              </div>
+              <span className="text-sm font-semibold text-slate-800">Seus dados</span>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <Label htmlFor="name" className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
+                  {t('checkout.yourName')}
+                </Label>
+                <Input
+                  id="name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder={t('checkout.namePlaceholder')}
+                  autoComplete="name"
+                  className="h-12 text-base bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="phone" className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.phoneLabel')}</Label>
+              <div>
+                <Label htmlFor="phone" className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
+                  {t('checkout.phoneLabel')}
+                </Label>
                 <div className="flex gap-2">
-                  <Select value={phoneCountry} onValueChange={(v) => setPhoneCountry(v as 'BR' | 'PY')}>
-                    <SelectTrigger className="w-12 bg-slate-50 border-slate-200 shrink-0 h-11 px-2 justify-center text-lg">
-                      <span>{phoneCountry === 'BR' ? '🇧🇷' : '🇵🇾'}</span>
+                  <Select value={phoneCountry} onValueChange={(v) => setPhoneCountry(v as 'BR' | 'PY' | 'AR')}>
+                    <SelectTrigger className="w-[66px] h-12 shrink-0 bg-slate-50 border-slate-200 rounded-xl px-2 justify-center gap-0">
+                      <span className="text-xl">{phoneFlagLabel}</span>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="BR">🇧🇷 +55 (Brasil)</SelectItem>
                       <SelectItem value="PY">🇵🇾 +595 (Paraguay)</SelectItem>
+                      <SelectItem value="AR">🇦🇷 +54 (Argentina)</SelectItem>
                     </SelectContent>
                   </Select>
                   <Input
                     id="phone"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder={phoneCountry === 'BR' ? '(11) 99999-9999' : '981 123 456'}
-                    className="bg-slate-50 border-slate-200 flex-1 h-11 text-base touch-manipulation"
+                    placeholder={phonePlaceholder}
+                    className="flex-1 h-12 text-base bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
                     type="tel"
+                    autoComplete="tel"
+                    inputMode="tel"
                   />
                 </div>
               </div>
             </div>
+          </div>
+        )}
 
-            {deliveryType === DeliveryType.DELIVERY && (
-              <div className="space-y-3 pt-3 border-t border-slate-100">
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.zoneLabel')}</Label>
+        {/* ── 4. Endereço (apenas delivery, não-mesa) ── */}
+        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
+              <div className="h-6 w-6 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                <MapPin className="h-3.5 w-3.5 text-green-600" />
+              </div>
+              <span className="text-sm font-semibold text-slate-800">Endereço de entrega</span>
+              {(latitude != null || addressDetails.trim()) && (
+                <Check className="h-4 w-4 text-green-500 ml-auto flex-shrink-0" />
+              )}
+            </div>
+
+            <div className="p-4 space-y-3">
+              {/* Seletor de bairro/zona */}
+              {zones.length > 0 && (
+                <div>
+                  <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
+                    {t('checkout.zoneLabel')}
+                  </Label>
                   <Select value={selectedZoneId} onValueChange={setSelectedZoneId}>
-                    <SelectTrigger className="bg-slate-50 border-slate-200 h-11 text-base touch-manipulation">
+                    <SelectTrigger className="h-12 bg-slate-50 border-slate-200 rounded-xl text-sm">
                       <SelectValue placeholder={t('checkout.zonePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {zones.map((zone) => (
-                        <SelectItem key={zone.id} value={zone.id} className="text-sm">
-                          {zone.location_name} ({formatCurrency(convertForDisplay(zone.fee), displayCurrency)})
+                        <SelectItem key={zone.id} value={zone.id}>
+                          <div className="flex items-center justify-between gap-6 w-full">
+                            <span>{zone.location_name}</span>
+                            <span className="text-muted-foreground text-xs font-semibold">
+                              {zone.fee === 0 ? 'Grátis' : formatCurrency(convertForDisplay(zone.fee), displayCurrency)}
+                            </span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.addressLabel')}</Label>
-                  <p className="text-xs text-slate-500 mb-1">
-                    Use o botão para GPS ou preencha o endereço manualmente.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-11 border-slate-200 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-800 font-medium touch-manipulation"
-                    onClick={() => {
-                      if (!navigator.geolocation) {
-                        toast({ title: 'Seu navegador não suporta geolocalização.', variant: 'destructive' });
-                        return;
-                      }
-                      setGeolocating(true);
-                      const opts: PositionOptions = {
-                        enableHighAccuracy: true,
-                        timeout: 30000,
-                        maximumAge: 60000,
-                      };
-                      navigator.geolocation.getCurrentPosition(
-                        (pos) => {
-                          setLatitude(pos.coords.latitude);
-                          setLongitude(pos.coords.longitude);
-                          setGeolocating(false);
-                          toast({ title: 'Localização obtida! Ajuste o pino no mapa se precisar.', variant: 'default' });
-                        },
-                        (err) => {
-                          setGeolocating(false);
-                          const msg =
-                            err.code === err.PERMISSION_DENIED
-                              ? 'Permissão negada. Habilite o acesso à localização nas configurações do navegador ou do celular.'
-                              : err.code === err.POSITION_UNAVAILABLE
-                              ? 'Localização indisponível. Verifique se o GPS está ativo e tente novamente.'
-                              : err.code === err.TIMEOUT
-                              ? 'Tempo esgotado. Verifique se o GPS está ativo e tente em um local com melhor sinal.'
-                              : 'Não foi possível obter sua localização. Você pode preencher o endereço manualmente abaixo.';
-                          toast({ title: msg, variant: 'destructive' });
-                        },
-                        opts
-                      );
-                    }}
-                    disabled={geolocating}
-                  >
-                    {geolocating ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <MapPin className="h-4 w-4 mr-2" />
-                    )}
-                    Minha Localização Atual
-                  </Button>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="addressDetails" className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                    Endereço completo {latitude == null && longitude == null && '(obrigatório se o GPS falhar)'}
-                  </Label>
-                  <Input
-                    id="addressDetails"
-                    value={addressDetails}
-                    onChange={(e) => setAddressDetails(e.target.value)}
-                    placeholder="Rua, número, bairro, referência..."
-                    className="bg-slate-50 border-slate-200 h-11 text-base touch-manipulation"
-                  />
-                </div>
-                {latitude != null && longitude != null && (
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Ajuste no mapa</Label>
-                    <MapAddressPicker
-                      lat={latitude}
-                      lng={longitude}
-                      onLocationChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
-                      height="180px"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        )}
+              )}
 
-        {/* Pagamento - oculto em pedidos de mesa */}
-        {!isTableOrder && (
-        <Card className="border-0 shadow-sm bg-white rounded-xl">
-          <CardHeader className="pb-2 px-4 pt-3">
-            <CardTitle className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.payment')}</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 px-4 pb-4">
-            <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="gap-2">
-              <div className={`flex items-center gap-3 border p-3 rounded-xl transition-all touch-manipulation active:scale-[0.98] cursor-pointer ${paymentMethod === PaymentMethod.PIX ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200 active:bg-slate-50'}`}>
-                <RadioGroupItem value={PaymentMethod.PIX} id="pix" className="h-4 w-4 shrink-0" />
-                <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer w-full font-semibold text-sm">
-                  <Smartphone className="h-4 w-4 text-emerald-500 flex-shrink-0" /> PIX
-                </Label>
-              </div>
-              <div className={`flex items-center gap-3 border p-3 rounded-xl transition-all touch-manipulation active:scale-[0.98] cursor-pointer ${paymentMethod === PaymentMethod.CARD ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200 active:bg-slate-50'}`}>
-                <RadioGroupItem value={PaymentMethod.CARD} id="card" className="h-4 w-4 shrink-0" />
-                <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer w-full font-semibold text-sm">
-                  <CreditCard className="h-4 w-4 text-blue-500 flex-shrink-0" /> {t('checkout.cardOnDelivery')}
-                </Label>
-              </div>
-              <div className={`flex flex-col gap-2 border p-3 rounded-xl transition-all ${paymentMethod === PaymentMethod.CASH ? 'border-orange-500 bg-orange-50 ring-1 ring-orange-500' : 'border-slate-200'}`}>
-                <div className="flex items-center gap-3 touch-manipulation active:scale-[0.98] cursor-pointer">
-                  <RadioGroupItem value={PaymentMethod.CASH} id="cash" className="h-4 w-4 shrink-0" />
-                  <Label htmlFor="cash" className="flex items-center gap-2 cursor-pointer w-full font-semibold text-sm">
-                    <Banknote className="h-4 w-4 text-green-600 flex-shrink-0" /> {t('checkout.cash')}
-                  </Label>
-                </div>
-                {paymentMethod === PaymentMethod.CASH && (
-                  <div className="pl-7">
-                    <Label className="text-xs text-slate-500">{t('checkout.changeFor')} ({displayCurrency === 'PYG' ? t('checkout.changeForGuarani') : displayCurrency === 'ARS' ? 'Peso Argentino' : t('checkout.changeForReal')})</Label>
-                    <Input 
-                      placeholder="Ex: 50.000" 
-                      value={changeFor}
-                      onChange={(e) => setChangeFor(e.target.value)}
-                      className="mt-1.5 bg-white h-10 text-base touch-manipulation"
-                    />
-                  </div>
-                )}
-              </div>
-            </RadioGroup>
-          </CardContent>
-        </Card>
-        )}
-
-        {/* Observações - oculto em pedidos de mesa */}
-        {!isTableOrder && (
-        <div className="space-y-1">
-          <Label htmlFor="notes" className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.notesLabel')}</Label>
-          <Input 
-            id="notes" 
-            value={notes} 
-            onChange={(e) => setNotes(e.target.value)} 
-            placeholder={t('checkout.notesPlaceholder')} 
-            className="bg-white border-slate-200 h-11 text-base touch-manipulation"
-          />
-        </div>
-        )}
-
-        {/* ── Fidelidade: progresso + badge de resgate ── */}
-        {!isTableOrder && loyaltyStatus?.enabled && (
-          <div className="space-y-2">
-            {loyaltyRedeemed ? (
-              <div className="rounded-xl border border-yellow-400 bg-yellow-50 px-4 py-3 flex items-center gap-2.5">
-                <Gift className="h-5 w-5 text-yellow-600 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-bold text-yellow-700">{t('loyalty.redemptionLabel')}</p>
-                  <p className="text-xs text-yellow-600">{loyaltyStatus.reward_description}</p>
-                </div>
+              {/* GPS */}
+              {latitude == null ? (
                 <button
                   type="button"
-                  onClick={() => setLoyaltyRedeemed(false)}
-                  className="ml-auto text-xs text-muted-foreground underline"
+                  onClick={handleGetLocation}
+                  disabled={geolocating}
+                  className="w-full h-12 flex items-center justify-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold text-sm hover:bg-emerald-100 active:scale-[0.99] transition-all touch-manipulation disabled:opacity-60"
                 >
-                  Cancelar
+                  {geolocating ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Obtendo sua localização...</>
+                  ) : (
+                    <><MapPin className="h-4 w-4" /> Usar minha localização atual</>
+                  )}
                 </button>
+              ) : (
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <Check className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                    <span className="text-sm text-emerald-800 font-medium flex-1">Localização obtida com GPS</span>
+                    <button
+                      onClick={clearLocation}
+                      className="p-1 rounded-md text-emerald-600 hover:bg-emerald-100 hover:text-emerald-900 transition-colors touch-manipulation"
+                      aria-label="Remover localização"
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <MapAddressPicker
+                    lat={latitude!}
+                    lng={longitude!}
+                    onLocationChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+                    height="200px"
+                  />
+                </div>
+              )}
+
+              {/* Endereço manual */}
+              <div>
+                <Label htmlFor="addressDetails" className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
+                  {latitude != null ? 'Complemento / Referência' : 'Endereço completo'}
+                  {latitude == null && <span className="text-orange-500 ml-1">*</span>}
+                </Label>
+                <Input
+                  id="addressDetails"
+                  value={addressDetails}
+                  onChange={(e) => setAddressDetails(e.target.value)}
+                  placeholder={latitude != null
+                    ? 'Apto, Bloco, Ponto de referência...'
+                    : 'Rua, número, bairro, ponto de referência...'}
+                  className="h-12 bg-slate-50 border-slate-200 rounded-xl text-base focus:bg-white"
+                />
               </div>
-            ) : (
-              <LoyaltyCard status={loyaltyStatus} />
-            )}
-          </div>
-        )}
-
-        {/* Alternador de moeda (quando há mais de uma opção) */}
-        {!isTableOrder && paymentCurrencies.length > 1 && (
-          <div className="flex flex-wrap gap-1.5 p-1.5 bg-slate-100 rounded-xl">
-            {paymentCurrencies.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setPaymentCurrency(c)}
-                className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all touch-manipulation active:scale-95 ${
-                  displayCurrency === c
-                    ? 'bg-white text-orange-600 shadow-sm ring-1 ring-orange-200'
-                    : 'text-slate-500 hover:bg-white/60'
-                }`}
-              >
-                {c === 'BRL' ? 'R$ Real' : c === 'PYG' ? 'Gs. Guaraní' : 'ARS Peso'}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Resumo inline */}
-        {!isTableOrder && (
-          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm px-4 py-3.5 space-y-2">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-500">{t('checkout.subtotal')}</span>
-              <span className="font-semibold text-slate-900">{formatCurrency(convertForDisplay(subtotal), displayCurrency)}</span>
             </div>
-            {deliveryType === DeliveryType.DELIVERY && (
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-500">{t('checkout.deliveryFee')}</span>
-                <span className="font-semibold text-red-500">{formatCurrency(convertForDisplay(deliveryFee), displayCurrency)}</span>
+          </div>
+        )}
+
+        {/* ── 5. Pagamento (não-mesa) ── */}
+        {!isTableOrder && (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
+              <div className="h-6 w-6 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
+                <CreditCard className="h-3.5 w-3.5 text-violet-600" />
               </div>
-            )}
-            <div className="flex justify-between items-center font-bold border-t border-slate-100 pt-2.5">
-              <span className="text-slate-900">{t('checkout.total')}</span>
-              <span className="text-lg text-slate-900">{formatCurrency(convertForDisplay(total), displayCurrency)}</span>
+              <span className="text-sm font-semibold text-slate-800">{t('checkout.payment')}</span>
+
+              {paymentCurrencies.length > 1 && (
+                <div className="ml-auto flex gap-1 p-0.5 bg-slate-100 rounded-lg">
+                  {paymentCurrencies.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setPaymentCurrency(c)}
+                      className={`px-2 py-1 rounded-md text-xs font-bold transition-all touch-manipulation ${
+                        displayCurrency === c ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                      title={currencyLabel(c)}
+                    >
+                      {c === 'BRL' ? 'R$' : c === 'PYG' ? 'Gs.' : 'ARS'}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 space-y-2">
+              {(() => {
+                const baseOptions = [
+                  { value: PaymentMethod.PIX, icon: Smartphone, label: 'PIX', desc: 'Envie o comprovante após confirmar', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', deliveryOnly: false },
+                  { value: PaymentMethod.BANK_TRANSFER, icon: Landmark, label: 'Transferência Bancária', desc: displayCurrency === 'PYG' || displayCurrency === 'ARS' ? 'Banco, agência, conta' : 'Disponível em Guaraní ou Peso', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600', deliveryOnly: false },
+                  { value: PaymentMethod.CASH, icon: Banknote, label: t('checkout.cash'), desc: 'Pague na entrega / retirada', iconBg: 'bg-green-100', iconColor: 'text-green-600', deliveryOnly: false },
+                  { value: PaymentMethod.CARD, icon: CreditCard, label: t('checkout.cardOnDelivery'), desc: 'Débito ou crédito na entrega', iconBg: 'bg-blue-100', iconColor: 'text-blue-600', deliveryOnly: true },
+                  { value: PaymentMethod.QRCODE, icon: QrCode, label: 'QR Code', desc: 'Na entrega', iconBg: 'bg-amber-100', iconColor: 'text-amber-600', deliveryOnly: true },
+                ];
+                return baseOptions
+                  .filter((o) => !o.deliveryOnly || deliveryType === DeliveryType.DELIVERY)
+                  .map(({ value, icon: Icon, label, desc, iconBg, iconColor }) => (
+                    <div key={value}>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod(value)}
+                        className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all touch-manipulation active:scale-[0.99] ${
+                          paymentMethod === value ? 'border-orange-500 bg-orange-50/70' : 'border-slate-100 bg-slate-50/60 hover:border-slate-200'
+                        }`}
+                      >
+                        <div className={`h-9 w-9 rounded-xl ${iconBg} flex items-center justify-center flex-shrink-0`}>
+                          <Icon className={`h-4 w-4 ${iconColor}`} />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-semibold text-slate-900">{label}</p>
+                          <p className="text-xs text-slate-400">{desc}</p>
+                        </div>
+                        <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          paymentMethod === value ? 'border-orange-500 bg-orange-500' : 'border-slate-300'
+                        }`}>
+                          {paymentMethod === value && <Check className="h-3 w-3 text-white" />}
+                        </div>
+                      </button>
+
+                      {value === PaymentMethod.PIX && paymentMethod === PaymentMethod.PIX && (
+                        <div className="mt-2 px-1 space-y-2">
+                          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-100">
+                            <Info className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-emerald-800">
+                              Após enviar o pedido no WhatsApp, envie o comprovante de pagamento PIX.
+                            </p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-slate-500 mb-1 block">Sua chave PIX <span className="text-slate-300">(opcional)</span></Label>
+                            <Input
+                              placeholder="CPF, e-mail, telefone ou chave aleatória"
+                              value={pixKey}
+                              onChange={(e) => setPixKey(e.target.value)}
+                              className="h-11 bg-white border-slate-200 rounded-xl text-sm"
+                            />
+                            <label className="flex items-center gap-2 mt-2 text-xs text-slate-500 cursor-pointer">
+                              <input type="checkbox" checked={savePixKey} onChange={(e) => setSavePixKey(e.target.checked)} className="rounded" />
+                              Salvar para próximos pedidos
+                            </label>
+                          </div>
+                        </div>
+                      )}
+
+                      {value === PaymentMethod.BANK_TRANSFER && paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS') && (
+                        <div className="mt-2 px-1 space-y-2">
+                          <p className="text-xs text-slate-500">Dados da conta para transferência (opcional)</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input placeholder="Banco" value={bankAccount.bank_name} onChange={(e) => setBankAccount((b) => ({ ...b, bank_name: e.target.value }))} className="h-10 text-sm" />
+                            <Input placeholder="Agência" value={bankAccount.agency} onChange={(e) => setBankAccount((b) => ({ ...b, agency: e.target.value }))} className="h-10 text-sm" />
+                            <Input placeholder="Conta" value={bankAccount.account} onChange={(e) => setBankAccount((b) => ({ ...b, account: e.target.value }))} className="h-10 text-sm" />
+                            <Input placeholder="Titular" value={bankAccount.holder} onChange={(e) => setBankAccount((b) => ({ ...b, holder: e.target.value }))} className="h-10 text-sm col-span-2" />
+                          </div>
+                          <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
+                            <input type="checkbox" checked={saveBankAccount} onChange={(e) => setSaveBankAccount(e.target.checked)} className="rounded" />
+                            Salvar para próximos pedidos
+                          </label>
+                        </div>
+                      )}
+
+                      {value === PaymentMethod.QRCODE && paymentMethod === PaymentMethod.QRCODE && (
+                        <div className="mt-2 px-1 space-y-2">
+                          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-100">
+                            <Info className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-amber-800">Pague via QR Code no momento da entrega.</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-slate-500 mb-1 block">Sua chave PIX <span className="text-slate-300">(opcional)</span></Label>
+                            <Input value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder="Para identificação do pagamento" className="h-10 text-sm" />
+                            <label className="flex items-center gap-2 mt-2 text-xs text-slate-500 cursor-pointer">
+                              <input type="checkbox" checked={savePixKey} onChange={(e) => setSavePixKey(e.target.checked)} className="rounded" />
+                              Salvar para próximos pedidos
+                            </label>
+                          </div>
+                        </div>
+                      )}
+
+                      {value === PaymentMethod.CASH && paymentMethod === PaymentMethod.CASH && (
+                        <div className="mt-2 px-1">
+                          <Label className="text-xs text-slate-400 mb-1.5 block">
+                            {t('checkout.changeFor')} em {displayCurrency === 'PYG' ? 'Guaraní' : displayCurrency === 'ARS' ? 'Peso Argentino' : 'Real'} — <span className="text-slate-300">opcional</span>
+                          </Label>
+                          <Input
+                            placeholder={displayCurrency === 'PYG' ? 'Ex: 100.000' : 'Ex: 100,00'}
+                            value={changeFor}
+                            onChange={(e) => setChangeFor(e.target.value)}
+                            className="h-11 bg-white border-slate-200 rounded-xl text-base"
+                            inputMode="decimal"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ));
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* ── 6. Observações (não-mesa) ── */}
+        {!isTableOrder && (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
+              <div className="h-6 w-6 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                <StickyNote className="h-3.5 w-3.5 text-yellow-600" />
+              </div>
+              <span className="text-sm font-semibold text-slate-800">{t('checkout.notesLabel')}</span>
+              <span className="text-xs text-slate-300 ml-1">• opcional</span>
+            </div>
+            <div className="p-4">
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder={t('checkout.notesPlaceholder')}
+                rows={3}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 resize-none transition-colors"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ── 7. Fidelidade ── */}
+        {!isTableOrder && loyaltyStatus?.enabled && (
+          loyaltyRedeemed ? (
+            <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-300">
+              <Gift className="h-5 w-5 text-amber-600 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-amber-800">{t('loyalty.redemptionLabel')}</p>
+                <p className="text-xs text-amber-700 truncate">{loyaltyStatus.reward_description}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLoyaltyRedeemed(false)}
+                className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-100 transition-colors touch-manipulation flex-shrink-0"
+                aria-label="Cancelar resgate"
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <LoyaltyCard status={loyaltyStatus} />
+          )
+        )}
+
+        {/* ── 8. Resumo ── */}
+        {!isTableOrder && (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100">
+              <span className="text-sm font-semibold text-slate-800">Resumo do pedido</span>
+            </div>
+            <div className="px-4 py-3 space-y-2.5">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-500">{t('checkout.subtotal')}</span>
+                <span className="font-semibold text-slate-800 tabular-nums">
+                  {formatCurrency(convertForDisplay(subtotal), displayCurrency)}
+                </span>
+              </div>
+
+              {deliveryType === DeliveryType.DELIVERY && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-500">{t('checkout.deliveryFee')}</span>
+                  {deliveryFee === 0 ? (
+                    <span className="font-semibold text-emerald-600">
+                      {selectedZoneId ? 'Grátis 🎉' : '—'}
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-slate-700 tabular-nums">
+                      {formatCurrency(convertForDisplay(deliveryFee), displayCurrency)}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-between items-center pt-2.5 border-t border-slate-100">
+                <span className="font-bold text-slate-900">{t('checkout.total')}</span>
+                <span className="text-xl font-black text-slate-900 tabular-nums">
+                  {formatCurrency(convertForDisplay(total), displayCurrency)}
+                </span>
+              </div>
+
+              {paymentCurrencies.length > 1 && displayCurrency !== baseCurrency && (
+                <p className="text-[10px] text-slate-400 text-right">
+                  ≈ {formatCurrency(total, baseCurrency)} (valor base)
+                </p>
+              )}
             </div>
           </div>
         )}
 
       </div>
 
-      {/* ── Barra de ação sticky (mobile) ── */}
+      {/* ── Barra de ação sticky ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-100 px-4 pt-3 pb-4 shadow-2xl shadow-slate-900/10"
+        className="fixed bottom-0 left-0 right-0 z-30 bg-white/97 backdrop-blur-md border-t border-slate-100 px-4 pt-3 shadow-2xl shadow-slate-900/10"
         style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
       >
-        <div className="max-w-xl mx-auto flex items-center gap-3">
-          {!isTableOrder && (
-            <div className="flex flex-col min-w-0">
-              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide leading-none">{t('checkout.total')}</span>
-              <span className="text-lg font-bold text-slate-900 leading-snug">{formatCurrency(convertForDisplay(total), displayCurrency)}</span>
-            </div>
-          )}
+        <div className="max-w-xl mx-auto">
           <Button
             size="lg"
-            className={`flex-1 font-bold h-13 rounded-2xl shadow-lg flex items-center justify-center gap-2 text-base touch-manipulation active:scale-[0.98] transition-all ${
+            className={`w-full font-bold h-14 rounded-2xl shadow-lg flex items-center justify-center gap-2.5 text-base touch-manipulation active:scale-[0.98] transition-all ${
               isTableOrder
                 ? 'bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white'
                 : 'bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white'
@@ -875,17 +1111,19 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           >
             {loading ? (
               <>
-                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                {t('checkout.sending')}
-              </>
-            ) : isTableOrder ? (
-              <>
-                <span>Fazer Pedido</span>
-                <Send className="h-4 w-4 flex-shrink-0" />
+                <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>{t('checkout.sending')}</span>
               </>
             ) : (
               <>
-                <span>{t('checkout.sendWhatsApp')}</span>
+                <span className="flex-1 text-left">
+                  {isTableOrder ? 'Enviar pedido para a cozinha' : t('checkout.sendWhatsApp')}
+                </span>
+                {!isTableOrder && (
+                  <span className="bg-white/20 px-2.5 py-1 rounded-lg text-sm font-bold tabular-nums">
+                    {formatCurrency(convertForDisplay(total), displayCurrency)}
+                  </span>
+                )}
                 <Send className="h-4 w-4 flex-shrink-0" />
               </>
             )}
@@ -893,13 +1131,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         </div>
       </div>
 
-      {/* ── Dialog de Resgate de Fidelidade ── */}
+      {/* ── Dialog resgate de fidelidade ── */}
       <Dialog open={showRedeemDialog} onOpenChange={setShowRedeemDialog}>
         <DialogContent className="max-w-sm mx-4 rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-center text-xl">
-              {t('loyalty.redeemTitle')}
-            </DialogTitle>
+            <DialogTitle className="text-center text-xl">{t('loyalty.redeemTitle')}</DialogTitle>
             <DialogDescription className="text-center pt-2">
               {t('loyalty.redeemDesc', {
                 count: loyaltyStatus?.orders_required ?? 0,
@@ -907,17 +1143,19 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               })}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-2 flex justify-center">
+          <div className="py-3 flex justify-center">
             <Gift className="h-14 w-14 text-yellow-500 animate-bounce" />
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button
-              className="w-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:brightness-105 text-white font-bold h-11 rounded-xl shadow-lg"
+              className="w-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:brightness-105 text-white font-bold h-12 rounded-xl shadow-lg"
               onClick={async () => {
                 setLoyaltyRedeemed(true);
                 setShowRedeemDialog(false);
-                toast({ title: t('loyalty.redeemSuccess'), description: t('loyalty.redeemSuccessDesc', { reward: loyaltyStatus?.reward_description ?? '' }) });
-                // Continuar com o pedido
+                toast({
+                  title: t('loyalty.redeemSuccess'),
+                  description: t('loyalty.redeemSuccessDesc', { reward: loyaltyStatus?.reward_description ?? '' }),
+                });
                 await handleCheckout();
               }}
             >
@@ -925,10 +1163,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             </Button>
             <Button
               variant="ghost"
-              className="w-full text-muted-foreground"
+              className="w-full text-muted-foreground h-11"
               onClick={async () => {
                 setShowRedeemDialog(false);
-                // Continuar sem resgatar
                 await handleCheckout();
               }}
             >

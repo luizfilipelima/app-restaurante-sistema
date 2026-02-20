@@ -9,7 +9,7 @@ const COMPLETED_ORDERS_SELECT = `
   created_at, updated_at,
   delivery_zone:delivery_zones(id, location_name, fee),
   order_items(id, order_id, product_name, quantity, unit_price, total_price, observations),
-  courier:couriers(id, name, phone)
+  courier:couriers(id, name, phone, phone_country)
 `;
 
 export type CompletedOrdersDateRange = 'today' | '7d' | '30d';
