@@ -37,7 +37,6 @@ import {
   Sparkles,
   CreditCard,
   ScanBarcode,
-  QrCode,
   Users,
   Boxes,
   ConciergeBell,
@@ -154,6 +153,17 @@ const buildNavSections = (
       },
       {
         kind: 'leaf',
+        name: t('nav.items.expo'),
+        href: restaurantSlug
+          ? `/${restaurantSlug}/garcom`
+          : restaurantId
+            ? `/expo?restaurant_id=${restaurantId}`
+            : '/expo',
+        icon: ConciergeBell,
+        external: true,
+      },
+      {
+        kind: 'leaf',
         name: t('nav.items.buffet'),
         href: `${base}/buffet`,
         icon: Scale,
@@ -167,17 +177,6 @@ const buildNavSections = (
         icon: ScanBarcode,
         featureFlag: 'feature_virtual_comanda',
         featureLabel: 'Plano Enterprise',
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.expo'),
-        href: restaurantSlug
-          ? `/${restaurantSlug}/garcom`
-          : restaurantId
-            ? `/expo?restaurant_id=${restaurantId}`
-            : '/expo',
-        icon: ConciergeBell,
-        external: true,
       },
     ],
   },
@@ -214,14 +213,6 @@ const buildNavSections = (
         icon: LayoutGrid,
         featureFlag: 'feature_tables',
         featureLabel: 'Plano Standard',
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.comandaQr'),
-        href: `${base}/comanda-qr`,
-        icon: QrCode,
-        featureFlag: 'feature_virtual_comanda',
-        featureLabel: 'Plano Enterprise',
       },
       {
         kind: 'submenu',

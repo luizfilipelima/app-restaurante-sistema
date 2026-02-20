@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { offlineDB } from '@/lib/offline-db';
 import { toast } from '@/hooks/use-toast';
@@ -8,6 +8,8 @@ type SyncStatus = 'online' | 'offline' | 'syncing';
 export function useOfflineSync(restaurantId: string) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(navigator.onLine ? 'online' : 'offline');
   const [pendingCount, setPendingCount] = useState(0);
+  // Controla se a sincronização atual é a inicial (ao montar) — não deve exibir toast
+  const isInitialSync = useRef(true);
 
   // Verificar status de conexão
   useEffect(() => {
@@ -100,7 +102,8 @@ export function useOfflineSync(restaurantId: string) {
       }
 
       setSyncStatus('online');
-      if (queue.length > 0) {
+      // Só exibe toast se não for a sincronização inicial ao abrir a tela
+      if (queue.length > 0 && !isInitialSync.current) {
         toast({ title: `${queue.length} item(s) sincronizado(s) com sucesso!`, duration: 3000 });
       }
     } catch (error) {
@@ -112,7 +115,9 @@ export function useOfflineSync(restaurantId: string) {
   // Sincronização automática periódica
   useEffect(() => {
     if (navigator.onLine && restaurantId) {
-      syncPendingItems();
+      // Sync inicial silencioso (sem toast)
+      isInitialSync.current = true;
+      syncPendingItems().finally(() => { isInitialSync.current = false; });
       const interval = setInterval(syncPendingItems, 30000); // A cada 30 segundos
       return () => clearInterval(interval);
     }

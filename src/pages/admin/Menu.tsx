@@ -226,14 +226,14 @@ function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete,
             onChangeDest(category.id, isBar ? 'kitchen' : 'bar');
           }}
           title={isBar ? 'Destino: Garçom/Bar — clique para mudar para Cozinha' : 'Destino: Cozinha — clique para mudar para Bar'}
-          className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-colors cursor-pointer ${
+          className={`flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md transition-colors cursor-pointer ${
             isBar
               ? isSelected ? 'bg-orange-300/30 text-orange-200 hover:bg-orange-300/50' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
               : isSelected ? 'bg-blue-300/30 text-blue-200 hover:bg-blue-300/50' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
           }`}
         >
           <Printer className="h-2.5 w-2.5" />
-          {isBar ? 'BAR' : 'COZ'}
+          {isBar ? 'Bar' : 'Cozinha'}
         </button>
 
         {/* Badge estoque — clicável para alternar */}
@@ -241,14 +241,14 @@ function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete,
           type="button"
           onClick={(e) => { e.stopPropagation(); onToggleInventory(category.id, !!category.has_inventory); }}
           title={category.has_inventory ? 'Estoque ativo — clique para desativar' : 'Ativar controle de estoque'}
-          className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-colors cursor-pointer ${
+          className={`flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md transition-colors cursor-pointer ${
             category.has_inventory
               ? isSelected ? 'bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-              : isSelected ? 'bg-primary-foreground/10 text-primary-foreground/50 hover:bg-primary-foreground/20' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              : isSelected ? 'bg-primary-foreground/10 text-primary-foreground/40 hover:bg-primary-foreground/20' : 'bg-muted/60 text-muted-foreground/60 hover:bg-muted'
           }`}
         >
           <Boxes className="h-2.5 w-2.5" />
-          {category.has_inventory ? 'EST' : 'est'}
+          Estoque
         </button>
 
         {/* Spacer */}

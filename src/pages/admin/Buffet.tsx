@@ -433,8 +433,8 @@ function ComandaCard({
   onDelete: (e: React.MouseEvent) => void;
   deleting: boolean;
 }) {
-  const urgency  = getTimeUrgency(comanda.opened_at);
-  const styles   = URGENCY_STYLES[urgency];
+  const urgency   = getTimeUrgency(comanda.opened_at);
+  const styles    = URGENCY_STYLES[urgency];
   const itemCount = comanda.items?.length ?? 0;
 
   return (
@@ -444,70 +444,54 @@ function ComandaCard({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.96 }}
       onClick={onSelect}
-      className={`relative flex flex-col rounded-2xl border cursor-pointer transition-all duration-200 overflow-hidden
+      className={`flex flex-col rounded-2xl border cursor-pointer transition-all duration-200 overflow-hidden
         ${isSelected
-          ? 'border-[#F87116] shadow-md shadow-orange-100 bg-white ring-2 ring-[#F87116]/20'
+          ? 'border-[#F87116] shadow-lg shadow-orange-100/60 bg-white ring-2 ring-[#F87116]/20'
           : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
         }`}
     >
       {/* Barra de urgência (topo) */}
       <div className={`h-1 w-full ${styles.bar} flex-shrink-0`} />
 
-      {/* Conteúdo principal */}
-      <div className="p-4 flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 pr-7">
-            <span className="text-lg font-bold text-slate-900">#{comanda.number}</span>
+      {/* ── Corpo principal ──────────────────────────────────────── */}
+      <div className="px-3.5 pt-3 pb-2.5 flex items-start gap-3">
+
+        {/* Número + badge de tempo + itens */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-xl font-extrabold leading-none ${isSelected ? 'text-[#F87116]' : 'text-slate-900'}`}>
+              #{comanda.number}
+            </span>
             <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${styles.badge}`}>
               <Clock className="h-2.5 w-2.5" />
               {formatTimeOpen(comanda.opened_at)}
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-[11px] text-slate-400 mt-1 font-medium">
             {itemCount === 0 ? 'Sem itens' : `${itemCount} ${itemCount === 1 ? 'item' : 'itens'}`}
           </p>
         </div>
+
+        {/* Valor total */}
         <div className="text-right flex-shrink-0">
-          <p className="text-xl font-extrabold text-slate-900 leading-tight">
+          <p className={`text-xl font-extrabold leading-none tabular-nums ${isSelected ? 'text-[#F87116]' : 'text-slate-900'}`}>
             {formatCurrency(comanda.total_amount, currency)}
           </p>
-          {isSelected && (
-            <button
-              onClick={onClose}
-              className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-[#F87116] hover:underline ml-auto"
-            >
-              <CheckCircle2 className="h-3 w-3" />
-              Fechar (F8)
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Botão excluir (canto superior direito) */}
-      <button
-        onClick={onDelete}
-        disabled={deleting}
-        className="absolute right-2 top-3 h-7 w-7 flex items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors"
-        title="Excluir comanda"
-      >
-        {deleting
-          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          : <Trash2 className="h-3.5 w-3.5" />
-        }
-      </button>
-
-      {/* Itens (expandidos quando selecionado) */}
+      {/* ── Itens expandidos quando selecionada ──────────────────── */}
       <AnimatePresence>
         {isSelected && itemCount > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden border-t border-slate-100"
+            className="overflow-hidden"
           >
-            <div className="px-4 pb-3 pt-2 space-y-1.5 max-h-60 overflow-y-auto">
+            <div className="mx-3.5 mb-2.5 rounded-xl border border-slate-100 bg-slate-50 divide-y divide-slate-100 max-h-48 overflow-y-auto">
               {comanda.items?.map((item) => (
-                <div key={item.id} className="flex items-center gap-2 text-xs">
+                <div key={item.id} className="flex items-center gap-2 px-3 py-1.5 text-xs">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-slate-800 truncate">{item.description}</p>
                     <p className="text-slate-400">
@@ -516,7 +500,7 @@ function ComandaCard({
                       {formatCurrency(item.unit_price, currency)}
                     </p>
                   </div>
-                  <span className="font-semibold text-slate-700 flex-shrink-0">
+                  <span className="font-semibold text-slate-700 flex-shrink-0 tabular-nums">
                     {formatCurrency(item.total_price, currency)}
                   </span>
                 </div>
@@ -526,13 +510,58 @@ function ComandaCard({
         )}
       </AnimatePresence>
 
-      {/* Selecionado indicator */}
+      {/* ── Barra de ativo ───────────────────────────────────────── */}
       {isSelected && (
-        <div className="px-4 pb-3 pt-1 border-t border-orange-100 bg-orange-50/60 flex items-center gap-2">
-          <Zap className="h-3 w-3 text-[#F87116]" />
+        <div className="mx-3.5 mb-2.5 flex items-center gap-1.5 rounded-lg bg-orange-50 border border-orange-100 px-2.5 py-1.5">
+          <Zap className="h-3 w-3 text-[#F87116] flex-shrink-0" />
           <span className="text-[10px] text-[#F87116] font-semibold">Ativa — escaneie produtos para adicionar</span>
         </div>
       )}
+
+      {/* ── Footer de ações ──────────────────────────────────────── */}
+      <div
+        className={`flex items-stretch gap-2 px-3.5 pb-3 ${itemCount > 0 || isSelected ? 'pt-0' : 'pt-0'}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {isSelected ? (
+          <>
+            {/* Fechar comanda */}
+            <button
+              onClick={onClose}
+              className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white text-xs font-semibold transition-all shadow-sm shadow-emerald-200"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Fechar Comanda
+              <kbd className="text-[9px] opacity-70 bg-emerald-600 px-1 py-0.5 rounded">F8</kbd>
+            </button>
+            {/* Excluir (ícone apenas quando ativo) */}
+            <button
+              onClick={onDelete}
+              disabled={deleting}
+              title="Excluir comanda"
+              className="h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors"
+            >
+              {deleting
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Trash2 className="h-3.5 w-3.5" />
+              }
+            </button>
+          </>
+        ) : (
+          /* Card inativo: só botão excluir, discreto */
+          <button
+            onClick={onDelete}
+            disabled={deleting}
+            title="Excluir comanda"
+            className="w-full h-7 flex items-center justify-center gap-1.5 rounded-lg border border-slate-100 text-slate-300 hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors text-[11px] font-medium"
+          >
+            {deleting
+              ? <><Loader2 className="h-3 w-3 animate-spin" />Excluindo…</>
+              : <><Trash2 className="h-3 w-3" />Remover</>
+            }
+          </button>
+        )}
+      </div>
     </motion.div>
   );
 }

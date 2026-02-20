@@ -261,17 +261,17 @@ function ProductRow({ product, currency, onEdit, onQuickAdjust, onHistory, onReg
       </TableCell>
 
       {/* Status */}
-      <TableCell>
+      <TableCell className="whitespace-nowrap">
         <StatusBadge item={inv} />
       </TableCell>
 
       {/* Ações */}
-      <TableCell className="w-[100px] p-1.5">
+      <TableCell className="w-[90px] p-1.5">
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             variant="ghost"
             size="icon"
-            className={`h-8 w-8 ${!inv ? 'text-primary hover:text-primary hover:bg-primary/10' : ''}`}
+            className="h-8 w-8"
             onClick={() => inv ? onEdit(product) : onRegister(product)}
             title={inv ? 'Editar estoque' : 'Cadastrar no estoque'}
           >
@@ -285,6 +285,50 @@ function ProductRow({ product, currency, onEdit, onQuickAdjust, onHistory, onReg
         </div>
       </TableCell>
     </TableRow>
+  );
+}
+
+// ─── Empty state do painel de produtos ───────────────────────────────────────
+
+function EmptyInventoryState({
+  search,
+  filter,
+  hasConfigured,
+  onRegisterFirst,
+}: {
+  search: string;
+  filter: InventoryFilter;
+  hasConfigured: boolean;
+  onRegisterFirst: () => void;
+}) {
+  const title = search
+    ? 'Nenhum produto encontrado'
+    : filter !== 'all'
+      ? 'Nenhum produto neste filtro'
+      : 'Nenhum produto com estoque cadastrado';
+  const description = search
+    ? `Sem resultados para "${search}"`
+    : filter !== 'all'
+      ? 'Tente outro filtro ou limpe a busca.'
+      : !hasConfigured
+        ? 'Clique em "Cadastrar próximo" para registrar o primeiro produto desta categoria no estoque.'
+        : 'Todos os produtos cadastrados estão filtrados.';
+  return (
+    <Card className="border-dashed">
+      <CardContent className="p-12 text-center space-y-3">
+        <PackageOpen className="h-10 w-10 text-muted-foreground/40 mx-auto" />
+        <div>
+          <p className="font-medium text-foreground mb-1">{title}</p>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+        {!hasConfigured && !search && filter === 'all' && (
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={onRegisterFirst}>
+            <PackagePlus className="h-3.5 w-3.5" />
+            Cadastrar próximo
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -467,7 +511,8 @@ export default function AdminInventory() {
   ), [categoryProducts, inventoryMap]);
 
   const filtered = useMemo(() => {
-    let result = productsWithInventory;
+    // Mostra apenas produtos COM estoque cadastrado
+    let result = productsWithInventory.filter((p) => !!p.inventoryItem);
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((p) => p.name.toLowerCase().includes(q) || (p.sku ?? '').toLowerCase().includes(q));
@@ -480,7 +525,6 @@ export default function AdminInventory() {
         return days !== null && days <= 30 && days >= 0;
       });
     }
-    if (filter === 'unconfigured') result = result.filter((p) => !p.inventoryItem);
     return result;
   }, [productsWithInventory, search, filter]);
 
@@ -749,14 +793,11 @@ export default function AdminInventory() {
           <div className={`text-xs mt-0.5 ${filter === 'expiring' ? 'text-orange-100' : 'text-muted-foreground'}`}>próximos 30 dias</div>
         </button>
 
-        <button
-          onClick={() => setFilter(filter === 'unconfigured' ? 'all' : 'unconfigured')}
-          className={`text-left rounded-xl border p-3.5 transition-all ${filter === 'unconfigured' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white hover:bg-slate-50 border-slate-200'}`}
-        >
-          <div className={`text-xs font-medium mb-1 ${filter === 'unconfigured' ? 'text-slate-300' : 'text-muted-foreground'}`}>Não Configurados</div>
-          <div className="text-2xl font-bold tabular-nums">{stats.total - stats.configured}</div>
-          <div className={`text-xs mt-0.5 ${filter === 'unconfigured' ? 'text-slate-300' : 'text-muted-foreground'}`}>sem registro</div>
-        </button>
+        <div className={`text-left rounded-xl border p-3.5 bg-white border-slate-200`}>
+          <div className="text-xs font-medium mb-1 text-muted-foreground">Cadastrados</div>
+          <div className="text-2xl font-bold tabular-nums text-emerald-600">{stats.configured}</div>
+          <div className="text-xs mt-0.5 text-muted-foreground">de {stats.total} produto{stats.total !== 1 ? 's' : ''}</div>
+        </div>
       </div>
 
       {/* ── Aviso: nenhuma categoria com estoque ────────────────────────────── */}
@@ -840,14 +881,6 @@ export default function AdminInventory() {
                   );
                 })}
 
-                <div className="pt-2 border-t border-border/50 mt-2">
-                  <Button asChild variant="ghost" size="sm" className="w-full justify-start text-xs text-muted-foreground h-8 gap-1.5">
-                    <Link to="../menu">
-                      <Settings className="h-3 w-3" />
-                      Gerenciar categorias
-                    </Link>
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -914,19 +947,12 @@ export default function AdminInventory() {
                 </CardContent>
               </Card>
             ) : filtered.length === 0 ? (
-              <Card className="border-dashed">
-                <CardContent className="p-12 text-center space-y-3">
-                  <PackageOpen className="h-10 w-10 text-muted-foreground/40 mx-auto" />
-                  <div>
-                    <p className="font-medium text-foreground mb-1">
-                      {search ? 'Nenhum produto encontrado' : filter !== 'all' ? 'Nenhum produto neste filtro' : 'Nenhum produto nesta categoria'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {search ? `Sem resultados para "${search}"` : filter !== 'all' ? 'Tente outro filtro ou limpe a busca.' : 'Adicione produtos pelo Central do Cardápio.'}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              <EmptyInventoryState
+                search={search}
+                filter={filter}
+                hasConfigured={productsWithInventory.some((p) => p.inventoryItem)}
+                onRegisterFirst={() => { const first = productsWithInventory[0]; if (first) openEdit(first); }}
+              />
             ) : (
               <AnimatePresence mode="wait">
                 <motion.div

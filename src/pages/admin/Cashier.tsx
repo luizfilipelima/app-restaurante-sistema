@@ -22,7 +22,6 @@ import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { formatDistanceToNow } from 'date-fns';
@@ -153,80 +152,82 @@ function QRModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-sm p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 pb-4">
-          <DialogHeader className="mb-4">
-            <DialogTitle className="text-white flex items-center gap-2 text-base">
-              <QrCode className="h-4 w-4 text-[#F87116]" />
-              QR Code da Comanda
-            </DialogTitle>
-          </DialogHeader>
+      <DialogContent className="max-w-[380px] p-0 overflow-hidden rounded-2xl border border-slate-200 shadow-2xl bg-white">
 
-          {/* Card do QR */}
-          <div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-4">
-            {logo ? (
-              <img src={logo} alt={restaurantName} className="h-14 w-14 rounded-xl object-cover border border-slate-200 shadow-sm" />
-            ) : (
-              <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center shadow-sm">
-                <QrCode className="h-7 w-7 text-white" />
-              </div>
-            )}
-
-            <div className="text-center leading-tight">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                Escaneie para abrir sua comanda
-              </p>
-              <p className="text-sm font-bold text-slate-900 mt-0.5">{restaurantName}</p>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <QRCodeSVG
-                value={url}
-                size={200}
-                level="H"
-                includeMargin={false}
-                fgColor="#0f172a"
-                bgColor="#f8fafc"
-                imageSettings={logo ? { src: logo, height: 36, width: 36, excavate: true } : undefined}
-              />
-            </div>
-
-            <p className="text-[10px] text-slate-400 font-mono text-center break-all leading-relaxed px-2">
-              {url}
-            </p>
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-slate-100">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center shadow-sm flex-shrink-0">
+            <QrCode className="h-4.5 w-4.5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <DialogTitle className="text-sm font-bold text-slate-900">QR Code da Comanda</DialogTitle>
+            <p className="text-[11px] text-slate-400 mt-0.5 truncate">{restaurantName}</p>
           </div>
         </div>
 
-        {/* Ações */}
-        <div className="bg-slate-900 px-6 pb-6 pt-3 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={handleDownload}
-              disabled={downloading}
-              className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-3 transition-colors disabled:opacity-50"
-            >
-              {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-              Baixar PNG
-            </button>
+        {/* QR Code area */}
+        <div className="px-5 py-5 flex flex-col items-center gap-4">
+
+          {/* Branding + QR */}
+          <div className="w-full rounded-2xl border border-slate-100 bg-slate-50 p-5 flex flex-col items-center gap-3">
+            {logo ? (
+              <img src={logo} alt={restaurantName} className="h-12 w-12 rounded-xl object-cover border border-slate-200 shadow-sm" />
+            ) : (
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center shadow-sm">
+                <QrCode className="h-6 w-6 text-white" />
+              </div>
+            )}
+
+            <div className="p-2 bg-white rounded-xl border border-slate-100 shadow-sm">
+              <QRCodeSVG
+                value={url}
+                size={196}
+                level="H"
+                includeMargin={false}
+                fgColor="#0f172a"
+                bgColor="#ffffff"
+                imageSettings={logo ? { src: logo, height: 32, width: 32, excavate: true } : undefined}
+              />
+            </div>
+
+            <div className="text-center">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Aponte a câmera para abrir a comanda
+              </p>
+              <p className="text-[10px] text-slate-300 font-mono mt-1 break-all leading-relaxed">{url}</p>
+            </div>
+          </div>
+
+          {/* Ações primárias */}
+          <div className="w-full grid grid-cols-2 gap-2">
             <button
               onClick={handlePrint}
               disabled={printing}
-              className="flex items-center justify-center gap-2 rounded-xl bg-[#F87116] hover:bg-orange-500 text-white text-xs font-semibold py-3 transition-colors disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#F87116] hover:bg-orange-500 active:scale-[0.98] text-white text-xs font-semibold h-10 transition-all shadow-sm shadow-orange-200 disabled:opacity-50"
             >
               {printing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Printer className="h-3.5 w-3.5" />}
               Imprimir
             </button>
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-700 text-xs font-semibold h-10 transition-all disabled:opacity-50"
+            >
+              {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              Baixar PNG
+            </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          {/* Ações secundárias */}
+          <div className="w-full grid grid-cols-2 gap-2">
             <button
               onClick={handleCopy}
-              className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium py-2.5 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-medium h-9 transition-colors"
             >
               <AnimatePresence mode="wait" initial={false}>
                 {copied ? (
                   <motion.span key="ok" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                    className="flex items-center gap-1.5 text-emerald-400">
+                    className="flex items-center gap-1.5 text-emerald-600">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Copiado!
                   </motion.span>
                 ) : (
@@ -240,10 +241,10 @@ function QRModal({
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium py-2.5 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-medium h-9 transition-colors"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              Testar
+              Testar link
             </a>
           </div>
         </div>
