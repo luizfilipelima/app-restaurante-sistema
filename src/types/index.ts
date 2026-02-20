@@ -387,6 +387,9 @@ export interface RestaurantWithMetrics extends Restaurant {
 
 // ==================== CATEGORIES TYPES ====================
 
+/** Destino do cupom de impressão para a categoria */
+export type PrintDestination = 'kitchen' | 'bar';
+
 export interface Category {
   id: string;
   restaurant_id: string;
@@ -398,6 +401,8 @@ export interface Category {
   extra_field?: string | null;
   extra_label?: string | null;
   extra_placeholder?: string | null;
+  /** Destino de impressão: 'kitchen' = Cozinha Central | 'bar' = Garçom/Bar */
+  print_destination?: PrintDestination;
   created_at: string;
   updated_at: string;
 }

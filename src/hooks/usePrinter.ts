@@ -6,12 +6,19 @@ import type { CurrencyCode } from '@/lib/utils';
 const BODY_PRINT_CLASS = 'print-receipt';
 const BODY_PAPER_58_CLASS = 'receipt-paper-58';
 
+export interface DualReceiptSlot {
+  filteredItemIds: string[];
+  destinationLabel: string;
+}
+
 export function usePrinter() {
   const [receiptData, setReceiptData] = useState<OrderReceiptData | null>(null);
+  const [secondReceiptData, setSecondReceiptData] = useState<OrderReceiptData | null>(null);
 
   const cleanupPrint = useCallback(() => {
     document.body.classList.remove(BODY_PRINT_CLASS, BODY_PAPER_58_CLASS);
     setReceiptData(null);
+    setSecondReceiptData(null);
   }, []);
 
   useEffect(() => {
@@ -26,9 +33,29 @@ export function usePrinter() {
       restaurantName: string,
       paperWidth: '58mm' | '80mm',
       currency?: CurrencyCode,
-      sectorPrintSettings?: PrintSettingsBySector
+      sectorPrintSettings?: PrintSettingsBySector,
+      /** Quando fornecido, gera dois cupons (cozinha + bar) numa única chamada de window.print(). */
+      dualSlots?: [DualReceiptSlot, DualReceiptSlot] | [DualReceiptSlot]
     ) => {
-      setReceiptData({ order, restaurantName, paperWidth, currency, sectorPrintSettings });
+      const base: Omit<OrderReceiptData, 'destinationLabel' | 'filteredItemIds'> = {
+        order,
+        restaurantName,
+        paperWidth,
+        currency,
+        sectorPrintSettings,
+      };
+
+      if (dualSlots && dualSlots.length === 2) {
+        setReceiptData({ ...base, destinationLabel: dualSlots[0].destinationLabel, filteredItemIds: dualSlots[0].filteredItemIds });
+        setSecondReceiptData({ ...base, destinationLabel: dualSlots[1].destinationLabel, filteredItemIds: dualSlots[1].filteredItemIds });
+      } else if (dualSlots && dualSlots.length === 1) {
+        setReceiptData({ ...base, destinationLabel: dualSlots[0].destinationLabel, filteredItemIds: dualSlots[0].filteredItemIds });
+        setSecondReceiptData(null);
+      } else {
+        setReceiptData(base);
+        setSecondReceiptData(null);
+      }
+
       document.body.classList.add(BODY_PRINT_CLASS);
       if (paperWidth === '58mm') document.body.classList.add(BODY_PAPER_58_CLASS);
       requestAnimationFrame(() => {
@@ -40,5 +67,5 @@ export function usePrinter() {
     []
   );
 
-  return { printOrder, receiptData };
+  return { printOrder, receiptData, secondReceiptData };
 }

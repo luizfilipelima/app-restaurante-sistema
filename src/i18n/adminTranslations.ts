@@ -704,6 +704,33 @@ const en: typeof pt = {
   hint:          'Type to search products that will appear as suggestions when this item is added to the cart.',
 };
 
+(pt as Record<string, unknown>).printDest = {
+  label:          'Destino de Impressão',
+  kitchen:        'Cozinha Central',
+  bar:            'Garçom / Bar',
+  kitchenReceipt: '*** COZINHA CENTRAL ***',
+  barReceipt:     '*** GARÇOM / BAR ***',
+  toggleHint:     'Clique para alternar o destino de impressão desta categoria',
+};
+
+(es as Record<string, unknown>).printDest = {
+  label:          'Destino de Impresión',
+  kitchen:        'Cocina Central',
+  bar:            'Mozo / Bar',
+  kitchenReceipt: '*** COCINA CENTRAL ***',
+  barReceipt:     '*** MOZO / BAR ***',
+  toggleHint:     'Clic para alternar el destino de impresión de esta categoría',
+};
+
+(en as Record<string, unknown>).printDest = {
+  label:          'Print Destination',
+  kitchen:        'Kitchen',
+  bar:            'Waiter / Bar',
+  kitchenReceipt: '*** KITCHEN ***',
+  barReceipt:     '*** WAITER / BAR ***',
+  toggleHint:     'Click to toggle print destination for this category',
+};
+
 export type AdminLang = 'pt' | 'es' | 'en';
 export type AdminTranslations = typeof pt;
 

@@ -13,6 +13,8 @@ export { useWaiterCalls } from './useWaiterCalls';
 export { useOrders } from './useOrders';
 export type { UseOrdersParams, OrderSourceFilter } from './useOrders';
 export { usePrintSettings } from './usePrintSettings';
+export { useCategoryDestinations, useProductPrintDestinations } from './useCategoryDestinations';
+export type { CategoryDestination } from './useCategoryDestinations';
 export type { PrintSettings } from './usePrintSettings';
 export { useDashboardAnalytics } from './useDashboardAnalytics';
 export type { UseDashboardAnalyticsParams } from './useDashboardAnalytics';

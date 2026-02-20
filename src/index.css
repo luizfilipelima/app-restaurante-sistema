@@ -307,6 +307,23 @@
 .receipt-obs { font-size: 11px; }
 .receipt-footer { text-align: center; font-size: 10px; margin-top: 8px; }
 
+/* ── Rótulo de destino de impressão (ex: COZINHA CENTRAL) ─────────────── */
+.receipt-destination-label {
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  text-align: center;
+  margin-top: 4px;
+  padding: 2px 0;
+}
+
+/* ── Segundo cupom (Bar) — oculto na UI, visível apenas na impressão ──── */
+.receipt-print-area-secondary {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+}
+
 /* ─── Dashboard report: hidden in UI, visible only during print ──────────── */
 #dashboard-print-report {
   display: none;
@@ -329,7 +346,9 @@
     visibility: hidden;
   }
   body.print-receipt .receipt-print-area,
-  body.print-receipt .receipt-print-area * {
+  body.print-receipt .receipt-print-area *,
+  body.print-receipt .receipt-print-area-secondary,
+  body.print-receipt .receipt-print-area-secondary * {
     visibility: visible;
   }
   body.print-receipt .receipt-print-area {
@@ -352,6 +371,28 @@
   }
   body.print-receipt .receipt-width-58 .receipt-inner {
     max-width: 58mm;
+  }
+  /* ── Segundo cupom: inicia em nova página ─────────────────────────────── */
+  body.print-receipt .receipt-print-area-secondary {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    display: block !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-before: always !important;
+    break-before: page !important;
+    background: white !important;
+    color: black !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  body.print-receipt.receipt-paper-58 .receipt-print-area-secondary {
+    width: 58mm !important;
+    max-width: 58mm !important;
   }
 
   /* ── Dashboard Closing Report ─────────────────────────────────────────── */

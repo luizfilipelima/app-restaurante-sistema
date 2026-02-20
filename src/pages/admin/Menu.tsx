@@ -96,6 +96,9 @@ import {
   Boxes,
   Sparkles,
   X as XIcon,
+  Printer,
+  ChefHat,
+  Wine,
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
 import { useProductUpsells, useSaveProductUpsells } from '@/hooks/queries';
@@ -149,9 +152,10 @@ interface SortableCategoryItemProps {
   onSelect: () => void;
   onDelete: () => void;
   onToggleInventory: (id: string, current: boolean) => void;
+  onChangeDest: (id: string, dest: 'kitchen' | 'bar') => void;
 }
 
-function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete, onToggleInventory }: SortableCategoryItemProps) {
+function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete, onToggleInventory, onChangeDest }: SortableCategoryItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: category.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
 
@@ -194,6 +198,17 @@ function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete,
             <Boxes className={`h-3 w-3 shrink-0 ml-0.5 ${isSelected ? 'text-primary-foreground/70' : 'text-primary/70'}`} />
           </span>
         )}
+        {/* Badge de destino de impressão */}
+        <span
+          className={`shrink-0 text-[9px] font-bold px-1 py-0.5 rounded tracking-wider ${
+            (category.print_destination ?? 'kitchen') === 'bar'
+              ? isSelected ? 'bg-orange-300/30 text-orange-200' : 'bg-orange-100 text-orange-700'
+              : isSelected ? 'bg-blue-300/30 text-blue-200' : 'bg-blue-100 text-blue-700'
+          }`}
+          title={(category.print_destination ?? 'kitchen') === 'bar' ? 'Garçom / Bar' : 'Cozinha Central'}
+        >
+          {(category.print_destination ?? 'kitchen') === 'bar' ? 'BAR' : 'COZ'}
+        </span>
         <Badge
           variant={isSelected ? 'secondary' : 'outline'}
           className={`ml-auto shrink-0 text-xs h-4 px-1.5 ${isSelected ? 'bg-primary-foreground/20 text-primary-foreground border-0' : ''}`}
@@ -214,6 +229,24 @@ function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete,
         title={category.has_inventory ? 'Estoque ativo — clique para desativar' : 'Ativar controle de estoque nesta categoria'}
       >
         <Boxes className="h-3.5 w-3.5" />
+      </button>
+
+      {/* Toggle destino de impressão — aparece no hover */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          const next = (category.print_destination ?? 'kitchen') === 'kitchen' ? 'bar' : 'kitchen';
+          onChangeDest(category.id, next);
+        }}
+        className={`p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
+          (category.print_destination ?? 'kitchen') === 'bar'
+            ? isSelected ? 'text-orange-300/80 hover:text-orange-200' : 'text-orange-500 hover:text-orange-600'
+            : isSelected ? 'text-blue-300/80 hover:text-blue-200' : 'text-blue-400/60 hover:text-blue-600'
+        }`}
+        title={(category.print_destination ?? 'kitchen') === 'bar' ? 'Destino: Bar — clique para mudar para Cozinha' : 'Destino: Cozinha — clique para mudar para Bar'}
+      >
+        <Printer className="h-3.5 w-3.5" />
       </button>
 
       <button
@@ -368,6 +401,7 @@ export default function AdminMenu() {
   const [categoryFormName, setCategoryFormName] = useState('');
   const [categoryFormType, setCategoryFormType] = useState<string>(CATEGORY_TYPES[0].id);
   const [categoryFormInventory, setCategoryFormInventory] = useState(false);
+  const [categoryFormDest, setCategoryFormDest] = useState<'kitchen' | 'bar'>('kitchen');
 
   // Config modal (Pizza / Marmita)
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -807,6 +841,7 @@ export default function AdminMenu() {
         restaurant_id: restaurantId, name, order_index: categories.length,
         is_pizza: preset.is_pizza, is_marmita: preset.is_marmita,
         has_inventory: categoryFormInventory,
+        print_destination: categoryFormDest,
         extra_field: preset.extra_field, extra_label: preset.extra_label, extra_placeholder: preset.extra_placeholder,
       });
       if (error) throw error;
@@ -814,6 +849,7 @@ export default function AdminMenu() {
       setCategoryFormName('');
       setCategoryFormType(CATEGORY_TYPES[0].id);
       setCategoryFormInventory(false);
+      setCategoryFormDest('kitchen');
       await loadCategoriesAndSubcategories();
       toast({ title: 'Categoria adicionada!' });
     } catch (e) { toast({ title: 'Erro ao adicionar categoria', variant: 'destructive' }); }
@@ -857,6 +893,21 @@ export default function AdminMenu() {
       });
     } catch {
       toast({ title: 'Erro ao atualizar categoria', variant: 'destructive' });
+    }
+  };
+
+  const handleChangeCategoryDest = async (categoryId: string, dest: 'kitchen' | 'bar') => {
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .update({ print_destination: dest })
+        .eq('id', categoryId)
+        .eq('restaurant_id', restaurantId!);
+      if (error) throw error;
+      await loadCategoriesAndSubcategories();
+      toast({ title: dest === 'kitchen' ? 'Destino: Cozinha Central' : 'Destino: Garçom / Bar' });
+    } catch {
+      toast({ title: 'Erro ao atualizar destino de impressão', variant: 'destructive' });
     }
   };
 
@@ -1103,6 +1154,7 @@ export default function AdminMenu() {
                         onSelect={() => setSelectedCategoryId(cat.id)}
                         onDelete={() => handleDeleteCategory(cat)}
                         onToggleInventory={handleToggleCategoryInventory}
+                        onChangeDest={handleChangeCategoryDest}
                       />
                     ))}
                   </SortableContext>
@@ -1589,6 +1641,40 @@ export default function AdminMenu() {
                 </SelectContent>
               </Select>
             </div>
+            {/* Destino de Impressão */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Printer className="h-3.5 w-3.5 text-muted-foreground" />
+                Destino de Impressão
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCategoryFormDest('kitchen')}
+                  className={`flex items-center gap-2 rounded-lg border p-3 text-sm font-medium transition-all ${
+                    categoryFormDest === 'kitchen'
+                      ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-950/40 dark:text-blue-300'
+                      : 'border-border hover:bg-muted/40 text-foreground'
+                  }`}
+                >
+                  <ChefHat className="h-4 w-4 flex-shrink-0" />
+                  <span>Cozinha Central</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryFormDest('bar')}
+                  className={`flex items-center gap-2 rounded-lg border p-3 text-sm font-medium transition-all ${
+                    categoryFormDest === 'bar'
+                      ? 'border-orange-400 bg-orange-50 text-orange-700 dark:border-orange-600 dark:bg-orange-950/40 dark:text-orange-300'
+                      : 'border-border hover:bg-muted/40 text-foreground'
+                  }`}
+                >
+                  <Wine className="h-4 w-4 flex-shrink-0" />
+                  <span>Garçom / Bar</span>
+                </button>
+              </div>
+            </div>
+
             {/* Toggle de estoque */}
             <div className={`flex items-start gap-3 rounded-lg border p-3.5 transition-colors cursor-pointer ${categoryFormInventory ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/40'}`}
               onClick={() => setCategoryFormInventory((v) => !v)}>

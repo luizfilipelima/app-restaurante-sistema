@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { useAdminTranslation } from '@/hooks/useAdminTranslation';
 import { useRestaurant } from '@/hooks/queries';
 import { DatabaseOrder, OrderStatus } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -22,10 +23,12 @@ import {
 import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff } from 'lucide-react';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { ROLES_CANCEL_ORDER } from '@/hooks/useUserRole';
-import { useCouriers, useOrders, usePrintSettings } from '@/hooks/queries';
+import { useCouriers, useOrders, usePrintSettings, useProductPrintDestinations } from '@/hooks/queries';
 import { isUUID } from '@/hooks/useResolveRestaurantId';
 import { usePrinter } from '@/hooks/usePrinter';
+import type { DualReceiptSlot } from '@/hooks/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
+import type { PrintDestination } from '@/types';
 import { CompletedOrdersView } from '@/components/orders/CompletedOrdersView';
 import {
   Select,
@@ -124,6 +127,7 @@ type OrdersView = 'kanban' | 'completed';
 export default function AdminOrders() {
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
+  const { t } = useAdminTranslation();
   const queryClient = useQueryClient();
   const { data: ordersData, isLoading: loading, refetch: refetchOrders } = useOrders({
     restaurantId,
@@ -144,7 +148,42 @@ export default function AdminOrders() {
   const [dispatchOrder, setDispatchOrder] = useState<DatabaseOrder | null>(null);
   const [selectedCourierForDispatch, setSelectedCourierForDispatch] = useState<string>('');
   const { couriers } = useCouriers(restaurantId);
-  const { printOrder, receiptData } = usePrinter();
+  const { printOrder, receiptData, secondReceiptData } = usePrinter();
+  const { data: productDestMap } = useProductPrintDestinations(restaurantId);
+
+  /**
+   * Cria os slots de impressão dual (Cozinha / Bar) para um pedido.
+   * Retorna undefined se não há categorias configuradas (imprime tudo de uma vez).
+   */
+  const buildDualSlots = useCallback(
+    (order: DatabaseOrder): [DualReceiptSlot, DualReceiptSlot] | [DualReceiptSlot] | undefined => {
+      if (!productDestMap || productDestMap.size === 0) return undefined;
+      const items = order.order_items ?? [];
+      const kitchenIds: string[] = [];
+      const barIds: string[] = [];
+      for (const item of items) {
+        const dest: PrintDestination = (item.product_id ? productDestMap.get(item.product_id) : undefined) ?? 'kitchen';
+        if (dest === 'bar') barIds.push(item.id);
+        else kitchenIds.push(item.id);
+      }
+      const hasKitchen = kitchenIds.length > 0;
+      const hasBar = barIds.length > 0;
+      const kitchenLabel = t('printDest.kitchenReceipt') || '*** COZINHA CENTRAL ***';
+      const barLabel = t('printDest.barReceipt') || '*** GARÇOM / BAR ***';
+      if (hasKitchen && hasBar) {
+        return [
+          { filteredItemIds: kitchenIds, destinationLabel: kitchenLabel },
+          { filteredItemIds: barIds, destinationLabel: barLabel },
+        ];
+      } else if (hasBar) {
+        return [{ filteredItemIds: barIds, destinationLabel: barLabel }];
+      } else if (hasKitchen) {
+        return [{ filteredItemIds: kitchenIds, destinationLabel: kitchenLabel }];
+      }
+      return undefined;
+    },
+    [productDestMap, t]
+  );
 
   const handleRealtimeOrder = useCallback(async (payload: any) => {
     queryClient.invalidateQueries({ queryKey: ['orders', restaurantId] });
@@ -166,19 +205,21 @@ export default function AdminOrders() {
           .eq('id', orderId)
           .single();
         if (!error && fullOrder) {
+          const order = fullOrder as DatabaseOrder;
           printOrder(
-            fullOrder as DatabaseOrder,
+            order,
             settings.name,
             settings.print_paper_width || '80mm',
             currency,
-            settings.print_settings_by_sector
+            settings.print_settings_by_sector,
+            buildDualSlots(order)
           );
         }
       } catch (e) {
         console.error('Erro ao imprimir pedido novo:', e);
       }
     }
-  }, [restaurantId, queryClient, printOrder, currency, refetchOrders]);
+  }, [restaurantId, queryClient, printOrder, currency, refetchOrders, buildDualSlots]);
 
   useEffect(() => {
     // Só subscreve quando temos UUID válido (evita undefined/slug malformado na montagem)
@@ -380,12 +421,13 @@ export default function AdminOrders() {
   const handlePrintOrder = (order: DatabaseOrder) => {
     const name = printSettings?.name ?? '';
     const width = printSettings?.print_paper_width ?? '80mm';
-    printOrder(order, name, width, currency, printSettings?.print_settings_by_sector);
+    printOrder(order, name, width, currency, printSettings?.print_settings_by_sector, buildDualSlots(order));
   };
 
   return (
     <>
       <OrderReceipt data={receiptData} />
+      <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />
       <div className="space-y-6 min-w-0">
         {/* ── Cabeçalho ── */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -524,6 +566,18 @@ export default function AdminOrders() {
                         return `https://wa.me/${phone}?text=${msg}`;
                       };
 
+                      // ── Badges COZ / BAR ──
+                      const orderDestinations = (() => {
+                        if (!productDestMap || productDestMap.size === 0) return { hasKitchen: false, hasBar: false };
+                        const items2 = order.order_items ?? [];
+                        let hK = false; let hB = false;
+                        for (const it of items2) {
+                          const d = (it.product_id ? productDestMap.get(it.product_id) : undefined) ?? 'kitchen';
+                          if (d === 'bar') hB = true; else hK = true;
+                        }
+                        return { hasKitchen: hK, hasBar: hB };
+                      })();
+
                       return (
                         <div
                           key={order.id}
@@ -535,7 +589,7 @@ export default function AdminOrders() {
                           <div className="pl-3 pr-2.5 pt-2.5 pb-3 space-y-2.5">
                             {/* ── Linha 1: ID + Badge + Ações ── */}
                             <div className="flex items-center justify-between gap-1 min-w-0">
-                              <div className="flex items-center gap-1.5 min-w-0">
+                              <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                                 <span className="text-xs font-mono font-bold text-foreground">
                                   #{order.order_source === 'comanda' && order.virtual_comandas?.short_code
                                     ? order.virtual_comandas.short_code
@@ -552,6 +606,17 @@ export default function AdminOrders() {
                                 ) : (
                                   <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-cyan-100 text-cyan-700">
                                     <Bike className="h-2.5 w-2.5" /> Delivery
+                                  </span>
+                                )}
+                                {/* ── Destinos de impressão ── */}
+                                {orderDestinations.hasKitchen && (
+                                  <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 tracking-wider">
+                                    COZ
+                                  </span>
+                                )}
+                                {orderDestinations.hasBar && (
+                                  <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 tracking-wider">
+                                    BAR
                                   </span>
                                 )}
                               </div>

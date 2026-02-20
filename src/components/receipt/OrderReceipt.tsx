@@ -23,6 +23,10 @@ export interface OrderReceiptData {
   currency?: CurrencyCode;
   /** Config de impressão por setor (taxa de garçom). */
   sectorPrintSettings?: PrintSettingsBySector;
+  /** Título do destino (ex: "COZINHA CENTRAL"). Quando definido, exibe cabeçalho de destino. */
+  destinationLabel?: string;
+  /** IDs dos itens a exibir neste cupom. Quando vazio/undefined exibe todos. */
+  filteredItemIds?: string[];
 }
 
 interface OrderReceiptProps {
@@ -36,8 +40,11 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
     return <div className={className} aria-hidden />;
   }
 
-  const { order, restaurantName, paperWidth, currency = 'BRL', sectorPrintSettings } = data;
-  const items = order.order_items ?? [];
+  const { order, restaurantName, paperWidth, currency = 'BRL', sectorPrintSettings, destinationLabel, filteredItemIds } = data;
+  const allItems = order.order_items ?? [];
+  const items = filteredItemIds && filteredItemIds.length > 0
+    ? allItems.filter((it) => filteredItemIds.includes(it.id))
+    : allItems;
   const subtotal = Number(order.subtotal);
   const deliveryFee = Number(order.delivery_fee ?? 0);
   let total = Number(order.total);
@@ -72,6 +79,9 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
       <div className="receipt-inner">
         <header className="receipt-header">
           <h1 className="receipt-title">{restaurantName}</h1>
+          {destinationLabel && (
+            <div className="receipt-destination-label">{destinationLabel}</div>
+          )}
         </header>
 
         <div className="receipt-line">{SEP}</div>
