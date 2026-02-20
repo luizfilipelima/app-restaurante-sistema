@@ -39,6 +39,7 @@ import {
   CreditCard,
   ScanBarcode,
   Users,
+  Repeat,
   Boxes,
   ConciergeBell,
   Instagram,
@@ -708,6 +709,17 @@ export default function AdminLayout({
                 </div>
               )}
 
+              {/* Câmbio — atalho para configurações de câmbio */}
+              {canManageUsers && (
+                <Link
+                  to={`${base}/settings#cambio`}
+                  title="Câmbio"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-orange-50 hover:text-[#F87116] hover:border-orange-200 transition-colors"
+                >
+                  <Repeat className="h-4 w-4" />
+                </Link>
+              )}
+
               {/* Dados do Restaurante — somente proprietário/admin */}
               {canManageUsers && (
                 <Link
@@ -789,6 +801,16 @@ export default function AdminLayout({
                   <BookOpen className="h-3.5 w-3.5" />
                   <span className="hidden xs:inline">Cardápio</span>
                 </a>
+              )}
+              {/* Câmbio — mobile */}
+              {canManageUsers && (
+                <Link
+                  to={`${base}/settings#cambio`}
+                  title="Câmbio"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-orange-50 hover:text-[#F87116] hover:border-orange-200 transition-colors"
+                >
+                  <Repeat className="h-3.5 w-3.5" />
+                </Link>
               )}
               {/* Gestão de Usuários — mobile, proprietário ou super-admin */}
               {(isSuperAdminView || canManageUsers) && (

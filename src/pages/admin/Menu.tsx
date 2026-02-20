@@ -1,12 +1,13 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
 import {
   convertPriceToStorage,
   convertPriceFromStorage,
   formatPriceInputPyG,
   getCurrencySymbol,
   formatPrice,
+  convertBetweenCurrencies,
 } from '@/lib/priceHelper';
 import {
   Product,
@@ -126,12 +127,15 @@ const getCategoryConfigFromCategory = (cat: Category | null) => {
   };
 };
 
+type CostCurrencyCode = 'BRL' | 'PYG' | 'ARS';
+
 const formDefaults = {
   name: '',
   categoryId: '' as string,
   description: '',
   price: '',
   priceCost: '',
+  costCurrency: 'BRL' as CostCurrencyCode,
   is_pizza: false,
   is_marmita: false,
   image_url: '',
@@ -226,6 +230,7 @@ function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete 
 interface CentralProductRowProps {
   product: Product;
   currency: ReturnType<typeof useAdminCurrency>;
+  exchangeRates: { pyg_per_brl?: number; ars_per_brl?: number };
   showInventory: boolean;
   onEdit: (p: Product) => void;
   onDuplicate: (p: Product) => void;
@@ -233,13 +238,17 @@ interface CentralProductRowProps {
   onToggleActive: (id: string, isActive: boolean) => void;
 }
 
-function CentralProductRow({ product, currency, showInventory, onEdit, onDuplicate, onDelete, onToggleActive }: CentralProductRowProps) {
+function CentralProductRow({ product, currency, exchangeRates, showInventory, onEdit, onDuplicate, onDelete, onToggleActive }: CentralProductRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
 
   const salePrice = Number(product.price_sale || product.price);
-  const costPrice = product.price_cost ? Number(product.price_cost) : null;
-  const margin = costPrice && salePrice > 0 ? ((salePrice - costPrice) / salePrice) * 100 : null;
+  const costCurrency = (product.cost_currency ?? currency) as CostCurrencyCode;
+  const costPriceRaw = product.price_cost ? Number(product.price_cost) : null;
+  const costPriceInBase = costPriceRaw != null && costCurrency !== currency
+    ? convertBetweenCurrencies(costPriceRaw, costCurrency, currency, exchangeRates)
+    : costPriceRaw;
+  const margin = costPriceInBase != null && salePrice > 0 ? ((salePrice - costPriceInBase) / salePrice) * 100 : null;
 
   const marginColor = margin === null
     ? ''
@@ -296,7 +305,7 @@ function CentralProductRow({ product, currency, showInventory, onEdit, onDuplica
       {showInventory && (
         <>
           <TableCell className="whitespace-nowrap tabular-nums text-sm text-muted-foreground">
-            {costPrice ? formatPrice(costPrice, currency) : <span className="text-muted-foreground/50">—</span>}
+            {costPriceInBase != null ? formatPrice(costPriceInBase, currency) : <span className="text-muted-foreground/50">—</span>}
           </TableCell>
           <TableCell className="whitespace-nowrap text-sm">
             {margin !== null ? (
@@ -337,7 +346,9 @@ function CentralProductRow({ product, currency, showInventory, onEdit, onDuplica
 
 export default function AdminMenu() {
   const restaurantId = useAdminRestaurantId();
+  const { restaurant: ctxRestaurant } = useAdminRestaurant();
   const currency = useAdminCurrency();
+  const exchangeRates = ctxRestaurant?.exchange_rates ?? { pyg_per_brl: 3600, ars_per_brl: 1150 };
 
   // Core data
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -616,6 +627,7 @@ export default function AdminMenu() {
       is_marmita: cat?.is_marmita ?? false,
       subcategoryId: null,
       printDest: (cat?.print_destination ?? 'kitchen') as 'kitchen' | 'bar',
+      costCurrency: currency as CostCurrencyCode,
     });
     setModalOpen(true);
   };
@@ -661,7 +673,8 @@ export default function AdminMenu() {
       categoryId: cat?.id ?? '',
       description: description?.trim() || '',
       price: convertPriceFromStorage(Number(product.price), currency),
-      priceCost: product.price_cost ? convertPriceFromStorage(Number(product.price_cost), currency) : '',
+      priceCost: product.price_cost ? convertPriceFromStorage(Number(product.price_cost), (product.cost_currency ?? currency) as CostCurrencyCode) : '',
+      costCurrency: (product.cost_currency ?? currency) as CostCurrencyCode,
       is_pizza: cat?.is_pizza ?? false,
       is_marmita: cat?.is_marmita ?? false,
       image_url: product.image_url || '',
@@ -707,7 +720,8 @@ export default function AdminMenu() {
       : form.description.trim() || null;
     setSaving(true);
     try {
-      const costPrice = form.priceCost.trim() ? convertPriceToStorage(form.priceCost, currency) : null;
+      const costCurrency = form.costCurrency;
+      const costPrice = form.priceCost.trim() ? convertPriceToStorage(form.priceCost, costCurrency) : null;
       const payload = {
         restaurant_id: restaurantId,
         name,
@@ -715,6 +729,7 @@ export default function AdminMenu() {
         description: descriptionFinal,
         price,
         price_cost: costPrice,
+        cost_currency: costPrice != null ? costCurrency : null,
         is_pizza: cfg.isPizza,
         is_marmita: cfg.isMarmita,
         image_url: form.image_url.trim() || null,
@@ -802,7 +817,7 @@ export default function AdminMenu() {
         .insert({
           restaurant_id: product.restaurant_id, category: product.category, subcategory_id: product.subcategory_id ?? null,
           name: `${product.name} (Cópia)`, description: product.description ?? null, price: product.price,
-          price_sale: product.price_sale ?? null, price_cost: product.price_cost ?? null, image_url: product.image_url ?? null,
+          price_sale: product.price_sale ?? null, price_cost: product.price_cost ?? null, cost_currency: product.cost_currency ?? null, image_url: product.image_url ?? null,
           is_pizza: product.is_pizza, is_marmita: product.is_marmita ?? false, is_active: product.is_active, order_index: nextOrder ?? 0,
         })
         .select('*').single();
@@ -1259,6 +1274,7 @@ export default function AdminMenu() {
                                     key={product.id}
                                     product={product}
                                     currency={currency}
+                                    exchangeRates={exchangeRates}
                                     showInventory={showInventory}
                                     onEdit={openEdit}
                                     onDuplicate={duplicateProduct}
@@ -1448,9 +1464,12 @@ export default function AdminMenu() {
             {/* ── BLOCO 3: Precificação ── */}
             {(() => {
               const saleVal = convertPriceToStorage(form.price, currency);
-              const costVal = form.priceCost.trim() ? convertPriceToStorage(form.priceCost, currency) : null;
-              const margin = costVal && !isNaN(costVal) && saleVal > 0
-                ? ((saleVal - costVal) / saleVal) * 100
+              const costVal = form.priceCost.trim() ? convertPriceToStorage(form.priceCost, form.costCurrency) : null;
+              const costValInBase = costVal != null && form.costCurrency !== currency
+                ? convertBetweenCurrencies(costVal, form.costCurrency, currency, exchangeRates)
+                : costVal;
+              const margin = costValInBase != null && !isNaN(costValInBase) && saleVal > 0
+                ? ((saleVal - costValInBase) / saleVal) * 100
                 : null;
               const marginColor = margin === null ? 'text-muted-foreground'
                 : margin >= 40 ? 'text-emerald-600 dark:text-emerald-400'
@@ -1487,16 +1506,31 @@ export default function AdminMenu() {
 
                     {/* Custo */}
                     <div className="space-y-1.5 col-span-1">
-                      <Label htmlFor="p-cost" className="text-xs text-muted-foreground">
-                        Custo ({getCurrencySymbol(currency)})
-                      </Label>
+                      <div className="flex items-center justify-between gap-2">
+                        <Label htmlFor="p-cost" className="text-xs text-muted-foreground">
+                          Custo ({getCurrencySymbol(form.costCurrency)})
+                        </Label>
+                        <Select
+                          value={form.costCurrency}
+                          onValueChange={(v) => setForm((f) => ({ ...f, costCurrency: v as CostCurrencyCode }))}
+                        >
+                          <SelectTrigger className="h-7 w-[90px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="BRL">R$ Real</SelectItem>
+                            <SelectItem value="PYG">Gs. Guaraní</SelectItem>
+                            <SelectItem value="ARS">ARS Peso</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <Input
                         id="p-cost"
                         type="text"
                         inputMode="decimal"
                         value={form.priceCost}
-                        onChange={(e) => setForm((f) => ({ ...f, priceCost: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))}
-                        placeholder={currency === 'PYG' ? '15.000' : '0,00'}
+                        onChange={(e) => setForm((f) => ({ ...f, priceCost: form.costCurrency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))}
+                        placeholder={form.costCurrency === 'PYG' ? '15.000' : '0,00'}
                         className="tabular-nums"
                       />
                     </div>

@@ -28,6 +28,7 @@ import { useRestaurantStore } from '@/store/restaurantStore';
 import { useTableOrderStore } from '@/store/tableOrderStore';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours } from '@/lib/utils';
+import { convertBetweenCurrencies, type CurrencyCode } from '@/lib/priceHelper';
 import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
@@ -55,7 +56,18 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     useCartStore();
   const { t } = useTranslation();
   const { currentRestaurant } = useRestaurantStore();
-  const currency = (currentRestaurant as { currency?: 'BRL' | 'PYG' })?.currency === 'PYG' ? 'PYG' : 'BRL';
+  const rawCurrency = (currentRestaurant as { currency?: string })?.currency;
+  const baseCurrency: CurrencyCode = ['BRL', 'PYG', 'ARS', 'USD'].includes(rawCurrency || '') ? (rawCurrency as CurrencyCode) : 'BRL';
+  const paymentCurrencies: CurrencyCode[] = (() => {
+    const arr = (currentRestaurant as { payment_currencies?: string[] })?.payment_currencies;
+    if (!Array.isArray(arr) || arr.length === 0) return [baseCurrency];
+    return arr.filter((c): c is CurrencyCode => ['BRL', 'PYG', 'ARS', 'USD'].includes(c));
+  })();
+  const exchangeRates = (currentRestaurant as { exchange_rates?: { pyg_per_brl?: number; ars_per_brl?: number } })?.exchange_rates ?? { pyg_per_brl: 3600, ars_per_brl: 1150 };
+  const [paymentCurrency, setPaymentCurrency] = useState<CurrencyCode>(baseCurrency);
+  const displayCurrency = paymentCurrencies.includes(paymentCurrency) ? paymentCurrency : baseCurrency;
+  const convertForDisplay = (value: number) =>
+    displayCurrency === baseCurrency ? value : convertBetweenCurrencies(value, baseCurrency, displayCurrency, exchangeRates);
 
   const [loading, setLoading] = useState(false);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
@@ -356,7 +368,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             i.unitPrice * i.quantity +
             (i.pizzaEdgePrice ?? 0) * i.quantity +
             (i.pizzaDoughPrice ?? 0) * i.quantity;
-          return `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''} — ${formatCurrency(itemTotal, currency)}`;
+          return `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''} — ${formatCurrency(itemTotal, baseCurrency)}`;
         })
         .join('\n');
 
@@ -372,9 +384,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       const trocoRaw = paymentMethod === PaymentMethod.CASH && changeFor
         ? changeFor.replace(/\D/g, '')
         : '';
-      const trocoFormatted = trocoRaw ? formatCurrency(parseInt(trocoRaw, 10), currency) : '';
+      const trocoFormatted = trocoRaw ? formatCurrency(parseInt(trocoRaw, 10), baseCurrency) : '';
       const paymentLabel = paymentMethod === 'pix' ? 'PIX' : paymentMethod === 'card' ? 'Cartão na entrega' : 'Dinheiro';
-      const taxaLine = deliveryFee > 0 ? `Taxa entrega: ${formatCurrency(deliveryFee, currency)}` : '';
+      const taxaLine = deliveryFee > 0 ? `Taxa entrega: ${formatCurrency(deliveryFee, baseCurrency)}` : '';
 
       const restaurantTemplates = (currentRestaurant as { whatsapp_templates?: Record<string, string> | null })?.whatsapp_templates;
       const message = processTemplate(
@@ -388,9 +400,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           detalhes_endereco: deliveryType === DeliveryType.DELIVERY ? (addressDetails?.trim() ?? '') : '',
           pagamento:         paymentLabel,
           troco:             trocoFormatted,
-          subtotal:          formatCurrency(subtotal, currency),
+          subtotal:          formatCurrency(subtotal, baseCurrency),
           taxa_entrega:      taxaLine,
-          total:             formatCurrency(total, currency),
+          total:             formatCurrency(total, baseCurrency),
           itens:             itemsText,
           observacoes:       notes?.trim() ?? '',
         },
@@ -529,9 +541,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     <p className="text-xs text-orange-500 mt-0.5 italic line-clamp-1">Obs: {item.observations}</p>
                   )}
                 </div>
-                {!isTableOrder && (
-                  <span className="font-bold text-slate-700 text-sm flex-shrink-0">{formatCurrency(item.unitPrice * item.quantity, currency)}</span>
-                )}
+{!isTableOrder && (
+                <span className="font-bold text-slate-700 text-sm flex-shrink-0">{formatCurrency(convertForDisplay(item.unitPrice * item.quantity), displayCurrency)}</span>
+              )}
                 <button
                   onClick={() => updateQuantity(index, 0)}
                   className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 active:scale-95 transition-all touch-manipulation flex-shrink-0"
@@ -628,7 +640,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     <SelectContent>
                       {zones.map((zone) => (
                         <SelectItem key={zone.id} value={zone.id} className="text-sm">
-                          {zone.location_name} ({formatCurrency(zone.fee, currency)})
+                          {zone.location_name} ({formatCurrency(convertForDisplay(zone.fee), displayCurrency)})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -744,7 +756,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 </div>
                 {paymentMethod === PaymentMethod.CASH && (
                   <div className="pl-7">
-                    <Label className="text-xs text-slate-500">{t('checkout.changeFor')} ({currency === 'PYG' ? t('checkout.changeForGuarani') : t('checkout.changeForReal')})</Label>
+                    <Label className="text-xs text-slate-500">{t('checkout.changeFor')} ({displayCurrency === 'PYG' ? t('checkout.changeForGuarani') : displayCurrency === 'ARS' ? 'Peso Argentino' : t('checkout.changeForReal')})</Label>
                     <Input 
                       placeholder="Ex: 50.000" 
                       value={changeFor}
@@ -797,22 +809,42 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
         )}
 
+        {/* Alternador de moeda (quando há mais de uma opção) */}
+        {!isTableOrder && paymentCurrencies.length > 1 && (
+          <div className="flex flex-wrap gap-1.5 p-1.5 bg-slate-100 rounded-xl">
+            {paymentCurrencies.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setPaymentCurrency(c)}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all touch-manipulation active:scale-95 ${
+                  displayCurrency === c
+                    ? 'bg-white text-orange-600 shadow-sm ring-1 ring-orange-200'
+                    : 'text-slate-500 hover:bg-white/60'
+                }`}
+              >
+                {c === 'BRL' ? 'R$ Real' : c === 'PYG' ? 'Gs. Guaraní' : 'ARS Peso'}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Resumo inline */}
         {!isTableOrder && (
           <div className="bg-white border border-slate-100 rounded-2xl shadow-sm px-4 py-3.5 space-y-2">
             <div className="flex justify-between items-center text-sm">
               <span className="text-slate-500">{t('checkout.subtotal')}</span>
-              <span className="font-semibold text-slate-900">{formatCurrency(subtotal, currency)}</span>
+              <span className="font-semibold text-slate-900">{formatCurrency(convertForDisplay(subtotal), displayCurrency)}</span>
             </div>
             {deliveryType === DeliveryType.DELIVERY && (
               <div className="flex justify-between items-center text-sm">
                 <span className="text-slate-500">{t('checkout.deliveryFee')}</span>
-                <span className="font-semibold text-red-500">{formatCurrency(deliveryFee, currency)}</span>
+                <span className="font-semibold text-red-500">{formatCurrency(convertForDisplay(deliveryFee), displayCurrency)}</span>
               </div>
             )}
             <div className="flex justify-between items-center font-bold border-t border-slate-100 pt-2.5">
               <span className="text-slate-900">{t('checkout.total')}</span>
-              <span className="text-lg text-slate-900">{formatCurrency(total, currency)}</span>
+              <span className="text-lg text-slate-900">{formatCurrency(convertForDisplay(total), displayCurrency)}</span>
             </div>
           </div>
         )}
@@ -828,7 +860,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           {!isTableOrder && (
             <div className="flex flex-col min-w-0">
               <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide leading-none">{t('checkout.total')}</span>
-              <span className="text-lg font-bold text-slate-900 leading-snug">{formatCurrency(total, currency)}</span>
+              <span className="text-lg font-bold text-slate-900 leading-snug">{formatCurrency(convertForDisplay(total), displayCurrency)}</span>
             </div>
           )}
           <Button

@@ -2,13 +2,14 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabase';
-import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
 import {
   convertPriceToStorage,
   convertPriceFromStorage,
   formatPriceInputPyG,
   getCurrencySymbol,
   formatPrice,
+  convertBetweenCurrencies,
 } from '@/lib/priceHelper';
 import { Category, Product, InventoryItem, InventoryMovement } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -146,20 +147,25 @@ function StatusBadge({ item }: { item: InventoryItem | undefined }) {
 interface ProductRowProps {
   product: ProductWithInventory;
   currency: ReturnType<typeof useAdminCurrency>;
+  exchangeRates: { pyg_per_brl?: number; ars_per_brl?: number };
   onEdit: (p: ProductWithInventory) => void;
   onQuickAdjust: (p: ProductWithInventory, delta: number) => void;
   onHistory: (p: ProductWithInventory) => void;
   onRegister: (p: ProductWithInventory) => void;
 }
 
-function ProductRow({ product, currency, onEdit, onQuickAdjust, onHistory, onRegister }: ProductRowProps) {
+function ProductRow({ product, currency, exchangeRates, onEdit, onQuickAdjust, onHistory, onRegister }: ProductRowProps) {
   const inv = product.inventoryItem;
   const status = getInventoryStatus(inv);
   const days = inv ? getDaysUntilExpiry(inv.expiry_date) : null;
 
   const salePrice = inv?.sale_price && inv.sale_price > 0 ? inv.sale_price : Number(product.price_sale || product.price);
-  const costPrice = inv?.cost_price && inv.cost_price > 0 ? inv.cost_price : (product.price_cost ? Number(product.price_cost) : null);
-  const margin = costPrice && salePrice > 0 ? ((salePrice - costPrice) / salePrice) * 100 : null;
+  const costPriceRaw = inv?.cost_price && inv.cost_price > 0 ? inv.cost_price : (product.price_cost ? Number(product.price_cost) : null);
+  const costCurrency = (inv?.cost_currency ?? product.cost_currency ?? currency) as 'BRL' | 'PYG' | 'ARS';
+  const costPrice = costPriceRaw != null && costCurrency !== currency
+    ? convertBetweenCurrencies(costPriceRaw, costCurrency, currency, exchangeRates)
+    : costPriceRaw;
+  const margin = costPrice != null && salePrice > 0 ? ((salePrice - costPrice) / salePrice) * 100 : null;
 
   const marginColor = margin === null ? ''
     : margin >= 40 ? 'text-emerald-600'
@@ -204,7 +210,7 @@ function ProductRow({ product, currency, onEdit, onQuickAdjust, onHistory, onReg
 
       {/* Custo */}
       <TableCell className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">
-        {costPrice ? formatPrice(costPrice, currency) : <span className="text-muted-foreground/40">—</span>}
+        {costPrice != null ? formatPrice(costPrice, currency) : <span className="text-muted-foreground/40">—</span>}
       </TableCell>
 
       {/* Margem */}
@@ -340,7 +346,9 @@ function EmptyInventoryState({
 
 export default function AdminInventory() {
   const restaurantId = useAdminRestaurantId();
+  const { restaurant: ctxRestaurant } = useAdminRestaurant();
   const currency = useAdminCurrency();
+  const exchangeRates = ctxRestaurant?.exchange_rates ?? { pyg_per_brl: 3600, ars_per_brl: 1150 };
 
   // Dados
   const [categories, setCategories] = useState<Category[]>([]);
@@ -362,6 +370,7 @@ export default function AdminInventory() {
     min_quantity: '5',
     unit: 'un',
     cost_price: '',
+    cost_currency: 'BRL' as 'BRL' | 'PYG' | 'ARS',
     sale_price: '',
     expiry_date: '',
     notes: '',
@@ -435,8 +444,12 @@ export default function AdminInventory() {
     return allInventoryProducts.map((p) => {
       const inv = p.inventoryItem;
       const saleP = inv?.sale_price && inv.sale_price > 0 ? inv.sale_price : Number(p.price_sale || p.price);
-      const costP = inv?.cost_price && inv.cost_price > 0 ? inv.cost_price : (p.price_cost ? Number(p.price_cost) : null);
-      const margin = costP && saleP > 0 ? ((saleP - costP) / saleP) * 100 : null;
+      const costPRaw = inv?.cost_price && inv.cost_price > 0 ? inv.cost_price : (p.price_cost ? Number(p.price_cost) : null);
+      const costCur = (inv?.cost_currency ?? p.cost_currency ?? currency) as 'BRL' | 'PYG' | 'ARS';
+      const costP = costPRaw != null && costCur !== currency
+        ? convertBetweenCurrencies(costPRaw, costCur, currency, exchangeRates)
+        : costPRaw;
+      const margin = costP != null && saleP > 0 ? ((saleP - costP) / saleP) * 100 : null;
       return {
         Produto:            p.name,
         Categoria:          p.category,
@@ -560,11 +573,13 @@ export default function AdminInventory() {
   const openEdit = (product: ProductWithInventory) => {
     setEditProduct(product);
     const inv = product.inventoryItem;
+    const costCur = (inv?.cost_currency ?? product.cost_currency ?? currency) as 'BRL' | 'PYG' | 'ARS';
     setForm({
       quantity: inv ? String(Number(inv.quantity)) : '0',
       min_quantity: inv ? String(Number(inv.min_quantity)) : '5',
       unit: inv?.unit ?? 'un',
-      cost_price: inv?.cost_price ? convertPriceFromStorage(inv.cost_price, currency) : '',
+      cost_price: inv?.cost_price ? convertPriceFromStorage(inv.cost_price, costCur) : '',
+      cost_currency: costCur,
       sale_price: inv?.sale_price ? convertPriceFromStorage(inv.sale_price, currency) : '',
       expiry_date: inv?.expiry_date ?? '',
       notes: inv?.notes ?? '',
@@ -582,7 +597,8 @@ export default function AdminInventory() {
         quantity: parseFloat(form.quantity.replace(',', '.')) || 0,
         min_quantity: parseFloat(form.min_quantity.replace(',', '.')) || 0,
         unit: form.unit || 'un',
-        cost_price: form.cost_price ? convertPriceToStorage(form.cost_price, currency) : 0,
+        cost_price: form.cost_price ? convertPriceToStorage(form.cost_price, form.cost_currency) : 0,
+        cost_currency: form.cost_price ? form.cost_currency : null,
         sale_price: form.sale_price ? convertPriceToStorage(form.sale_price, currency) : 0,
         expiry_date: form.expiry_date || null,
         notes: form.notes || null,
@@ -923,6 +939,7 @@ export default function AdminInventory() {
                             key={product.id}
                             product={product}
                             currency={currency}
+                            exchangeRates={exchangeRates}
                             onEdit={openEdit}
                             onQuickAdjust={handleQuickAdjust}
                             onHistory={openHistory}
@@ -1077,16 +1094,31 @@ export default function AdminInventory() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label className="block">Preço de custo ({getCurrencySymbol(currency)})</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="block">Preço de custo ({getCurrencySymbol(form.cost_currency)})</Label>
+                    <Select
+                      value={form.cost_currency}
+                      onValueChange={(v) => setForm((f) => ({ ...f, cost_currency: v as 'BRL' | 'PYG' | 'ARS' }))}
+                    >
+                      <SelectTrigger className="h-7 w-[100px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="BRL">R$ Real</SelectItem>
+                        <SelectItem value="PYG">Gs. Guaraní</SelectItem>
+                        <SelectItem value="ARS">ARS Peso</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <Input
                     type="text"
                     inputMode="decimal"
                     value={form.cost_price}
                     onChange={(e) => setForm((f) => ({
                       ...f,
-                      cost_price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
+                      cost_price: form.cost_currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
                     }))}
-                    placeholder={currency === 'PYG' ? '25.000' : '0,00'}
+                    placeholder={form.cost_currency === 'PYG' ? '25.000' : '0,00'}
                     className="h-10"
                   />
                 </div>
@@ -1106,7 +1138,10 @@ export default function AdminInventory() {
                 </div>
               </div>
               {form.cost_price && form.sale_price && (() => {
-                const cost = convertPriceToStorage(form.cost_price, currency);
+                const costRaw = convertPriceToStorage(form.cost_price, form.cost_currency);
+                const cost = form.cost_currency !== currency
+                  ? convertBetweenCurrencies(costRaw, form.cost_currency, currency, exchangeRates)
+                  : costRaw;
                 const sale = convertPriceToStorage(form.sale_price, currency);
                 const m = sale > 0 ? ((sale - cost) / sale) * 100 : 0;
                 const color = m >= 40 ? 'text-emerald-700 bg-emerald-50 border-emerald-200'

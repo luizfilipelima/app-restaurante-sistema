@@ -101,6 +101,10 @@ export interface Restaurant {
   print_settings_by_sector?: PrintSettingsBySector;
   /** Moeda de exibição dos valores no cardápio */
   currency?: 'BRL' | 'PYG' | 'ARS' | 'USD';
+  /** Cotações para conversão: unidades por 1 BRL (ex: pyg_per_brl: 3600) */
+  exchange_rates?: { pyg_per_brl?: number; ars_per_brl?: number } | null;
+  /** Moedas disponíveis no alternador de pagamento no checkout */
+  payment_currencies?: string[] | null;
   /** Idioma da interface do cardápio público */
   language?: 'pt' | 'es' | 'en';
   /** Templates personalizáveis de mensagens WhatsApp */
@@ -139,6 +143,8 @@ export interface Product {
   price: number;
   price_sale?: number; // Preço de venda (para buffet)
   price_cost?: number; // Custo do produto (para cálculo de CMV)
+  /** Moeda do custo: BRL, PYG ou ARS. Null usa moeda base do restaurante */
+  cost_currency?: 'BRL' | 'PYG' | 'ARS' | null;
   image_url?: string;
   is_pizza: boolean;
   is_marmita?: boolean;
@@ -477,6 +483,8 @@ export interface InventoryItem {
   unit: string;
   cost_price: number;
   sale_price: number;
+  /** Moeda do custo: BRL, PYG ou ARS. Null usa moeda base do restaurante */
+  cost_currency?: 'BRL' | 'PYG' | 'ARS' | null;
   expiry_date?: string | null;
   notes?: string | null;
   created_at: string;

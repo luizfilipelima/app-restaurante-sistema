@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
@@ -22,7 +23,7 @@ import {
   Phone, Globe, ImageIcon, CheckCircle2, XCircle,
   Sun, AlarmClock, X, Wifi, Languages, Store,
   Gift, Star, Trophy, Users, ExternalLink, Link2,
-  MessageCircle, AtSign,
+  MessageCircle, AtSign, Repeat,
 } from 'lucide-react';
 import { useLoyaltyProgram, useSaveLoyaltyProgram, useLoyaltyMetrics, useRestaurant } from '@/hooks/queries';
 import { useCanAccess } from '@/hooks/useUserRole';
@@ -76,6 +77,15 @@ type SectorKey = typeof SECTOR_KEYS[number];
 function defaultSectorSettings(): PrintSettingsBySector {
   const empty: SectorPrintSettings = { waiter_tip_enabled: false, waiter_tip_pct: 10 };
   return SECTOR_KEYS.reduce((acc, k) => ({ ...acc, [k]: { ...empty } }), {} as PrintSettingsBySector);
+}
+
+function parseExchangeRates(raw: unknown): { pyg_per_brl: number; ars_per_brl: number } {
+  if (!raw || typeof raw !== 'object') return { pyg_per_brl: 3600, ars_per_brl: 1150 };
+  const o = raw as Record<string, unknown>;
+  return {
+    pyg_per_brl: Math.max(1, Number(o.pyg_per_brl) || 3600),
+    ars_per_brl: Math.max(1, Number(o.ars_per_brl) || 1150),
+  };
 }
 
 function parseSectorSettings(raw: unknown): PrintSettingsBySector {
@@ -215,6 +225,7 @@ function SaveButton({ saving, onClick, label, savingLabel }: {
 const ROLES_USERS_MANAGEMENT = ['owner', 'restaurant_admin', 'super_admin'] as const;
 
 export default function AdminSettings() {
+  const location = useLocation();
   const restaurantId = useAdminRestaurantId();
   const { t }        = useAdminTranslation();
   const canAccessUsers = useCanAccess([...ROLES_USERS_MANAGEMENT]);
@@ -258,10 +269,18 @@ export default function AdminSettings() {
     print_auto_on_new_order: false,
     print_paper_width:       '80mm' as PrintPaperWidth,
     print_settings_by_sector: defaultSectorSettings(),
+    exchange_rates:          { pyg_per_brl: 3600, ars_per_brl: 1150 },
+    payment_currencies:      ['BRL', 'PYG'] as string[],
   });
 
   const set = <K extends keyof typeof formData>(k: K, v: (typeof formData)[K]) =>
     setFormData(f => ({ ...f, [k]: v }));
+
+  const hashTab = location.hash === '#cambio' ? 'cambio' : null;
+  const [activeTab, setActiveTab] = useState<string>(hashTab || 'perfil');
+  useEffect(() => {
+    if (hashTab) setActiveTab(hashTab);
+  }, [hashTab]);
 
   useEffect(() => {
     if (restaurantId) loadRestaurant();
@@ -320,6 +339,10 @@ export default function AdminSettings() {
         print_auto_on_new_order: !!data.print_auto_on_new_order,
         print_paper_width:       data.print_paper_width === '58mm' ? '58mm' : '80mm',
         print_settings_by_sector: parseSectorSettings(data.print_settings_by_sector),
+        exchange_rates:          parseExchangeRates(data.exchange_rates),
+        payment_currencies:      Array.isArray(data.payment_currencies) && data.payment_currencies.length > 0
+          ? data.payment_currencies
+          : ['BRL', 'PYG'],
       });
     } catch (err) {
       console.error('Erro ao carregar restaurante:', err);
@@ -348,6 +371,8 @@ export default function AdminSettings() {
         print_auto_on_new_order: formData.print_auto_on_new_order,
         print_paper_width:       formData.print_paper_width,
         print_settings_by_sector: formData.print_settings_by_sector,
+        exchange_rates:          formData.exchange_rates,
+        payment_currencies:      formData.payment_currencies,
         updated_at:              new Date().toISOString(),
       }).eq('id', restaurantId);
       if (error) throw error;
@@ -387,7 +412,7 @@ export default function AdminSettings() {
       </div>
 
       {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
-      <Tabs defaultValue="perfil" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* Tab bar — scroll horizontal em mobile, row único em desktop */}
         <div className="relative mb-6">
           <TabsList className="
@@ -401,6 +426,7 @@ export default function AdminSettings() {
               { value: 'contato',      icon: Phone,   label: t('settings.tabs.contact')   },
               { value: 'horarios',     icon: Clock,   label: 'Horários'                   },
               { value: 'impressao',    icon: Printer, label: 'Impressão'                  },
+              { value: 'cambio',       icon: Repeat,  label: 'Câmbio'                     },
               { value: 'fidelidade',   icon: Gift,    label: t('loyalty.tabLabel')        },
               ...(canAccessUsers ? [{ value: 'usuarios', icon: Users, label: t('settings.tabs.users') }] : []),
             ].map(({ value, icon: Icon, label }) => (
@@ -1129,7 +1155,101 @@ export default function AdminSettings() {
         </TabsContent>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            ABA 5 — Fidelidade
+            ABA 5b — Câmbio
+        ══════════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="cambio" className="mt-0 space-y-5" id="cambio">
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                <Repeat className="h-[18px] w-[18px] text-muted-foreground" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Câmbio Inteligente</h2>
+                <p className="text-[11px] text-muted-foreground">
+                  Configure as cotações e moedas exibidas no alternador de pagamento do checkout. Os preços do cardápio serão convertidos automaticamente.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FieldGroup>
+                <Label className="text-xs font-medium">1 BRL = quantos Guaraníes?</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  step={100}
+                  value={formData.exchange_rates.pyg_per_brl}
+                  onChange={(e) => {
+                    const v = Math.max(1, Number(e.target.value) || 3600);
+                    set('exchange_rates', { ...formData.exchange_rates, pyg_per_brl: v });
+                  }}
+                  placeholder="3600"
+                  className="mt-1"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">Gs. por 1 Real</p>
+              </FieldGroup>
+              <FieldGroup>
+                <Label className="text-xs font-medium">1 BRL = quantos Pesos Argentinos?</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  step={10}
+                  value={formData.exchange_rates.ars_per_brl}
+                  onChange={(e) => {
+                    const v = Math.max(1, Number(e.target.value) || 1150);
+                    set('exchange_rates', { ...formData.exchange_rates, ars_per_brl: v });
+                  }}
+                  placeholder="1150"
+                  className="mt-1"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">ARS $ por 1 Real</p>
+              </FieldGroup>
+            </div>
+
+            <FieldGroup>
+              <Label className="text-xs font-medium">Moedas no alternador do checkout</Label>
+              <p className="text-[10px] text-muted-foreground mb-2">
+                Selecione quais moedas o cliente poderá escolher ao pagar
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {CURRENCIES.filter(c => c.value !== 'USD').map(c => {
+                  const checked = formData.payment_currencies.includes(c.value);
+                  return (
+                    <label
+                      key={c.value}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
+                        checked ? 'border-[#F87116] bg-orange-50' : 'border-border bg-muted/30 hover:bg-muted/50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? [...formData.payment_currencies, c.value]
+                            : formData.payment_currencies.filter(x => x !== c.value);
+                          if (next.length >= 1) set('payment_currencies', next);
+                        }}
+                        className="rounded border-slate-300"
+                      />
+                      <span className="text-sm font-medium">{c.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                O cliente verá um alternador no checkout para escolher pagar em Real, Guaraní ou Peso Argentino conforme configurado.
+              </p>
+            </FieldGroup>
+          </div>
+
+          <div className="flex justify-end">
+            <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
+          </div>
+        </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            ABA 6 — Fidelidade
         ══════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="fidelidade" className="mt-0 space-y-5">
 

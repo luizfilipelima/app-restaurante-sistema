@@ -115,6 +115,45 @@ export function formatPriceInputPyG(displayValue: string): string {
   return decPart ? `${intFormatted},${decPart}` : intFormatted;
 }
 
+/** Cotações por 1 BRL (ex: pyg_per_brl: 3600, ars_per_brl: 1150) */
+export interface ExchangeRates {
+  pyg_per_brl?: number;
+  ars_per_brl?: number;
+}
+
+/**
+ * Converte valor entre moedas usando as cotações (base: 1 BRL).
+ * BRL/ARS/USD: armazenados em centavos. PYG: inteiro.
+ *
+ * @param value - Valor no formato de armazenamento da moeda de origem
+ * @param from - Moeda de origem
+ * @param to - Moeda de destino
+ * @param rates - Cotações (ex: pyg_per_brl, ars_per_brl)
+ */
+export function convertBetweenCurrencies(
+  value: number,
+  from: CurrencyCode,
+  to: CurrencyCode,
+  rates: ExchangeRates
+): number {
+  if (from === to) return value;
+  const pyg = rates.pyg_per_brl ?? 3600;
+  const ars = rates.ars_per_brl ?? 1150;
+
+  // Converter tudo para BRL (centavos) como intermediário
+  let brlCentavos: number;
+  if (from === 'BRL') brlCentavos = value;
+  else if (from === 'PYG') brlCentavos = Math.round((value / pyg) * 100);
+  else if (from === 'ARS') brlCentavos = Math.round((value / ars) * 100);
+  else brlCentavos = value; // USD: sem cotação, mantém
+
+  // BRL (centavos) -> destino
+  if (to === 'BRL') return brlCentavos;
+  if (to === 'PYG') return Math.round((brlCentavos / 100) * pyg);
+  if (to === 'ARS') return Math.round((brlCentavos / 100) * ars * 100); // ARS em centavos
+  return brlCentavos;
+}
+
 /**
  * Obtém o símbolo da moeda para uso em labels e placeholders.
  * 
