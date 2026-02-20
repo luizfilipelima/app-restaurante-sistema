@@ -180,7 +180,7 @@ CREATE POLICY "inventory_items_insert"
        WHERE r.user_id = auth.uid()
          AND r.restaurant_id = restaurant_id
          AND r.is_active = true
-         AND r.role IN ('manager', 'restaurant_admin', 'owner')
+         AND r.role IN ('owner', 'manager')
     )
   );
 
@@ -202,7 +202,7 @@ CREATE POLICY "inventory_items_update"
        WHERE r.user_id = auth.uid()
          AND r.restaurant_id = inventory_items.restaurant_id
          AND r.is_active = true
-         AND r.role IN ('manager', 'restaurant_admin', 'owner')
+         AND r.role IN ('owner', 'manager')
     )
   );
 
@@ -217,6 +217,14 @@ CREATE POLICY "inventory_items_delete"
            u.role = 'super_admin'
            OR (u.role = 'restaurant_admin' AND u.restaurant_id = inventory_items.restaurant_id)
          )
+    )
+    OR
+    EXISTS (
+      SELECT 1 FROM public.restaurant_user_roles r
+       WHERE r.user_id = auth.uid()
+         AND r.restaurant_id = inventory_items.restaurant_id
+         AND r.is_active = true
+         AND r.role = 'owner'
     )
   );
 
