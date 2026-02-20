@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCartStore } from '@/store/cartStore';
 import { supabase } from '@/lib/supabase';
@@ -32,13 +32,23 @@ import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote,
-  Send, Trash2, MapPin, Map, Loader2, Gift, Minus, Plus,
+  Send, Trash2, MapPin, Map, Gift, Minus, Plus,
   User, StickyNote, Check, X as XIcon, ShoppingBag,
   QrCode, Landmark, Info, Copy, AlertCircle,
 } from 'lucide-react';
 import MapAddressPicker from '@/components/public/MapAddressPicker';
 import { fetchLoyaltyStatus, redeemLoyalty } from '@/hooks/queries';
 import LoyaltyCard from '@/components/public/LoyaltyCard';
+
+// Coordenadas padrão por moeda — Tríplice Fronteira
+const GEO_DEFAULTS: Record<string, [number, number]> = {
+  PYG: [-25.5097, -54.6111], // Ciudad del Este, PY
+  ARS: [-25.5991, -54.5735], // Puerto Iguazú, AR
+  BRL: [-25.5278, -54.5828], // Foz do Iguaçu, BR
+};
+function getDefaultCenter(currency: string): [number, number] {
+  return GEO_DEFAULTS[currency] ?? GEO_DEFAULTS.BRL;
+}
 
 interface PublicCheckoutProps {
   tenantSlug?: string;
@@ -94,10 +104,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
+  const [latitude, setLatitude] = useState<number>(-25.5278);
+  const [longitude, setLongitude] = useState<number>(-54.5828);
   const [addressDetails, setAddressDetails] = useState('');
-  const [geolocating, setGeolocating] = useState(false);
+  const [mapKey, setMapKey] = useState(0);
+  const locationFromStorage = useRef(false);
 
   // ── Pagamento ──
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.PIX);
@@ -110,7 +121,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
   // ── Feedback inline (substitui toasts) ──
   const [formError, setFormError] = useState<string | null>(null);
-  const [geoFeedback, setGeoFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
   const geoStorageKey = `checkout_geo_${restaurantId || 'default'}`;
@@ -121,19 +131,32 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       const saved = localStorage.getItem(geoStorageKey);
       if (saved) {
         const data = JSON.parse(saved) as { lat?: number; lng?: number; details?: string };
-        if (data.lat != null && data.lng != null) { setLatitude(data.lat); setLongitude(data.lng); }
+        if (data.lat != null && data.lng != null) {
+          setLatitude(data.lat);
+          setLongitude(data.lng);
+          locationFromStorage.current = true;
+          setMapKey((k) => k + 1);
+        }
         if (data.details) setAddressDetails(data.details);
       }
     } catch { /* ignore */ }
   }, [restaurantId, geoStorageKey]);
 
   useEffect(() => {
-    if (latitude != null && longitude != null) {
-      try {
-        localStorage.setItem(geoStorageKey, JSON.stringify({ lat: latitude, lng: longitude, details: addressDetails }));
-      } catch { /* ignore */ }
-    }
+    try {
+      localStorage.setItem(geoStorageKey, JSON.stringify({ lat: latitude, lng: longitude, details: addressDetails }));
+    } catch { /* ignore */ }
   }, [latitude, longitude, addressDetails, geoStorageKey]);
+
+  // Centraliza o mapa pela moeda do restaurante quando não há posição salva
+  useEffect(() => {
+    if (locationFromStorage.current) return;
+    const [lat, lng] = getDefaultCenter(baseCurrency);
+    setLatitude(lat);
+    setLongitude(lng);
+    setMapKey((k) => k + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseCurrency]);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -198,42 +221,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     else navigate(`/${restaurantSlug}`);
   };
 
-  const handleGetLocation = () => {
-    if (!navigator.geolocation) {
-      setGeoFeedback({ type: 'error', text: 'Seu navegador não suporta geolocalização.' });
-      return;
-    }
-    setGeolocating(true);
-    setGeoFeedback(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLatitude(pos.coords.latitude);
-        setLongitude(pos.coords.longitude);
-        setGeolocating(false);
-        setGeoFeedback({ type: 'success', text: 'Localização obtida! Ajuste o pino se necessário.' });
-        setTimeout(() => setGeoFeedback(null), 4000);
-      },
-      (err) => {
-        setGeolocating(false);
-        const msg =
-          err.code === err.PERMISSION_DENIED
-            ? 'Permissão negada. Habilite o GPS nas configurações do dispositivo.'
-            : err.code === err.POSITION_UNAVAILABLE
-            ? 'GPS indisponível. Verifique se está ativado e tente novamente.'
-            : err.code === err.TIMEOUT
-            ? 'Tempo esgotado. Verifique o sinal do GPS e tente novamente.'
-            : 'Não foi possível obter a localização. Preencha o endereço abaixo.';
-        setGeoFeedback({ type: 'error', text: msg });
-      },
-      { enableHighAccuracy: true, timeout: 30000, maximumAge: 60000 }
-    );
-  };
-
-  const clearLocation = () => {
-    setLatitude(null);
-    setLongitude(null);
-    try { localStorage.removeItem(geoStorageKey); } catch { /* ignore */ }
-  };
 
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
   const deliveryFee = deliveryType === DeliveryType.DELIVERY ? (selectedZone?.fee || 0) : 0;
@@ -272,10 +259,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       return;
     }
 
-    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && latitude == null && !addressDetails?.trim()) {
-      setFormError('Informe o endereço de entrega. Use sua localização atual ou preencha o endereço completo.');
-      return;
-    }
 
     if (!restaurantId) {
       setFormError(t('checkout.errorInvalidCart'));
@@ -312,12 +295,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         delivery_zone_id: finalDeliveryType === DeliveryType.DELIVERY ? (selectedZoneId || null) : null,
         delivery_address:
           finalDeliveryType === DeliveryType.DELIVERY
-            ? latitude != null && longitude != null
-              ? `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-              : addressDetails?.trim() || null
+            ? `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
             : null,
-        latitude: finalDeliveryType === DeliveryType.DELIVERY && latitude != null ? latitude : null,
-        longitude: finalDeliveryType === DeliveryType.DELIVERY && longitude != null ? longitude : null,
+        latitude: finalDeliveryType === DeliveryType.DELIVERY ? latitude : null,
+        longitude: finalDeliveryType === DeliveryType.DELIVERY ? longitude : null,
         address_details: finalDeliveryType === DeliveryType.DELIVERY && addressDetails.trim() ? addressDetails.trim() : null,
         delivery_fee: finalDeliveryFee,
         subtotal,
@@ -386,9 +367,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           ? (zones.find((z) => z.id === selectedZoneId)?.location_name ?? '')
           : '';
         const endereco = deliveryType === DeliveryType.DELIVERY
-          ? latitude != null && longitude != null
-            ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-            : addressDetails?.trim() ?? ''
+          ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
           : '';
         const trocoRaw = paymentMethod === PaymentMethod.CASH && changeFor ? changeFor.replace(/\D/g, '') : '';
         const trocoFormatted = trocoRaw ? formatCurrency(parseInt(trocoRaw, 10), baseCurrency) : '';
@@ -760,78 +739,36 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 <MapPin className="h-3.5 w-3.5 text-green-600" />
               </div>
               <span className="text-sm font-semibold text-slate-800">Endereço de entrega</span>
-              {(latitude != null || addressDetails.trim()) && (
+              {addressDetails.trim() && (
                 <Check className="h-4 w-4 text-green-500 ml-auto flex-shrink-0" />
               )}
             </div>
 
             <div className="p-4 space-y-3">
-              {/* GPS */}
-              {latitude == null ? (
-                <button
-                  type="button"
-                  onClick={handleGetLocation}
-                  disabled={geolocating}
-                  className="w-full h-12 flex items-center justify-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold text-sm hover:bg-emerald-100 active:scale-[0.99] transition-all touch-manipulation disabled:opacity-60"
-                >
-                  {geolocating ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Obtendo sua localização...</>
-                  ) : (
-                    <><MapPin className="h-4 w-4" /> Usar minha localização atual</>
-                  )}
-                </button>
-              ) : (
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
-                    <Check className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                    <span className="text-sm text-emerald-800 font-medium flex-1">Localização obtida com GPS</span>
-                    <button
-                      onClick={clearLocation}
-                      className="p-1 rounded-md text-emerald-600 hover:bg-emerald-100 hover:text-emerald-900 transition-colors touch-manipulation"
-                      aria-label="Remover localização"
-                    >
-                      <XIcon className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="relative overflow-hidden rounded-xl" style={{ contain: 'layout' }}>
-                    <MapAddressPicker
-                      lat={latitude!}
-                      lng={longitude!}
-                      onLocationChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
-                      height="200px"
-                    />
-                  </div>
-                </div>
-              )}
+              {/* Mapa sempre visível — usuário arrasta para sua localização */}
+              <MapAddressPicker
+                key={mapKey}
+                lat={latitude}
+                lng={longitude}
+                onLocationChange={(lat, lng) => {
+                  locationFromStorage.current = true;
+                  setLatitude(lat);
+                  setLongitude(lng);
+                }}
+                height="240px"
+              />
 
-              {/* Feedback inline da geolocalização */}
-              {geoFeedback && (
-                <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm ${
-                  geoFeedback.type === 'success'
-                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-                    : 'bg-red-50 border border-red-200 text-red-700'
-                }`}>
-                  {geoFeedback.type === 'success'
-                    ? <Check className="h-4 w-4 flex-shrink-0" />
-                    : <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  }
-                  <span>{geoFeedback.text}</span>
-                </div>
-              )}
-
-              {/* Endereço manual */}
+              {/* Complemento / Referência */}
               <div>
                 <Label htmlFor="addressDetails" className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
-                  {latitude != null ? 'Complemento / Referência' : 'Endereço completo'}
-                  {latitude == null && <span className="text-orange-500 ml-1">*</span>}
+                  Complemento / Referência
+                  <span className="text-slate-300 font-normal ml-1">• opcional</span>
                 </Label>
                 <Input
                   id="addressDetails"
                   value={addressDetails}
                   onChange={(e) => { setAddressDetails(e.target.value); setFormError(null); }}
-                  placeholder={latitude != null
-                    ? 'Apto, Bloco, Ponto de referência...'
-                    : 'Rua, número, bairro, ponto de referência...'}
+                  placeholder="Apto, Bloco, Casa, Ponto de referência..."
                   className="h-12 bg-slate-50 border-slate-200 rounded-xl text-base focus:bg-white"
                 />
               </div>
