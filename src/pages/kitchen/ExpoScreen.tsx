@@ -12,16 +12,14 @@
  *   • Futuramente:   expo.quiero.food/:slug
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { DatabaseOrder } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ConciergeBell,
-  Clock,
   CheckCircle2,
   Loader2,
   LayoutDashboard,
@@ -39,19 +37,29 @@ import {
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-interface ExpoOrder extends DatabaseOrder {
+interface ExpoOrderItem {
+  id: string;
+  product_name: string;
+  quantity: number;
+  observations?: string | null;
+  pizza_size?: string | null;
+  pizza_flavors?: string[] | null;
+  pizza_dough?: string | null;
+  pizza_edge?: string | null;
+}
+
+interface ExpoOrder {
+  id: string;
+  restaurant_id: string;
+  customer_name: string;
+  order_source?: string | null;
+  table_id?: string | null;
+  notes?: string | null;
+  status: string;
+  updated_at: string;
   ready_at?: string | null;
   accepted_at?: string | null;
-  order_items: {
-    id: string;
-    product_name: string;
-    quantity: number;
-    observations?: string | null;
-    pizza_size?: string | null;
-    pizza_flavors?: string[] | null;
-    pizza_dough?: string | null;
-    pizza_edge?: string | null;
-  }[];
+  order_items: ExpoOrderItem[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -96,12 +104,10 @@ const URGENCY_CONFIG: Record<Urgency, {
 
 function ExpoCard({
   order,
-  now,
   delivering,
   onDeliver,
 }: {
   order: ExpoOrder;
-  now: number;
   delivering: boolean;
   onDeliver: () => void;
 }) {
@@ -348,7 +354,7 @@ export default function ExpoScreen() {
         const tb = new Date((b as any).ready_at || b.updated_at).getTime();
         return ta - tb; // mais antigos primeiro (maior urgência)
       });
-      setOrders(sorted as ExpoOrder[]);
+      setOrders(sorted as unknown as ExpoOrder[]);
     } catch (err) {
       console.error('ExpoScreen: erro ao carregar pedidos', err);
     } finally {
@@ -606,7 +612,6 @@ export default function ExpoScreen() {
                 <ExpoCard
                   key={order.id}
                   order={order}
-                  now={now}
                   delivering={delivering === order.id}
                   onDeliver={() => handleDeliver(order)}
                 />
