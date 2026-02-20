@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { getCardapioPublicUrl } from '@/lib/utils';
+import { prefetchRoute } from '@/lib/routePrefetch';
 import RestaurantUsersPanel from '@/components/admin/RestaurantUsersPanel';
 import { supabase } from '@/lib/supabase';
 import {
@@ -47,12 +48,12 @@ import {
 
 const sidebarNavVariants = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
+  visible: { transition: { staggerChildren: 0.03, delayChildren: 0.02 } },
 };
 
 const sidebarSectionVariants = {
-  hidden:  { opacity: 0, x: -12 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] } },
+  hidden:  { opacity: 0, x: -8 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.15, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] } },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -297,7 +298,7 @@ function NavLinkItem({ item, isActive }: { item: NavLeaf; isActive: boolean }) {
   }
 
   return (
-    <Link to={item.href} className={className}>
+    <Link to={item.href} className={className} onMouseEnter={() => prefetchRoute(item.href)}>
       <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
       <span className="truncate">{item.name}</span>
     </Link>
@@ -505,7 +506,7 @@ export default function AdminLayout({
                   Voltar
                 </Button>
               )}
-              <Link to={base} className="flex items-center gap-3 min-w-0 group">
+              <Link to={base} className="flex items-center gap-3 min-w-0 group" onMouseEnter={() => prefetchRoute(base)}>
                 {restaurant?.logo ? (
                   <img
                     src={restaurant.logo}
@@ -730,6 +731,7 @@ export default function AdminLayout({
                   <Link
                     key={item.href}
                     to={item.href}
+                    onMouseEnter={() => prefetchRoute(item.href)}
                     className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg whitespace-nowrap transition-colors ${
                       isActive
                         ? 'bg-orange-50 text-[#F87116]'

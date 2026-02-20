@@ -762,14 +762,24 @@ export default function Buffet() {
     if (!deletingComandaId) return;
     setConfirmDeleting(true);
     try {
-      const { error } = await supabase
-        .from('comandas')
-        .update({ status: 'cancelled' })
-        .eq('id', deletingComandaId);
-      if (error) throw error;
+      const updateData = { status: 'closed' as const, closed_at: new Date().toISOString() };
+      const isLocal = deletingComandaId.startsWith('local_');
+
+      if (isLocal) {
+        await offlineDB.comandas.update(deletingComandaId, updateData);
+      } else if (isOnline) {
+        const { error } = await supabase
+          .from('comandas')
+          .update(updateData)
+          .eq('id', deletingComandaId);
+        if (error) throw error;
+      } else {
+        await offlineDB.comandas.update(deletingComandaId, updateData);
+      }
+
       if (selectedComandaId === deletingComandaId) setSelectedComandaId(null);
       refresh();
-      toast({ title: 'Comanda excluída', description: 'A comanda foi cancelada com sucesso.' });
+      toast({ title: 'Comanda excluída', description: 'A comanda foi removida com sucesso.' });
     } catch {
       toast({ title: 'Erro ao excluir comanda', variant: 'destructive' });
     } finally {

@@ -70,14 +70,9 @@ const OrderTracking         = lazyWithRetry(() => import('./pages/public/OrderTr
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-50">
-      <div className="relative">
-        {/* Anel externo */}
-        <div className="h-14 w-14 rounded-full border-4 border-orange-100" />
-        {/* Arco animado */}
-        <div className="absolute inset-0 h-14 w-14 rounded-full border-4 border-transparent border-t-[#F87116] animate-spin" />
-      </div>
-      <p className="text-sm font-medium text-slate-400 tracking-wide">Carregando...</p>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-slate-50">
+      <div className="h-10 w-10 rounded-full border-2 border-orange-100 border-t-[#F87116] animate-spin" />
+      <p className="text-xs font-medium text-slate-400">Carregando...</p>
     </div>
   );
 }

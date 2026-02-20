@@ -36,24 +36,22 @@ export function useCategoryDestinations(restaurantId: string | null) {
 }
 
 /**
- * Retorna um Map de product_id → PrintDestination combinando:
- *   products(id, category) × categories(name, print_destination)
+ * Retorna um Map de product_id → PrintDestination a partir do campo
+ * print_destination da tabela products (por produto).
  */
 async function fetchProductPrintDestinations(
   restaurantId: string | null
 ): Promise<Map<string, PrintDestination>> {
   if (!restaurantId) return new Map();
-  const [{ data: cats }, { data: prods }] = await Promise.all([
-    supabase.from('categories').select('name, print_destination').eq('restaurant_id', restaurantId),
-    supabase.from('products').select('id, category').eq('restaurant_id', restaurantId),
-  ]);
-  const catMap = new Map<string, PrintDestination>();
-  for (const c of cats ?? []) {
-    catMap.set(c.name, (c.print_destination as PrintDestination) ?? 'kitchen');
-  }
+  const { data: prods, error } = await supabase
+    .from('products')
+    .select('id, print_destination')
+    .eq('restaurant_id', restaurantId);
+  if (error) throw error;
   const productMap = new Map<string, PrintDestination>();
   for (const p of prods ?? []) {
-    productMap.set(p.id, catMap.get(p.category) ?? 'kitchen');
+    const dest = (p.print_destination as PrintDestination) ?? 'kitchen';
+    productMap.set(p.id, dest);
   }
   return productMap;
 }

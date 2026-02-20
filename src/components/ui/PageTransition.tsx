@@ -4,32 +4,30 @@ import { ReactNode } from 'react';
 /**
  * Variantes com transições por estado:
  *
- * - animate (entrada): 0.22s — fade-in + slide-up suave
- * - exit     (saída):  0.10s — fade-out acelerado
+ * - animate (entrada): 0.12s — fade-in + slide-up rápido
+ * - exit     (saída):  0.06s — fade-out instantâneo
  *
  * Com AnimatePresence mode="wait", a saída bloqueia a entrada.
- * Manter o exit curto (≤ 0.12s) é crítico para que a nova tela
- * apareça rapidamente sem parecer que o sistema "travou".
+ * Durações curtas reduzem a sensação de lentidão na troca de telas.
  */
 const pageVariants = {
   initial: {
     opacity: 0,
-    y: 16,
+    y: 8,
   },
   animate: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.22,
+      duration: 0.12,
       ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
     },
   },
   exit: {
     opacity: 0,
-    y: -6,
+    y: -4,
     transition: {
-      // Exit rápido: não queremos bloquear a nova tela por mais de 100ms.
-      duration: 0.10,
+      duration: 0.06,
       ease: [0.4, 0, 1, 1] as [number, number, number, number],
     },
   },

@@ -18,6 +18,7 @@ import {
   superAdminRestaurantsKey,
   fetchSuperAdminRestaurants,
 } from '@/hooks/queries/useSuperAdminRestaurants';
+import { prefetchRoute } from '@/lib/routePrefetch';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageTransition } from '@/components/ui/PageTransition';
@@ -35,15 +36,15 @@ import {
 
 const navContainerVariants = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+  visible: { transition: { staggerChildren: 0.03, delayChildren: 0.02 } },
 };
 
 const navItemVariants = {
-  hidden:  { opacity: 0, x: -10 },
+  hidden:  { opacity: 0, x: -6 },
   visible: {
     opacity: 1,
     x: 0,
-    transition: { duration: 0.25, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] },
+    transition: { duration: 0.12, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] },
   },
 };
 
@@ -137,7 +138,10 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                 <motion.div key={item.href} variants={navItemVariants}>
                   <Link
                     to={item.href}
-                    onMouseEnter={isRestaurants ? prefetchRestaurants : undefined}
+                    onMouseEnter={() => {
+                      prefetchRoute(item.href);
+                      if (isRestaurants) prefetchRestaurants();
+                    }}
                     className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors border-l-[3px] ${
                       active
                         ? 'bg-orange-50 text-[#F87116] border-l-[#F87116]'
