@@ -271,6 +271,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       }
     }
 
+    // Abre a janela em branco SINCRONAMENTE — precisa estar na mesma call stack
+    // da gesture do usuário. Mobile browsers (Safari iOS, Chrome Android) bloqueiam
+    // window.open chamado após qualquer await.
+    const whatsappWin = !isTableOrder ? window.open('', '_blank', 'noopener,noreferrer') : null;
+
     setLoading(true);
 
     const finalDeliveryType = isTableOrder ? DeliveryType.PICKUP : deliveryType;
@@ -428,26 +433,35 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         clearCart();
         const newOrderId = (rpcResult as { order_id?: string })?.order_id;
+        const orderType = finalDeliveryType === DeliveryType.DELIVERY ? 'delivery' : 'pickup';
 
-        // Abre WhatsApp ANTES de navegar — window.open precisa ser chamado sem
-        // hard-reload em seguida, pois navegações completas (window.location)
-        // cancelam popups no mobile. navigate() do React Router é client-side.
-        window.open(generateWhatsAppLink(whatsappNumber, message), '_blank', 'noopener,noreferrer');
+        // Direciona a janela pré-aberta para o WhatsApp
+        const waLink = generateWhatsAppLink(whatsappNumber, message);
+        if (whatsappWin) {
+          whatsappWin.location.href = waLink;
+        } else {
+          // Fallback: janela foi bloqueada pelo browser, tenta abrir de novo
+          window.open(waLink, '_blank', 'noopener,noreferrer');
+        }
 
         if (newOrderId) {
           sessionStorage.setItem(`order_just_placed_${newOrderId}`, '1');
-          const trackPath = isSubdomain
-            ? `/track/${newOrderId}`
-            : `/${restaurantSlug}/track/${newOrderId}`;
-          navigate(trackPath);
+          const confirmPath = isSubdomain
+            ? `/order-confirmed?orderId=${encodeURIComponent(newOrderId)}&type=${orderType}`
+            : `/${restaurantSlug}/order-confirmed?orderId=${encodeURIComponent(newOrderId)}&type=${orderType}`;
+          navigate(confirmPath);
         } else {
           setTimeout(() => handleBackToMenu(), 800);
         }
       } else {
+        // Pedido de mesa — não usa WhatsApp
+        whatsappWin?.close();
         clearCart();
         setTimeout(() => handleBackToMenu(), 1500);
       }
     } catch (error: unknown) {
+      // Fecha a aba em branco se o pedido falhou
+      whatsappWin?.close();
       console.error('[Checkout] Erro ao finalizar pedido:', error);
       const msg = error && typeof error === 'object' && 'message' in error
         ? String((error as { message: string }).message)
