@@ -461,8 +461,13 @@ export default function AdminLayout({
   // Usuários e outros controles exclusivos. Agora verificamos o papel do usuário logado.
   const isSuperAdminView = user?.role === 'super_admin' && !!managedRestaurantId;
 
-  // Permissão para gerenciar usuários (proprietário ou super-admin)
-  const canManageUsers = useCanAccess(['owner', 'restaurant_admin', 'super_admin']);
+  // Permissão para exibir botões de gestão (Settings, Upgrade, Usuários).
+  // Usamos o role do sistema (síncrono do authStore) — NÃO chamamos useCanAccess aqui
+  // porque AdminLayout é o Provider do AdminRestaurantContext, e chamar hooks que lêem
+  // esse contexto antes de ele ser fornecido pode causar inconsistências no React.
+  // restaurant_admin = todos os usuários de restaurante não-cozinha (owner, manager, etc.)
+  // O backend e as páginas individuais aplicam o controle granular.
+  const canManageUsers = user?.role === 'restaurant_admin' || user?.role === 'super_admin';
 
   const [usersPanelOpen, setUsersPanelOpen] = useState(false);
 

@@ -119,11 +119,11 @@ const adminRoutes = (
     <Route
       path="buffet"
       element={
-        <RoleProtectedRoute allowedRoles={['cashier']}>
-          <ProtectedRoute requiredFeature="feature_buffet_module">
+        <ProtectedRoute requiredFeature="feature_buffet_module">
+          <RoleProtectedRoute allowedRoles={['cashier']}>
             <AdminBuffet />
-          </ProtectedRoute>
-        </RoleProtectedRoute>
+          </RoleProtectedRoute>
+        </ProtectedRoute>
       }
     />
     <Route
@@ -137,31 +137,31 @@ const adminRoutes = (
     <Route
       path="tables"
       element={
-        <RoleProtectedRoute allowedRoles={['waiter']}>
-          <ProtectedRoute requiredFeature="feature_tables">
+        <ProtectedRoute requiredFeature="feature_tables">
+          <RoleProtectedRoute allowedRoles={['waiter']}>
             <AdminTables />
-          </ProtectedRoute>
-        </RoleProtectedRoute>
+          </RoleProtectedRoute>
+        </ProtectedRoute>
       }
     />
     <Route
       path="delivery-zones"
       element={
-        <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
-          <ProtectedRoute requiredFeature="feature_delivery_zones">
+        <ProtectedRoute requiredFeature="feature_delivery_zones">
+          <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
             <AdminDeliveryZones />
-          </ProtectedRoute>
-        </RoleProtectedRoute>
+          </RoleProtectedRoute>
+        </ProtectedRoute>
       }
     />
     <Route
       path="couriers"
       element={
-        <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
-          <ProtectedRoute requiredFeature="feature_couriers">
+        <ProtectedRoute requiredFeature="feature_couriers">
+          <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
             <AdminCouriers />
-          </ProtectedRoute>
-        </RoleProtectedRoute>
+          </RoleProtectedRoute>
+        </ProtectedRoute>
       }
     />
     {/* Configurações — proprietário e acima */}
