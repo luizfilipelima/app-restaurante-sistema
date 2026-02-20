@@ -103,8 +103,20 @@ export interface Restaurant {
   currency?: 'BRL' | 'PYG' | 'ARS' | 'USD';
   /** Idioma da interface do cardápio público */
   language?: 'pt' | 'es' | 'en';
+  /** Templates personalizáveis de mensagens WhatsApp */
+  whatsapp_templates?: WhatsAppTemplates | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Templates de mensagens WhatsApp configuráveis por restaurante */
+export interface WhatsAppTemplates {
+  /** Mensagem enviada ao restaurante quando o cliente faz um pedido no Checkout */
+  new_order?: string;
+  /** Mensagem enviada ao cliente quando o pedido sai para entrega */
+  delivery_notification?: string;
+  /** Mensagem enviada ao entregador quando despachado */
+  courier_dispatch?: string;
 }
 
 export interface User {

@@ -28,6 +28,7 @@ import { useRestaurantStore } from '@/store/restaurantStore';
 import { useTableOrderStore } from '@/store/tableOrderStore';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours } from '@/lib/utils';
+import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
@@ -342,36 +343,39 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''} — ${formatCurrency(i.unitPrice * i.quantity, currency)}`
         )
         .join('\n');
-      const sections: string[] = [
-        '🆕 *NOVO PEDIDO*',
-        '',
-        '👤 *Cliente:* ' + customerName,
-        '📱 *Tel/WhatsApp:* +' + normalizePhoneWithCountryCode(customerPhone, phoneCountry),
-        '🚚 *Entrega:* ' + (deliveryType === DeliveryType.DELIVERY ? 'Entrega' : 'Retirada'),
-      ];
-      if (deliveryType === DeliveryType.DELIVERY && latitude != null && longitude != null) {
-        sections.push('📍 *Endereço:* Coordenadas ' + latitude.toFixed(6) + ', ' + longitude.toFixed(6));
-        if (addressDetails.trim()) sections.push('📋 *Detalhes:* ' + addressDetails.trim());
-      }
-      if (deliveryType === DeliveryType.DELIVERY && selectedZoneId) {
-        const zone = zones.find((z) => z.id === selectedZoneId);
-        if (zone) sections.push('🏘️ *Bairro/Região:* ' + zone.location_name);
-      }
-      sections.push('');
-      sections.push('💳 *Pagamento:* ' + (paymentMethod === 'pix' ? 'PIX' : paymentMethod === 'card' ? 'Cartão na entrega' : 'Dinheiro'));
-      if (paymentMethod === PaymentMethod.CASH && changeFor) {
-        const gs = changeFor.replace(/\D/g, '');
-        sections.push('🔄 *Troco para:* ' + (gs ? formatCurrency(parseInt(gs, 10), currency) : changeFor));
-      }
-      sections.push('');
-      sections.push('📋 *Resumo:*');
-      sections.push('  Subtotal: ' + formatCurrency(subtotal, currency));
-      if (deliveryFee > 0) sections.push('  Taxa entrega: ' + formatCurrency(deliveryFee, currency));
-      sections.push('  *Total: ' + formatCurrency(total, currency) + '*' + '\n');
-      sections.push('🍽️ *Itens:*');
-      sections.push(itemsText);
-      if (notes) sections.push('\n📝 *Obs:* ' + notes);
-      const message = sections.join('\n');
+
+      const bairro = deliveryType === DeliveryType.DELIVERY && selectedZoneId
+        ? (zones.find((z) => z.id === selectedZoneId)?.location_name ?? '')
+        : '';
+      const endereco = deliveryType === DeliveryType.DELIVERY && latitude != null && longitude != null
+        ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+        : '';
+      const trocoRaw = paymentMethod === PaymentMethod.CASH && changeFor
+        ? changeFor.replace(/\D/g, '')
+        : '';
+      const trocoFormatted = trocoRaw ? formatCurrency(parseInt(trocoRaw, 10), currency) : '';
+      const paymentLabel = paymentMethod === 'pix' ? 'PIX' : paymentMethod === 'card' ? 'Cartão na entrega' : 'Dinheiro';
+      const taxaLine = deliveryFee > 0 ? `Taxa entrega: ${formatCurrency(deliveryFee, currency)}` : '';
+
+      const restaurantTemplates = (currentRestaurant as { whatsapp_templates?: Record<string, string> | null })?.whatsapp_templates;
+      const message = processTemplate(
+        getTemplate('new_order', restaurantTemplates),
+        {
+          cliente_nome:      customerName,
+          cliente_telefone:  '+' + normalizePhoneWithCountryCode(customerPhone, phoneCountry),
+          tipo_entrega:      deliveryType === DeliveryType.DELIVERY ? 'Entrega' : 'Retirada',
+          bairro,
+          endereco,
+          detalhes_endereco: deliveryType === DeliveryType.DELIVERY ? (addressDetails?.trim() ?? '') : '',
+          pagamento:         paymentLabel,
+          troco:             trocoFormatted,
+          subtotal:          formatCurrency(subtotal, currency),
+          taxa_entrega:      taxaLine,
+          total:             formatCurrency(total, currency),
+          itens:             itemsText,
+          observacoes:       notes?.trim() ?? '',
+        },
+      );
       
       // Obter e validar número do WhatsApp do restaurante
       const restaurantWhatsApp = (currentRestaurant?.whatsapp || '').replace(/\D/g, '');

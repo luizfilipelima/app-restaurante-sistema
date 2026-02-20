@@ -21,6 +21,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff } from 'lucide-react';
+import { WhatsAppTemplatesModal } from '@/components/admin/WhatsAppTemplatesModal';
+import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
+import type { WhatsAppTemplates } from '@/types';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { ROLES_CANCEL_ORDER } from '@/hooks/useUserRole';
 import { useCouriers, useOrders, usePrintSettings, useProductPrintDestinations, creditLoyaltyPoint } from '@/hooks/queries';
@@ -147,6 +150,8 @@ export default function AdminOrders() {
   const [isLive, setIsLive] = useState(false);
   const [dispatchOrder, setDispatchOrder] = useState<DatabaseOrder | null>(null);
   const [selectedCourierForDispatch, setSelectedCourierForDispatch] = useState<string>('');
+  const [showWaTemplatesModal, setShowWaTemplatesModal] = useState(false);
+  const [localWaTemplates, setLocalWaTemplates] = useState<WhatsAppTemplates | null | undefined>(undefined);
   const { couriers } = useCouriers(restaurantId);
   const { printOrder, receiptData, secondReceiptData } = usePrinter();
   const { data: productDestMap } = useProductPrintDestinations(restaurantId);
@@ -184,6 +189,13 @@ export default function AdminOrders() {
     },
     [productDestMap, t]
   );
+
+  // Sync templates from restaurant data
+  useEffect(() => {
+    if (restaurant && localWaTemplates === undefined) {
+      setLocalWaTemplates(restaurant.whatsapp_templates ?? null);
+    }
+  }, [restaurant, localWaTemplates]);
 
   const handleRealtimeOrder = useCallback(async (payload: any) => {
     queryClient.invalidateQueries({ queryKey: ['orders', restaurantId] });
@@ -281,22 +293,29 @@ export default function AdminOrders() {
       await updateOrderCourier(dispatchOrder.id, selectedCourierForDispatch);
       await updateOrderStatus(dispatchOrder.id, OrderStatus.DELIVERING);
 
-      const details = [
-        `*Cliente:* ${dispatchOrder.customer_name}`,
-        dispatchOrder.address_details
-          ? `*Detalhes da Entrega:* ${dispatchOrder.address_details}`
-          : '',
-        dispatchOrder.latitude != null && dispatchOrder.longitude != null
-          ? `\n*Google Maps:* https://www.google.com/maps?q=${dispatchOrder.latitude},${dispatchOrder.longitude}`
-          : '',
-      ]
-        .filter(Boolean)
+      // Monta variáveis do template de despacho
+      const mapsUrl = dispatchOrder.latitude != null && dispatchOrder.longitude != null
+        ? `https://www.google.com/maps?q=${dispatchOrder.latitude},${dispatchOrder.longitude}`
+        : '';
+      const itemsText = (dispatchOrder.order_items ?? [])
+        .map((item: any) => `  • ${item.quantity}x ${item.product_name}`)
         .join('\n');
 
-      const msg = encodeURIComponent(`🛵 *Novo pedido para entrega*\n\n${details}`);
+      const dispatchMessage = processTemplate(
+        getTemplate('courier_dispatch', localWaTemplates),
+        {
+          cliente_nome:      dispatchOrder.customer_name,
+          detalhes_endereco: dispatchOrder.address_details ?? '',
+          endereco:          dispatchOrder.latitude != null ? `${dispatchOrder.latitude},${dispatchOrder.longitude}` : '',
+          mapa:              mapsUrl,
+          restaurante_nome:  restaurant?.name ?? '',
+          itens:             itemsText,
+        },
+      );
+
       const phone = courier.phone.replace(/\D/g, '');
       const withCountry = phone.length <= 11 ? '55' + phone : phone;
-      const waUrl = `https://wa.me/${withCountry}?text=${msg}`;
+      const waUrl = `https://wa.me/${withCountry}?text=${encodeURIComponent(dispatchMessage)}`;
       window.open(waUrl, '_blank');
 
       setDispatchOrder(null);
@@ -439,6 +458,14 @@ export default function AdminOrders() {
     <>
       <OrderReceipt data={receiptData} />
       <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />
+      {/* Modal de edição de templates WhatsApp */}
+      <WhatsAppTemplatesModal
+        open={showWaTemplatesModal}
+        onClose={() => setShowWaTemplatesModal(false)}
+        restaurantId={restaurantId}
+        currentTemplates={localWaTemplates}
+        onSaved={(saved) => setLocalWaTemplates(saved)}
+      />
       <div className="space-y-6 min-w-0">
         {/* ── Cabeçalho ── */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -452,7 +479,15 @@ export default function AdminOrders() {
           </div>
 
           {/* Indicador Ao Vivo + Toggle Kanban / Concluídos */}
-          <div className="flex items-center gap-3 self-start sm:self-auto flex-shrink-0">
+          <div className="flex items-center gap-3 self-start sm:self-auto flex-shrink-0 flex-wrap">
+            {/* Botão de edição de mensagens WhatsApp */}
+            <button
+              onClick={() => setShowWaTemplatesModal(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#25D366]/30 bg-[#25D366]/5 hover:bg-[#25D366]/10 text-[#1a9e52] dark:text-[#25D366] text-xs font-semibold transition-all hover:border-[#25D366]/60"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              {t('waTemplates.btnLabel')}
+            </button>
             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
               isLive
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
@@ -572,9 +607,15 @@ export default function AdminOrders() {
                       // WhatsApp "saiu para entrega"
                       const buildWhatsAppDeliveryUrl = () => {
                         const phone = order.customer_phone.replace(/\D/g, '');
-                        const name = order.customer_name.split(' ')[0];
-                        const msg = encodeURIComponent(`Olá ${name}! 🛵 Seu pedido acabou de sair para entrega. Em breve estará na sua porta! 😊`);
-                        return `https://wa.me/${phone}?text=${msg}`;
+                        const firstName = order.customer_name.split(' ')[0];
+                        const msg = processTemplate(
+                          getTemplate('delivery_notification', localWaTemplates),
+                          {
+                            cliente_nome:     firstName,
+                            restaurante_nome: restaurant?.name ?? '',
+                          },
+                        );
+                        return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
                       };
 
                       // ── Badges COZ / BAR ──

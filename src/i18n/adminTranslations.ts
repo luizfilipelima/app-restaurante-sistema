@@ -794,6 +794,75 @@ const en: typeof pt = {
   redeemed:            'Redemptions',
 };
 
+(pt as Record<string, unknown>).waTemplates = {
+  btnLabel:          'Mensagens WhatsApp',
+  modalTitle:        'Editor de Mensagens WhatsApp',
+  modalDesc:         'Personalize os textos enviados via WhatsApp. Use as variáveis disponíveis — linhas com variáveis vazias são removidas automaticamente.',
+  tabNewOrder:       'Novo Pedido',
+  tabDelivery:       'Saiu p/ Entrega',
+  tabCourier:        'Entregador',
+  descNewOrder:      'Enviada ao restaurante quando o cliente finaliza um pedido no Checkout.',
+  descDelivery:      'Enviada ao cliente quando o status muda para "Saiu para Entrega".',
+  descCourier:       'Enviada ao entregador quando despachado pelo Kanban.',
+  varsTitle:         'Variáveis disponíveis',
+  varsHint:          'Clique para inserir no cursor',
+  previewTitle:      'Pré-visualização',
+  previewToggle:     'Ver prévia',
+  previewHide:       'Ocultar prévia',
+  resetDefault:      'Restaurar padrão',
+  saveBtn:           'Salvar templates',
+  saving:            'Salvando…',
+  savedOk:           'Templates salvos com sucesso!',
+  savedError:        'Erro ao salvar templates.',
+  charCount:         '{{n}} caracteres',
+};
+
+(es as Record<string, unknown>).waTemplates = {
+  btnLabel:          'Mensajes WhatsApp',
+  modalTitle:        'Editor de Mensajes WhatsApp',
+  modalDesc:         'Personaliza los textos enviados por WhatsApp. Usa las variables disponibles — las líneas con variables vacías se eliminan automáticamente.',
+  tabNewOrder:       'Nuevo Pedido',
+  tabDelivery:       'Salió p/ Entrega',
+  tabCourier:        'Repartidor',
+  descNewOrder:      'Enviado al restaurante cuando el cliente finaliza un pedido en el Checkout.',
+  descDelivery:      'Enviado al cliente cuando el estado cambia a "Salió para entrega".',
+  descCourier:       'Enviado al repartidor cuando es despachado desde el Kanban.',
+  varsTitle:         'Variables disponibles',
+  varsHint:          'Haz clic para insertar en el cursor',
+  previewTitle:      'Vista previa',
+  previewToggle:     'Ver vista previa',
+  previewHide:       'Ocultar vista previa',
+  resetDefault:      'Restaurar por defecto',
+  saveBtn:           'Guardar plantillas',
+  saving:            'Guardando…',
+  savedOk:           '¡Plantillas guardadas con éxito!',
+  savedError:        'Error al guardar plantillas.',
+  charCount:         '{{n}} caracteres',
+};
+
+(en as Record<string, unknown>).waTemplates = {
+  btnLabel:          'WhatsApp Messages',
+  modalTitle:        'WhatsApp Message Editor',
+  modalDesc:         'Customize the texts sent via WhatsApp. Use the available variables — lines with empty variables are removed automatically.',
+  tabNewOrder:       'New Order',
+  tabDelivery:       'Out for Delivery',
+  tabCourier:        'Courier',
+  descNewOrder:      'Sent to the restaurant when the customer completes an order at Checkout.',
+  descDelivery:      'Sent to the customer when the status changes to "Out for Delivery".',
+  descCourier:       'Sent to the courier when dispatched from the Kanban.',
+  varsTitle:         'Available variables',
+  varsHint:          'Click to insert at cursor',
+  previewTitle:      'Preview',
+  previewToggle:     'Show preview',
+  previewHide:       'Hide preview',
+  resetDefault:      'Restore default',
+  saveBtn:           'Save templates',
+  saving:            'Saving…',
+  savedOk:           'Templates saved successfully!',
+  savedError:        'Error saving templates.',
+  charCount:         '{{n}} characters',
+};
+
 export type AdminLang = 'pt' | 'es' | 'en';
 export type AdminTranslations = typeof pt;
 
