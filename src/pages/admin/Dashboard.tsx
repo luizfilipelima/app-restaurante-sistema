@@ -30,8 +30,9 @@ import { exportDashboardCSV, exportDashboardXLSX } from '@/lib/dashboard-export'
 import {
   DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2,
   MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon, Flame, Bike, HelpCircle,
-  Users, LayoutGrid, Download, FileSpreadsheet, FileText, ChevronDown,
+  Users, LayoutGrid, Download, FileSpreadsheet, FileText, ChevronDown, Printer,
 } from 'lucide-react';
+import DashboardPrintReport from '@/components/admin/DashboardPrintReport';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -91,6 +92,7 @@ export default function AdminDashboard() {
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [printing,  setPrinting]  = useState(false);
 
   const { start, end } = useMemo(() => getDateRange(period), [period]);
   const prevRange = useMemo(() => {
@@ -196,6 +198,35 @@ export default function AdminDashboard() {
     } finally {
       setExporting(false);
     }
+  };
+
+  const handlePrintReport = () => {
+    setPrinting(true);
+
+    // Dynamically inject the correct @page size so we override the receipt's 80mm rule.
+    const existingOverride = document.getElementById('dashboard-report-page-style');
+    if (existingOverride) existingOverride.remove();
+
+    const paperW = restaurant?.print_paper_width as '58mm' | '80mm' | null | undefined;
+    const pageSize = paperW === '58mm' ? '58mm auto'
+                   : paperW === '80mm' ? '80mm auto'
+                   : 'A4 portrait';
+    const pageMargin = paperW ? '4mm 3mm' : '0';
+
+    const styleEl = document.createElement('style');
+    styleEl.id  = 'dashboard-report-page-style';
+    styleEl.textContent = `@media print { @page { size: ${pageSize}; margin: ${pageMargin}; } }`;
+    document.head.appendChild(styleEl);
+
+    document.body.classList.add('print-dashboard-report');
+
+    // Give the DOM a tick to apply styles before printing
+    requestAnimationFrame(() => {
+      window.print();
+      document.body.classList.remove('print-dashboard-report');
+      styleEl.remove();
+      setPrinting(false);
+    });
   };
 
   const movementByHour = useMemo(() => {
@@ -463,6 +494,21 @@ export default function AdminDashboard() {
                 <SelectItem value="max">{t('dashboard.filters.allTime')}</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Print Report */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-[#F87116] hover:border-orange-200"
+              disabled={!analytics || printing}
+              onClick={handlePrintReport}
+            >
+              {printing
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Printer className="h-4 w-4" />
+              }
+              <span className="hidden sm:inline">{t('print.printBtn')}</span>
+            </Button>
 
             {/* Export */}
             <DropdownMenu>
@@ -1181,6 +1227,27 @@ export default function AdminDashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* ── Print Report (hidden; visible only during window.print()) ── */}
+        <DashboardPrintReport
+          restaurantName={restaurantName}
+          restaurantLogo={restaurant?.logo ?? undefined}
+          period={periodLabel}
+          areaLabel={areaFilter !== 'all' ? areaLabel : t('dashboard.filters.all')}
+          generatedAt={new Date()}
+          currency={currency}
+          totalRevenue={metrics.totalRevenue}
+          totalOrders={metrics.totalOrders}
+          avgTicket={metrics.averageTicket}
+          grossProfit={grossProfit}
+          avgPrepTime={avgPrepTime}
+          avgDeliveryTime={avgDeliveryTime}
+          paymentMethods={paymentMethods}
+          topProducts={topProducts}
+          dailyRevenue={dailyRevenue}
+          printPaperWidth={restaurant?.print_paper_width as '58mm' | '80mm' | null}
+          t={t}
+        />
     </div>
   );
 }
