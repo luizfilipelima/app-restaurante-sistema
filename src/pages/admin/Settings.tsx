@@ -365,34 +365,44 @@ export default function AdminSettings() {
 
       {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
       <Tabs defaultValue="perfil" className="w-full">
-        <TabsList className="grid grid-cols-3 sm:grid-cols-5 h-auto gap-0 p-0 mb-6 rounded-xl bg-muted/60 border border-border w-full overflow-hidden">
-          {(
-            [
-              { value: 'perfil',         icon: Store,     label: t('settings.tabs.profile')   },
-              { value: 'regionalizacao', icon: Globe,     label: t('settings.tabs.regional')  },
-              { value: 'contato',        icon: Phone,     label: t('settings.tabs.contact')   },
-              { value: 'operacao',       icon: Clock,     label: t('settings.tabs.operation') },
-              { value: 'fidelidade',     icon: Gift,      label: t('loyalty.tabLabel')        },
-            ] as const
-          ).map(({ value, icon: Icon, label }) => (
-            <TabsTrigger
-              key={value}
-              value={value}
-              className={`
-                flex items-center justify-center gap-1.5 text-xs sm:text-sm py-2.5 px-2 rounded-none border-b-2 border-transparent
-                font-medium text-muted-foreground transition-all
-                data-[state=active]:bg-background
-                data-[state=active]:text-[#F87116]
-                data-[state=active]:border-b-[#F87116]
-                data-[state=active]:shadow-sm
-                hover:text-foreground hover:bg-background/60
-              `}
-            >
-              <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-              <span className="truncate">{label}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        {/* Tab bar — scroll horizontal em mobile, row único em desktop */}
+        <div className="relative mb-6">
+          <TabsList className="
+            flex w-full h-auto p-0 bg-transparent
+            overflow-x-auto scrollbar-hide
+            border-b border-border rounded-none gap-0
+          ">
+            {(
+              [
+                { value: 'perfil',       icon: Store,   label: t('settings.tabs.profile')   },
+                { value: 'regional',     icon: Globe,   label: t('settings.tabs.regional')  },
+                { value: 'contato',      icon: Phone,   label: t('settings.tabs.contact')   },
+                { value: 'horarios',     icon: Clock,   label: 'Horários'                   },
+                { value: 'impressao',    icon: Printer, label: 'Impressão'                  },
+                { value: 'fidelidade',   icon: Gift,    label: t('loyalty.tabLabel')        },
+              ] as const
+            ).map(({ value, icon: Icon, label }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="
+                  flex-shrink-0 flex items-center gap-1.5
+                  px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium whitespace-nowrap
+                  bg-transparent rounded-none border-b-2 border-transparent -mb-px
+                  text-muted-foreground
+                  hover:text-foreground hover:bg-muted/40
+                  data-[state=active]:bg-transparent
+                  data-[state=active]:text-[#F87116]
+                  data-[state=active]:border-b-[#F87116]
+                  transition-all
+                "
+              >
+                <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>{label}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {/* ══════════════════════════════════════════════════════════════════════
             ABA 1 — Perfil do Negócio
@@ -506,28 +516,6 @@ export default function AdminSettings() {
                 />
               </FieldGroup>
 
-              {/* Status rápido */}
-              <div className="space-y-2">
-                <SectionLabel>Status de Funcionamento</SectionLabel>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <ToggleRow
-                    label="Sempre aberto (24h)"
-                    description="Ignora os horários abaixo."
-                    checked={formData.always_open}
-                    onChange={(v) => set('always_open', v)}
-                    icon={Sun}
-                    activeColor="bg-emerald-50 border-emerald-200"
-                  />
-                  <ToggleRow
-                    label="Fechado agora (manual)"
-                    description="Força status fechado."
-                    checked={formData.is_manually_closed}
-                    onChange={(v) => set('is_manually_closed', v)}
-                    icon={XCircle}
-                    activeColor="bg-red-50 border-red-200"
-                  />
-                </div>
-              </div>
             </div>
           </div>
 
@@ -540,7 +528,7 @@ export default function AdminSettings() {
         {/* ══════════════════════════════════════════════════════════════════════
             ABA 2 — Regionalização
         ══════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="regionalizacao" className="mt-0 space-y-5">
+        <TabsContent value="regional" className="mt-0 space-y-5">
 
           {/* Seletores principais — 2 colunas em desktop */}
           <div className="rounded-2xl border border-border bg-card p-5 space-y-5">
@@ -805,18 +793,38 @@ export default function AdminSettings() {
         </TabsContent>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            ABA 4 — Operação
+            ABA 4 — Horários de Funcionamento
         ══════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="operacao" className="mt-0 space-y-5">
+        <TabsContent value="horarios" className="mt-0 space-y-5">
 
-          {/* Horários */}
+          {/* Status rápido — toggles no topo */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <ToggleRow
+              label="Sempre aberto (24h)"
+              description="Ignora os horários abaixo por dia."
+              checked={formData.always_open}
+              onChange={(v) => set('always_open', v)}
+              icon={Sun}
+              activeColor="bg-emerald-50 border-emerald-200"
+            />
+            <ToggleRow
+              label="Fechado agora (manual)"
+              description="Força status fechado independente do horário."
+              checked={formData.is_manually_closed}
+              onChange={(v) => set('is_manually_closed', v)}
+              icon={XCircle}
+              activeColor="bg-red-50 border-red-200"
+            />
+          </div>
+
+          {/* Grade de horários */}
           <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
                 <Clock className="h-[18px] w-[18px] text-muted-foreground" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-foreground">Horários de Funcionamento</h2>
+                <h2 className="text-sm font-semibold text-foreground">Horários por dia da semana</h2>
                 <p className="text-[11px] text-muted-foreground">
                   {formData.always_open
                     ? 'Ignorados — estabelecimento definido como sempre aberto.'
@@ -832,16 +840,16 @@ export default function AdminSettings() {
                 return (
                   <div
                     key={key}
-                    className={`flex items-center gap-2 rounded-xl px-3 py-2 border transition-colors ${
+                    className={`flex items-center gap-2 rounded-xl px-3 py-2.5 border transition-colors ${
                       isClosed ? 'bg-muted/40 border-border' : 'bg-card border-border'
                     }`}
                   >
-                    <div className="w-14 flex-shrink-0">
+                    <div className="w-16 flex-shrink-0">
                       <span className={`text-xs font-semibold hidden sm:block ${isClosed ? 'text-muted-foreground' : 'text-foreground'}`}>{label}</span>
                       <span className={`text-xs font-semibold sm:hidden ${isClosed ? 'text-muted-foreground' : 'text-foreground'}`}>{short}</span>
                     </div>
 
-                    <label className="flex items-center gap-1.5 cursor-pointer flex-shrink-0 w-24">
+                    <label className="flex items-center gap-1.5 cursor-pointer flex-shrink-0 w-24 select-none">
                       <input
                         type="checkbox"
                         checked={isClosed}
@@ -897,14 +905,24 @@ export default function AdminSettings() {
             </div>
           </div>
 
-          {/* Impressão */}
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+          <div className="flex justify-end">
+            <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
+          </div>
+        </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            ABA 5 — Impressão
+        ══════════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="impressao" className="mt-0 space-y-5">
+
+          {/* Config geral de impressão */}
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-5">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
                 <Printer className="h-[18px] w-[18px] text-muted-foreground" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-foreground">Impressão</h2>
+                <h2 className="text-sm font-semibold text-foreground">Configurações de Impressão</h2>
                 <p className="text-[11px] text-muted-foreground">
                   Cupom não fiscal para impressoras térmicas via navegador
                 </p>
@@ -921,23 +939,25 @@ export default function AdminSettings() {
 
             <FieldGroup>
               <SectionLabel>{t('settings.operation.paperWidth')}</SectionLabel>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 {(['58mm', '80mm'] as PrintPaperWidth[]).map(w => (
                   <button
                     key={w}
                     type="button"
                     onClick={() => set('print_paper_width', w)}
-                    className={`flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all ${
+                    className={`flex items-center gap-3 py-3.5 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${
                       formData.print_paper_width === w
                         ? 'border-[#F87116] bg-orange-50 text-[#F87116]'
                         : 'border-border bg-background text-muted-foreground hover:border-slate-300'
                     }`}
                   >
-                    <Printer className="h-4 w-4" />
-                    {w}
-                    <span className="text-[10px] font-normal">
-                      {w === '58mm' ? t('settings.operation.narrow') : t('settings.operation.standard')}
-                    </span>
+                    <Printer className="h-4 w-4 flex-shrink-0" />
+                    <div className="text-left">
+                      <div>{w}</div>
+                      <div className="text-[10px] font-normal mt-0.5">
+                        {w === '58mm' ? t('settings.operation.narrow') : t('settings.operation.standard')}
+                      </div>
+                    </div>
                   </button>
                 ))}
               </div>
