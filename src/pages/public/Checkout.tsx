@@ -636,12 +636,24 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.addressLabel')}</Label>
+                  <p className="text-xs text-slate-500 mb-1">
+                    Use o botão para GPS ou preencha o endereço manualmente.
+                  </p>
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full h-11 border-slate-200 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-800 font-medium"
+                    className="w-full h-11 border-slate-200 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-800 font-medium touch-manipulation"
                     onClick={() => {
+                      if (!navigator.geolocation) {
+                        toast({ title: 'Seu navegador não suporta geolocalização.', variant: 'destructive' });
+                        return;
+                      }
                       setGeolocating(true);
+                      const opts: PositionOptions = {
+                        enableHighAccuracy: true,
+                        timeout: 30000,
+                        maximumAge: 60000,
+                      };
                       navigator.geolocation.getCurrentPosition(
                         (pos) => {
                           setLatitude(pos.coords.latitude);
@@ -649,10 +661,19 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                           setGeolocating(false);
                           toast({ title: 'Localização obtida! Ajuste o pino no mapa se precisar.', variant: 'default' });
                         },
-                        () => {
+                        (err) => {
                           setGeolocating(false);
-                          toast({ title: 'Não foi possível obter sua localização. Verifique as permissões.', variant: 'destructive' });
-                        }
+                          const msg =
+                            err.code === err.PERMISSION_DENIED
+                              ? 'Permissão negada. Habilite o acesso à localização nas configurações do navegador ou do celular.'
+                              : err.code === err.POSITION_UNAVAILABLE
+                              ? 'Localização indisponível. Verifique se o GPS está ativo e tente novamente.'
+                              : err.code === err.TIMEOUT
+                              ? 'Tempo esgotado. Verifique se o GPS está ativo e tente em um local com melhor sinal.'
+                              : 'Não foi possível obter sua localização. Você pode preencher o endereço manualmente abaixo.';
+                          toast({ title: msg, variant: 'destructive' });
+                        },
+                        opts
                       );
                     }}
                     disabled={geolocating}
@@ -665,28 +686,28 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     Minha Localização Atual
                   </Button>
                 </div>
+                <div className="space-y-1">
+                  <Label htmlFor="addressDetails" className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                    Endereço completo {latitude == null && longitude == null && '(obrigatório se o GPS falhar)'}
+                  </Label>
+                  <Input
+                    id="addressDetails"
+                    value={addressDetails}
+                    onChange={(e) => setAddressDetails(e.target.value)}
+                    placeholder="Rua, número, bairro, referência..."
+                    className="bg-slate-50 border-slate-200 h-11 text-base touch-manipulation"
+                  />
+                </div>
                 {latitude != null && longitude != null && (
-                  <>
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Ajuste no mapa</Label>
-                      <MapAddressPicker
-                        lat={latitude}
-                        lng={longitude}
-                        onLocationChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
-                        height="180px"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="addressDetails" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Detalhes da Entrega</Label>
-                      <Input
-                        id="addressDetails"
-                        value={addressDetails}
-                        onChange={(e) => setAddressDetails(e.target.value)}
-                        placeholder="Apto, Bloco, Referência..."
-                        className="bg-slate-50 border-slate-200 h-11 text-base touch-manipulation"
-                      />
-                    </div>
-                  </>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Ajuste no mapa</Label>
+                    <MapAddressPicker
+                      lat={latitude}
+                      lng={longitude}
+                      onLocationChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+                      height="180px"
+                    />
+                  </div>
                 )}
               </div>
             )}
