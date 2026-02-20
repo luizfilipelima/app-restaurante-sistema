@@ -66,7 +66,7 @@ function BarRow({
 }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
-    <div style={{ marginBottom: 6 }}>
+    <div style={{ marginBottom: 4 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
         <span style={{ fontSize: 10, color: '#374151', maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {label}
@@ -84,13 +84,13 @@ function BarRow({
 
 function SectionA4({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 20, breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+    <div style={{ marginBottom: 10 }}>
       <div style={{
         borderBottom: `2px solid ${ORANGE}`,
-        paddingBottom: 4,
-        marginBottom: 10,
+        paddingBottom: 2,
+        marginBottom: 6,
       }}>
-        <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: ORANGE }}>
+        <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: ORANGE }}>
           {title}
         </span>
       </div>
@@ -172,7 +172,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
 
     const fs = isThermal
       ? { title: 13, subtitle: 10, kpiLabel: 9, kpiValue: 10 }
-      : { title: 20, subtitle: 11, kpiLabel: 10, kpiValue: 12 };
+      : { title: 16, subtitle: 10, kpiLabel: 9, kpiValue: 11 };
 
     const containerStyle: React.CSSProperties = {
       fontFamily:      isThermal ? "'Courier New', Courier, monospace" : 'system-ui, -apple-system, Segoe UI, sans-serif',
@@ -181,7 +181,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
       background:      'white',
       width:           isThermal ? (printPaperWidth ?? '80mm') : '100%',
       maxWidth:        isA4 ? '210mm' : undefined,
-      padding:         isThermal ? '4mm 3mm' : '0',
+      padding:         isThermal ? '4mm 3mm' : '4mm 6mm',
       margin:          '0 auto',
       boxSizing:       'border-box' as const,
     };
@@ -194,19 +194,18 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
-            marginBottom: 20,
-            paddingBottom: 16,
-            borderBottom: `3px solid ${ORANGE}`,
-            breakInside: 'avoid',
+            gap: 8,
+            marginBottom: 10,
+            paddingBottom: 8,
+            borderBottom: `2px solid ${ORANGE}`,
           }}>
             {restaurantLogo && (
               <img
                 src={restaurantLogo}
                 alt={restaurantName}
                 style={{
-                  width: isA4 ? 56 : 28,
-                  height: isA4 ? 56 : 28,
+                  width: isA4 ? 40 : 28,
+                  height: isA4 ? 40 : 28,
                   objectFit: 'contain',
                   borderRadius: 6,
                 }}
@@ -221,7 +220,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
               </div>
             </div>
             {isA4 && (
-              <div style={{ textAlign: 'right', fontSize: 10, color: '#6b7280', lineHeight: 1.6 }}>
+              <div style={{ textAlign: 'right', fontSize: 9, color: '#6b7280', lineHeight: 1.4 }}>
                 {periodDates && (
                   <div><strong>{t('print.periodDates')}:</strong> {periodDates}</div>
                 )}
@@ -244,42 +243,39 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
           {/* ── Seção 1: KPIs Financeiros (cards lado a lado) ───────────────── */}
           {isA4 && (
             <SectionA4 title={t('print.financial')}>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <div style={{
-                  flex: '1 1 140px',
+                  flex: '1 1 100px',
                   minWidth: 0,
                   border: '1px solid #e5e7eb',
-                  borderRadius: 8,
-                  padding: 12,
+                  borderRadius: 6,
+                  padding: 6,
                   background: '#fafafa',
-                  breakInside: 'avoid',
                 }}>
-                  <div style={{ fontSize: 9, color: '#6b7280', marginBottom: 4 }}>{t('print.revenue')}</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>{formatCurrency(totalRevenue, currency)}</div>
+                  <div style={{ fontSize: 8, color: '#6b7280', marginBottom: 2 }}>{t('print.revenue')}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#111827' }}>{formatCurrency(totalRevenue, currency)}</div>
                 </div>
                 <div style={{
-                  flex: '1 1 140px',
+                  flex: '1 1 100px',
                   minWidth: 0,
                   border: '1px solid #e5e7eb',
-                  borderRadius: 8,
-                  padding: 12,
+                  borderRadius: 6,
+                  padding: 6,
                   background: '#fafafa',
-                  breakInside: 'avoid',
                 }}>
-                  <div style={{ fontSize: 9, color: '#6b7280', marginBottom: 4 }}>{t('print.estimatedProfit')}</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: grossProfit >= 0 ? '#059669' : '#dc2626' }}>{formatCurrency(grossProfit, currency)}</div>
+                  <div style={{ fontSize: 8, color: '#6b7280', marginBottom: 2 }}>{t('print.estimatedProfit')}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: grossProfit >= 0 ? '#059669' : '#dc2626' }}>{formatCurrency(grossProfit, currency)}</div>
                 </div>
                 <div style={{
-                  flex: '1 1 140px',
+                  flex: '1 1 100px',
                   minWidth: 0,
                   border: '1px solid #e5e7eb',
-                  borderRadius: 8,
-                  padding: 12,
+                  borderRadius: 6,
+                  padding: 6,
                   background: '#fafafa',
-                  breakInside: 'avoid',
                 }}>
-                  <div style={{ fontSize: 9, color: '#6b7280', marginBottom: 4 }}>{t('print.avgTicket')}</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>{formatCurrency(avgTicket, currency)}</div>
+                  <div style={{ fontSize: 8, color: '#6b7280', marginBottom: 2 }}>{t('print.avgTicket')}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#111827' }}>{formatCurrency(avgTicket, currency)}</div>
                 </div>
               </div>
               <KpiRow label={t('print.totalOrders')} value={String(totalOrders)} />
@@ -317,7 +313,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
           {/* ── Seção 3: Gráficos de Performance ─────────────────────────────── */}
           {isA4 && movementByHour.length > 0 && (
             <SectionA4 title={t('print.hourlyMovement')}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginBottom: 4 }}>
                 {movementByHour.map((h) => {
                   const pct = maxMovement > 0 ? (h.count / maxMovement) * 100 : 0;
                   const fill = h.isLowMovement ? '#f59e0b' : '#3b82f6';
@@ -336,7 +332,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
                       <div style={{ fontSize: 8, color: '#6b7280', whiteSpace: 'nowrap' }}>{h.hour}</div>
                       <div style={{
                         width: '100%',
-                        height: 40,
+                        height: 24,
                         background: '#e5e7eb',
                         borderRadius: 4,
                         overflow: 'hidden',
@@ -351,7 +347,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
                           borderRadius: 2,
                         }} />
                       </div>
-                      <div style={{ fontSize: 9, fontWeight: 600 }}>{h.count}</div>
+                      <div style={{ fontSize: 8, fontWeight: 600 }}>{h.count}</div>
                     </div>
                   );
                 })}
@@ -384,10 +380,10 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
           )}
 
           {/* ── Seção 4: Ranking de Produtos ─────────────────────────────────── */}
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', breakInside: 'avoid' }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {topProducts.length > 0 && (
               <SectionA4 title={t('print.topItems')}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #9ca3af' }}>
                       <th style={{ textAlign: 'left', padding: '4px 0', fontWeight: 700, width: '4%' }}>#</th>
@@ -396,7 +392,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
                     </tr>
                   </thead>
                   <tbody>
-                    {topProducts.slice(0, isThermal ? 8 : 12).map((item, i) => (
+                    {topProducts.slice(0, isThermal ? 8 : 8).map((item, i) => (
                       <tr key={`top-${item.name}-${i}`} style={{ borderBottom: '1px dotted #e5e7eb' }}>
                         <td style={{ padding: '4px 0', color: '#6b7280', fontSize: 9 }}>{i + 1}</td>
                         <td style={{ padding: '4px 8px', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -412,7 +408,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
 
             {bottomProducts.length > 0 && isA4 && (
               <SectionA4 title={t('print.bottomItems')}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #9ca3af' }}>
                       <th style={{ textAlign: 'left', padding: '4px 0', fontWeight: 700, width: '4%' }}>#</th>
@@ -421,7 +417,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
                     </tr>
                   </thead>
                   <tbody>
-                    {bottomProducts.slice(0, 12).map((item, i) => (
+                    {bottomProducts.slice(0, 8).map((item, i) => (
                       <tr key={`bot-${item.name}-${i}`} style={{ borderBottom: '1px dotted #e5e7eb' }}>
                         <td style={{ padding: '4px 0', color: '#6b7280', fontSize: 9 }}>{i + 1}</td>
                         <td style={{ padding: '4px 8px', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -440,15 +436,15 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
           {dailyRevenue.length > 0 && (
             <SectionA4 title={t('print.dailyRevenue')}>
               {dailyRevenue.map((d) => (
-                <div key={d.date} style={{ marginBottom: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, fontSize: 10 }}>
+                <div key={d.date} style={{ marginBottom: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1, fontSize: 9 }}>
                     <span style={{ fontWeight: 600 }}>{d.date}</span>
                     <span>
                       {formatCurrency(d.revenue, currency)}
                       <span style={{ color: '#6b7280', fontSize: 9, marginLeft: 6 }}>({d.orders})</span>
                     </span>
                   </div>
-                  <div style={{ height: 10, background: '#e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: 6, background: '#e5e7eb', borderRadius: 3, overflow: 'hidden' }}>
                     <div style={{
                       height: '100%',
                       width: `${maxDailyRev > 0 ? (d.revenue / maxDailyRev) * 100 : 0}%`,
@@ -463,8 +459,8 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
 
           {/* ── Rodapé ──────────────────────────────────────────────────────── */}
           <div style={{
-            marginTop: 16,
-            paddingTop: 8,
+            marginTop: 8,
+            paddingTop: 4,
             borderTop: '1px solid #9ca3af',
             display: 'flex',
             justifyContent: 'space-between',

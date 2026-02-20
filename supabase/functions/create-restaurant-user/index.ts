@@ -68,17 +68,7 @@ Deno.serve(async (req) => {
       return fail('Não autenticado', callerErr?.message);
     }
 
-    // ── Verifica role super_admin ──────────────────────────────────────────────
-    const { data: callerRow, error: roleErr } = await admin
-      .from('users')
-      .select('role')
-      .eq('id', caller.id)
-      .single();
-
-    if (roleErr) return fail('Erro ao verificar permissões', roleErr.message);
-    if (callerRow?.role !== 'super_admin') return fail('Apenas super_admin pode criar usuários');
-
-    // ── Valida body ────────────────────────────────────────────────────────────
+    // ── Parse body (necessário antes da verificação de permissão) ───────────────
     let body: Record<string, unknown>;
     try {
       body = await req.json();
@@ -86,10 +76,42 @@ Deno.serve(async (req) => {
       return fail('Body JSON inválido');
     }
 
+    const restaurant_id = body.restaurant_id as string;
+    if (!restaurant_id) return fail('restaurant_id é obrigatório');
+
+    // ── Verifica permissão: super_admin OU proprietário do restaurante ──────────
+    const { data: callerRow, error: roleErr } = await admin
+      .from('users')
+      .select('role, restaurant_id')
+      .eq('id', caller.id)
+      .single();
+
+    if (roleErr) return fail('Erro ao verificar permissões', roleErr.message);
+
+    const isSuperAdmin = callerRow?.role === 'super_admin';
+    const isOwnerOfRestaurant =
+      callerRow?.role === 'restaurant_admin' && callerRow?.restaurant_id === restaurant_id;
+
+    let isOwnerViaRur = false;
+    if (!isSuperAdmin && !isOwnerOfRestaurant) {
+      const { data: rur } = await admin
+        .from('restaurant_user_roles')
+        .select('role')
+        .eq('user_id', caller.id)
+        .eq('restaurant_id', restaurant_id)
+        .eq('is_active', true)
+        .maybeSingle();
+      isOwnerViaRur = rur?.role === 'owner';
+    }
+
+    if (!isSuperAdmin && !isOwnerOfRestaurant && !isOwnerViaRur) {
+      return fail('Apenas super_admin ou proprietário do restaurante pode criar usuários');
+    }
+
+    // ── Valida demais campos do body ────────────────────────────────────────────
     const {
       email,
       password,
-      restaurant_id,
       login,
       restaurant_role = 'manager',
     } = body as Record<string, string>;

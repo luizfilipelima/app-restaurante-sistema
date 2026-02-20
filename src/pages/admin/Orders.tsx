@@ -624,18 +624,6 @@ export default function AdminOrders() {
                         return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
                       };
 
-                      // ── Badges COZ / BAR ──
-                      const orderDestinations = (() => {
-                        if (!productDestMap || productDestMap.size === 0) return { hasKitchen: false, hasBar: false };
-                        const items2 = order.order_items ?? [];
-                        let hK = false; let hB = false;
-                        for (const it of items2) {
-                          const d = (it.product_id ? productDestMap.get(it.product_id) : undefined) ?? 'kitchen';
-                          if (d === 'bar') hB = true; else hK = true;
-                        }
-                        return { hasKitchen: hK, hasBar: hB };
-                      })();
-
                       return (
                         <div
                           key={order.id}
@@ -664,17 +652,6 @@ export default function AdminOrders() {
                                 ) : (
                                   <Badge variant="info" className="gap-0.5 text-[10px] px-1.5 py-0.5 h-auto rounded-full">
                                     <Bike className="h-2.5 w-2.5" /> Delivery
-                                  </Badge>
-                                )}
-                                {/* ── Destinos de impressão ── */}
-                                {orderDestinations.hasKitchen && (
-                                  <Badge variant="delivering" className="text-[10px] px-1.5 py-0.5 h-auto font-bold tracking-wider rounded-full">
-                                    COZ
-                                  </Badge>
-                                )}
-                                {orderDestinations.hasBar && (
-                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 h-auto font-bold tracking-wider bg-orange-100 text-orange-700 border-orange-200 rounded-full">
-                                    BAR
                                   </Badge>
                                 )}
                               </div>

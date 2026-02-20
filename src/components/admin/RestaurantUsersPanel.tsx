@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -144,7 +144,7 @@ export default function RestaurantUsersPanel({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // ── Query: lista de usuários ─────────────────────────────────────────────────
-  const queryKey = ['restaurant-users', restaurantId];
+  const queryKey = useMemo(() => ['restaurant-users', restaurantId], [restaurantId]);
 
   const { data: users = [], isLoading } = useQuery<RestaurantUser[]>({
     queryKey,
@@ -157,7 +157,9 @@ export default function RestaurantUsersPanel({
       return (data as RestaurantUser[]) ?? [];
     },
     enabled: open && !!restaurantId,
-    staleTime: 30_000,
+    staleTime: 60_000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const invalidate = useCallback(
@@ -271,7 +273,7 @@ export default function RestaurantUsersPanel({
                   Gestão de Usuários
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-500 mt-0.5">
-                  {restaurantName ?? 'Restaurante'} · acesso exclusivo do super-admin
+                  {restaurantName ?? 'Restaurante'} · Proprietário e super-admin podem gerenciar
                 </DialogDescription>
               </div>
             </div>
@@ -477,7 +479,7 @@ export default function RestaurantUsersPanel({
         <div className="flex-shrink-0 px-6 py-3 border-t border-slate-100 bg-slate-50/60">
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <Shield className="h-3 w-3" />
-            <span>Apenas super-admins podem gerenciar usuários de restaurantes.</span>
+            <span>Proprietários e super-admins podem gerenciar usuários do restaurante.</span>
           </div>
         </div>
 

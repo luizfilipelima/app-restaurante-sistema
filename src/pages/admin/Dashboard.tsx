@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -1311,30 +1312,34 @@ export default function AdminDashboard() {
           </DialogContent>
         </Dialog>
 
-        {/* ── Print Report (hidden; visible only during window.print()) ── */}
-        <DashboardPrintReport
-          restaurantName={restaurantName}
-          restaurantLogo={restaurant?.logo ?? undefined}
-          period={periodLabel}
-          periodDates={`${format(start, 'dd/MM/yyyy', { locale: ptBR })} a ${format(end, 'dd/MM/yyyy', { locale: ptBR })}`}
-          areaLabel={areaFilter !== 'all' ? areaLabel : t('dashboard.filters.all')}
-          generatedAt={new Date()}
-          currency={currency}
-          totalRevenue={metrics.totalRevenue}
-          totalOrders={metrics.totalOrders}
-          avgTicket={metrics.averageTicket}
-          grossProfit={grossProfit}
-          avgPrepTime={avgPrepTime}
-          avgDeliveryTime={avgDeliveryTime}
-          paymentMethods={paymentMethods}
-          topProducts={topProducts}
-          bottomProducts={bottomProducts}
-          movementByHour={movementByHour}
-          dailyRevenue={dailyRevenue}
-          printPaperWidth={undefined}
-          t={t}
-          lang={adminLang}
-        />
+        {/* ── Print Report: renderizado em portal no body para evitar páginas em branco ── */}
+        {typeof document !== 'undefined' &&
+          createPortal(
+            <DashboardPrintReport
+              restaurantName={restaurantName}
+              restaurantLogo={restaurant?.logo ?? undefined}
+              period={periodLabel}
+              periodDates={`${format(start, 'dd/MM/yyyy', { locale: ptBR })} a ${format(end, 'dd/MM/yyyy', { locale: ptBR })}`}
+              areaLabel={areaFilter !== 'all' ? areaLabel : t('dashboard.filters.all')}
+              generatedAt={new Date()}
+              currency={currency}
+              totalRevenue={metrics.totalRevenue}
+              totalOrders={metrics.totalOrders}
+              avgTicket={metrics.averageTicket}
+              grossProfit={grossProfit}
+              avgPrepTime={avgPrepTime}
+              avgDeliveryTime={avgDeliveryTime}
+              paymentMethods={paymentMethods}
+              topProducts={topProducts}
+              bottomProducts={bottomProducts}
+              movementByHour={movementByHour}
+              dailyRevenue={dailyRevenue}
+              printPaperWidth={undefined}
+              t={t}
+              lang={adminLang}
+            />,
+            document.body
+          )}
     </div>
   );
 }

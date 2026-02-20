@@ -1031,20 +1031,20 @@ export default function AdminInventory() {
           <div className="space-y-5 py-2">
 
             {/* Quantidade e mínimo */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4 items-start">
               <div className="space-y-2">
-                <Label>Quantidade atual</Label>
-                <div className="flex gap-1.5">
+                <Label className="block">Quantidade atual</Label>
+                <div className="flex gap-1.5 items-stretch">
                   <Input
                     type="text"
                     inputMode="decimal"
                     value={form.quantity}
                     onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
                     placeholder="0"
-                    className="flex-1"
+                    className="flex-1 h-10"
                   />
                   <Select value={form.unit} onValueChange={(v) => setForm((f) => ({ ...f, unit: v }))}>
-                    <SelectTrigger className="w-20">
+                    <SelectTrigger className="w-20 h-10 shrink-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1056,16 +1056,14 @@ export default function AdminInventory() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>
-                  Qtd. mínima
-                  <span className="ml-1.5 text-xs text-muted-foreground font-normal">(alerta de baixo estoque)</span>
-                </Label>
+                <Label className="block" title="Alerta de baixo estoque">Qtd. mínima</Label>
                 <Input
                   type="text"
                   inputMode="decimal"
                   value={form.min_quantity}
                   onChange={(e) => setForm((f) => ({ ...f, min_quantity: e.target.value }))}
                   placeholder="5"
+                  className="h-10"
                 />
               </div>
             </div>
@@ -1079,7 +1077,7 @@ export default function AdminInventory() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Preço de custo ({getCurrencySymbol(currency)})</Label>
+                  <Label className="block">Preço de custo ({getCurrencySymbol(currency)})</Label>
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -1089,10 +1087,11 @@ export default function AdminInventory() {
                       cost_price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
                     }))}
                     placeholder={currency === 'PYG' ? '25.000' : '0,00'}
+                    className="h-10"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Preço de venda ({getCurrencySymbol(currency)})</Label>
+                  <Label className="block">Preço de venda ({getCurrencySymbol(currency)})</Label>
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -1102,6 +1101,7 @@ export default function AdminInventory() {
                       sale_price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
                     }))}
                     placeholder={currency === 'PYG' ? '25.000' : '0,00'}
+                    className="h-10"
                   />
                 </div>
               </div>
@@ -1122,16 +1122,13 @@ export default function AdminInventory() {
 
             {/* Validade */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                Data de validade
-                <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
-              </Label>
+              <Label className="block">Data de validade <span className="text-muted-foreground font-normal">(opcional)</span></Label>
               <Input
                 type="date"
                 value={form.expiry_date}
                 onChange={(e) => setForm((f) => ({ ...f, expiry_date: e.target.value }))}
                 min={new Date().toISOString().split('T')[0]}
+                className="h-10"
               />
               {form.expiry_date && (() => {
                 const days = getDaysUntilExpiry(form.expiry_date);
@@ -1146,7 +1143,7 @@ export default function AdminInventory() {
 
             {/* Notas */}
             <div className="space-y-2">
-              <Label>Observações internas</Label>
+              <Label className="block">Observações internas</Label>
               <Textarea
                 value={form.notes}
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
