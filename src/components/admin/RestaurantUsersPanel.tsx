@@ -21,6 +21,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRole } from '@/hooks/useUserRole';
 import {
   Users,
   UserPlus,
@@ -137,6 +138,10 @@ export default function RestaurantUsersPanel({
 }: RestaurantUsersPanelProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { role: currentUserRole } = useUserRole();
+
+  // Apenas proprietário e super-admin podem ver e alterar o cargo do proprietário.
+  const canViewOrEditOwner = currentUserRole === 'owner' || currentUserRole === 'super_admin';
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -306,6 +311,7 @@ export default function RestaurantUsersPanel({
             <div className="border-b border-slate-100 bg-slate-50/60">
               <AddUserForm
                 restaurantId={restaurantId}
+                canAssignOwner={canViewOrEditOwner}
                 onSuccess={() => { setShowAddForm(false); invalidate(); }}
                 onCancel={() => setShowAddForm(false)}
               />
@@ -331,10 +337,18 @@ export default function RestaurantUsersPanel({
                 </p>
               </div>
             ) : (
-              users.map((user) => {
+              users
+                .filter((u) => {
+                  // Gerente e abaixo não visualizam o proprietário
+                  if (u.restaurant_role === 'owner' && !canViewOrEditOwner) return false;
+                  return true;
+                })
+                .map((user) => {
                 const roleConfig = getRoleConfig(user.restaurant_role);
                 const RoleIcon = roleConfig.icon;
                 const isEditingThis = editingUserId === user.user_id;
+                const isOwner = user.restaurant_role === 'owner';
+                const canEditThisUser = !isOwner || canViewOrEditOwner;
 
                 return (
                   <div
@@ -377,8 +391,8 @@ export default function RestaurantUsersPanel({
                           )}
                         </div>
 
-                        {/* Cargo (view/edit) */}
-                        {isEditingThis ? (
+                        {/* Cargo (view/edit) — gerente e abaixo não podem ver/alterar cargo do proprietário */}
+                        {isEditingThis && canEditThisUser ? (
                           <div className="flex items-center gap-2 mt-2">
                             <Select
                               value={editingRole}
@@ -388,7 +402,7 @@ export default function RestaurantUsersPanel({
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {ROLES.map((r) => (
+                                {ROLES.filter((r) => r.value !== 'owner' || canViewOrEditOwner).map((r) => (
                                   <SelectItem key={r.value} value={r.value}>
                                     <div className="flex items-center gap-2">
                                       <r.icon className={`h-3.5 w-3.5 ${r.color}`} />
@@ -424,12 +438,14 @@ export default function RestaurantUsersPanel({
                           </div>
                         ) : (
                           <button
-                            className={`mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-80 transition-opacity ${roleConfig.bg} ${roleConfig.border} ${roleConfig.color}`}
+                            className={`mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-80 transition-opacity ${roleConfig.bg} ${roleConfig.border} ${roleConfig.color} ${!canEditThisUser ? 'pointer-events-none' : ''}`}
                             onClick={() => {
-                              setEditingUserId(user.user_id);
-                              setEditingRole(user.restaurant_role);
+                              if (canEditThisUser) {
+                                setEditingUserId(user.user_id);
+                                setEditingRole(user.restaurant_role);
+                              }
                             }}
-                            title="Clique para alterar cargo"
+                            title={canEditThisUser ? 'Clique para alterar cargo' : undefined}
                           >
                             <RoleIcon className="h-2.5 w-2.5" />
                             {roleConfig.label}
@@ -527,11 +543,12 @@ function ActionButton({
 
 interface AddUserFormProps {
   restaurantId: string;
+  canAssignOwner: boolean;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-function AddUserForm({ restaurantId, onSuccess, onCancel }: AddUserFormProps) {
+function AddUserForm({ restaurantId, canAssignOwner, onSuccess, onCancel }: AddUserFormProps) {
   const { toast } = useToast();
   const [form, setForm] = useState({
     email: '',
@@ -662,7 +679,7 @@ function AddUserForm({ restaurantId, onSuccess, onCancel }: AddUserFormProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {ROLES.map((r) => (
+              {ROLES.filter((r) => r.value !== 'owner' || canAssignOwner).map((r) => (
                 <SelectItem key={r.value} value={r.value}>
                   <div className="flex items-center gap-2">
                     <r.icon className={`h-3.5 w-3.5 ${r.color}`} />

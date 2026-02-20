@@ -34,7 +34,6 @@ const TEXTS: Record<Lang, {
   whatsappMsg: string;
   openNow: string;
   closedNow: string;
-  poweredBy: string;
   notFound: string;
 }> = {
   pt: {
@@ -45,7 +44,6 @@ const TEXTS: Record<Lang, {
     whatsappMsg: 'Olá! Quero fazer um pedido 🍽️',
     openNow: 'Aberto agora',
     closedNow: 'Fechado',
-    poweredBy: 'Tecnologia',
     notFound: 'Restaurante não encontrado',
   },
   es: {
@@ -56,7 +54,6 @@ const TEXTS: Record<Lang, {
     whatsappMsg: '¡Hola! Quiero hacer un pedido 🍽️',
     openNow: 'Abierto ahora',
     closedNow: 'Cerrado',
-    poweredBy: 'Tecnología',
     notFound: 'Restaurante no encontrado',
   },
 };
@@ -214,7 +211,7 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
   // ── Loading ───────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="h-screen min-h-[100dvh] flex items-center justify-center bg-white overflow-hidden">
         <motion.div
           animate={{ opacity: [0.3, 1, 0.3] }}
           transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
@@ -227,7 +224,7 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
   // ── Not found ─────────────────────────────────────────────────────────────────
   if (!restaurant) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-white px-6 text-center">
+      <div className="h-screen min-h-[100dvh] flex flex-col items-center justify-center gap-3 bg-white px-6 text-center overflow-hidden">
         <motion.p
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -248,7 +245,7 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="relative min-h-screen w-full bg-white flex flex-col items-center justify-center overflow-hidden">
+    <div className="relative h-screen min-h-[100dvh] w-full bg-white flex flex-col items-center overflow-hidden">
 
       {/* Subtle radial light at top */}
       <div
@@ -261,17 +258,19 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
       {/* Language toggle */}
       <LangToggle lang={lang} onToggle={() => setLang((l) => (l === 'pt' ? 'es' : 'pt'))} />
 
-      {/* Content */}
+      {/* Content — ocupa 100% com distribuição equilibrada */}
       <motion.div
         variants={pageVariants}
         initial="hidden"
         animate="visible"
-        className="relative z-10 w-full max-w-[340px] mx-auto px-5 py-12 flex flex-col items-center gap-7"
+        className="relative z-10 w-full max-w-[340px] mx-auto px-5 flex-1 flex flex-col justify-between py-6 sm:py-8 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
       >
 
-        {/* ── Logo ── */}
-        <motion.div variants={logoVariants}>
-          <div className="relative w-24 h-24">
+        {/* Bloco superior: logo + nome + status */}
+        <div className="flex flex-col items-center gap-5 flex-shrink-0 pt-4 sm:pt-8">
+          {/* ── Logo ── */}
+          <motion.div variants={logoVariants}>
+            <div className="relative w-20 h-20 sm:w-24 sm:h-24">
             {restaurant.logo ? (
               <img
                 src={restaurant.logo}
@@ -288,33 +287,32 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
           </div>
         </motion.div>
 
-        {/* ── Name + status ── */}
-        <motion.div variants={itemVariants} className="flex flex-col items-center gap-2 text-center">
-          <h1 className="text-[22px] font-bold text-slate-900 tracking-tight leading-snug">
-            {restaurant.name}
-          </h1>
+          {/* ── Name + status ── */}
+          <motion.div variants={itemVariants} className="flex flex-col items-center gap-2 text-center">
+            <h1 className="text-xl sm:text-[22px] font-bold text-slate-900 tracking-tight leading-snug">
+              {restaurant.name}
+            </h1>
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={isOpen ? 'open' : 'closed'}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border ${
+                  isOpen ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-500'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                {isOpen ? t.openNow : t.closedNow}
+              </motion.span>
+            </AnimatePresence>
+          </motion.div>
+        </div>
 
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={isOpen ? 'open' : 'closed'}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.2 }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border ${
-                isOpen
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                  : 'bg-slate-50 border-slate-200 text-slate-500'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-              {isOpen ? t.openNow : t.closedNow}
-            </motion.span>
-          </AnimatePresence>
-        </motion.div>
-
-        {/* ── Buttons ── */}
-        <div className="w-full flex flex-col gap-3">
+        {/* ── Botões (área central flexível) ── */}
+        <div className="flex-1 flex flex-col justify-center w-full min-h-0 py-4">
+          <div className="w-full flex flex-col gap-3">
 
           {/* Delivery menu */}
           <motion.a
@@ -375,24 +373,22 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
               </motion.svg>
             </motion.a>
           )}
+          </div>
         </div>
 
-        {/* ── Footer ── */}
+        {/* ── Footer: apenas logomarca ── */}
         <motion.a
           variants={itemVariants}
           href="https://quiero.food"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 group mt-1"
+          className="flex-shrink-0 flex items-center justify-center py-2 group"
         >
           <img
             src="/quierofood-logo-f.svg"
             alt="Quiero.food"
-            className="h-4 w-auto object-contain opacity-30 group-hover:opacity-50 transition-opacity"
+            className="h-5 w-auto object-contain opacity-25 group-hover:opacity-40 transition-opacity"
           />
-          <span className="text-[10px] text-slate-300 group-hover:text-slate-400 transition-colors font-medium tracking-wide">
-            {t.poweredBy} quiero.food
-          </span>
         </motion.a>
       </motion.div>
     </div>

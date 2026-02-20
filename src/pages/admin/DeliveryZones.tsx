@@ -1,40 +1,87 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
 import { useDeliveryZones } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
+import { convertPriceToStorage, convertBetweenCurrencies, getCurrencySymbol, formatPriceInputPyG } from '@/lib/priceHelper';
+import type { CurrencyCode } from '@/lib/priceHelper';
 import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
+
+const FEE_CURRENCIES: { value: CurrencyCode; label: string }[] = [
+  { value: 'BRL', label: 'R$ Real' },
+  { value: 'PYG', label: 'Gs. Guaraní' },
+  { value: 'ARS', label: '$ Peso' },
+  { value: 'USD', label: 'US$ Dólar' },
+];
 
 export default function AdminDeliveryZones() {
   const restaurantId = useAdminRestaurantId();
-  const currency = useAdminCurrency();
+  const restaurant = useAdminRestaurant()?.restaurant ?? null;
+  const baseCurrency = useAdminCurrency();
   const { data: zonesData, isLoading: loading, refetch } = useDeliveryZones(restaurantId);
   const zones = zonesData ?? [];
+
+  const paymentCurrencies = (restaurant as { payment_currencies?: string[] })?.payment_currencies;
+  const feeCurrencyOptions: CurrencyCode[] = (() => {
+    const arr = Array.isArray(paymentCurrencies) && paymentCurrencies.length > 0
+      ? paymentCurrencies.filter((c): c is CurrencyCode => ['BRL', 'PYG', 'ARS', 'USD'].includes(c))
+      : [baseCurrency];
+    const seen = new Set<CurrencyCode>();
+    const result: CurrencyCode[] = [];
+    if (!seen.has(baseCurrency)) {
+      seen.add(baseCurrency);
+      result.push(baseCurrency);
+    }
+    arr.forEach((c) => {
+      if (!seen.has(c as CurrencyCode)) {
+        seen.add(c as CurrencyCode);
+        result.push(c as CurrencyCode);
+      }
+    });
+    return result.length > 0 ? result : [baseCurrency];
+  })();
+
+  const exchangeRates = (restaurant as { exchange_rates?: { pyg_per_brl?: number; ars_per_brl?: number } })?.exchange_rates ?? { pyg_per_brl: 3600, ars_per_brl: 1150 };
+
   const [showForm, setShowForm] = useState(false);
+  const [feeCurrency, setFeeCurrency] = useState<CurrencyCode>(baseCurrency);
   const [formData, setFormData] = useState({
     location_name: '',
-    fee: 0,
+    feeInput: '0',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId) return;
 
+    const valueInFeeCurrency = convertPriceToStorage(formData.feeInput, feeCurrency);
+    const feeInBase = feeCurrency === baseCurrency
+      ? valueInFeeCurrency
+      : convertBetweenCurrencies(valueInFeeCurrency, feeCurrency, baseCurrency, exchangeRates);
+
     try {
       const { error } = await supabase.from('delivery_zones').insert({
         restaurant_id: restaurantId,
         location_name: formData.location_name,
-        fee: formData.fee,
+        fee: feeInBase,
         is_active: true,
       });
 
       if (error) throw error;
 
-      setFormData({ location_name: '', fee: 0 });
+      setFormData({ location_name: '', feeInput: '0' });
+      setFeeCurrency(baseCurrency);
       setShowForm(false);
       refetch();
     } catch (error) {
@@ -116,17 +163,35 @@ export default function AdminDeliveryZones() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="fee">Taxa de Entrega (R$)</Label>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <Label htmlFor="fee">Taxa de Entrega</Label>
+                    {feeCurrencyOptions.length > 1 && (
+                      <Select value={feeCurrency} onValueChange={(v) => setFeeCurrency(v as CurrencyCode)}>
+                        <SelectTrigger className="h-8 w-[120px] text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {feeCurrencyOptions.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {FEE_CURRENCIES.find((x) => x.value === c)?.label ?? getCurrencySymbol(c)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
                   <Input
                     id="fee"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.fee}
+                    type="text"
+                    inputMode="decimal"
+                    value={formData.feeInput}
                     onChange={(e) =>
-                      setFormData({ ...formData, fee: parseFloat(e.target.value) })
+                      setFormData({
+                        ...formData,
+                        feeInput: feeCurrency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
+                      })
                     }
-                    placeholder="0.00"
+                    placeholder={feeCurrency === 'PYG' ? '0' : '0,00'}
                     required
                   />
                   <p className="text-xs text-muted-foreground mt-1">
@@ -140,7 +205,8 @@ export default function AdminDeliveryZones() {
                     variant="outline"
                     onClick={() => {
                       setShowForm(false);
-                      setFormData({ location_name: '', fee: 0 });
+                      setFormData({ location_name: '', feeInput: '0' });
+                      setFeeCurrency(baseCurrency);
                     }}
                   >
                     Cancelar
@@ -186,7 +252,7 @@ export default function AdminDeliveryZones() {
                     <p className="text-2xl font-bold text-primary">
                       {zone.fee === 0
                         ? 'Grátis'
-                        : formatCurrency(zone.fee, currency)}
+                        : formatCurrency(zone.fee, baseCurrency)}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Taxa de entrega

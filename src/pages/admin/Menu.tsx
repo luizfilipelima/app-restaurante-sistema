@@ -1331,12 +1331,12 @@ export default function AdminMenu() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Categoria *</Label>
-                    <Select value={form.categoryId} onValueChange={handleCategoryChange} required>
+                    <Select value={form.categoryId || undefined} onValueChange={handleCategoryChange} required>
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder={categories.length ? 'Selecione' : 'Crie uma categoria'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map((cat) => (
+                        {categories.filter((c) => c.id).map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>
                             {cat.name}{cat.is_pizza && ' (pizza)'}{cat.is_marmita && ' (marmita)'}
                           </SelectItem>
@@ -1351,7 +1351,9 @@ export default function AdminMenu() {
                         <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Nenhuma" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nenhuma</SelectItem>
-                          {subcategoriesOfSelected.map((sub) => <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>)}
+                          {subcategoriesOfSelected.filter((s) => s.id).map((sub) => (
+                            <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>

@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff, QrCode, Landmark } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff, QrCode, Landmark, Store } from 'lucide-react';
 import { WhatsAppTemplatesModal } from '@/components/admin/WhatsAppTemplatesModal';
 import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
 import type { WhatsAppTemplates } from '@/types';
@@ -627,6 +627,17 @@ export default function AdminOrders() {
                         return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
                       };
 
+                      // WhatsApp "pedido pronto para retirada"
+                      const buildWhatsAppPickupReadyUrl = () => {
+                        const phone = order.customer_phone.replace(/\D/g, '');
+                        const firstName = order.customer_name.split(' ')[0];
+                        const msg = `Olá ${firstName}! Seu pedido está pronto para retirada${restaurant?.name ? ` no ${restaurant.name}` : ''}. Pode vir buscar! 😊`;
+                        return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+                      };
+
+                      const isPickupOrder = !isTableOrder && !isComandaOrder && !isDeliveryOrder;
+                      const canNotifyPickupWhatsApp = status === OrderStatus.READY && isPickupOrder;
+
                       return (
                         <div
                           key={order.id}
@@ -652,9 +663,13 @@ export default function AdminOrders() {
                                   <Badge variant="warning" className="gap-0.5 text-[10px] px-1.5 py-0.5 h-auto rounded-full">
                                     <UtensilsCrossed className="h-2.5 w-2.5" /> Mesa
                                   </Badge>
-                                ) : (
+                                ) : isDeliveryOrder ? (
                                   <Badge variant="info" className="gap-0.5 text-[10px] px-1.5 py-0.5 h-auto rounded-full">
                                     <Bike className="h-2.5 w-2.5" /> Delivery
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="gap-0.5 text-[10px] px-1.5 py-0.5 h-auto rounded-full bg-slate-100 text-slate-700 border-slate-200">
+                                    <Store className="h-2.5 w-2.5" /> Retirada
                                   </Badge>
                                 )}
                               </div>
@@ -798,10 +813,23 @@ export default function AdminOrders() {
                               </Button>
                             )}
 
-                            {/* ── WhatsApp "Saiu pra entrega" ── */}
+                            {/* ── WhatsApp "Saiu pra entrega" (delivery, coluna Em Entrega) ── */}
                             {canNotifyWhatsApp && (
                               <a
                                 href={buildWhatsAppDeliveryUrl()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center gap-1.5 w-full rounded-lg bg-[#25D366] hover:bg-[#1ebe5d] transition-colors py-1.5 text-xs font-semibold text-white shadow-sm"
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                                Avisar cliente no WhatsApp
+                              </a>
+                            )}
+
+                            {/* ── WhatsApp "Pronto para retirada" (pickup, coluna Prontos) ── */}
+                            {canNotifyPickupWhatsApp && (
+                              <a
+                                href={buildWhatsAppPickupReadyUrl()}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center justify-center gap-1.5 w-full rounded-lg bg-[#25D366] hover:bg-[#1ebe5d] transition-colors py-1.5 text-xs font-semibold text-white shadow-sm"

@@ -62,6 +62,7 @@
     "phoneLabel": "Celular / WhatsApp",
     "zoneLabel": "Barrio / Zona de Entrega",
     "zonePlaceholder": "Selecciona tu barrio",
+    "zoneNoZones": "Entrega a toda el área",
     "addressLabel": "Dirección completa (opcional)",
     "addressPlaceholder": "Calle, número, complemento — o envía la ubicación por WhatsApp",
     "payment": "Pago",
