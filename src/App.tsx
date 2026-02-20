@@ -64,6 +64,7 @@ const PublicCheckout        = lazyWithRetry(() => import('./pages/public/Checkou
 const MenuViewOnly          = lazyWithRetry(() => import('./pages/public/MenuViewOnly'));
 const MenuTable             = lazyWithRetry(() => import('./pages/public/MenuTable'));
 const VirtualComanda        = lazyWithRetry(() => import('./pages/public/VirtualComanda'));
+const OrderTracking         = lazyWithRetry(() => import('./pages/public/OrderTracking'));
 
 // ─── Fallback de carregamento ─────────────────────────────────────────────────
 
@@ -224,6 +225,8 @@ function App() {
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
           {/* Comanda Digital — rota pública para clientes que escaneiam QR (app. ou quiero.) */}
           <Route path="/:restaurantSlug/comanda" element={<VirtualComanda />} />
+          {/* Rastreamento de Pedido — rota pública para acompanhamento em tempo real */}
+          <Route path="/:restaurantSlug/track/:orderId" element={<OrderTracking />} />
           {/*
            * ── Super Admin Shell ───────────────────────────────────────────
            * SuperAdminLayout (dark sidebar) envolve as páginas de gestão do SaaS.
@@ -379,6 +382,8 @@ function App() {
         <Route path="/:restaurantSlug/checkout" element={<PublicCheckout />} />
         {/* Comanda Digital (Enterprise): cliente abre e acompanha a sua comanda */}
         <Route path="/:restaurantSlug/comanda" element={<VirtualComanda />} />
+        {/* Rastreamento de Pedido — rota pública para acompanhamento em tempo real */}
+        <Route path="/:restaurantSlug/track/:orderId" element={<OrderTracking />} />
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
 
         {/* Painel do restaurante — URL canônica com slug (domínio principal) */}

@@ -400,7 +400,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       
       // Limpar carrinho antes de redirecionar
       clearCart();
-      
+
       // Mostrar toast de sucesso
       toast({ 
         title: '✅ ' + t('checkout.successOrderTitle'), 
@@ -408,9 +408,19 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         className: 'bg-green-50 border-green-200'
       });
       
-      // Abrir WhatsApp apenas em nova aba (evita redirecionamento duplo)
+      // Abrir WhatsApp em nova aba
       window.open(link, '_blank', 'noopener,noreferrer');
-      setTimeout(() => handleBackToMenu(), 800);
+
+      // Redirecionar para a tela de rastreamento do pedido
+      const newOrderId = (rpcResult as { order_id?: string })?.order_id;
+      if (newOrderId) {
+        const trackPath = isSubdomain
+          ? `/track/${newOrderId}`
+          : `/${restaurantSlug}/track/${newOrderId}`;
+        setTimeout(() => navigate(trackPath), 600);
+      } else {
+        setTimeout(() => handleBackToMenu(), 800);
+      }
       } else {
         // Pedido de mesa: não abre WhatsApp
         clearCart();
