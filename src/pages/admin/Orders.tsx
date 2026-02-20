@@ -163,7 +163,13 @@ export default function AdminOrders() {
           .eq('id', orderId)
           .single();
         if (!error && fullOrder) {
-          printOrder(fullOrder as DatabaseOrder, settings.name, settings.print_paper_width || '80mm', currency);
+          printOrder(
+            fullOrder as DatabaseOrder,
+            settings.name,
+            settings.print_paper_width || '80mm',
+            currency,
+            settings.print_settings_by_sector
+          );
         }
       } catch (e) {
         console.error('Erro ao imprimir pedido novo:', e);
@@ -335,7 +341,7 @@ export default function AdminOrders() {
   const handlePrintOrder = (order: DatabaseOrder) => {
     const name = printSettings?.name ?? '';
     const width = printSettings?.print_paper_width ?? '80mm';
-    printOrder(order, name, width, currency);
+    printOrder(order, name, width, currency, printSettings?.print_settings_by_sector);
   };
 
   return (

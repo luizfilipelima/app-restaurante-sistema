@@ -68,6 +68,16 @@ export interface Courier {
 /** Largura do papel para cupom térmico */
 export type PrintPaperWidth = '58mm' | '80mm';
 
+/** Config de impressão por setor (delivery, table, pickup, buffet) */
+export interface SectorPrintSettings {
+  waiter_tip_enabled: boolean;
+  waiter_tip_pct: number;
+}
+
+export type PrintSettingsBySector = Partial<
+  Record<'delivery' | 'table' | 'pickup' | 'buffet', SectorPrintSettings>
+>;
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -87,6 +97,8 @@ export interface Restaurant {
   print_auto_on_new_order?: boolean;
   /** Largura do papel: 58mm ou 80mm */
   print_paper_width?: PrintPaperWidth;
+  /** Config de impressão por setor: { delivery, table, pickup, buffet } */
+  print_settings_by_sector?: PrintSettingsBySector;
   /** Moeda de exibição dos valores no cardápio */
   currency?: 'BRL' | 'PYG' | 'ARS' | 'USD';
   /** Idioma da interface do cardápio público */

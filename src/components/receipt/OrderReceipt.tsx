@@ -1,15 +1,28 @@
 import { DatabaseOrder } from '@/types';
+import type { PrintSettingsBySector } from '@/types';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const SEP = '--------------------------------';
 
+/** Determina o setor do pedido para aplicar config de impressão. */
+function getOrderSector(order: DatabaseOrder): 'delivery' | 'table' | 'pickup' | 'buffet' {
+  const src = order.order_source;
+  if (src === 'table') return 'table';
+  if (src === 'buffet') return 'buffet';
+  if (src === 'delivery' || order.delivery_type === 'delivery') return 'delivery';
+  if (src === 'pickup' || order.delivery_type === 'pickup') return 'pickup';
+  return 'table'; // default para mesa quando não há order_source
+}
+
 export interface OrderReceiptData {
   order: DatabaseOrder;
   restaurantName: string;
   paperWidth: '58mm' | '80mm';
   currency?: CurrencyCode;
+  /** Config de impressão por setor (taxa de garçom). */
+  sectorPrintSettings?: PrintSettingsBySector;
 }
 
 interface OrderReceiptProps {
@@ -23,11 +36,20 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
     return <div className={className} aria-hidden />;
   }
 
-  const { order, restaurantName, paperWidth, currency = 'BRL' } = data;
+  const { order, restaurantName, paperWidth, currency = 'BRL', sectorPrintSettings } = data;
   const items = order.order_items ?? [];
   const subtotal = Number(order.subtotal);
   const deliveryFee = Number(order.delivery_fee ?? 0);
-  const total = Number(order.total);
+  let total = Number(order.total);
+
+  const sector = getOrderSector(order);
+  const sectorConfig = sectorPrintSettings?.[sector];
+  const waiterTipEnabled = !!sectorConfig?.waiter_tip_enabled;
+  const waiterTipPct = Math.max(0, Math.min(100, Number(sectorConfig?.waiter_tip_pct) || 10));
+  const waiterTipAmount = waiterTipEnabled
+    ? Math.round(subtotal * (waiterTipPct / 100))
+    : 0;
+  if (waiterTipAmount > 0) total += waiterTipAmount;
   const zoneName = order.delivery_zone?.location_name;
   const paymentLabel =
     order.payment_method === 'table' || order.order_source === 'table' || order.table_id
@@ -110,6 +132,12 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
             <div className="receipt-row">
               <span>Taxa de entrega</span>
               <span>{formatCurrency(deliveryFee, currency)}</span>
+            </div>
+          )}
+          {waiterTipAmount > 0 && (
+            <div className="receipt-row">
+              <span>Taxa de garçom ({waiterTipPct}%)</span>
+              <span>{formatCurrency(waiterTipAmount, currency)}</span>
             </div>
           )}
           <div className="receipt-row receipt-total">

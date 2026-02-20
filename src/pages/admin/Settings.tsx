@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
 import { useAdminLanguageStore } from '@/store/adminLanguageStore';
-import { DayKey, PrintPaperWidth } from '@/types';
+import { DayKey, PrintPaperWidth, type PrintSettingsBySector, type SectorPrintSettings } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -64,6 +64,30 @@ const PANEL_LANGS: { value: PanelLanguage; label: string }[] = [
   { value: 'en', label: '🇺🇸 English' },
 ];
 
+const SECTOR_KEYS = ['delivery', 'table', 'pickup', 'buffet'] as const;
+type SectorKey = typeof SECTOR_KEYS[number];
+
+function defaultSectorSettings(): PrintSettingsBySector {
+  const empty: SectorPrintSettings = { waiter_tip_enabled: false, waiter_tip_pct: 10 };
+  return SECTOR_KEYS.reduce((acc, k) => ({ ...acc, [k]: { ...empty } }), {} as PrintSettingsBySector);
+}
+
+function parseSectorSettings(raw: unknown): PrintSettingsBySector {
+  if (!raw || typeof raw !== 'object') return defaultSectorSettings();
+  const obj = raw as Record<string, unknown>;
+  const out = defaultSectorSettings();
+  for (const k of SECTOR_KEYS) {
+    const v = obj[k];
+    if (v && typeof v === 'object' && 'waiter_tip_enabled' in v && 'waiter_tip_pct' in v) {
+      const s = v as { waiter_tip_enabled: boolean; waiter_tip_pct: number };
+      out[k] = {
+        waiter_tip_enabled: !!s.waiter_tip_enabled,
+        waiter_tip_pct: Math.max(0, Math.min(100, Number(s.waiter_tip_pct) || 10)),
+      };
+    }
+  }
+  return out;
+}
 
 // ─── Utilitários ──────────────────────────────────────────────────────────────
 
@@ -195,6 +219,7 @@ export default function AdminSettings() {
     opening_hours:           {} as Record<DayKey, { open: string; close: string } | null>,
     print_auto_on_new_order: false,
     print_paper_width:       '80mm' as PrintPaperWidth,
+    print_settings_by_sector: defaultSectorSettings(),
   });
 
   const set = <K extends keyof typeof formData>(k: K, v: (typeof formData)[K]) =>
@@ -245,6 +270,7 @@ export default function AdminSettings() {
         ),
         print_auto_on_new_order: !!data.print_auto_on_new_order,
         print_paper_width:       data.print_paper_width === '58mm' ? '58mm' : '80mm',
+        print_settings_by_sector: parseSectorSettings(data.print_settings_by_sector),
       });
     } catch (err) {
       console.error('Erro ao carregar restaurante:', err);
@@ -271,6 +297,7 @@ export default function AdminSettings() {
         opening_hours:           formData.opening_hours,
         print_auto_on_new_order: formData.print_auto_on_new_order,
         print_paper_width:       formData.print_paper_width,
+        print_settings_by_sector: formData.print_settings_by_sector,
         updated_at:              new Date().toISOString(),
       }).eq('id', restaurantId);
       if (error) throw error;
@@ -865,7 +892,7 @@ export default function AdminSettings() {
             />
 
             <FieldGroup>
-              <SectionLabel>Largura do papel</SectionLabel>
+              <SectionLabel>{t('settings.operation.paperWidth')}</SectionLabel>
               <div className="grid grid-cols-2 gap-2">
                 {(['58mm', '80mm'] as PrintPaperWidth[]).map(w => (
                   <button
@@ -881,12 +908,80 @@ export default function AdminSettings() {
                     <Printer className="h-4 w-4" />
                     {w}
                     <span className="text-[10px] font-normal">
-                      {w === '58mm' ? 'bobina estreita' : 'bobina padrão'}
+                      {w === '58mm' ? t('settings.operation.narrow') : t('settings.operation.standard')}
                     </span>
                   </button>
                 ))}
               </div>
             </FieldGroup>
+          </div>
+
+          {/* Impressão por setor — taxa de garçom por canal */}
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                <Printer className="h-[18px] w-[18px] text-muted-foreground" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">{t('settings.operation.printBySector')}</h2>
+                <p className="text-[11px] text-muted-foreground">
+                  {t('settings.operation.printBySectorDesc')}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {SECTOR_KEYS.map((sector) => {
+                const sectorLabels: Record<SectorKey, string> = {
+                  delivery: t('settings.operation.sectorDelivery'),
+                  table:    t('settings.operation.sectorTable'),
+                  pickup:   t('settings.operation.sectorPickup'),
+                  buffet:   t('settings.operation.sectorBuffet'),
+                };
+                const sectorLabel = sectorLabels[sector];
+                const cfg = formData.print_settings_by_sector[sector] ?? { waiter_tip_enabled: false, waiter_tip_pct: 10 };
+                const enabled = cfg.waiter_tip_enabled;
+                const pct = cfg.waiter_tip_pct;
+                return (
+                  <div
+                    key={sector}
+                    className={`rounded-xl border p-4 transition-colors ${
+                      enabled ? 'bg-orange-50/50 border-orange-200' : 'bg-muted/30 border-border'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-semibold text-foreground">{sectorLabel}</span>
+                      <Toggle
+                        checked={enabled}
+                        onChange={(v) => {
+                          const next = { ...formData.print_settings_by_sector };
+                          next[sector] = { ...cfg, waiter_tip_enabled: v };
+                          set('print_settings_by_sector', next);
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-[11px] text-muted-foreground shrink-0">{t('settings.operation.waiterTipPct')}</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={pct}
+                        onChange={(e) => {
+                          const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                          const next = { ...formData.print_settings_by_sector };
+                          next[sector] = { ...cfg, waiter_tip_pct: v };
+                          set('print_settings_by_sector', next);
+                        }}
+                        className="h-8 w-16 text-xs"
+                        disabled={!enabled}
+                      />
+                      <span className="text-[11px] text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           <div className="flex justify-end">
