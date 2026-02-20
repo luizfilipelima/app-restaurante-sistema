@@ -240,6 +240,12 @@ export interface Order {
   delivery_type: DeliveryType;
   delivery_zone_id?: string;
   delivery_address?: string;
+  /** Latitude do endereço de entrega */
+  latitude?: number | null;
+  /** Longitude do endereço de entrega */
+  longitude?: number | null;
+  /** Detalhes: Apto, Bloco, Referência */
+  address_details?: string | null;
   delivery_fee: number;
   subtotal: number;
   total: number;
@@ -305,6 +311,8 @@ export interface CartItem {
   quantity: number;
   unitPrice: number;
   observations?: string;
+  /** Item adicionado via sugestão de upsell */
+  isUpsell?: boolean;
   // Pizza específico
   isPizza?: boolean;
   pizzaSize?: string;

@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
-import { useDashboardStats, useDashboardKPIs, useDashboardAnalytics, useRestaurant } from '@/hooks/queries';
+import { useDashboardStats, useDashboardKPIs, useDashboardAnalytics, useRestaurant, useOrderCoordinates } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,6 +48,7 @@ import {
 } from '@/components/ui/select';
 import { ChurnRecoveryList } from '@/components/admin/ChurnRecoveryList';
 import { MenuMatrixBCG } from '@/components/admin/MenuMatrixBCG';
+import DashboardHeatmapWidget from '@/components/admin/DashboardHeatmapWidget';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
 type PeriodValue = '30' | '365' | 'max';
 
@@ -134,6 +135,8 @@ export default function AdminDashboard() {
     areaFilter: areaForRpc,
     enabled: !!prevRange,
   });
+
+  const { data: orderCoordinates } = useOrderCoordinates(restaurantId, start, end, !!restaurantId);
 
   const metrics = useMemo(() => {
     const k = analytics?.kpis ?? kpisData;
@@ -703,6 +706,30 @@ export default function AdminDashboard() {
             <p className="text-[11px] text-slate-400 mt-3">
               {t('dashboard.operational.note')}
             </p>
+
+            {/* Eficiência Logística: KDS vs Entrega */}
+            {(avgPrepTime > 0 || avgDeliveryTime > 0) && (
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-600 mb-3">Eficiência Logística</p>
+                <div className="w-full min-h-[140px]">
+                  <ResponsiveContainer width="100%" height={140} minWidth={0}>
+                    <BarChart
+                      data={[
+                        { name: t('dashboard.operational.kitchen'), valor: Math.round(avgPrepTime), fill: '#f97316' },
+                        { name: t('dashboard.operational.delivery'), valor: Math.round(avgDeliveryTime), fill: '#06b6d4' },
+                      ]}
+                      layout="vertical"
+                      margin={{ top: 0, right: 20, left: 60, bottom: 0 }}
+                    >
+                      <XAxis type="number" unit=" min" style={{ fontSize: '11px' }} />
+                      <YAxis type="category" dataKey="name" width={55} style={{ fontSize: '11px' }} />
+                      <Tooltip formatter={(v: number) => [`${v} min`, '']} />
+                      <Bar dataKey="valor" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Movimento por Hora */}
@@ -892,6 +919,18 @@ export default function AdminDashboard() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* ── Mapa de Calor (Entregas) ── */}
+        <div className="admin-card p-6 min-w-0 overflow-hidden w-full">
+          <h3 className="text-base font-semibold text-slate-700 mb-2 flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-emerald-500" />
+            Mapa de Calor — Entregas
+          </h3>
+          <p className="text-xs text-slate-400 mb-4">
+            Concentração de pedidos de entrega por coordenadas (estilo neon sobre fundo escuro)
+          </p>
+          <DashboardHeatmapWidget points={orderCoordinates ?? []} />
         </div>
 
         {/* ── BI: Região, Horários, Itens ── */}

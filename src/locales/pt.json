@@ -26,7 +26,9 @@
     "sendLocationTitle": "Envie sua localização no WhatsApp",
     "sendLocationDesc": "Ao finalizar o pedido, envie sua localização pelo WhatsApp para facilitar a entrega.",
     "subtotal": "Subtotal",
-    "finalize": "Finalizar Pedido"
+    "finalize": "Finalizar Pedido",
+    "upsellTitle": "Aproveite também",
+    "upsellAdd": "Adicionar"
   },
   "checkout": {
     "title": "Finalizar Pedido",

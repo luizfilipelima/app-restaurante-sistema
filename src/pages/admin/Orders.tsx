@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 const statusConfig = {
   [OrderStatus.PENDING]: {
@@ -140,6 +141,8 @@ export default function AdminOrders() {
   const [removing, setRemoving] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
+  const [dispatchOrder, setDispatchOrder] = useState<DatabaseOrder | null>(null);
+  const [selectedCourierForDispatch, setSelectedCourierForDispatch] = useState<string>('');
   const { couriers } = useCouriers(restaurantId);
   const { printOrder, receiptData } = usePrinter();
 
@@ -223,6 +226,42 @@ export default function AdminOrders() {
     } catch (err) {
       console.error(err);
       toast({ title: 'Erro ao atribuir entregador', variant: 'destructive' });
+    }
+  };
+
+  const handleDispatchToCourier = async () => {
+    if (!dispatchOrder || !selectedCourierForDispatch) return;
+    const courier = couriers.find((c) => c.id === selectedCourierForDispatch);
+    if (!courier?.phone) {
+      toast({ title: 'Entregador sem telefone cadastrado', variant: 'destructive' });
+      return;
+    }
+    try {
+      await updateOrderCourier(dispatchOrder.id, selectedCourierForDispatch);
+      await updateOrderStatus(dispatchOrder.id, OrderStatus.DELIVERING);
+
+      const details = [
+        `*Cliente:* ${dispatchOrder.customer_name}`,
+        dispatchOrder.address_details
+          ? `*Detalhes da Entrega:* ${dispatchOrder.address_details}`
+          : '',
+        dispatchOrder.latitude != null && dispatchOrder.longitude != null
+          ? `\n*Google Maps:* https://www.google.com/maps?q=${dispatchOrder.latitude},${dispatchOrder.longitude}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      const msg = encodeURIComponent(`🛵 *Novo pedido para entrega*\n\n${details}`);
+      const phone = courier.phone.replace(/\D/g, '');
+      const withCountry = phone.length <= 11 ? '55' + phone : phone;
+      const waUrl = `https://wa.me/${withCountry}?text=${msg}`;
+      window.open(waUrl, '_blank');
+
+      setDispatchOrder(null);
+      setSelectedCourierForDispatch('');
+    } catch {
+      // handled by updateOrderCourier/updateOrderStatus
     }
   };
 
@@ -557,22 +596,13 @@ export default function AdminOrders() {
                               </div>
                             </div>
 
-                            {/* ── Endereço (delivery) ── */}
-                            {isDeliveryOrder && (order.delivery_zone?.location_name || order.delivery_address) && (
-                              <div className="flex items-start gap-1.5 rounded-lg bg-muted/50 px-2 py-1.5">
-                                <MapPin className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
-                                <div className="min-w-0">
-                                  {order.delivery_zone?.location_name && (
-                                    <p className="text-[11px] font-semibold text-foreground truncate">
-                                      {order.delivery_zone.location_name}
-                                    </p>
-                                  )}
-                                  {order.delivery_address && (
-                                    <p className="text-[11px] text-muted-foreground line-clamp-2">
-                                      {order.delivery_address}
-                                    </p>
-                                  )}
-                                </div>
+                            {/* ── Zona (delivery) — cards limpos, sem endereço completo ── */}
+                            {isDeliveryOrder && order.delivery_zone?.location_name && (
+                              <div className="flex items-center gap-1 rounded-lg bg-muted/40 px-2 py-1">
+                                <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                <p className="text-[11px] font-medium text-foreground truncate">
+                                  {order.delivery_zone.location_name}
+                                </p>
                               </div>
                             )}
 
@@ -645,6 +675,22 @@ export default function AdminOrders() {
                               </div>
                             )}
 
+                            {/* ── Despachar para Entregador (Prontos) ── */}
+                            {status === OrderStatus.READY && isDeliveryOrder && couriers.filter((c) => c.active).length > 0 && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full h-8 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                onClick={() => {
+                                  setDispatchOrder(order);
+                                  setSelectedCourierForDispatch(order.courier_id ?? (couriers.filter((c) => c.active)[0]?.id ?? ''));
+                                }}
+                              >
+                                <Truck className="h-3.5 w-3.5 mr-1.5" />
+                                Despachar para Entregador
+                              </Button>
+                            )}
+
                             {/* ── WhatsApp "Saiu pra entrega" ── */}
                             {canNotifyWhatsApp && (
                               <a
@@ -685,6 +731,75 @@ export default function AdminOrders() {
         </div>
         )} {/* fim view kanban */}
       </div>
+
+      {/* Diálogo Despachar para Entregador */}
+      <Dialog
+        open={!!dispatchOrder}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDispatchOrder(null);
+            setSelectedCourierForDispatch('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Despachar para Entregador</DialogTitle>
+            <DialogDescription>
+              Selecione o entregador e um link do WhatsApp será gerado com os dados do cliente e localização.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {dispatchOrder && (
+              <div className="rounded-lg bg-muted/50 p-3 text-sm">
+                <p className="font-medium">{dispatchOrder.customer_name}</p>
+                {dispatchOrder.address_details && (
+                  <p className="text-muted-foreground text-xs mt-1">{dispatchOrder.address_details}</p>
+                )}
+                {dispatchOrder.latitude != null && dispatchOrder.longitude != null && (
+                  <a
+                    href={`https://www.google.com/maps?q=${dispatchOrder.latitude},${dispatchOrder.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline mt-1 inline-block"
+                  >
+                    Ver no Google Maps →
+                  </a>
+                )}
+              </div>
+            )}
+            <div>
+              <Label className="text-sm font-medium">Entregador</Label>
+              <Select
+                value={selectedCourierForDispatch}
+                onValueChange={setSelectedCourierForDispatch}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Selecione o entregador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {couriers.filter((c) => c.active).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}{c.phone ? ` — ${formatPhone(c.phone)}` : ' (sem telefone)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDispatchOrder(null); setSelectedCourierForDispatch(''); }}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleDispatchToCourier}
+              disabled={!selectedCourierForDispatch}
+            >
+              Despachar e abrir WhatsApp
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Diálogo de confirmação para remover pedido */}
       <Dialog open={!!orderToRemove} onOpenChange={(open) => !open && setOrderToRemove(null)}>

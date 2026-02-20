@@ -1,8 +1,9 @@
+import { useEffect, useState } from 'react';
 import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
-import { Plus, Minus, Trash2, MessageCircle } from 'lucide-react';
+import { Plus, Minus, Trash2, MessageCircle, Sparkles } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { fetchUpsellsForProducts, type UpsellRow } from '@/hooks/queries';
+import type { CartItem } from '@/types';
 
 interface CartDrawerProps {
   open: boolean;
@@ -20,7 +23,62 @@ interface CartDrawerProps {
 
 export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL' }: CartDrawerProps) {
   const { t } = useTranslation();
-  const { items, updateQuantity, removeItem, getSubtotal } = useCartStore();
+  const { items, addItem, updateQuantity, removeItem, getSubtotal } = useCartStore();
+  const [upsellRows, setUpsellRows] = useState<UpsellRow[]>([]);
+
+  useEffect(() => {
+    if (!open || items.length === 0) { setUpsellRows([]); return; }
+    const cartProductIds = items
+      .filter((i) => !!i.productId)
+      .map((i) => i.productId as string);
+    if (!cartProductIds.length) { setUpsellRows([]); return; }
+
+    fetchUpsellsForProducts(cartProductIds).then((byProduct) => {
+      // Priorizar: produto mais caro → último adicionado
+      const mostExpensive = [...items]
+        .filter((i) => !!i.productId)
+        .sort((a, b) => b.unitPrice * b.quantity - a.unitPrice * a.quantity)[0];
+      const lastAdded = [...items].filter((i) => !!i.productId).slice(-1)[0];
+      const priorityId = mostExpensive?.productId || lastAdded?.productId;
+
+      const alreadyInCart = new Set(items.map((i) => i.productId).filter(Boolean) as string[]);
+
+      let suggestions: UpsellRow[] = [];
+      if (priorityId && byProduct[priorityId]) {
+        suggestions = byProduct[priorityId].filter(
+          (r) => r.upsell_product && r.upsell_product.is_active && !alreadyInCart.has(r.upsell_product_id)
+        );
+      }
+      // Complementar com outros produtos se < 3
+      if (suggestions.length < 3) {
+        for (const pid of cartProductIds) {
+          if (pid === priorityId) continue;
+          const extra = (byProduct[pid] || []).filter(
+            (r) => r.upsell_product && r.upsell_product.is_active && !alreadyInCart.has(r.upsell_product_id) &&
+              !suggestions.some((s) => s.upsell_product_id === r.upsell_product_id)
+          );
+          suggestions = [...suggestions, ...extra];
+          if (suggestions.length >= 3) break;
+        }
+      }
+      setUpsellRows(suggestions.slice(0, 3));
+    }).catch(() => setUpsellRows([]));
+  }, [open, items]);
+
+  const addUpsellToCart = (row: UpsellRow) => {
+    const p = row.upsell_product;
+    if (!p) return;
+    const cartItem: CartItem = {
+      productId: p.id,
+      productName: p.name,
+      quantity: 1,
+      unitPrice: Number(p.price_sale || p.price),
+      isUpsell: true,
+    };
+    addItem(cartItem);
+    // Remove da lista de sugestões
+    setUpsellRows((prev) => prev.filter((r) => r.upsell_product_id !== row.upsell_product_id));
+  };
 
   const handleCheckout = () => {
     onClose();
@@ -41,6 +99,53 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
             </div>
           ) : (
             <div className="space-y-3 sm:space-y-4">
+              {/* ── Aproveite Também (Upsell) ── */}
+              {upsellRows.length > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/20 p-3 space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {t('cart.upsellTitle')}
+                  </div>
+                  <div className="space-y-1.5">
+                    {upsellRows.map((row) => {
+                      const p = row.upsell_product;
+                      if (!p) return null;
+                      const price = Number(p.price_sale || p.price);
+                      return (
+                        <div
+                          key={row.id}
+                          className="flex items-center gap-2.5 rounded-lg bg-white dark:bg-slate-900 border border-amber-100 dark:border-amber-800 p-2"
+                        >
+                          {p.image_url ? (
+                            <img
+                              src={p.image_url}
+                              alt={p.name}
+                              className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-lg flex-shrink-0">
+                              🍽
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-foreground truncate">{p.name}</p>
+                            <p className="text-xs text-muted-foreground">{formatCurrency(price, currency)}</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 rounded-full border-amber-300 text-amber-700 hover:bg-amber-100 active:scale-95 touch-manipulation flex-shrink-0"
+                            onClick={() => addUpsellToCart(row)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {items.map((item, index) => {
                 const itemTotal = item.unitPrice * item.quantity;
 

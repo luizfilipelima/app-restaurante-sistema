@@ -1,6 +1,12 @@
 /** Hooks centralizados para fetch de dados (TanStack Query). Todos aceitam restaurant_id para isolamento multi-tenant. */
 export { useRestaurant } from './useRestaurant';
 export { useCouriers } from './useCouriers';
+export { useCourierMetrics } from './useCourierMetrics';
+export type { CourierMetrics } from './useCourierMetrics';
+export { useOrderCoordinates } from './useOrderCoordinates';
+export type { OrderCoordinate } from './useOrderCoordinates';
+export { useProductUpsells, useSaveProductUpsells, fetchUpsellsForProducts } from './useProductUpsells';
+export type { UpsellRow } from './useProductUpsells';
 export { useDeliveryZones } from './useDeliveryZones';
 export { useTables } from './useTables';
 export { useWaiterCalls } from './useWaiterCalls';

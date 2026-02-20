@@ -94,8 +94,11 @@ import {
   EyeOff,
   ChevronRight,
   Boxes,
+  Sparkles,
+  X as XIcon,
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
+import { useProductUpsells, useSaveProductUpsells } from '@/hooks/queries';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -399,11 +402,24 @@ export default function AdminMenu() {
   const [formMarmitaProtein, setFormMarmitaProtein] = useState({ name: '', description: '', price_per_gram: '' });
   const [formMarmitaSide, setFormMarmitaSide] = useState({ name: '', description: '', price_per_gram: '', category: '' });
 
+  // Upsell
+  const [upsellSearch, setUpsellSearch] = useState('');
+  const [selectedUpsellIds, setSelectedUpsellIds] = useState<string[]>([]);
+  const { data: existingUpsells } = useProductUpsells(editingProduct?.id ?? null);
+  const saveUpsellsMutation = useSaveProductUpsells(restaurantId);
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  // Quando existingUpsells carrega (ao abrir edição), sincroniza o estado local
+  useEffect(() => {
+    if (existingUpsells) {
+      setSelectedUpsellIds(existingUpsells.map((u) => u.upsell_product_id));
+    }
+  }, [existingUpsells]);
 
   // ─── Data loading ────────────────────────────────────────────────────────────
 
@@ -585,6 +601,8 @@ export default function AdminMenu() {
   // ─── Product CRUD ─────────────────────────────────────────────────────────────
 
   const openNew = (preselectedCategoryId?: string) => {
+    setUpsellSearch('');
+    setSelectedUpsellIds([]);
     setEditingProduct(null);
     const catId = preselectedCategoryId || selectedCategoryId || categories[0]?.id || '';
     const cat = categories.find((c) => c.id === catId);
@@ -593,6 +611,8 @@ export default function AdminMenu() {
   };
 
   const openEdit = async (product: Product) => {
+    setUpsellSearch('');
+    setSelectedUpsellIds([]);
     setEditingProduct(product);
     const cat = categories.find((c) => c.name === product.category);
     const desc = product.description || '';
@@ -699,6 +719,11 @@ export default function AdminMenu() {
         if (error) throw error;
         savedProductId = newProd?.id ?? '';
         toast({ title: 'Produto adicionado ao cardápio!' });
+      }
+
+      // Salvar sugestões de upsell
+      if (savedProductId) {
+        await saveUpsellsMutation.mutateAsync({ productId: savedProductId, upsellIds: selectedUpsellIds });
       }
 
       // Upsert de estoque quando categoria tem controle ativo
@@ -1432,6 +1457,105 @@ export default function AdminMenu() {
                       />
                     </div>
                   </div>
+                </div>
+              );
+            })()}
+
+            {/* ── Seção Sugestões de Upsell ── */}
+            {(() => {
+              const upsellCandidates = products.filter(
+                (p) =>
+                  p.is_active &&
+                  p.id !== editingProduct?.id &&
+                  !selectedUpsellIds.includes(p.id) &&
+                  (upsellSearch.trim() === '' ||
+                    p.name.toLowerCase().includes(upsellSearch.toLowerCase()) ||
+                    p.category.toLowerCase().includes(upsellSearch.toLowerCase()))
+              );
+              const selectedUpsellProducts = products.filter((p) => selectedUpsellIds.includes(p.id));
+              return (
+                <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20 p-3.5 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Sugestões de Upsell
+                    <span className="font-normal normal-case text-muted-foreground ml-1">— até 3 produtos</span>
+                  </div>
+
+                  {/* Produtos já selecionados */}
+                  {selectedUpsellProducts.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedUpsellProducts.map((p) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-700 rounded-lg px-2 py-1 text-xs"
+                        >
+                          {p.image_url ? (
+                            <img src={p.image_url} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
+                          ) : (
+                            <span className="w-5 h-5 flex items-center justify-center text-muted-foreground">🍽</span>
+                          )}
+                          <span className="font-medium text-foreground max-w-[120px] truncate">{p.name}</span>
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-destructive transition-colors"
+                            onClick={() => setSelectedUpsellIds((ids) => ids.filter((id) => id !== p.id))}
+                          >
+                            <XIcon className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Seletor com busca */}
+                  {selectedUpsellIds.length < 3 && (
+                    <div className="space-y-1.5">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                        <Input
+                          value={upsellSearch}
+                          onChange={(e) => setUpsellSearch(e.target.value)}
+                          placeholder="Buscar produto para sugerir..."
+                          className="pl-8 h-8 text-sm bg-white dark:bg-slate-800"
+                        />
+                      </div>
+                      {upsellSearch.trim() !== '' && (
+                        <div className="max-h-40 overflow-y-auto rounded-md border border-border bg-white dark:bg-slate-900 divide-y divide-border/60">
+                          {upsellCandidates.length === 0 ? (
+                            <p className="text-xs text-muted-foreground p-3 text-center">Nenhum resultado</p>
+                          ) : (
+                            upsellCandidates.slice(0, 8).map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 text-left transition-colors"
+                                onClick={() => {
+                                  setSelectedUpsellIds((ids) => ids.length < 3 ? [...ids, p.id] : ids);
+                                  setUpsellSearch('');
+                                }}
+                              >
+                                {p.image_url ? (
+                                  <img src={p.image_url} alt="" className="w-7 h-7 rounded object-cover flex-shrink-0" />
+                                ) : (
+                                  <div className="w-7 h-7 rounded bg-muted flex items-center justify-center text-xs flex-shrink-0">🍽</div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium text-foreground truncate">{p.name}</p>
+                                  <p className="text-[11px] text-muted-foreground">{p.category}</p>
+                                </div>
+                                <Plus className="h-3.5 w-3.5 text-primary ml-auto flex-shrink-0" />
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                      {upsellSearch.trim() === '' && selectedUpsellIds.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Digite para buscar produtos que aparecerão como sugestão quando este item for adicionado ao carrinho.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })()}

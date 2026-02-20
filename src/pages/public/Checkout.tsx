@@ -23,7 +23,8 @@ import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, is
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote, Send, Trash2, MapPin, Loader2 } from 'lucide-react';
+import MapAddressPicker from '@/components/public/MapAddressPicker';
 
 interface PublicCheckoutProps {
   /** Quando renderizado dentro de StoreLayout (subdomínio), o slug é passado por prop */
@@ -61,7 +62,41 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const tableNumber = tableNumberFromUrl ? parseInt(tableNumberFromUrl, 10) : tableNumberStore;
   const isTableOrder = !!(tableId && tableNumber);
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
-  const [address, setAddress] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [addressDetails, setAddressDetails] = useState('');
+  const [geolocating, setGeolocating] = useState(false);
+
+  const geoStorageKey = `checkout_geo_${restaurantId || 'default'}`;
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(geoStorageKey);
+      if (saved) {
+        const data = JSON.parse(saved) as { lat?: number; lng?: number; details?: string };
+        if (data.lat != null && data.lng != null) {
+          setLatitude(data.lat);
+          setLongitude(data.lng);
+        }
+        if (data.details) setAddressDetails(data.details);
+      }
+    } catch {
+      // ignore
+    }
+  }, [restaurantId, geoStorageKey]);
+
+  useEffect(() => {
+    if (latitude != null && longitude != null) {
+      try {
+        localStorage.setItem(
+          geoStorageKey,
+          JSON.stringify({ lat: latitude, lng: longitude, details: addressDetails })
+        );
+      } catch {
+        // ignore
+      }
+    }
+  }, [latitude, longitude, addressDetails, geoStorageKey]);
   
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.PIX);
@@ -145,6 +180,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       return;
     }
 
+    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && (latitude == null || longitude == null)) {
+      toast({ title: 'Use "Minha Localização Atual" para definir o endereço de entrega', variant: 'destructive' });
+      return;
+    }
+
     if (!restaurantId) {
       toast({
         title: t('checkout.errorInvalidCart'),
@@ -189,7 +229,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         customer_phone: normalizePhoneWithCountryCode(phoneToUse, phoneCountry),
         delivery_type: finalDeliveryType,
         delivery_zone_id: finalDeliveryType === DeliveryType.DELIVERY ? (selectedZoneId || null) : null,
-        delivery_address: finalDeliveryType === DeliveryType.DELIVERY ? (address || null) : null,
+        delivery_address: finalDeliveryType === DeliveryType.DELIVERY && latitude != null && longitude != null
+          ? `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+          : null,
+        latitude: finalDeliveryType === DeliveryType.DELIVERY && latitude != null ? latitude : null,
+        longitude: finalDeliveryType === DeliveryType.DELIVERY && longitude != null ? longitude : null,
+        address_details: finalDeliveryType === DeliveryType.DELIVERY && addressDetails.trim() ? addressDetails.trim() : null,
         delivery_fee: finalDeliveryFee,
         subtotal,
         total: finalTotal,
@@ -218,6 +263,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           pizza_flavors: item.pizzaFlavors ?? null,
           pizza_dough: item.pizzaDough ?? null,
           pizza_edge: item.pizzaEdge ?? null,
+          is_upsell: item.isUpsell ?? false,
         };
       });
 
@@ -249,8 +295,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         '📱 *Tel/WhatsApp:* +' + normalizePhoneWithCountryCode(customerPhone, phoneCountry),
         '🚚 *Entrega:* ' + (deliveryType === DeliveryType.DELIVERY ? 'Entrega' : 'Retirada'),
       ];
-      if (deliveryType === DeliveryType.DELIVERY && address) {
-        sections.push('📍 *Endereço:* ' + address);
+      if (deliveryType === DeliveryType.DELIVERY && latitude != null && longitude != null) {
+        sections.push('📍 *Endereço:* Coordenadas ' + latitude.toFixed(6) + ', ' + longitude.toFixed(6));
+        if (addressDetails.trim()) sections.push('📋 *Detalhes:* ' + addressDetails.trim());
       }
       if (deliveryType === DeliveryType.DELIVERY && selectedZoneId) {
         const zone = zones.find((z) => z.id === selectedZoneId);
@@ -501,15 +548,59 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="address" className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.addressLabel')}</Label>
-                  <Input 
-                    id="address" 
-                    value={address} 
-                    onChange={(e) => setAddress(e.target.value)} 
-                    placeholder={t('checkout.addressPlaceholder')} 
-                    className="bg-slate-50 border-slate-200 h-11 text-base touch-manipulation"
-                  />
+                  <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t('checkout.addressLabel')}</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-11 border-slate-200 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-800 font-medium"
+                    onClick={() => {
+                      setGeolocating(true);
+                      navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                          setLatitude(pos.coords.latitude);
+                          setLongitude(pos.coords.longitude);
+                          setGeolocating(false);
+                          toast({ title: 'Localização obtida! Ajuste o pino no mapa se precisar.', variant: 'default' });
+                        },
+                        () => {
+                          setGeolocating(false);
+                          toast({ title: 'Não foi possível obter sua localização. Verifique as permissões.', variant: 'destructive' });
+                        }
+                      );
+                    }}
+                    disabled={geolocating}
+                  >
+                    {geolocating ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <MapPin className="h-4 w-4 mr-2" />
+                    )}
+                    Minha Localização Atual
+                  </Button>
                 </div>
+                {latitude != null && longitude != null && (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Ajuste no mapa</Label>
+                      <MapAddressPicker
+                        lat={latitude}
+                        lng={longitude}
+                        onLocationChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+                        height="180px"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="addressDetails" className="text-xs font-medium text-slate-500 uppercase tracking-wide">Detalhes da Entrega</Label>
+                      <Input
+                        id="addressDetails"
+                        value={addressDetails}
+                        onChange={(e) => setAddressDetails(e.target.value)}
+                        placeholder="Apto, Bloco, Referência..."
+                        className="bg-slate-50 border-slate-200 h-11 text-base touch-manipulation"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </CardContent>

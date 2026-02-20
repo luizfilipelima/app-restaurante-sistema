@@ -680,6 +680,30 @@ const en: typeof pt = {
   thermalFormat:  'Thermal Receipt',
 };
 
+(pt as Record<string, unknown>).upsell = {
+  sectionTitle:  'Sugestões de Upsell',
+  sectionLimit:  'até 3 produtos',
+  searchPlaceholder: 'Buscar produto para sugerir...',
+  noResults:     'Nenhum resultado',
+  hint:          'Digite para buscar produtos que aparecerão como sugestão quando este item for adicionado ao carrinho.',
+};
+
+(es as Record<string, unknown>).upsell = {
+  sectionTitle:  'Sugerencias de Upsell',
+  sectionLimit:  'hasta 3 productos',
+  searchPlaceholder: 'Buscar producto para sugerir...',
+  noResults:     'Sin resultados',
+  hint:          'Escribe para buscar productos que aparecerán como sugerencia cuando este ítem sea añadido al carrito.',
+};
+
+(en as Record<string, unknown>).upsell = {
+  sectionTitle:  'Upsell Suggestions',
+  sectionLimit:  'up to 3 products',
+  searchPlaceholder: 'Search product to suggest...',
+  noResults:     'No results',
+  hint:          'Type to search products that will appear as suggestions when this item is added to the cart.',
+};
+
 export type AdminLang = 'pt' | 'es' | 'en';
 export type AdminTranslations = typeof pt;
 

@@ -22,9 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Bike, Plus, Pencil, Trash2, Phone, User, Loader2 } from 'lucide-react';
-import { generateWhatsAppLink } from '@/lib/utils';
+import { Bike, Plus, Pencil, Trash2, Phone, User, Loader2, Package, Clock, DollarSign } from 'lucide-react';
+import { generateWhatsAppLink, formatCurrency } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { useCourierMetrics } from '@/hooks/queries';
+import { useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 
 const STATUS_LABELS: Record<CourierStatus, string> = {
   available: 'Disponível',
@@ -40,7 +42,10 @@ const STATUS_COLORS: Record<CourierStatus, string> = {
 
 export default function AdminCouriers() {
   const restaurantId = useAdminRestaurantId();
+  const currency = useAdminCurrency();
   const { couriers, loading, createCourier, updateCourier, deleteCourier } = useCouriers(restaurantId);
+  const { data: metricsData } = useCourierMetrics(restaurantId);
+  const metricsByCourier = new Map((metricsData ?? []).map((m) => [m.courier_id, m]));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCourier, setEditingCourier] = useState<Courier | null>(null);
   const [saving, setSaving] = useState(false);
@@ -148,8 +153,8 @@ export default function AdminCouriers() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 min-w-0 w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Entregadores</h1>
           <p className="text-muted-foreground">
@@ -161,6 +166,56 @@ export default function AdminCouriers() {
           Novo entregador
         </Button>
       </div>
+
+      {/* Mini BI: Métricas por entregador */}
+      {couriers.length > 0 && metricsData && metricsData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Métricas por Entregador
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Total de entregas, tempo médio e taxas acumuladas
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {couriers.filter((c) => metricsByCourier.has(c.id)).map((c) => {
+                const m = metricsByCourier.get(c.id)!;
+                return (
+                  <div
+                    key={c.id}
+                    className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3"
+                  >
+                    <p className="font-semibold text-slate-900 truncate">{c.name}</p>
+                    <div className="grid grid-cols-1 gap-2 text-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-500 flex items-center gap-1">
+                          <Package className="h-3.5 w-3.5" /> Entregas
+                        </span>
+                        <span className="font-bold">{m.total_deliveries}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-500 flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" /> Tempo médio
+                        </span>
+                        <span className="font-bold">{m.avg_delivery_time_minutes > 0 ? `${Math.round(m.avg_delivery_time_minutes)} min` : '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-500 flex items-center gap-1">
+                          <DollarSign className="h-3.5 w-3.5" /> Taxas
+                        </span>
+                        <span className="font-bold">{formatCurrency(m.total_fees, currency)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {couriers.length === 0 ? (
         <Card>
@@ -183,8 +238,8 @@ export default function AdminCouriers() {
               Lista de entregadores
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
+          <CardContent className="p-0 overflow-x-auto">
+            <div className="w-full min-w-[600px]">
               <table className="w-full">
                 <thead>
                   <tr className="border-b bg-muted/50">
