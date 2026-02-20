@@ -20,8 +20,9 @@ import { toast } from '@/hooks/use-toast';
 import {
   Save, Upload, Loader2, Clock, Instagram, Printer,
   Phone, Globe, ImageIcon, CheckCircle2, XCircle,
-  Sun, AlarmClock, X, Wifi, MapPin, Languages, Store,
-  Gift, Star, Trophy, Users,
+  Sun, AlarmClock, X, Wifi, Languages, Store,
+  Gift, Star, Trophy, Users, ExternalLink, Link2,
+  MessageCircle, AtSign,
 } from 'lucide-react';
 import { useLoyaltyProgram, useSaveLoyaltyProgram, useLoyaltyMetrics } from '@/hooks/queries';
 
@@ -97,6 +98,17 @@ function parseSectorSettings(raw: unknown): PrintSettingsBySector {
 function getPhonePlaceholder(country: PhoneCountry): string {
   return PHONE_COUNTRIES.find(c => c.value === country)?.placeholder ?? '';
 }
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+const COUNTRY_CODES: Record<PhoneCountry, string> = { BR: '+55', PY: '+595', AR: '+54' };
 
 // ─── Sub-componentes ─────────────────────────────────────────────────────────
 
@@ -224,6 +236,7 @@ export default function AdminSettings() {
 
   const [formData, setFormData] = useState({
     name:                    '',
+    slug:                    '',
     phone:                   '',
     whatsapp:                '',
     phone_country:           'BR' as PhoneCountry,
@@ -282,6 +295,7 @@ export default function AdminSettings() {
 
       setFormData({
         name:                    data.name              || '',
+        slug:                    data.slug              || '',
         phone:                   data.phone             || '',
         whatsapp:                data.whatsapp          || '',
         phone_country,
@@ -312,6 +326,7 @@ export default function AdminSettings() {
       setSaving(true);
       const { error } = await supabase.from('restaurants').update({
         name:                    formData.name,
+        slug:                    formData.slug || undefined,
         phone:                   formData.phone,
         whatsapp:                formData.whatsapp,
         phone_country:           formData.phone_country,
@@ -409,91 +424,110 @@ export default function AdminSettings() {
         ══════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="perfil" className="mt-0 space-y-5">
 
-          {/* Logo + Nome lado a lado em md+ */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-            {/* Logo */}
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-[#F87116]/10 flex items-center justify-center flex-shrink-0">
-                  <ImageIcon className="h-[18px] w-[18px] text-[#F87116]" />
+            {/* ── Logo — drop zone ── */}
+            <div className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col">
+
+              {/* Cabeçalho */}
+              <div className="flex items-center gap-2.5 px-4 pt-4 pb-3 border-b border-border/60">
+                <div className="h-8 w-8 rounded-lg bg-[#F87116]/10 flex items-center justify-center flex-shrink-0">
+                  <ImageIcon className="h-4 w-4 text-[#F87116]" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold text-foreground">Logo</h2>
-                  <p className="text-[11px] text-muted-foreground">PNG, JPG ou WebP — 80%</p>
+                  <p className="text-sm font-semibold text-foreground leading-tight">Logo</p>
+                  <p className="text-[10px] text-muted-foreground">PNG, JPG ou WebP</p>
                 </div>
               </div>
 
-              <div className="flex flex-col items-center gap-3">
+              {/* Zona de drop / preview */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                className="sr-only"
+                disabled={logoUploading || !restaurantId}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file || !restaurantId) return;
+                  setLogoUploading(true);
+                  try {
+                    const url = await uploadRestaurantLogo(restaurantId, file);
+                    set('logo', url);
+                    toast({ title: 'Logo enviada!', description: 'Otimizada em WebP (80%).' });
+                  } catch (err) {
+                    toast({ title: 'Erro ao enviar logo', description: err instanceof Error ? err.message : 'Tente outro arquivo.', variant: 'destructive' });
+                  } finally {
+                    setLogoUploading(false);
+                    e.target.value = '';
+                  }
+                }}
+              />
+
+              <button
+                type="button"
+                disabled={logoUploading}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1 flex flex-col items-center justify-center gap-3 p-6 group hover:bg-muted/30 transition-colors disabled:pointer-events-none text-center"
+              >
                 {formData.logo ? (
-                  <div className="relative">
-                    <img
-                      src={formData.logo}
-                      alt="Logo"
-                      className="h-24 w-24 rounded-2xl object-cover border-2 border-border shadow-md"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => set('logo', '')}
-                      className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-white flex items-center justify-center shadow"
-                      title="Remover logo"
-                    >
-                      <X style={{ height: 10, width: 10 }} />
-                    </button>
-                  </div>
+                  <>
+                    <div className="relative">
+                      <img
+                        src={formData.logo}
+                        alt="Logo"
+                        className="h-20 w-20 rounded-2xl object-cover border-2 border-border shadow-md group-hover:opacity-80 transition-opacity"
+                      />
+                      <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                        <Upload className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground group-hover:text-[#F87116] transition-colors">
+                      Clique para trocar
+                    </p>
+                  </>
                 ) : (
-                  <div className="h-24 w-24 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-1.5 text-slate-400">
-                    <ImageIcon style={{ height: 28, width: 28 }} />
-                    <span className="text-[10px] font-medium">Sem logo</span>
-                  </div>
+                  <>
+                    <div className="h-16 w-16 rounded-2xl border-2 border-dashed border-border group-hover:border-[#F87116] bg-muted/50 flex flex-col items-center justify-center gap-1.5 transition-colors">
+                      {logoUploading
+                        ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        : <Upload className="h-6 w-6 text-muted-foreground group-hover:text-[#F87116] transition-colors" />
+                      }
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground group-hover:text-[#F87116] transition-colors">
+                        {logoUploading ? 'Enviando…' : 'Clique para fazer upload'}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Recomendado: 512 × 512 px</p>
+                    </div>
+                  </>
                 )}
+              </button>
 
+              {/* Footer — URL ou remover */}
+              <div className="border-t border-border/60 bg-muted/20 px-3 py-2.5 flex items-center gap-2">
+                <Link2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                 <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
-                  className="sr-only"
-                  disabled={logoUploading || !restaurantId}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file || !restaurantId) return;
-                    setLogoUploading(true);
-                    try {
-                      const url = await uploadRestaurantLogo(restaurantId, file);
-                      set('logo', url);
-                      toast({ title: 'Logo enviada!', description: 'Otimizada em WebP (80%).' });
-                    } catch (err) {
-                      toast({ title: 'Erro ao enviar logo', description: err instanceof Error ? err.message : 'Tente outro arquivo.', variant: 'destructive' });
-                    } finally {
-                      setLogoUploading(false);
-                      e.target.value = '';
-                    }
-                  }}
+                  type="url"
+                  value={formData.logo}
+                  onChange={(e) => set('logo', e.target.value)}
+                  placeholder="Ou cole uma URL de imagem…"
+                  className="flex-1 bg-transparent text-xs text-muted-foreground placeholder:text-muted-foreground/50 outline-none min-w-0"
                 />
-                <button
-                  type="button"
-                  disabled={logoUploading}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border-2 border-dashed border-border text-xs font-medium text-muted-foreground hover:border-[#F87116] hover:text-[#F87116] hover:bg-orange-50 transition-all disabled:opacity-50"
-                >
-                  {logoUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                  {logoUploading ? 'Enviando…' : 'Fazer upload'}
-                </button>
-
-                <FieldGroup>
-                  <SectionLabel>Ou cole uma URL</SectionLabel>
-                  <Input
-                    type="url"
-                    value={formData.logo}
-                    onChange={(e) => set('logo', e.target.value)}
-                    placeholder="https://..."
-                    className="text-xs h-8"
-                  />
-                </FieldGroup>
+                {formData.logo && (
+                  <button
+                    type="button"
+                    onClick={() => set('logo', '')}
+                    className="flex-shrink-0 text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+                    title="Remover logo"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Informações do negócio */}
+            {/* ── Informações do negócio ── */}
             <div className="md:col-span-2 rounded-2xl border border-border bg-card p-5 space-y-5">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
@@ -501,10 +535,11 @@ export default function AdminSettings() {
                 </div>
                 <div>
                   <h2 className="text-sm font-semibold text-foreground">Perfil do Negócio</h2>
-                  <p className="text-[11px] text-muted-foreground">Nome exibido no cardápio e pedidos</p>
+                  <p className="text-[11px] text-muted-foreground">Identidade pública do restaurante</p>
                 </div>
               </div>
 
+              {/* Nome */}
               <FieldGroup>
                 <SectionLabel>Nome do Restaurante</SectionLabel>
                 <Input
@@ -516,6 +551,36 @@ export default function AdminSettings() {
                 />
               </FieldGroup>
 
+              {/* Slug */}
+              <FieldGroup>
+                <SectionLabel>Link público (slug)</SectionLabel>
+                <div className="flex items-stretch rounded-lg border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-0">
+                  <span className="flex items-center px-3 bg-muted text-[11px] text-muted-foreground whitespace-nowrap border-r border-border select-none font-mono">
+                    quiero.food/
+                  </span>
+                  <input
+                    type="text"
+                    value={formData.slug}
+                    onChange={(e) => set('slug', slugify(e.target.value))}
+                    placeholder="meu-restaurante"
+                    className="flex-1 px-3 py-2 text-sm font-mono bg-background outline-none min-w-0 text-foreground placeholder:text-muted-foreground/50"
+                  />
+                </div>
+                <p className="text-[10px] text-amber-600 flex items-center gap-1">
+                  <span>⚠</span> Alterar o slug muda o link público do cardápio. Comunique clientes antes de mudar.
+                </p>
+                {formData.slug && (
+                  <a
+                    href={`https://quiero.food/${formData.slug}/cardapio`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[11px] text-[#F87116] hover:underline font-medium"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    quiero.food/{formData.slug}/cardapio
+                  </a>
+                )}
+              </FieldGroup>
             </div>
           </div>
 
@@ -682,108 +747,127 @@ export default function AdminSettings() {
         {/* ══════════════════════════════════════════════════════════════════════
             ABA 3 — Canais e Contato
         ══════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="contato" className="mt-0 space-y-5">
+        <TabsContent value="contato" className="mt-0 space-y-4">
 
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-5">
-            <div className="flex items-center gap-3">
+          {/* ── Telefone & WhatsApp ── */}
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
               <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
                 <Phone className="h-[18px] w-[18px] text-muted-foreground" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-foreground">Canais e Contato</h2>
+                <h2 className="text-sm font-semibold text-foreground">Números de Contato</h2>
                 <p className="text-[11px] text-muted-foreground">
-                  Exibidos no cardápio e usados para comunicação com clientes
+                  Usados para receber pedidos e comunicação com clientes
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-              {/* País */}
-              <div className="sm:col-span-2">
+                {/* Telefone */}
                 <FieldGroup>
-                  <SectionLabel>País</SectionLabel>
-                  <div className="grid grid-cols-3 gap-2">
-                    {PHONE_COUNTRIES.map(c => (
-                      <button
-                        key={c.value}
-                        type="button"
-                        onClick={() => set('phone_country', c.value)}
-                        className={`flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all ${
-                          formData.phone_country === c.value
-                            ? 'border-[#F87116] bg-orange-50 text-[#F87116]'
-                            : 'border-border bg-background text-muted-foreground hover:border-slate-300'
-                        }`}
-                      >
-                        <MapPin className="h-3.5 w-3.5" />
-                        {c.label.split(' ')[0]} {/* emoji */}
-                        <span className="text-[10px]">{c.label.split('(')[1]?.replace(')', '')}</span>
-                      </button>
-                    ))}
+                  <SectionLabel>Telefone</SectionLabel>
+                  <div className="flex items-stretch rounded-lg border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring">
+                    <span className="flex items-center px-3 bg-muted text-xs text-muted-foreground border-r border-border select-none font-mono flex-shrink-0">
+                      {COUNTRY_CODES[formData.phone_country]}
+                    </span>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => set('phone', e.target.value)}
+                      placeholder={phonePlaceholder}
+                      className="flex-1 px-3 py-2 text-sm bg-background outline-none min-w-0 text-foreground placeholder:text-muted-foreground/50"
+                      required
+                    />
                   </div>
+                  <p className="text-[10px] text-muted-foreground">Exibido no cardápio para clientes</p>
+                </FieldGroup>
+
+                {/* WhatsApp */}
+                <FieldGroup>
+                  <SectionLabel>WhatsApp</SectionLabel>
+                  <div className="flex items-stretch rounded-lg border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring">
+                    <span className="flex items-center gap-1 px-3 bg-emerald-50 text-emerald-700 text-xs border-r border-border select-none font-semibold flex-shrink-0">
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      {COUNTRY_CODES[formData.phone_country]}
+                    </span>
+                    <input
+                      type="tel"
+                      value={formData.whatsapp}
+                      onChange={(e) => set('whatsapp', e.target.value)}
+                      placeholder={phonePlaceholder}
+                      className="flex-1 px-3 py-2 text-sm bg-background outline-none min-w-0 text-foreground placeholder:text-muted-foreground/50"
+                      required
+                    />
+                  </div>
+                  {formData.whatsapp && (
+                    <a
+                      href={`https://wa.me/${COUNTRY_CODES[formData.phone_country].replace('+', '')}${formData.whatsapp.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[11px] text-emerald-600 hover:underline font-medium"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Testar link do WhatsApp
+                    </a>
+                  )}
                 </FieldGroup>
               </div>
 
-              {/* Telefone */}
-              <FieldGroup>
-                <SectionLabel>Telefone</SectionLabel>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => set('phone', e.target.value)}
-                    placeholder={phonePlaceholder}
-                    className="pl-9"
-                    required
-                  />
-                </div>
-              </FieldGroup>
-
-              {/* WhatsApp */}
-              <FieldGroup>
-                <SectionLabel>WhatsApp</SectionLabel>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground font-bold select-none">
-                    W
-                  </span>
-                  <Input
-                    type="tel"
-                    value={formData.whatsapp}
-                    onChange={(e) => set('whatsapp', e.target.value)}
-                    placeholder={phonePlaceholder}
-                    className="pl-9"
-                    required
-                  />
-                </div>
-              </FieldGroup>
-
-              {/* Instagram */}
-              <FieldGroup>
-                <SectionLabel>
-                  <span className="inline-flex items-center gap-1">
-                    <Instagram style={{ height: 11, width: 11, display: 'inline' }} />
-                    Instagram
-                  </span>
-                </SectionLabel>
-                <Input
-                  type="url"
-                  value={formData.instagram_url}
-                  onChange={(e) => set('instagram_url', e.target.value)}
-                  placeholder="https://instagram.com/seurestaurante"
-                />
-              </FieldGroup>
-
-              {/* Dica WhatsApp */}
-              <div className="sm:col-span-2">
-                <div className="rounded-xl bg-muted/50 border border-border p-3.5 text-[11px] text-muted-foreground flex items-start gap-2.5">
-                  <Wifi className="h-4 w-4 flex-shrink-0 mt-0.5 text-emerald-500" />
-                  <p>
-                    O número do WhatsApp é usado para gerar links de contato direto no cardápio.
-                    Certifique-se de que ele está ativo e com o aplicativo instalado.
-                  </p>
-                </div>
+              {/* Info */}
+              <div className="rounded-xl bg-muted/40 border border-border p-3 text-[11px] text-muted-foreground flex items-start gap-2.5">
+                <Wifi className="h-4 w-4 flex-shrink-0 mt-0.5 text-emerald-500" />
+                <p>
+                  O WhatsApp precisa estar ativo no celular. O prefixo de país é definido na aba <strong>Regional</strong>.
+                </p>
               </div>
+            </div>
+          </div>
+
+          {/* ── Redes Sociais ── */}
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                <Instagram className="h-[18px] w-[18px] text-white" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Redes Sociais</h2>
+                <p className="text-[11px] text-muted-foreground">Link exibido no rodapé do cardápio</p>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <FieldGroup>
+                <SectionLabel>Instagram</SectionLabel>
+                <div className="flex items-stretch rounded-lg border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring">
+                  <span className="flex items-center px-3 bg-muted text-xs text-muted-foreground border-r border-border select-none font-mono flex-shrink-0">
+                    <AtSign className="h-3.5 w-3.5" />
+                  </span>
+                  <input
+                    type="text"
+                    value={formData.instagram_url.replace(/^https?:\/\/(www\.)?instagram\.com\/?/, '').replace(/\/$/, '')}
+                    onChange={(e) => {
+                      const handle = e.target.value.replace(/^@/, '').trim();
+                      set('instagram_url', handle ? `https://instagram.com/${handle}` : '');
+                    }}
+                    placeholder="seurestaurante"
+                    className="flex-1 px-3 py-2 text-sm bg-background outline-none min-w-0 text-foreground placeholder:text-muted-foreground/50"
+                  />
+                </div>
+                {formData.instagram_url && (
+                  <a
+                    href={formData.instagram_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[11px] text-pink-600 hover:underline font-medium"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    {formData.instagram_url}
+                  </a>
+                )}
+              </FieldGroup>
             </div>
           </div>
 
