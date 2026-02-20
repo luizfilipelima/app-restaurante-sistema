@@ -33,6 +33,8 @@ export default function ProductCardViewOnly({ product, currency, comboItems }: P
             <img
               src={product.image_url}
               alt={product.name}
+              width={400}
+              height={400}
               className="w-full h-full object-cover object-center"
               loading="lazy"
             />
@@ -62,7 +64,10 @@ export default function ProductCardViewOnly({ product, currency, comboItems }: P
               <img
                 src={product.image_url}
                 alt={product.name}
+                width={400}
+                height={400}
                 className="w-full h-full object-cover object-center"
+                loading="lazy"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">

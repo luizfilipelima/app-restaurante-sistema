@@ -538,7 +538,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </button>
 
           {currentRestaurant?.logo ? (
-            <img src={currentRestaurant.logo} className="h-8 w-8 rounded-lg object-cover flex-shrink-0" alt="" />
+            <img src={currentRestaurant.logo} width={32} height={32} className="h-8 w-8 rounded-lg object-cover flex-shrink-0" alt="" />
           ) : currentRestaurant?.name ? (
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center flex-shrink-0">
               <span className="text-sm font-bold text-white">{currentRestaurant.name[0].toUpperCase()}</span>

@@ -66,7 +66,7 @@ export default function ProductAddonModal({
         <DialogHeader>
           <DialogTitle className="flex items-start gap-3">
             {product.image_url ? (
-              <img src={product.image_url} alt="" className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+              <img src={product.image_url} alt="" width={64} height={64} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" />
             ) : (
               <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center flex-shrink-0" />
             )}

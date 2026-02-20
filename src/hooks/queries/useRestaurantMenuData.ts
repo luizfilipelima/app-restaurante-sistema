@@ -57,6 +57,48 @@ export interface RestaurantMenuData {
 }
 
 async function fetchRestaurantMenuData(restaurantSlug: string): Promise<RestaurantMenuData | null> {
+  const { data: rpcData, error: rpcErr } = await supabase.rpc('get_restaurant_menu', { p_slug: restaurantSlug });
+
+  if (rpcErr || !rpcData) {
+    return fetchRestaurantMenuDataFallback(restaurantSlug);
+  }
+
+  const d = rpcData as {
+    restaurant: Restaurant;
+    products: Product[];
+    categories: string[];
+    categoriesFromDb: Category[];
+    subcategories: Subcategory[];
+    pizzaSizes: PizzaSize[];
+    pizzaFlavors: PizzaFlavor[];
+    pizzaDoughs: PizzaDough[];
+    pizzaEdges: PizzaEdge[];
+    marmitaSizes: MarmitaSize[];
+    marmitaProteins: MarmitaProtein[];
+    marmitaSides: MarmitaSide[];
+    productComboItemsMap: Record<string, ProductComboItemWithProduct[]>;
+    productAddonsMap: Record<string, Array<ProductAddonGroup & { items: ProductAddonItem[] }>>;
+  };
+
+  return {
+    restaurant: d.restaurant,
+    products: d.products ?? [],
+    categories: d.categories ?? [],
+    categoriesFromDb: d.categoriesFromDb ?? [],
+    subcategories: d.subcategories ?? [],
+    pizzaSizes: d.pizzaSizes ?? [],
+    pizzaFlavors: d.pizzaFlavors ?? [],
+    pizzaDoughs: d.pizzaDoughs ?? [],
+    pizzaEdges: d.pizzaEdges ?? [],
+    marmitaSizes: d.marmitaSizes ?? [],
+    marmitaProteins: d.marmitaProteins ?? [],
+    marmitaSides: d.marmitaSides ?? [],
+    productComboItemsMap: d.productComboItemsMap ?? {},
+    productAddonsMap: d.productAddonsMap ?? {},
+  };
+}
+
+async function fetchRestaurantMenuDataFallback(restaurantSlug: string): Promise<RestaurantMenuData | null> {
   const { data: restaurantData, error: restErr } = await supabase
     .from('restaurants')
     .select('*')
@@ -68,7 +110,6 @@ async function fetchRestaurantMenuData(restaurantSlug: string): Promise<Restaura
 
   const rid = restaurantData.id;
 
-  // Todas as consultas em paralelo
   const [
     categoriesRes,
     subcategoriesRes,
@@ -140,7 +181,6 @@ async function fetchRestaurantMenuData(restaurantSlug: string): Promise<Restaura
       }
     }
 
-    // Carregar adicionais por produto
     try {
       const { data: addonGroups } = await supabase
         .from('product_addon_groups')

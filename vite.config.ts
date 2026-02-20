@@ -23,6 +23,7 @@ export default defineConfig({
             if (id.includes('zustand'))               return 'vendor-zustand'
             if (id.includes('date-fns'))              return 'vendor-date-fns'
             if (id.includes('@radix-ui'))             return 'vendor-radix'
+            if (id.includes('xlsx'))                  return 'vendor-xlsx'
             if (id.includes('react-dom') || id.includes('react-router') || id.includes('/react/')) return 'vendor-react'
           }
         },

@@ -136,7 +136,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
           <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
             <div className="h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-xl sm:rounded-2xl overflow-hidden ring-2 ring-slate-100 flex-shrink-0 bg-white shadow-sm">
               {restaurant.logo ? (
-                <img src={restaurant.logo} alt={restaurant.name} className="w-full h-full object-cover" />
+                <img src={restaurant.logo} alt={restaurant.name} width={56} height={56} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-base sm:text-lg">
                   {restaurant.name.charAt(0)}
@@ -299,7 +299,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
             rel="noopener noreferrer"
             className="inline-flex flex-col items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors"
           >
-            <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="h-7 w-auto object-contain opacity-80 hover:opacity-100" />
+            <img src="/quierofood-logo-f.svg" alt="Quiero.food" width={80} height={28} loading="lazy" className="h-7 w-auto object-contain opacity-80 hover:opacity-100" />
             <span className="text-xs">{t('menu.developedBy')}</span>
           </a>
         </footer>

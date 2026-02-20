@@ -25,29 +25,41 @@
 
 ---
 
-## Otimizações recomendadas (não implementadas)
+### 3. **Query do cardápio — muitas requisições paralelas** ✅ CORRIGIDO
 
-### 3. **Query do cardápio — muitas requisições paralelas**
+**Problema:** O `useRestaurantMenuData` executava 11+ queries Supabase em paralelo (restaurante, categorias, subcategorias, produtos, pizza sizes/flavors/doughs/edges, marmita sizes/proteins/sides, combos, adicionais).
 
-O `useRestaurantMenuData` executa 11 queries Supabase em paralelo. Considerar:
-- Criar uma RPC `get_restaurant_menu(slug)` que retorna todos os dados em uma única chamada.
-- Ou manter o padrão atual se a latência estiver aceitável (queries paralelas podem ser mais rápidas que uma RPC pesada).
+**Solução:** RPC `get_restaurant_menu(p_slug text)` criada em `supabase/db/migrations/20260287_get_restaurant_menu_rpc.sql`. Retorna todos os dados em uma única chamada: restaurante, produtos, categorias, subcategorias, pizza, marmita, combos e adicionais.
 
-### 4. **Imagens de produtos**
+**Resultado:** Uma única requisição HTTP em vez de 11+. O hook usa a RPC e faz fallback para o método antigo em caso de erro.
 
-- Usar `loading="lazy"` em todas as `<img>` de produtos.
-- Considerar CDN com resize (ex: Supabase Storage com transform) para servir thumbs menores na listagem.
-- Adicionar `width` e `height` para evitar layout shift (CLS).
+---
 
-### 5. **Recharts e XLSX no bundle admin**
+### 4. **Imagens de produtos** ✅ CORRIGIDO
 
-- `vendor-recharts` (412 KB) e `xlsx` (282 KB) são carregados em rotas admin.
-- Garantir que essas bibliotecas estejam em chunks separados e só carreguem nas rotas que as usam (Dashboard, exportações).
+**Problema:** Imagens sem `loading="lazy"` e sem `width`/`height` causavam layout shift (CLS).
 
-### 6. **Ícones Lucide**
+**Solução aplicada:**
+- `ProductCard.tsx`, `ProductCardViewOnly.tsx`: `loading="lazy"` + `width`/`height` em imagens de produtos
+- `ProductAddonModal.tsx`, `CartDrawer.tsx`: idem
+- `Menu.tsx`, `MenuViewOnly.tsx`: logos do restaurante com `width`/`height`; logo Quiero.food no rodapé com `loading="lazy"` + `width`/`height`
+- `Checkout.tsx`: logo do restaurante com `width`/`height`
 
-- `lucide-react` (63 KB no chunk) — já está em manualChunks.
-- Verificar se não há imports do tipo `import * as Icons from 'lucide-react'` que impedem tree-shaking.
+---
+
+### 5. **Recharts e XLSX no bundle admin** ✅ VERIFICADO
+
+- `vendor-recharts` (412 KB) e `vendor-xlsx` (282 KB) estão em chunks separados no `vite.config.ts`
+- Páginas admin (Dashboard, Inventory, SaasMetrics, etc.) usam `lazyWithRetry()` — Recharts e XLSX só carregam quando o usuário navega para essas rotas
+- Usuários do cardápio público não carregam esses chunks
+
+---
+
+### 6. **Ícones Lucide** ✅ VERIFICADO
+
+- `lucide-react` em manualChunk (`vendor-lucide`)
+- Imports são nomeados (`import { X, Y } from 'lucide-react'`) — tree-shaking preservado
+- Nenhum `import * as Icons from 'lucide-react'` encontrado
 
 ---
 

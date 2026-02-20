@@ -168,7 +168,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                           return (
                             <div key={row.id} className="flex items-center gap-3 rounded-xl bg-white border border-amber-100 p-2.5">
                               {p.image_url ? (
-                                <img src={p.image_url} alt={p.name} className="w-11 h-11 rounded-xl object-cover flex-shrink-0" />
+                                <img src={p.image_url} alt={p.name} width={44} height={44} className="w-11 h-11 rounded-xl object-cover flex-shrink-0" loading="lazy" />
                               ) : (
                                 <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center text-xl flex-shrink-0">🍽</div>
                               )}

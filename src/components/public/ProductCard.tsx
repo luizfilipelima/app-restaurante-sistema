@@ -49,6 +49,8 @@ export default function ProductCard({ product, onClick, readOnly = false, curren
           <img
             src={product.image_url!}
             alt={product.name}
+            width={108}
+            height={108}
             className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
