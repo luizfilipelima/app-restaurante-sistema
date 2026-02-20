@@ -261,6 +261,10 @@ export interface Order {
   table_id?: string | null;
   /** Comanda digital de origem (quando order_source = 'comanda') */
   virtual_comanda_id?: string | null;
+  /** Pedido marcado como resgate de fidelidade */
+  loyalty_redeemed?: boolean;
+  /** Ponto de fidelidade já creditado para este pedido */
+  loyalty_points_credited?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -389,6 +393,33 @@ export interface RestaurantWithMetrics extends Restaurant {
 
 /** Destino do cupom de impressão para a categoria */
 export type PrintDestination = 'kitchen' | 'bar';
+
+// ==================== LOYALTY ====================
+
+export interface LoyaltyProgram {
+  id?: string;
+  restaurant_id: string;
+  enabled: boolean;
+  orders_required: number;
+  reward_description: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface LoyaltyPoints {
+  customer_phone: string;
+  points: number;
+  redeemed_count: number;
+}
+
+/** Resultado do RPC get_loyalty_points */
+export interface LoyaltyStatus {
+  points: number;
+  redeemed_count: number;
+  orders_required: number;
+  reward_description: string;
+  enabled: boolean;
+}
 
 export interface Category {
   id: string;

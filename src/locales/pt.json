@@ -30,6 +30,22 @@
     "upsellTitle": "Aproveite também",
     "upsellAdd": "Adicionar"
   },
+  "loyalty": {
+    "stampOf": "de",
+    "stamps": "pedidos",
+    "progressLabel": "Você tem {{points}} pedido(s). Faltam {{remaining}} para ganhar: {{reward}}!",
+    "progressLabelSingle": "Falta {{remaining}} pedido para ganhar: {{reward}}!",
+    "progressComplete": "🎉 Você tem {{reward}} para resgatar!",
+    "inviteFirst": "Faça seu primeiro pedido e comece a ganhar pontos!",
+    "inviteDesc": "A cada pedido concluído você acumula 1 ponto.",
+    "redeemTitle": "🎉 Parabéns! Você ganhou seu prêmio!",
+    "redeemDesc": "Você atingiu {{count}} pedidos e ganhou: {{reward}}. Deseja resgatar agora?",
+    "redeemYes": "Sim, resgatar!",
+    "redeemNo": "Resgatar depois",
+    "redeemSuccess": "Prêmio resgatado com sucesso!",
+    "redeemSuccessDesc": "Aproveite seu {{reward}}! O restaurante já foi notificado.",
+    "redemptionLabel": "🎁 Resgate de Fidelidade"
+  },
   "checkout": {
     "title": "Finalizar Pedido",
     "emptyTitle": "Seu carrinho está vazio",

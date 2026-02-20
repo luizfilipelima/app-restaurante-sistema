@@ -23,7 +23,7 @@ import {
 import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff } from 'lucide-react';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { ROLES_CANCEL_ORDER } from '@/hooks/useUserRole';
-import { useCouriers, useOrders, usePrintSettings, useProductPrintDestinations } from '@/hooks/queries';
+import { useCouriers, useOrders, usePrintSettings, useProductPrintDestinations, creditLoyaltyPoint } from '@/hooks/queries';
 import { isUUID } from '@/hooks/useResolveRestaurantId';
 import { usePrinter } from '@/hooks/usePrinter';
 import type { DualReceiptSlot } from '@/hooks/usePrinter';
@@ -315,12 +315,23 @@ export default function AdminOrders() {
       if (newStatus === OrderStatus.READY) payload.ready_at = now;
       if (newStatus === OrderStatus.COMPLETED) payload.delivered_at = now;
 
-      const { error } = await supabase
+      const { error, data: updatedRows } = await supabase
         .from('orders')
         .update(payload)
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .select('customer_phone, loyalty_points_credited')
+        .single();
 
       if (error) throw error;
+
+      // Creditar ponto de fidelidade ao concluir pedido
+      if (newStatus === OrderStatus.COMPLETED && restaurantId && updatedRows) {
+        const phone = (updatedRows as { customer_phone?: string }).customer_phone;
+        const alreadyCredited = (updatedRows as { loyalty_points_credited?: boolean }).loyalty_points_credited;
+        if (phone && !alreadyCredited) {
+          creditLoyaltyPoint(restaurantId, orderId, phone).catch(() => { /* non-critical */ });
+        }
+      }
 
       await refetchOrders();
 

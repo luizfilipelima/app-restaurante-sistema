@@ -15,6 +15,16 @@ export type { UseOrdersParams, OrderSourceFilter } from './useOrders';
 export { usePrintSettings } from './usePrintSettings';
 export { useCategoryDestinations, useProductPrintDestinations } from './useCategoryDestinations';
 export type { CategoryDestination } from './useCategoryDestinations';
+export {
+  useLoyaltyProgram,
+  useSaveLoyaltyProgram,
+  useLoyaltyStatus,
+  useLoyaltyMetrics,
+  fetchLoyaltyStatus,
+  creditLoyaltyPoint,
+  redeemLoyalty,
+} from './useLoyaltyProgram';
+export type { LoyaltyMetrics } from './useLoyaltyProgram';
 export type { PrintSettings } from './usePrintSettings';
 export { useDashboardAnalytics } from './useDashboardAnalytics';
 export type { UseDashboardAnalyticsParams } from './useDashboardAnalytics';

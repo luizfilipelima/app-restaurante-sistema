@@ -16,6 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { useTableOrderStore } from '@/store/tableOrderStore';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
@@ -23,8 +31,10 @@ import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, is
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote, Send, Trash2, MapPin, Loader2 } from 'lucide-react';
+import { ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote, Send, Trash2, MapPin, Loader2, Gift } from 'lucide-react';
 import MapAddressPicker from '@/components/public/MapAddressPicker';
+import { fetchLoyaltyStatus, redeemLoyalty } from '@/hooks/queries';
+import LoyaltyCard from '@/components/public/LoyaltyCard';
 
 interface PublicCheckoutProps {
   /** Quando renderizado dentro de StoreLayout (subdomínio), o slug é passado por prop */
@@ -51,6 +61,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [phoneCountry, setPhoneCountry] = useState<'BR' | 'PY'>('BR');
+
+  // ── Fidelidade ──
+  const [loyaltyStatus, setLoyaltyStatus] = useState<{ points: number; orders_required: number; reward_description: string; enabled: boolean; redeemed_count: number } | null>(null);
+  const [showRedeemDialog, setShowRedeemDialog] = useState(false);
+  const [loyaltyRedeemed, setLoyaltyRedeemed] = useState(false);
   
   // Delivery State
   const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
@@ -98,6 +113,24 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     }
   }, [latitude, longitude, addressDetails, geoStorageKey]);
   
+  // Carregar telefone salvo e dados de fidelidade
+  useEffect(() => {
+    if (!restaurantId) return;
+    try {
+      const savedPhone = localStorage.getItem(`checkout_phone_${restaurantId}`);
+      const savedName = localStorage.getItem(`checkout_name_${restaurantId}`);
+      if (savedPhone) setCustomerPhone(savedPhone);
+      if (savedName) setCustomerName(savedName);
+    } catch { /* ignore */ }
+  }, [restaurantId]);
+
+  // Buscar status de fidelidade quando telefone muda (debounce implícito pelo useEffect)
+  useEffect(() => {
+    const phone = customerPhone.replace(/\D/g, '');
+    if (!restaurantId || phone.length < 8) { setLoyaltyStatus(null); return; }
+    fetchLoyaltyStatus(restaurantId, customerPhone).then((s) => setLoyaltyStatus(s));
+  }, [customerPhone, restaurantId]);
+
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.PIX);
   const [changeFor, setChangeFor] = useState('');
@@ -175,6 +208,20 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       return;
     }
 
+    // Salvar phone/name no localStorage para uso futuro (fidelidade)
+    if (!isTableOrder && restaurantId) {
+      try {
+        localStorage.setItem(`checkout_phone_${restaurantId}`, customerPhone);
+        localStorage.setItem(`checkout_name_${restaurantId}`, customerName);
+      } catch { /* ignore */ }
+    }
+
+    // Verificar se pode resgatar fidelidade (antes de continuar)
+    if (!isTableOrder && loyaltyStatus?.enabled && loyaltyStatus.points >= loyaltyStatus.orders_required && !loyaltyRedeemed) {
+      setShowRedeemDialog(true);
+      return;
+    }
+
     if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && !selectedZoneId) {
       toast({ title: t('checkout.errorSelectZone'), variant: 'destructive' });
       return;
@@ -245,6 +292,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         status: 'pending',
         notes: notes || null,
         is_paid: isTableOrder ? false : true,
+        loyalty_redeemed: loyaltyRedeemed,
       };
 
       const orderItemsPayload = items.map((item) => {
@@ -275,6 +323,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
       if (rpcError) throw rpcError;
       if (!rpcResult?.ok) throw new Error(rpcResult?.error ?? 'Erro ao registrar pedido.');
+
+      // Se o cliente resgatou, executar o débito de pontos no banco
+      if (loyaltyRedeemed && restaurantId) {
+        await redeemLoyalty(restaurantId, normalizePhoneWithCountryCode(customerPhone, phoneCountry));
+        setLoyaltyRedeemed(false);
+      }
 
       if (isTableOrder) {
         clearTable();
@@ -665,6 +719,30 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         </div>
         )}
 
+        {/* ── Fidelidade: progresso + badge de resgate ── */}
+        {!isTableOrder && loyaltyStatus?.enabled && (
+          <div className="space-y-2">
+            {loyaltyRedeemed ? (
+              <div className="rounded-xl border border-yellow-400 bg-yellow-50 px-4 py-3 flex items-center gap-2.5">
+                <Gift className="h-5 w-5 text-yellow-600 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-bold text-yellow-700">{t('loyalty.redemptionLabel')}</p>
+                  <p className="text-xs text-yellow-600">{loyaltyStatus.reward_description}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLoyaltyRedeemed(false)}
+                  className="ml-auto text-xs text-muted-foreground underline"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <LoyaltyCard status={loyaltyStatus} />
+            )}
+          </div>
+        )}
+
         {/* Resumo e Botão Finalizar */}
         <Card className="border-0 shadow-lg bg-white rounded-xl">
           <CardContent className="pt-4 px-4 pb-4 space-y-3">
@@ -718,6 +796,51 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         </Card>
 
       </div>
+
+      {/* ── Dialog de Resgate de Fidelidade ── */}
+      <Dialog open={showRedeemDialog} onOpenChange={setShowRedeemDialog}>
+        <DialogContent className="max-w-sm mx-4 rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">
+              {t('loyalty.redeemTitle')}
+            </DialogTitle>
+            <DialogDescription className="text-center pt-2">
+              {t('loyalty.redeemDesc', {
+                count: loyaltyStatus?.orders_required ?? 0,
+                reward: loyaltyStatus?.reward_description ?? '',
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 flex justify-center">
+            <Gift className="h-14 w-14 text-yellow-500 animate-bounce" />
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button
+              className="w-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:brightness-105 text-white font-bold h-11 rounded-xl shadow-lg"
+              onClick={async () => {
+                setLoyaltyRedeemed(true);
+                setShowRedeemDialog(false);
+                toast({ title: t('loyalty.redeemSuccess'), description: t('loyalty.redeemSuccessDesc', { reward: loyaltyStatus?.reward_description ?? '' }) });
+                // Continuar com o pedido
+                await handleCheckout();
+              }}
+            >
+              {t('loyalty.redeemYes')}
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-muted-foreground"
+              onClick={async () => {
+                setShowRedeemDialog(false);
+                // Continuar sem resgatar
+                await handleCheckout();
+              }}
+            >
+              {t('loyalty.redeemNo')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

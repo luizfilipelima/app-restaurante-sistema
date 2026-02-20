@@ -11,20 +11,29 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { fetchUpsellsForProducts, type UpsellRow } from '@/hooks/queries';
+import { fetchUpsellsForProducts, type UpsellRow, useLoyaltyStatus } from '@/hooks/queries';
 import type { CartItem } from '@/types';
+import LoyaltyCard, { LoyaltyInvite } from './LoyaltyCard';
 
 interface CartDrawerProps {
   open: boolean;
   onClose: () => void;
   onCheckout: () => void;
   currency?: CurrencyCode;
+  restaurantId?: string | null;
+  customerPhone?: string;
 }
 
-export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL' }: CartDrawerProps) {
+export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL', restaurantId, customerPhone }: CartDrawerProps) {
   const { t } = useTranslation();
   const { items, addItem, updateQuantity, removeItem, getSubtotal } = useCartStore();
   const [upsellRows, setUpsellRows] = useState<UpsellRow[]>([]);
+
+  // Fidelidade
+  const { data: loyaltyStatus } = useLoyaltyStatus(
+    open ? (restaurantId ?? null) : null,
+    open ? (customerPhone ?? null) : null
+  );
 
   useEffect(() => {
     if (!open || items.length === 0) { setUpsellRows([]); return; }
@@ -91,6 +100,15 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
         <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b">
           <DialogTitle className="text-lg sm:text-xl">{t('cart.title')}</DialogTitle>
         </DialogHeader>
+
+        {/* ── Fidelidade (compacta, fora do scroll principal) ── */}
+        {items.length > 0 && (
+          loyaltyStatus
+            ? <LoyaltyCard status={loyaltyStatus} compact />
+            : loyaltyStatus === null && restaurantId
+              ? <LoyaltyInvite enabled={true} />
+              : null
+        )}
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 sm:py-6 scroll-smooth">
           {items.length === 0 ? (

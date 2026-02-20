@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
-import { useDashboardStats, useDashboardKPIs, useDashboardAnalytics, useRestaurant, useOrderCoordinates } from '@/hooks/queries';
+import { useDashboardStats, useDashboardKPIs, useDashboardAnalytics, useRestaurant, useOrderCoordinates, useLoyaltyMetrics, useLoyaltyProgram } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,6 +31,7 @@ import {
   DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2,
   MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon, Flame, Bike, HelpCircle,
   Users, LayoutGrid, Download, FileSpreadsheet, FileText, ChevronDown, Printer,
+  Gift, Star,
 } from 'lucide-react';
 import DashboardPrintReport from '@/components/admin/DashboardPrintReport';
 import {
@@ -137,6 +138,8 @@ export default function AdminDashboard() {
   });
 
   const { data: orderCoordinates } = useOrderCoordinates(restaurantId, start, end, !!restaurantId);
+  const { data: loyaltyMetrics } = useLoyaltyMetrics(restaurantId);
+  const { data: loyaltyProgram } = useLoyaltyProgram(restaurantId);
 
   const metrics = useMemo(() => {
     const k = analytics?.kpis ?? kpisData;
@@ -932,6 +935,49 @@ export default function AdminDashboard() {
           </p>
           <DashboardHeatmapWidget points={orderCoordinates ?? []} />
         </div>
+
+        {/* ── Widget Fidelidade ── */}
+        {loyaltyProgram?.enabled && (
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-3 min-w-0">
+            {/* KPI: Prêmios Resgatados */}
+            <div className="admin-card p-5 flex items-center gap-4">
+              <div className="h-11 w-11 rounded-xl bg-violet-100 dark:bg-violet-950/40 flex items-center justify-center flex-shrink-0">
+                <Gift className="h-5 w-5 text-violet-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-2xl font-bold text-foreground">{loyaltyMetrics?.totalRedeemed ?? 0}</p>
+                <p className="text-xs text-muted-foreground">{t('loyalty.totalRedeemed')}</p>
+              </div>
+            </div>
+            {/* KPI: Clientes Ativos */}
+            <div className="admin-card p-5 flex items-center gap-4">
+              <div className="h-11 w-11 rounded-xl bg-amber-100 dark:bg-amber-950/40 flex items-center justify-center flex-shrink-0">
+                <Users className="h-5 w-5 text-amber-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-2xl font-bold text-foreground">{loyaltyMetrics?.activeClients ?? 0}</p>
+                <p className="text-xs text-muted-foreground">{t('loyalty.activeClients')}</p>
+              </div>
+            </div>
+            {/* Top cliente fiel */}
+            <div className="admin-card p-5 flex items-center gap-4">
+              <div className="h-11 w-11 rounded-xl bg-yellow-100 dark:bg-yellow-950/40 flex items-center justify-center flex-shrink-0">
+                <Star className="h-5 w-5 text-yellow-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-muted-foreground mb-0.5">{t('loyalty.topClientsTitle')}</p>
+                {loyaltyMetrics?.topClients?.[0] ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-mono text-foreground truncate">{loyaltyMetrics.topClients[0].customer_phone}</p>
+                    <span className="text-xs font-bold text-violet-600 shrink-0">{loyaltyMetrics.topClients[0].points} pts</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">{t('dashboard.noOrders')}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── BI: Região, Horários, Itens ── */}
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 min-w-0">

@@ -30,6 +30,22 @@
     "upsellTitle": "También te puede gustar",
     "upsellAdd": "Añadir"
   },
+  "loyalty": {
+    "stampOf": "de",
+    "stamps": "pedidos",
+    "progressLabel": "Tienes {{points}} pedido(s). ¡Faltan {{remaining}} para ganar: {{reward}}!",
+    "progressLabelSingle": "¡Falta {{remaining}} pedido para ganar: {{reward}}!",
+    "progressComplete": "🎉 ¡Tienes {{reward}} para canjear!",
+    "inviteFirst": "¡Haz tu primer pedido y empieza a ganar puntos!",
+    "inviteDesc": "Con cada pedido completado acumulas 1 punto.",
+    "redeemTitle": "🎉 ¡Felicitaciones! ¡Ganaste tu premio!",
+    "redeemDesc": "Completaste {{count}} pedidos y ganaste: {{reward}}. ¿Deseas canjear ahora?",
+    "redeemYes": "¡Sí, canjear!",
+    "redeemNo": "Canjear después",
+    "redeemSuccess": "¡Premio canjeado con éxito!",
+    "redeemSuccessDesc": "¡Disfruta tu {{reward}}! El restaurante ya fue notificado.",
+    "redemptionLabel": "🎁 Canje de Fidelidad"
+  },
   "checkout": {
     "title": "Finalizar Pedido",
     "emptyTitle": "Tu carrito está vacío",

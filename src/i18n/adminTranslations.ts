@@ -731,6 +731,69 @@ const en: typeof pt = {
   toggleHint:     'Click to toggle print destination for this category',
 };
 
+(pt as Record<string, unknown>).loyalty = {
+  tabLabel:            'Fidelidade',
+  sectionTitle:        'Cartão Fidelidade Digital',
+  sectionDesc:         'Recompense clientes recorrentes identificados pelo número de telefone.',
+  toggleLabel:         'Ativar programa de fidelidade',
+  toggleDesc:          'Quando ativado, os clientes acumulam 1 ponto a cada pedido concluído.',
+  ordersRequired:      'Pedidos para ganhar o prêmio',
+  ordersRequiredHint:  'Número de pedidos concluídos que o cliente precisa para resgatar o prêmio.',
+  rewardLabel:         'Descrição do prêmio',
+  rewardPlaceholder:   'Ex: 1 Pizza Grátis, 10% de desconto...',
+  rewardHint:          'Este texto será exibido ao cliente no cardápio e no checkout.',
+  saveBtn:             'Salvar Fidelidade',
+  metricsTitle:        'Métricas de Fidelidade',
+  totalRedeemed:       'Prêmios Resgatados',
+  activeClients:       'Clientes Ativos',
+  topClientsTitle:     'Top Clientes Fiéis',
+  phone:               'Telefone',
+  points:              'Pontos',
+  redeemed:            'Resgates',
+};
+
+(es as Record<string, unknown>).loyalty = {
+  tabLabel:            'Fidelidad',
+  sectionTitle:        'Tarjeta de Fidelidad Digital',
+  sectionDesc:         'Recompense a clientes recurrentes identificados por su número de teléfono.',
+  toggleLabel:         'Activar programa de fidelidad',
+  toggleDesc:          'Cuando esté activo, los clientes acumulan 1 punto por cada pedido completado.',
+  ordersRequired:      'Pedidos para ganar el premio',
+  ordersRequiredHint:  'Número de pedidos completados que el cliente necesita para canjear el premio.',
+  rewardLabel:         'Descripción del premio',
+  rewardPlaceholder:   'Ej: 1 Pizza Gratis, 10% de descuento...',
+  rewardHint:          'Este texto se mostrará al cliente en el menú y en el checkout.',
+  saveBtn:             'Guardar Fidelidad',
+  metricsTitle:        'Métricas de Fidelidad',
+  totalRedeemed:       'Premios Canjeados',
+  activeClients:       'Clientes Activos',
+  topClientsTitle:     'Top Clientes Fieles',
+  phone:               'Teléfono',
+  points:              'Puntos',
+  redeemed:            'Canjes',
+};
+
+(en as Record<string, unknown>).loyalty = {
+  tabLabel:            'Loyalty',
+  sectionTitle:        'Digital Loyalty Card',
+  sectionDesc:         'Reward recurring customers identified by phone number.',
+  toggleLabel:         'Enable loyalty program',
+  toggleDesc:          'When enabled, customers earn 1 point for each completed order.',
+  ordersRequired:      'Orders to earn reward',
+  ordersRequiredHint:  'Number of completed orders needed to redeem the reward.',
+  rewardLabel:         'Reward description',
+  rewardPlaceholder:   'E.g.: 1 Free Pizza, 10% discount...',
+  rewardHint:          'This text will be shown to the customer in the menu and checkout.',
+  saveBtn:             'Save Loyalty',
+  metricsTitle:        'Loyalty Metrics',
+  totalRedeemed:       'Rewards Redeemed',
+  activeClients:       'Active Clients',
+  topClientsTitle:     'Top Loyal Clients',
+  phone:               'Phone',
+  points:              'Points',
+  redeemed:            'Redemptions',
+};
+
 export type AdminLang = 'pt' | 'es' | 'en';
 export type AdminTranslations = typeof pt;
 

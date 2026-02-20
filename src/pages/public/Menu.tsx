@@ -117,8 +117,19 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     navigate(query ? `${base}?${query}` : base);
   };
 
-  const { getItemsCount, getSubtotal, setRestaurant: setCartRestaurant } = useCartStore();
+  const { getItemsCount, getSubtotal, setRestaurant: setCartRestaurant, restaurantId: cartRestaurantId } = useCartStore();
   const { setCurrentRestaurant } = useRestaurantStore();
+
+  // Ler telefone salvo no localStorage para exibir progresso de fidelidade no carrinho
+  const [savedPhone, setSavedPhone] = useState<string>('');
+  useEffect(() => {
+    try {
+      const rid = cartRestaurantId;
+      if (!rid) return;
+      const saved = localStorage.getItem(`checkout_phone_${rid}`);
+      if (saved) setSavedPhone(saved);
+    } catch { /* ignore */ }
+  }, [cartRestaurantId]);
 
   useEffect(() => {
     loadRestaurantData();
@@ -594,6 +605,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         onClose={() => setCartOpen(false)}
         onCheckout={handleCheckoutNavigation}
         currency={currency}
+        restaurantId={cartRestaurantId}
+        customerPhone={savedPhone}
       />
 
       {selectedProduct && (selectedProduct.is_pizza || selectedProduct.category?.toLowerCase() === 'pizza') && (
