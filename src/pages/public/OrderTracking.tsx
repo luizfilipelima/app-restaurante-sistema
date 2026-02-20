@@ -185,12 +185,12 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
   const fetchOrder = useCallback(async (retryCount = 0) => {
     if (!orderId) { setError('ID inválido'); setLoading(false); return; }
 
-    const maxRetries = 3;
-    const retryDelayMs = 1500;
+    const maxRetries = 5;
+    const retryDelayMs = 2000;
 
     try {
       const { data: rpc, error: rpcErr } = await supabase.rpc('get_order_tracking', {
-        p_order_id: orderId,
+        p_order_id: orderId.trim(),
       });
 
       if (rpcErr) throw rpcErr;
@@ -206,6 +206,7 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
       const tracking = rpc as { ok: true; order: TrackingOrder; restaurant: TrackingRestaurant; courier: TrackingCourier | null };
       setData({ order: tracking.order, restaurant: tracking.restaurant, courier: tracking.courier });
       setError(null);
+      sessionStorage.removeItem(`order_just_placed_${orderId}`);
 
       if (!initialLoaded.current) {
         initialLoaded.current = true;
@@ -224,7 +225,14 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
     }
   }, [orderId]);
 
-  useEffect(() => { fetchOrder(); }, [fetchOrder]);
+  useEffect(() => {
+    const justPlaced = sessionStorage.getItem(`order_just_placed_${orderId}`);
+    if (justPlaced) {
+      const t = setTimeout(() => fetchOrder(0), 1800);
+      return () => clearTimeout(t);
+    }
+    fetchOrder();
+  }, [fetchOrder, orderId]);
 
   // ── Supabase Realtime ─────────────────────────────────────────────────────
   useEffect(() => {

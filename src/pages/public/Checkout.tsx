@@ -472,8 +472,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           ? (isSubdomain ? `/track/${newOrderId}` : `/${restaurantSlug}/track/${newOrderId}`)
           : null;
 
-        if (trackPath) {
-          navigate(trackPath, { replace: true });
+        if (trackPath && newOrderId) {
+          sessionStorage.setItem(`order_just_placed_${newOrderId}`, '1');
           const isPix = paymentMethod === PaymentMethod.PIX;
           toast({
             title: '✅ ' + t('checkout.successOrderTitle'),
@@ -482,9 +482,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               : t('checkout.successOrderDesc'),
             className: 'bg-green-50 border-green-200',
           });
-          setTimeout(() => {
-            window.open(generateWhatsAppLink(whatsappNumber, message), '_blank', 'noopener,noreferrer');
-          }, 400);
+          window.open(generateWhatsAppLink(whatsappNumber, message), '_blank', 'noopener,noreferrer');
+          window.location.assign(window.location.origin + trackPath);
         } else {
           toast({
             title: '✅ ' + t('checkout.successOrderTitle'),
