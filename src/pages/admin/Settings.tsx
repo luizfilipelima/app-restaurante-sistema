@@ -272,6 +272,7 @@ export default function AdminSettings() {
     exchange_rates:          { pyg_per_brl: 3600, ars_per_brl: 1150 },
     payment_currencies:      ['BRL', 'PYG'] as string[],
     pix_key:                 '',
+    pix_key_type:            'random' as 'cpf' | 'email' | 'random',
     bank_account:            { bank_name: '', agency: '', account: '', holder: '' } as { bank_name: string; agency: string; account: string; holder: string },
   });
 
@@ -346,6 +347,7 @@ export default function AdminSettings() {
           ? data.payment_currencies
           : ['BRL', 'PYG'],
         pix_key:                 data.pix_key ?? '',
+        pix_key_type:            (['cpf', 'email', 'random'].includes(data.pix_key_type) ? data.pix_key_type : 'random') as 'cpf' | 'email' | 'random',
         bank_account:            (() => {
           const ba = data.bank_account;
           if (ba && typeof ba === 'object' && !Array.isArray(ba)) {
@@ -389,6 +391,7 @@ export default function AdminSettings() {
         exchange_rates:          formData.exchange_rates,
         payment_currencies:      formData.payment_currencies,
         pix_key:                 formData.pix_key?.trim() || null,
+        pix_key_type:            formData.pix_key?.trim() ? formData.pix_key_type : null,
         bank_account:            (formData.bank_account.bank_name || formData.bank_account.agency || formData.bank_account.account || formData.bank_account.holder)
           ? formData.bank_account
           : null,
@@ -945,17 +948,49 @@ export default function AdminSettings() {
                 </p>
               </div>
             </div>
-            <div className="p-5">
+            <div className="p-5 space-y-4">
+              <FieldGroup>
+                <SectionLabel>Tipo da chave PIX</SectionLabel>
+                <p className="text-[11px] text-muted-foreground mb-2">
+                  Selecione o tipo da chave que você usa para receber pagamentos.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 'cpf' as const, label: 'CPF/CNPJ' },
+                    { value: 'email' as const, label: 'E-mail' },
+                    { value: 'random' as const, label: 'Chave aleatória' },
+                  ].map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => set('pix_key_type', value)}
+                      className={`px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
+                        formData.pix_key_type === value
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-background hover:border-primary/50'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </FieldGroup>
               <FieldGroup>
                 <SectionLabel>Chave PIX</SectionLabel>
                 <Input
                   value={formData.pix_key}
                   onChange={(e) => set('pix_key', e.target.value)}
-                  placeholder="Ex: (11) 99999-9999, CPF, e-mail ou chave aleatória"
+                  placeholder={
+                    formData.pix_key_type === 'cpf'
+                      ? 'Ex: 123.456.789-00 ou 12.345.678/0001-00'
+                      : formData.pix_key_type === 'email'
+                        ? 'Ex: contato@restaurante.com'
+                        : 'Ex: chave aleatória (36 caracteres)'
+                  }
                   className="font-mono"
                 />
                 <p className="text-[10px] text-muted-foreground">
-                  CPF, CNPJ, telefone, e-mail ou chave aleatória. O cliente verá isso ao finalizar o pedido.
+                  A chave será exibida ao cliente no checkout e no rastreamento do pedido.
                 </p>
               </FieldGroup>
             </div>

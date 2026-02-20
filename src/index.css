@@ -242,6 +242,17 @@
   .overscroll-contain {
     overscroll-behavior: contain;
   }
+
+  /* Mapa de endereço no checkout: manter z-index contido para não sobrepor outros elementos */
+  .map-address-picker.leaflet-container,
+  .map-address-picker .leaflet-pane,
+  .map-address-picker .leaflet-top,
+  .map-address-picker .leaflet-bottom {
+    z-index: 0 !important;
+  }
+  .map-address-picker .leaflet-control {
+    z-index: 1 !important;
+  }
 }
 
 /* Animações customizadas */

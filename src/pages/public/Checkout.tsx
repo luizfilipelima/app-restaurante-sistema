@@ -106,10 +106,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // PIX e Transferência: dados salvos do cliente
-  const paymentPrefsKey = `checkout_payment_${restaurantId || 'default'}`;
-  const [pixKey, setPixKey] = useState('');
-  const [savePixKey, setSavePixKey] = useState(false);
   const [pixCopied, setPixCopied] = useState(false);
   const [bankCopied, setBankCopied] = useState(false);
 
@@ -143,14 +139,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       const savedName = localStorage.getItem(`checkout_name_${restaurantId}`);
       if (savedPhone) setCustomerPhone(savedPhone);
       if (savedName) setCustomerName(savedName);
-
-      const prefs = localStorage.getItem(paymentPrefsKey);
-      if (prefs) {
-        const data = JSON.parse(prefs) as { pix_key?: string };
-        if (data.pix_key) setPixKey(data.pix_key);
-      }
     } catch { /* ignore */ }
-  }, [restaurantId, paymentPrefsKey]);
+  }, [restaurantId]);
 
   // Cartão e QR Code só na entrega — ao mudar para retirada, trocar para PIX
   useEffect(() => {
@@ -263,11 +253,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       try {
         localStorage.setItem(`checkout_phone_${restaurantId}`, customerPhone);
         localStorage.setItem(`checkout_name_${restaurantId}`, customerName);
-        if (savePixKey && pixKey.trim()) {
-          const prefs = JSON.parse(localStorage.getItem(paymentPrefsKey) || '{}');
-          prefs.pix_key = pixKey.trim();
-          localStorage.setItem(paymentPrefsKey, JSON.stringify(prefs));
-        }
       } catch { /* ignore */ }
     }
 
@@ -337,7 +322,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         total: finalTotal,
         payment_method: isTableOrder ? PaymentMethod.TABLE : paymentMethod,
         payment_change_for: isTableOrder ? null : (paymentMethod === PaymentMethod.CASH && changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null),
-        payment_pix_key: !isTableOrder && (paymentMethod === PaymentMethod.PIX || paymentMethod === PaymentMethod.QRCODE) && pixKey.trim() ? pixKey.trim() : null,
+        payment_pix_key: null,
         payment_bank_account: !isTableOrder && paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS') && currentRestaurant?.bank_account && (currentRestaurant.bank_account.bank_name || currentRestaurant.bank_account.agency || currentRestaurant.bank_account.account || currentRestaurant.bank_account.holder) ? currentRestaurant.bank_account : null,
         order_source: isTableOrder ? 'table' : (finalDeliveryType === DeliveryType.DELIVERY ? 'delivery' : 'pickup'),
         table_id: isTableOrder && tableId ? tableId : null,
@@ -416,8 +401,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         let pagamentoDetalhes = '';
         if (paymentMethod === PaymentMethod.PIX || paymentMethod === PaymentMethod.QRCODE) {
-          if (pixKey.trim()) pagamentoDetalhes = `Chave PIX do cliente: ${pixKey.trim()}`;
-          if (paymentMethod === PaymentMethod.PIX) pagamentoDetalhes += (pagamentoDetalhes ? '\n' : '') + '📤 Cliente deve enviar o comprovante de pagamento PIX após confirmar o pedido.';
+          if (paymentMethod === PaymentMethod.PIX) pagamentoDetalhes = '📤 Cliente deve enviar o comprovante de pagamento PIX após confirmar o pedido.';
         }
         if (paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS')) {
           const ba = currentRestaurant?.bank_account;
@@ -591,10 +575,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       </div>
 
       {/* ── Conteúdo ── */}
-      <div className="max-w-xl mx-auto px-4 pt-4 pb-36 space-y-3">
+      <div className="max-w-xl mx-auto px-4 pt-4 pb-36 space-y-4">
 
         {/* ── 1. Sacola ── */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
             <div className="h-6 w-6 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
               <ShoppingBag className="h-3.5 w-3.5 text-orange-600" />
@@ -705,7 +689,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 2. Tipo de entrega (não-mesa) ── */}
         {!isTableOrder && (
-          <div className="flex gap-2">
+          <div className="relative z-10 flex gap-2">
             {[
               { type: DeliveryType.DELIVERY, icon: Bike, label: t('checkout.delivery'), sub: 'No seu endereço' },
               { type: DeliveryType.PICKUP, icon: Store, label: t('checkout.pickup'), sub: 'Retirar no local' },
@@ -729,7 +713,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 3. Dados do cliente (não-mesa) ── */}
         {!isTableOrder && (
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
               <div className="h-6 w-6 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
                 <User className="h-3.5 w-3.5 text-blue-600" />
@@ -783,7 +767,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 4. Endereço (apenas delivery, não-mesa) ── */}
         {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
               <div className="h-6 w-6 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
                 <MapPin className="h-3.5 w-3.5 text-green-600" />
@@ -848,12 +832,14 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       <XIcon className="h-4 w-4" />
                     </button>
                   </div>
-                  <MapAddressPicker
-                    lat={latitude!}
-                    lng={longitude!}
-                    onLocationChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
-                    height="200px"
-                  />
+                  <div className="relative overflow-hidden rounded-xl" style={{ contain: 'layout' }}>
+                    <MapAddressPicker
+                      lat={latitude!}
+                      lng={longitude!}
+                      onLocationChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+                      height="200px"
+                    />
+                  </div>
                 </div>
               )}
 
@@ -879,7 +865,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 5. Pagamento (não-mesa) ── */}
         {!isTableOrder && (
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="relative z-20 bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
               <div className="h-6 w-6 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
                 <CreditCard className="h-3.5 w-3.5 text-violet-600" />
@@ -940,7 +926,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       </button>
 
                       {value === PaymentMethod.PIX && paymentMethod === PaymentMethod.PIX && (
-                        <div className="mt-2 px-1 space-y-2">
+                        <div className="mt-2 px-1">
                           {currentRestaurant?.pix_key ? (
                             <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
                               <p className="text-xs font-semibold text-emerald-800 mb-1.5">Envie o PIX para:</p>
@@ -976,19 +962,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                               </p>
                             </div>
                           )}
-                          <div>
-                            <Label className="text-xs text-slate-500 mb-1 block">Sua chave PIX <span className="text-slate-300">(opcional, para identificação)</span></Label>
-                            <Input
-                              placeholder="CPF, e-mail, telefone ou chave aleatória"
-                              value={pixKey}
-                              onChange={(e) => setPixKey(e.target.value)}
-                              className="h-11 bg-white border-slate-200 rounded-xl text-sm"
-                            />
-                            <label className="flex items-center gap-2 mt-2 text-xs text-slate-500 cursor-pointer">
-                              <input type="checkbox" checked={savePixKey} onChange={(e) => setSavePixKey(e.target.checked)} className="rounded" />
-                              Salvar para próximos pedidos
-                            </label>
-                          </div>
                         </div>
                       )}
 
@@ -1049,18 +1022,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       )}
 
                       {value === PaymentMethod.QRCODE && paymentMethod === PaymentMethod.QRCODE && (
-                        <div className="mt-2 px-1 space-y-2">
+                        <div className="mt-2 px-1">
                           <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-100">
                             <Info className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
                             <p className="text-xs text-amber-800">Pague via QR Code no momento da entrega.</p>
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500 mb-1 block">Sua chave PIX <span className="text-slate-300">(opcional)</span></Label>
-                            <Input value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder="Para identificação do pagamento" className="h-10 text-sm" />
-                            <label className="flex items-center gap-2 mt-2 text-xs text-slate-500 cursor-pointer">
-                              <input type="checkbox" checked={savePixKey} onChange={(e) => setSavePixKey(e.target.checked)} className="rounded" />
-                              Salvar para próximos pedidos
-                            </label>
                           </div>
                         </div>
                       )}

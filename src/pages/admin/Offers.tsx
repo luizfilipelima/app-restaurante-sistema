@@ -473,67 +473,80 @@ export default function AdminOffers() {
       </Dialog>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Tag className="h-5 w-5 text-orange-500" />
+        <DialogContent className="sm:max-w-2xl lg:max-w-3xl max-h-[92vh] overflow-y-auto p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
+            <DialogTitle className="flex items-center gap-2.5 text-xl">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+                <Tag className="h-5 w-5" />
+              </div>
               {editingOffer ? 'Editar oferta' : t('offers.addOffer')}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm mt-1">
               Configure o produto, preço promocional e período. Para ofertas recorrentes, marque os dias da semana.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-5">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">{t('offers.product')} *</Label>
-                  <Select
-                    value={form.product_id}
-                    onValueChange={handleProductChange}
-                    required
-                    disabled={!!editingOffer}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Selecione o produto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
+          <form onSubmit={handleSubmit} className="space-y-0">
+            {/* ── 1. Produto e preços ───────────────────────────────────────────── */}
+            <div className="px-6 py-5 space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('offers.product')} *</Label>
+                <Select
+                  value={form.product_id}
+                  onValueChange={handleProductChange}
+                  required
+                  disabled={!!editingOffer}
+                >
+                  <SelectTrigger className="h-11 text-base">
+                    <SelectValue placeholder="Selecione o produto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <span className="flex items-center gap-2">
+                          {p.image_url ? (
+                            <img src={p.image_url} alt="" className="w-6 h-6 rounded object-cover" />
+                          ) : (
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                          )}
                           {p.name} — {formatCurrency(Number(p.price_sale || p.price), currency)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold">{t('offers.originalPrice')}</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('offers.originalPrice')}</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{getCurrencySymbol(currency)}</span>
                     <Input
                       type="text"
                       inputMode="decimal"
                       value={form.original_price}
                       onChange={(e) => setForm((f) => ({ ...f, original_price: currency === 'PYG' ? e.target.value.replace(/\D/g, '') : e.target.value }))}
-                      className="h-11"
-                      placeholder={getCurrencySymbol(currency)}
+                      className="h-11 pl-10 font-medium tabular-nums"
+                      placeholder={currency === 'PYG' ? '15.000' : '25,00'}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold">{t('offers.offerPrice')} *</Label>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('offers.offerPrice')} *</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-orange-600 font-medium">{getCurrencySymbol(currency)}</span>
                     <Input
                       type="text"
                       inputMode="decimal"
                       value={form.offer_price}
                       onChange={(e) => setForm((f) => ({ ...f, offer_price: currency === 'PYG' ? e.target.value.replace(/\D/g, '') : e.target.value }))}
-                      className="h-11"
-                      placeholder={getCurrencySymbol(currency)}
+                      className="h-11 pl-10 font-semibold tabular-nums border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20 focus-visible:ring-orange-500"
+                      placeholder={currency === 'PYG' ? '13.500' : '22,50'}
                     />
                   </div>
                 </div>
-
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold">{t('offers.label')}</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('offers.label')}</Label>
                   <Input
                     value={form.label}
                     onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
@@ -542,63 +555,100 @@ export default function AdminOffers() {
                   />
                 </div>
               </div>
-
-              <div className="space-y-5">
-                <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="immediate"
-                      checked={form.immediate}
-                      onChange={(e) => setForm((f) => ({ ...f, immediate: e.target.checked }))}
-                      className="h-4 w-4 rounded border-input"
-                    />
-                    <Label htmlFor="immediate" className="cursor-pointer font-medium text-sm">Oferta imediata (inicia agora, fim em 24h)</Label>
-                  </div>
-                  {!form.immediate && (
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">{t('offers.startDate')}</Label>
-                        <div className="flex gap-2">
-                          <Input type="date" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} className="flex-1" />
-                          <Input type="time" value={form.starts_at_time} onChange={(e) => setForm((f) => ({ ...f, starts_at_time: e.target.value }))} className="w-24" />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">{t('offers.endDate')}</Label>
-                        <div className="flex gap-2">
-                          <Input type="date" value={form.ends_at} onChange={(e) => setForm((f) => ({ ...f, ends_at: e.target.value }))} className="flex-1" />
-                          <Input type="time" value={form.ends_at_time} onChange={(e) => setForm((f) => ({ ...f, ends_at_time: e.target.value }))} className="w-24" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {form.immediate && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5" />
-                      Início: agora · Fim: em 24 horas
-                    </p>
-                  )}
-                </div>
-              </div>
             </div>
 
-            <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Repeat className="h-4 w-4 text-muted-foreground" />
-                <Label className="text-sm font-semibold">Repetir em dias da semana</Label>
+            {/* ── 2. Período ───────────────────────────────────────────────────── */}
+            <div className="px-6 py-5 bg-muted/20 border-y border-border/50">
+              <div className="flex items-start gap-4">
+                <label
+                  htmlFor="immediate"
+                  className="flex items-start gap-3 cursor-pointer group rounded-xl border-2 border-transparent p-4 transition-colors hover:bg-background/50 has-[:checked]:border-orange-300 has-[:checked]:bg-orange-50/50 dark:has-[:checked]:bg-orange-950/20"
+                >
+                  <input
+                    type="checkbox"
+                    id="immediate"
+                    checked={form.immediate}
+                    onChange={(e) => setForm((f) => ({ ...f, immediate: e.target.checked }))}
+                    className="mt-0.5 h-4 w-4 rounded border-input text-orange-500 focus:ring-orange-500"
+                  />
+                  <div>
+                    <span className="font-medium text-sm">Oferta imediata</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">Inicia agora, termina em 24h</p>
+                  </div>
+                </label>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Deixe vazio para oferta única. Marque os dias em que a oferta deve se repetir toda semana.
-              </p>
+
+              {!form.immediate && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+                  <div className="space-y-3">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {t('offers.startDate')}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="date"
+                        value={form.starts_at}
+                        onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))}
+                        className="flex-1 h-11"
+                      />
+                      <Input
+                        type="time"
+                        value={form.starts_at_time}
+                        onChange={(e) => setForm((f) => ({ ...f, starts_at_time: e.target.value }))}
+                        className="w-28 h-11"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {t('offers.endDate')}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="date"
+                        value={form.ends_at}
+                        onChange={(e) => setForm((f) => ({ ...f, ends_at: e.target.value }))}
+                        className="flex-1 h-11"
+                      />
+                      <Input
+                        type="time"
+                        value={form.ends_at_time}
+                        onChange={(e) => setForm((f) => ({ ...f, ends_at_time: e.target.value }))}
+                        className="w-28 h-11"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              {form.immediate && (
+                <p className="text-xs text-muted-foreground flex items-center gap-2 mt-4 pl-7">
+                  <Calendar className="h-3.5 w-3.5" />
+                  Início: agora · Fim: em 24 horas
+                </p>
+              )}
+            </div>
+
+            {/* ── 3. Repetir em dias da semana ─────────────────────────────────── */}
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Repeat className="h-4 w-4" />
+                  Repetir em dias da semana
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  Deixe vazio para oferta única. Marque os dias em que a oferta deve se repetir toda semana.
+                </p>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {REPEAT_DAYS.map(({ key, label }) => (
                   <label
                     key={key}
-                    className={`flex items-center justify-center w-11 h-11 rounded-lg border-2 cursor-pointer transition-all text-sm font-medium ${
+                    className={`flex items-center justify-center min-w-[3rem] h-11 px-4 rounded-xl border-2 cursor-pointer transition-all text-sm font-semibold select-none ${
                       form.repeat_days.includes(key)
-                        ? 'border-orange-500 bg-orange-50 text-orange-700'
-                        : 'border-muted hover:border-orange-300 hover:bg-orange-50/50'
+                        ? 'border-orange-500 bg-orange-500 text-white shadow-sm shadow-orange-500/25'
+                        : 'border-border bg-background hover:border-orange-300 hover:bg-orange-50/50 dark:hover:bg-orange-950/20'
                     }`}
                   >
                     <input
@@ -620,13 +670,13 @@ export default function AdminOffers() {
               </div>
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0 pt-2">
+            <DialogFooter className="px-6 py-4 border-t border-border/60 bg-muted/10 gap-2">
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)} disabled={saving}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving} className="min-w-[120px]">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {editingOffer ? 'Salvar' : 'Criar'}
+                {editingOffer ? 'Salvar alterações' : 'Criar oferta'}
               </Button>
             </DialogFooter>
           </form>

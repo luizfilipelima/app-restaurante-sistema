@@ -49,8 +49,16 @@ function MapCenterController({ lat, lng }: { lat: number; lng: number }) {
 
 export default function MapAddressPicker({ lat, lng, onLocationChange, height = '200px' }: MapAddressPickerProps) {
   return (
-    <div className="rounded-xl overflow-hidden border border-slate-200" style={{ height }}>
-      <MapContainer center={[lat, lng]} zoom={17} className="h-full w-full" style={{ height }}>
+    <div
+      className="relative z-0 overflow-hidden rounded-xl border border-slate-200 isolate"
+      style={{ height }}
+    >
+      <MapContainer
+        center={[lat, lng]}
+        zoom={17}
+        className="h-full w-full map-address-picker"
+        style={{ height } as React.CSSProperties}
+      >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
