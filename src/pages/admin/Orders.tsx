@@ -348,7 +348,9 @@ export default function AdminOrders() {
         const phone = (updatedRows as { customer_phone?: string }).customer_phone;
         const alreadyCredited = (updatedRows as { loyalty_points_credited?: boolean }).loyalty_points_credited;
         if (phone && !alreadyCredited) {
-          creditLoyaltyPoint(restaurantId, orderId, phone).catch(() => { /* non-critical */ });
+          creditLoyaltyPoint(restaurantId, orderId, phone).catch((err) => {
+            console.error('[Orders] creditLoyaltyPoint falhou (não crítico):', err);
+          });
         }
       }
 

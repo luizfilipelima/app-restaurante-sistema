@@ -228,8 +228,18 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       return;
     }
 
-    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && (latitude == null || longitude == null)) {
-      toast({ title: 'Use "Minha Localização Atual" para definir o endereço de entrega', variant: 'destructive' });
+    // Delivery: exige localização (mapa) OU detalhes do endereço (fluxo tradicional)
+    if (
+      !isTableOrder &&
+      deliveryType === DeliveryType.DELIVERY &&
+      (latitude == null || longitude == null) &&
+      !addressDetails?.trim()
+    ) {
+      toast({
+        title: 'Defina o endereço',
+        description: 'Use "Minha Localização Atual" ou preencha os detalhes do endereço.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -277,9 +287,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         customer_phone: normalizePhoneWithCountryCode(phoneToUse, phoneCountry),
         delivery_type: finalDeliveryType,
         delivery_zone_id: finalDeliveryType === DeliveryType.DELIVERY ? (selectedZoneId || null) : null,
-        delivery_address: finalDeliveryType === DeliveryType.DELIVERY && latitude != null && longitude != null
-          ? `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-          : null,
+        delivery_address:
+          finalDeliveryType === DeliveryType.DELIVERY
+            ? latitude != null && longitude != null
+              ? `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+              : addressDetails?.trim() || null
+            : null,
         latitude: finalDeliveryType === DeliveryType.DELIVERY && latitude != null ? latitude : null,
         longitude: finalDeliveryType === DeliveryType.DELIVERY && longitude != null ? longitude : null,
         address_details: finalDeliveryType === DeliveryType.DELIVERY && addressDetails.trim() ? addressDetails.trim() : null,
@@ -338,18 +351,24 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       // WhatsApp: apenas para pedidos não-mesa (delivery/pickup)
       if (!isTableOrder) {
       const itemsText = items
-        .map(
-          (i) =>
-            `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''} — ${formatCurrency(i.unitPrice * i.quantity, currency)}`
-        )
+        .map((i) => {
+          const itemTotal =
+            i.unitPrice * i.quantity +
+            (i.pizzaEdgePrice ?? 0) * i.quantity +
+            (i.pizzaDoughPrice ?? 0) * i.quantity;
+          return `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''} — ${formatCurrency(itemTotal, currency)}`;
+        })
         .join('\n');
 
       const bairro = deliveryType === DeliveryType.DELIVERY && selectedZoneId
         ? (zones.find((z) => z.id === selectedZoneId)?.location_name ?? '')
         : '';
-      const endereco = deliveryType === DeliveryType.DELIVERY && latitude != null && longitude != null
-        ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-        : '';
+      const endereco =
+        deliveryType === DeliveryType.DELIVERY
+          ? latitude != null && longitude != null
+            ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+            : addressDetails?.trim() ?? ''
+          : '';
       const trocoRaw = paymentMethod === PaymentMethod.CASH && changeFor
         ? changeFor.replace(/\D/g, '')
         : '';
@@ -436,7 +455,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         setTimeout(() => handleBackToMenu(), 1500);
       }
     } catch (error: unknown) {
-      console.error('Erro ao finalizar:', error);
+      console.error('[Checkout] Erro ao finalizar pedido:', error);
       const message = error && typeof error === 'object' && 'message' in error
         ? String((error as { message: string }).message)
         : t('checkout.errorGeneric');

@@ -94,7 +94,12 @@ export const useCartStore = create<CartState>()(
 
       getSubtotal: () => {
         const items = get().items;
-        return items.reduce((total, item) => total + item.unitPrice * item.quantity, 0);
+        return items.reduce((total, item) => {
+          const base = item.unitPrice * item.quantity;
+          const edge = (item.pizzaEdgePrice ?? 0) * item.quantity;
+          const dough = (item.pizzaDoughPrice ?? 0) * item.quantity;
+          return total + base + edge + dough;
+        }, 0);
       },
 
       getItemsCount: () => {
