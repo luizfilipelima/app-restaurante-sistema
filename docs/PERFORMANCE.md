@@ -63,6 +63,62 @@
 
 ---
 
+---
+
+### 7. **N+1 queries na RPC `get_restaurant_menu`** ✅ CORRIGIDO
+
+**Problema:** A versão anterior da função usava correlated subqueries em 3 lugares críticos:
+- **Ordenação de produtos**: `ORDER BY (SELECT order_index FROM categories WHERE name = p.category ...)` — executado 1 vez por produto
+- **Array de categorias**: CTE + correlated subquery por categoria para buscar `order_index`
+- **Mapa de adicionais**: scalar correlated subquery por `addon_group` para buscar seus items
+
+**Solução** (`20260288_fix_get_restaurant_menu_n1_queries.sql`):
+- Produtos: `LEFT JOIN categories` na própria query — 1 JOIN ao invés de N subqueries
+- Categorias: `GROUP BY p.category + LEFT JOIN categories` direto na tabela `products`
+- Adicionais: `LEFT JOIN LATERAL` — 1 scan ao invés de N correlated subqueries
+
+---
+
+### 8. **`framer-motion` no bundle inicial do cardápio** ✅ CORRIGIDO
+
+**Problema:** `CartDrawer`, `PizzaModal`, `MarmitaModal` e `ProductAddonModal` eram importados de forma estática em `Menu.tsx`, forçando o carregamento do `framer-motion` (~400 KB) mesmo antes do usuário interagir.
+
+**Solução:** Todos convertidos para `lazy()` + `<Suspense>` — o chunk do framer-motion só carrega quando o carrinho ou modal é aberto pela primeira vez.
+
+---
+
+### 9. **`useActiveOffers` fazia 2 requests HTTP** ✅ CORRIGIDO
+
+**Problema:** `fetchActiveOffersBySlug` buscava o restaurante pelo slug (1 request) e depois buscava as ofertas (2º request). No `Menu.tsx`, o `restaurant.id` já estava disponível via `menuData`.
+
+**Solução:** Criado `useActiveOffersByRestaurantId(restaurantId)` que usa o ID direto. `Menu.tsx` atualizado para usar este hook com `menuData?.restaurant?.id`, eliminando 1 round-trip HTTP.
+
+---
+
+### 10. **`ProductCard` sem `React.memo`** ✅ CORRIGIDO
+
+**Problema:** Toda vez que o contador do carrinho mudava, o componente pai (`Menu.tsx`) re-renderizava, recriando todos os `ProductCard`s mesmo sem mudança nos dados dos produtos.
+
+**Solução:** `ProductCard` envolvido com `memo()` — só re-renderiza quando suas props mudam.
+
+---
+
+### 11. **`filteredProducts` sem `useMemo` + busca desconectada** ✅ CORRIGIDO
+
+**Problema:** O cálculo de `filteredProducts` recalculava em todo render. Além disso, o campo de busca existia na UI mas não filtrava os produtos.
+
+**Solução:** `filteredProducts` agora usa `useMemo([products, selectedCategory, searchQuery])`. O input de busca foi conectado ao estado `searchQuery` e filtra por nome e descrição.
+
+---
+
+### 12. **Sem `preconnect` para o Supabase** ✅ CORRIGIDO
+
+**Problema:** O browser iniciava a conexão TCP+TLS com o Supabase apenas quando o JS chamava o primeiro request, adicionando ~100-300 ms de latência em conexões lentas.
+
+**Solução:** Adicionado `<link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin />` e `<link rel="dns-prefetch" href="%VITE_SUPABASE_URL%" />` no `index.html`. O Vite substitui a variável em build time.
+
+---
+
 ## Como medir
 
 ```bash

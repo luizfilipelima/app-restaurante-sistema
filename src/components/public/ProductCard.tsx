@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Product } from '@/types';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +15,7 @@ interface ProductCardProps {
   offer?: { price: number; originalPrice: number; label?: string | null };
 }
 
-export default function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', comboItems, offer }: ProductCardProps) {
+function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', comboItems, offer }: ProductCardProps) {
   const { t } = useTranslation();
   const hasImage = !!product.image_url;
   const isPizzaOrMarmita = product.is_pizza || product.is_marmita;
@@ -131,3 +132,5 @@ export default function ProductCard({ product, onClick, readOnly = false, curren
     </div>
   );
 }
+
+export default memo(ProductCard);

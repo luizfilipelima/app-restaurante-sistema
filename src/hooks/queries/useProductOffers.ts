@@ -130,12 +130,26 @@ export function useProductOffers(restaurantId: string | null) {
   };
 }
 
-/** Hook para ofertas vigentes no cardápio público */
+/** Hook para ofertas vigentes no cardápio público (por slug — faz 2 requests: slug→id→offers) */
 export function useActiveOffers(restaurantSlug: string | null) {
   return useQuery({
     queryKey: ['active-offers', restaurantSlug],
     queryFn: () => fetchActiveOffersBySlug(restaurantSlug),
     enabled: !!restaurantSlug,
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Hook para ofertas vigentes usando o restaurant_id diretamente.
+ * Preferir este quando o restaurant_id já estiver disponível (ex: do menuData)
+ * para evitar a query extra de buscar o restaurante pelo slug.
+ */
+export function useActiveOffersByRestaurantId(restaurantId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['active-offers-by-id', restaurantId],
+    queryFn: () => fetchActiveOffersForMenu(restaurantId ?? null),
+    enabled: !!restaurantId,
     staleTime: 60 * 1000,
   });
 }

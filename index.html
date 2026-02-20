@@ -5,6 +5,9 @@
     <link rel="icon" type="image/svg+xml" href="/favicon-quierofood-logo-orange.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sistema de Gestão de Restaurantes</title>
+    <!-- Abre conexão TCP/TLS com o Supabase antecipadamente, eliminando latência no primeiro request -->
+    <link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin />
+    <link rel="dns-prefetch" href="%VITE_SUPABASE_URL%" />
   </head>
   <body>
     <div id="root"></div>

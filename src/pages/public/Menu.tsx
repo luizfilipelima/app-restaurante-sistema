@@ -1,10 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { getSubdomain } from '@/lib/subdomain';
 import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide, Category, Subcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
-import { useRestaurantMenuData, useActiveOffers } from '@/hooks/queries';
+import { useRestaurantMenuData, useActiveOffersByRestaurantId } from '@/hooks/queries';
 import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,10 +15,13 @@ import { isWithinOpeningHours, formatCurrency, normalizePhoneWithCountryCode } f
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import ProductCard from '@/components/public/ProductCard';
-import ProductAddonModal from '@/components/public/ProductAddonModal';
-import CartDrawer from '@/components/public/CartDrawer';
-import PizzaModal from '@/components/public/PizzaModal';
-import MarmitaModal from '@/components/public/MarmitaModal';
+
+// Lazy: CartDrawer importa framer-motion — só carrega quando o carrinho for aberto
+const CartDrawer = lazy(() => import('@/components/public/CartDrawer'));
+// Lazy: modais só carregam quando o produto for clicado
+const ProductAddonModal = lazy(() => import('@/components/public/ProductAddonModal'));
+const PizzaModal = lazy(() => import('@/components/public/PizzaModal'));
+const MarmitaModal = lazy(() => import('@/components/public/MarmitaModal'));
 
 // MOCK DATA PARA VISUALIZAÇÃO DE DESIGN (Caso banco vazio)
 const MOCK_PRODUCTS: Product[] = [
@@ -84,6 +87,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [pizzaModalOpen, setPizzaModalOpen] = useState(false);
@@ -91,7 +95,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const [addonModalProduct, setAddonModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
 
   const { data: menuData, isLoading: loading, isError } = useRestaurantMenuData(restaurantSlug);
-  const { data: activeOffers = [] } = useActiveOffers(restaurantSlug);
+  // Usa restaurant_id diretamente do menuData para evitar requisição extra (slug→id)
+  const { data: activeOffers = [] } = useActiveOffersByRestaurantId(menuData?.restaurant?.id);
   const productIdToOffer = useMemo(() => {
     const m = new Map<string, typeof activeOffers[0]>();
     activeOffers.forEach((o) => m.set(o.product_id, o));
@@ -246,12 +251,21 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     }
   };
 
-  // Filtrar e ordenar produtos
-  const filteredProducts = selectedCategory === 'all'
-    ? products // Já estão ordenados
-    : products
-        .filter((p) => p.category === selectedCategory)
-        .sort((a, b) => a.name.localeCompare(b.name)); // Ordenar por nome dentro da categoria
+  // Filtrar e ordenar produtos — memoizado para não recalcular a cada render
+  const filteredProducts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    let result = selectedCategory === 'all'
+      ? products
+      : products.filter((p) => p.category === selectedCategory).sort((a, b) => a.name.localeCompare(b.name));
+    if (query) {
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(query) ||
+          (p.description ?? '').toLowerCase().includes(query),
+      );
+    }
+    return result;
+  }, [products, selectedCategory, searchQuery]);
 
   if (loading) {
     return (
@@ -377,6 +391,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none z-10" />
               <Input
                 placeholder={t('menu.searchPlaceholder')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-3 sm:pr-4 bg-white border-slate-200/80 rounded-xl sm:rounded-2xl border shadow-sm focus-visible:border-orange-400 focus-visible:ring-2 focus-visible:ring-orange-400/20 text-base sm:text-base text-slate-900 placeholder:text-slate-400 transition-shadow touch-manipulation"
               />
             </div>
@@ -612,67 +628,69 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         </div>
       )}
 
-      {/* Modais */}
-      <CartDrawer
-        open={cartOpen}
-        onClose={() => setCartOpen(false)}
-        onCheckout={handleCheckoutNavigation}
-        currency={currency}
-        restaurantId={cartRestaurantId}
-        customerPhone={savedPhone}
-      />
-
-      {selectedProduct && (selectedProduct.is_pizza || selectedProduct.category?.toLowerCase() === 'pizza') && (
-        <PizzaModal
-          open={pizzaModalOpen}
-          onClose={() => {
-            setPizzaModalOpen(false);
-            setSelectedProduct(null);
-          }}
-          product={selectedProduct}
-          sizes={pizzaSizes}
-          flavors={pizzaFlavors}
-          doughs={pizzaDoughs}
-          edges={pizzaEdges}
+      {/* Modais (lazy — só carregam quando necessários) */}
+      <Suspense fallback={null}>
+        <CartDrawer
+          open={cartOpen}
+          onClose={() => setCartOpen(false)}
+          onCheckout={handleCheckoutNavigation}
           currency={currency}
+          restaurantId={cartRestaurantId}
+          customerPhone={savedPhone}
         />
-      )}
 
-      {selectedProduct && selectedProduct.is_marmita && (
-        <MarmitaModal
-          open={marmitaModalOpen}
-          onClose={() => {
-            setMarmitaModalOpen(false);
-            setSelectedProduct(null);
-          }}
-          product={selectedProduct}
-          sizes={marmitaSizes}
-          proteins={marmitaProteins}
-          sides={marmitaSides}
-          currency={currency}
-        />
-      )}
+        {selectedProduct && (selectedProduct.is_pizza || selectedProduct.category?.toLowerCase() === 'pizza') && (
+          <PizzaModal
+            open={pizzaModalOpen}
+            onClose={() => {
+              setPizzaModalOpen(false);
+              setSelectedProduct(null);
+            }}
+            product={selectedProduct}
+            sizes={pizzaSizes}
+            flavors={pizzaFlavors}
+            doughs={pizzaDoughs}
+            edges={pizzaEdges}
+            currency={currency}
+          />
+        )}
 
-      {addonModalProduct && (
-        <ProductAddonModal
-          open={!!addonModalProduct}
-          onClose={() => setAddonModalProduct(null)}
-          product={addonModalProduct.product}
-          addonGroups={productAddonsMap[addonModalProduct.product.id] ?? []}
-          currency={currency}
-          basePrice={addonModalProduct.basePrice}
-          onAddToCart={({ quantity: qty, unitPrice, addons }) => {
-            useCartStore.getState().addItem({
-              productId: addonModalProduct.product.id,
-              productName: addonModalProduct.product.name,
-              quantity: qty,
-              unitPrice,
-              addons: addons.length > 0 ? addons : undefined,
-            });
-            toast({ title: '✅ Adicionado ao carrinho!', description: `${addonModalProduct.product.name} foi adicionado`, className: 'bg-green-50 border-green-200' });
-          }}
-        />
-      )}
+        {selectedProduct && selectedProduct.is_marmita && (
+          <MarmitaModal
+            open={marmitaModalOpen}
+            onClose={() => {
+              setMarmitaModalOpen(false);
+              setSelectedProduct(null);
+            }}
+            product={selectedProduct}
+            sizes={marmitaSizes}
+            proteins={marmitaProteins}
+            sides={marmitaSides}
+            currency={currency}
+          />
+        )}
+
+        {addonModalProduct && (
+          <ProductAddonModal
+            open={!!addonModalProduct}
+            onClose={() => setAddonModalProduct(null)}
+            product={addonModalProduct.product}
+            addonGroups={productAddonsMap[addonModalProduct.product.id] ?? []}
+            currency={currency}
+            basePrice={addonModalProduct.basePrice}
+            onAddToCart={({ quantity: qty, unitPrice, addons }) => {
+              useCartStore.getState().addItem({
+                productId: addonModalProduct.product.id,
+                productName: addonModalProduct.product.name,
+                quantity: qty,
+                unitPrice,
+                addons: addons.length > 0 ? addons : undefined,
+              });
+              toast({ title: '✅ Adicionado ao carrinho!', description: `${addonModalProduct.product.name} foi adicionado`, className: 'bg-green-50 border-green-200' });
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
