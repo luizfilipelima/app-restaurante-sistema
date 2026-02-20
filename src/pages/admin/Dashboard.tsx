@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
-import { useDashboardStats, useDashboardKPIs, useDashboardAnalytics, useRestaurant, useOrderCoordinates, useLoyaltyMetrics, useLoyaltyProgram } from '@/hooks/queries';
+import { useDashboardStats, useDashboardKPIs, useDashboardAnalytics, useRestaurant, useLoyaltyMetrics, useLoyaltyProgram } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,7 +50,6 @@ import {
 } from '@/components/ui/select';
 import { ChurnRecoveryList } from '@/components/admin/ChurnRecoveryList';
 import { MenuMatrixBCG } from '@/components/admin/MenuMatrixBCG';
-import DashboardHeatmapWidget from '@/components/admin/DashboardHeatmapWidget';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
 type PeriodValue = '30' | '365' | 'max';
 
@@ -138,7 +137,6 @@ export default function AdminDashboard() {
     enabled: !!prevRange,
   });
 
-  const { data: orderCoordinates } = useOrderCoordinates(restaurantId, start, end, !!restaurantId);
   const { data: loyaltyMetrics } = useLoyaltyMetrics(restaurantId);
   const { data: loyaltyProgram } = useLoyaltyProgram(restaurantId);
 
@@ -935,18 +933,6 @@ export default function AdminDashboard() {
               )}
             </div>
           </div>
-        </div>
-
-        {/* ── Mapa de Calor (Entregas) ── */}
-        <div className="admin-card p-6 min-w-0 overflow-hidden w-full">
-          <h3 className="text-base font-semibold text-slate-700 mb-2 flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-emerald-500" />
-            Mapa de Calor — Entregas
-          </h3>
-          <p className="text-xs text-slate-400 mb-4">
-            Concentração de pedidos de entrega por coordenadas (estilo neon sobre fundo escuro)
-          </p>
-          <DashboardHeatmapWidget points={orderCoordinates ?? []} />
         </div>
 
         {/* ── Widget Fidelidade ── */}
