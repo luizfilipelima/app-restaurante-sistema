@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export type CurrencyCode = 'BRL' | 'PYG';
+export type CurrencyCode = 'BRL' | 'PYG' | 'ARS' | 'USD';
 
 /** 
  * Formata valor na moeda informada usando a estratégia de armazenamento:
@@ -74,8 +74,8 @@ export function formatGuarani(value: number): string {
   return formatCurrency(value, 'PYG');
 }
 
-/** Normaliza telefone para número internacional (apenas dígitos). BR: +55, PY: +595. */
-export function normalizePhoneWithCountryCode(phone: string, countryCode: 'BR' | 'PY'): string {
+/** Normaliza telefone para número internacional (apenas dígitos). BR: +55, PY: +595, AR: +54. */
+export function normalizePhoneWithCountryCode(phone: string, countryCode: 'BR' | 'PY' | 'AR'): string {
   const digits = phone.replace(/\D/g, '');
   if (countryCode === 'BR') {
     const br = digits.length <= 11 ? digits : digits.slice(-11);
@@ -84,6 +84,11 @@ export function normalizePhoneWithCountryCode(phone: string, countryCode: 'BR' |
   if (countryCode === 'PY') {
     const py = digits.length <= 9 ? digits : digits.slice(-9);
     return '595' + py.padStart(9, '0');
+  }
+  if (countryCode === 'AR') {
+    // Argentina: DDD (até 4 dígitos) + número (6-8 dígitos), total até 12 dígitos
+    const ar = digits.length <= 12 ? digits : digits.slice(-12);
+    return '54' + ar;
   }
   return digits;
 }

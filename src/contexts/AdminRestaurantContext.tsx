@@ -27,10 +27,12 @@ export function useAdminRestaurantId(): string | null {
   return useContext(AdminRestaurantContext).restaurantId;
 }
 
-/** Moeda do restaurante para formatação de valores (BRL ou PYG) */
+/** Moeda do restaurante para formatação de valores */
 export function useAdminCurrency(): CurrencyCode {
   const { restaurant } = useContext(AdminRestaurantContext);
-  return restaurant?.currency === 'PYG' ? 'PYG' : 'BRL';
+  const valid: CurrencyCode[] = ['BRL', 'PYG', 'ARS', 'USD'];
+  const c = restaurant?.currency as CurrencyCode;
+  return valid.includes(c) ? c : 'BRL';
 }
 
 export { AdminRestaurantContext };

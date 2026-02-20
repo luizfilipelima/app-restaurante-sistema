@@ -15,7 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
 import { supabase } from '@/lib/supabase';
-import { formatCurrency, getComandaPublicUrl } from '@/lib/utils';
+import { formatCurrency, getComandaPublicUrl, type CurrencyCode } from '@/lib/utils';
 import { FeatureGuard } from '@/components/auth/FeatureGuard';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -264,7 +264,7 @@ function ComandaCard({
 }: {
   comanda: ActiveComanda;
   selected: boolean;
-  currency: 'BRL' | 'PYG';
+  currency: CurrencyCode;
   onClick: () => void;
   onDelete: (e: React.MouseEvent) => void;
   deleting: boolean;

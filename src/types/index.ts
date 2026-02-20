@@ -49,7 +49,7 @@ export interface OpeningHoursSlot {
   close: string;
 }
 
-export type PhoneCountry = 'BR' | 'PY';
+export type PhoneCountry = 'BR' | 'PY' | 'AR';
 
 export type CourierStatus = 'available' | 'busy' | 'offline';
 
@@ -87,10 +87,10 @@ export interface Restaurant {
   print_auto_on_new_order?: boolean;
   /** Largura do papel: 58mm ou 80mm */
   print_paper_width?: PrintPaperWidth;
-  /** Moeda de exibição dos valores no cardápio: BRL (Real) ou PYG (Guaraní) */
-  currency?: 'BRL' | 'PYG';
-  /** Idioma da interface do cardápio: pt ou es */
-  language?: 'pt' | 'es';
+  /** Moeda de exibição dos valores no cardápio */
+  currency?: 'BRL' | 'PYG' | 'ARS' | 'USD';
+  /** Idioma da interface do cardápio público */
+  language?: 'pt' | 'es' | 'en';
   created_at: string;
   updated_at: string;
 }

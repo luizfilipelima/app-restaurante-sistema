@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { DatabaseOrder } from '@/types';
 import type { OrderReceiptData } from '@/components/receipt/OrderReceipt';
+import type { CurrencyCode } from '@/lib/utils';
 
 const BODY_PRINT_CLASS = 'print-receipt';
 const BODY_PAPER_58_CLASS = 'receipt-paper-58';
@@ -20,7 +21,7 @@ export function usePrinter() {
   }, [cleanupPrint]);
 
   const printOrder = useCallback(
-    (order: DatabaseOrder, restaurantName: string, paperWidth: '58mm' | '80mm', currency?: 'BRL' | 'PYG') => {
+    (order: DatabaseOrder, restaurantName: string, paperWidth: '58mm' | '80mm', currency?: CurrencyCode) => {
       setReceiptData({ order, restaurantName, paperWidth, currency });
       document.body.classList.add(BODY_PRINT_CLASS);
       if (paperWidth === '58mm') document.body.classList.add(BODY_PAPER_58_CLASS);

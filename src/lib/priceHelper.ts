@@ -9,7 +9,7 @@
  * Ex.: Gs. 25.000 ou Gs. 25.000,50
  */
 
-export type CurrencyCode = 'BRL' | 'PYG';
+export type CurrencyCode = 'BRL' | 'PYG' | 'ARS' | 'USD';
 
 /** Formata inteiro com ponto como separador de milhar (formato Paraguai). */
 function formatIntegerWithDotsPyG(n: number): string {
@@ -26,11 +26,25 @@ function formatIntegerWithDotsPyG(n: number): string {
  */
 export function formatPrice(value: number, currency: CurrencyCode): string {
   if (currency === 'PYG') {
-    // Guaraní: formato nativo com ponto para milhares (ex: Gs. 25.000)
     return `Gs. ${formatIntegerWithDotsPyG(Number(value))}`;
   }
-
-  // Real: divide por 100 para converter centavos em reais
+  if (currency === 'ARS') {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value / 100);
+  }
+  if (currency === 'USD') {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value / 100);
+  }
+  // BRL default
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -51,17 +65,15 @@ export function formatPrice(value: number, currency: CurrencyCode): string {
 export function convertPriceToStorage(inputValue: string | number, currency: CurrencyCode): number {
   if (currency === 'PYG') {
     if (typeof inputValue === 'number') return Math.round(inputValue);
-    // PYG: remover pontos (milhares), trocar vírgula por ponto (decimal), depois arredondar
     const normalized = String(inputValue).replace(/\./g, '').replace(',', '.');
     const numValue = parseFloat(normalized) || 0;
     return Math.round(numValue);
   }
-
+  // BRL, ARS, USD: centavos
   const numValue =
     typeof inputValue === 'string'
       ? parseFloat(inputValue.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0
       : inputValue;
-  // Real: multiplica por 100 para converter reais em centavos
   return Math.round(numValue * 100);
 }
 
@@ -78,7 +90,8 @@ export function convertPriceFromStorage(storageValue: number, currency: Currency
   if (currency === 'PYG') {
     return formatIntegerWithDotsPyG(Number(storageValue));
   }
-  return new Intl.NumberFormat('pt-BR', {
+  const locale = currency === 'USD' ? 'en-US' : 'pt-BR';
+  return new Intl.NumberFormat(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(storageValue / 100);
@@ -109,5 +122,10 @@ export function formatPriceInputPyG(displayValue: string): string {
  * @returns Símbolo da moeda ('R$' ou 'Gs.')
  */
 export function getCurrencySymbol(currency: CurrencyCode): string {
-  return currency === 'PYG' ? 'Gs.' : 'R$';
+  switch (currency) {
+    case 'PYG': return 'Gs.';
+    case 'ARS': return '$';
+    case 'USD': return 'US$';
+    default:    return 'R$';
+  }
 }
