@@ -80,7 +80,7 @@ const statusConfig = {
     nextIcon: Truck,
   },
   [OrderStatus.DELIVERING]: {
-    label: 'Em Entrega',
+    label: 'Em Conclusão',
     icon: Truck,
     color: 'bg-orange-500',
     gradient: 'from-orange-400 to-red-600',
@@ -609,7 +609,10 @@ export default function AdminOrders() {
                       const tableDeliveringOverride = isTableOrder && status === OrderStatus.DELIVERING;
                       const goToCompleted = isComandaOrder || tablePreparingOverride || tableReadyOverride || tableDeliveringOverride;
                       const nextStatus = goToCompleted ? OrderStatus.COMPLETED : config.nextStatus;
-                      const nextLabel = goToCompleted ? 'Concluir' : config.nextLabel;
+                      // Pedidos Retirada em Prontos: botão "Aguardando Retirada" em vez de "Saiu para Entrega"
+                      const isPickupOrder = !isTableOrder && !isComandaOrder && !isDeliveryOrder;
+                      const pickupReadyLabel = status === OrderStatus.READY && isPickupOrder ? 'Aguardando Retirada' : null;
+                      const nextLabel = goToCompleted ? 'Concluir' : (pickupReadyLabel ?? config.nextLabel);
                       const NextIconComponent = goToCompleted ? completedConfig.icon : config.nextIcon;
                       const gradientClass = goToCompleted ? completedConfig.gradient : config.gradient;
 
@@ -635,7 +638,6 @@ export default function AdminOrders() {
                         return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
                       };
 
-                      const isPickupOrder = !isTableOrder && !isComandaOrder && !isDeliveryOrder;
                       const canNotifyPickupWhatsApp = status === OrderStatus.READY && isPickupOrder;
 
                       return (
