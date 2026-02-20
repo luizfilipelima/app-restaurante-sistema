@@ -131,12 +131,16 @@ const formDefaults = {
   categoryId: '' as string,
   description: '',
   price: '',
+  priceCost: '',
   is_pizza: false,
   is_marmita: false,
   image_url: '',
   categoryDetail: '',
   subcategoryId: '' as string | null,
-  // Campos de estoque (visíveis quando categoria tem has_inventory = true)
+  // Destino de impressão por produto
+  printDest: 'kitchen' as 'kitchen' | 'bar',
+  // Estoque por produto
+  hasInventory: false,
   invQuantity: '',
   invMinQuantity: '5',
   invUnit: 'un',
@@ -151,123 +155,68 @@ interface SortableCategoryItemProps {
   isSelected: boolean;
   onSelect: () => void;
   onDelete: () => void;
-  onToggleInventory: (id: string, current: boolean) => void;
-  onChangeDest: (id: string, dest: 'kitchen' | 'bar') => void;
 }
 
-function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete, onToggleInventory, onChangeDest }: SortableCategoryItemProps) {
+function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete }: SortableCategoryItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: category.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
-  const dest = category.print_destination ?? 'kitchen';
-  const isBar = dest === 'bar';
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative rounded-xl border transition-all ${
+      className={`group flex items-center gap-1 rounded-lg border transition-all h-9 px-1.5 ${
         isSelected
           ? 'bg-primary border-primary shadow-sm'
-          : 'bg-background border-border hover:border-primary/40 hover:bg-muted/40'
-      } ${isDragging ? 'shadow-lg z-50' : ''}`}
+          : 'bg-background border-transparent hover:border-border hover:bg-muted/50'
+      } ${isDragging ? 'shadow-md z-50' : ''}`}
     >
-      {/* Linha principal: drag + seleção */}
-      <div className="flex items-center gap-1.5 px-2 py-2">
-        {/* Handle de drag — sempre visível como alça sutil */}
-        <div
-          {...attributes}
-          {...listeners}
-          className={`cursor-grab active:cursor-grabbing touch-none p-1 rounded transition-colors ${
-            isSelected ? 'text-primary-foreground/50 hover:text-primary-foreground/80' : 'text-muted-foreground/30 hover:text-muted-foreground/70'
-          }`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <GripVertical className="h-3.5 w-3.5" />
-        </div>
-
-        {/* Botão principal de seleção */}
-        <button
-          type="button"
-          className="flex-1 flex items-center gap-2 text-left min-w-0"
-          onClick={onSelect}
-        >
-          {/* Ícone de tipo */}
-          <span className={`flex-shrink-0 ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
-            {category.is_pizza ? (
-              <Pizza className="h-3.5 w-3.5" />
-            ) : category.is_marmita ? (
-              <UtensilsCrossed className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isSelected ? 'rotate-90 text-primary-foreground' : ''}`} />
-            )}
-          </span>
-
-          {/* Nome */}
-          <span className={`truncate text-sm font-semibold flex-1 ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
-            {category.name}
-          </span>
-
-          {/* Contagem */}
-          <span className={`flex-shrink-0 text-xs font-bold min-w-[1.25rem] text-center ${
-            isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'
-          }`}>
-            {count}
-          </span>
-        </button>
+      {/* Drag handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className={`cursor-grab active:cursor-grabbing touch-none flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${
+          isSelected ? 'text-primary-foreground/50' : 'text-muted-foreground/50'
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="h-3.5 w-3.5" />
       </div>
 
-      {/* Linha de meta: badges de destino + estoque + ações */}
-      <div className={`flex items-center gap-1.5 px-2 pb-1.5 border-t ${isSelected ? 'border-primary-foreground/20' : 'border-border/60'}`}>
-        {/* Badge destino de impressão — clicável para alternar */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onChangeDest(category.id, isBar ? 'kitchen' : 'bar');
-          }}
-          title={isBar ? 'Destino: Garçom/Bar — clique para mudar para Cozinha' : 'Destino: Cozinha — clique para mudar para Bar'}
-          className={`flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md transition-colors cursor-pointer ${
-            isBar
-              ? isSelected ? 'bg-orange-300/30 text-orange-200 hover:bg-orange-300/50' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-              : isSelected ? 'bg-blue-300/30 text-blue-200 hover:bg-blue-300/50' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-          }`}
-        >
-          <Printer className="h-2.5 w-2.5" />
-          {isBar ? 'Bar' : 'Cozinha'}
-        </button>
+      {/* Select button */}
+      <button
+        type="button"
+        className="flex-1 flex items-center gap-2 text-left min-w-0"
+        onClick={onSelect}
+      >
+        <span className={`flex-shrink-0 ${isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+          {category.is_pizza ? (
+            <Pizza className="h-3.5 w-3.5" />
+          ) : category.is_marmita ? (
+            <UtensilsCrossed className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isSelected ? 'rotate-90' : ''}`} />
+          )}
+        </span>
+        <span className={`truncate text-sm font-medium flex-1 ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
+          {category.name}
+        </span>
+        <span className={`text-xs font-semibold tabular-nums flex-shrink-0 ${isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+          {count}
+        </span>
+      </button>
 
-        {/* Badge estoque — clicável para alternar */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onToggleInventory(category.id, !!category.has_inventory); }}
-          title={category.has_inventory ? 'Estoque ativo — clique para desativar' : 'Ativar controle de estoque'}
-          className={`flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md transition-colors cursor-pointer ${
-            category.has_inventory
-              ? isSelected ? 'bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-              : isSelected ? 'bg-primary-foreground/10 text-primary-foreground/40 hover:bg-primary-foreground/20' : 'bg-muted/60 text-muted-foreground/60 hover:bg-muted'
-          }`}
-        >
-          <Boxes className="h-2.5 w-2.5" />
-          Estoque
-        </button>
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Botão excluir */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className={`p-0.5 rounded transition-colors ${
-            isSelected
-              ? 'text-primary-foreground/40 hover:text-primary-foreground'
-              : 'text-muted-foreground/40 hover:text-destructive'
-          }`}
-          title="Excluir categoria"
-        >
-          <Trash2 className="h-3 w-3" />
-        </button>
-      </div>
+      {/* Delete — only visible on hover */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        className={`flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded ${
+          isSelected ? 'text-primary-foreground/40 hover:text-primary-foreground' : 'text-muted-foreground/40 hover:text-destructive'
+        }`}
+        title="Excluir categoria"
+      >
+        <Trash2 className="h-3 w-3" />
+      </button>
     </div>
   );
 }
@@ -324,9 +273,20 @@ function CentralProductRow({ product, currency, showInventory, onEdit, onDuplica
 
       <TableCell className="min-w-0">
         <div className="font-medium text-sm text-foreground truncate">{product.name}</div>
-        {product.description && (
-          <div className="text-xs text-muted-foreground truncate max-w-[200px]">{product.description}</div>
-        )}
+        <div className="flex items-center gap-1 mt-0.5">
+          {product.description && (
+            <span className="text-xs text-muted-foreground truncate max-w-[160px]">{product.description}</span>
+          )}
+          {/* Print destination badge */}
+          <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 ${
+            product.print_destination === 'bar'
+              ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400'
+              : 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
+          }`}>
+            {product.print_destination === 'bar' ? <Wine className="h-2.5 w-2.5" /> : <ChefHat className="h-2.5 w-2.5" />}
+            {product.print_destination === 'bar' ? 'Bar' : 'Cozinha'}
+          </span>
+        </div>
       </TableCell>
 
       <TableCell className="whitespace-nowrap font-medium tabular-nums text-sm">
@@ -649,7 +609,14 @@ export default function AdminMenu() {
     setEditingProduct(null);
     const catId = preselectedCategoryId || selectedCategoryId || categories[0]?.id || '';
     const cat = categories.find((c) => c.id === catId);
-    setForm({ ...formDefaults, categoryId: catId, is_pizza: cat?.is_pizza ?? false, is_marmita: cat?.is_marmita ?? false, subcategoryId: null });
+    setForm({
+      ...formDefaults,
+      categoryId: catId,
+      is_pizza: cat?.is_pizza ?? false,
+      is_marmita: cat?.is_marmita ?? false,
+      subcategoryId: null,
+      printDest: (cat?.print_destination ?? 'kitchen') as 'kitchen' | 'bar',
+    });
     setModalOpen(true);
   };
 
@@ -664,14 +631,14 @@ export default function AdminMenu() {
       ? (desc.split(/ - (.+)/).slice(0, 2) as [string, string])
       : ['', desc];
 
-    // Valores base
+    // Carrega dados de estoque (independente de categoria)
+    let hasInventory = false;
     let invQuantity = '';
     let invMinQuantity = '5';
     let invUnit = 'un';
     let invExpiry = '';
 
-    // Se a categoria tem estoque, carrega dados do item de estoque
-    if (cat?.has_inventory && restaurantId) {
+    if (restaurantId) {
       try {
         const { data: inv } = await supabase
           .from('inventory_items')
@@ -680,12 +647,13 @@ export default function AdminMenu() {
           .eq('restaurant_id', restaurantId)
           .maybeSingle();
         if (inv) {
+          hasInventory   = true;
           invQuantity    = String(Number(inv.quantity));
           invMinQuantity = String(Number(inv.min_quantity));
           invUnit        = inv.unit ?? 'un';
           invExpiry      = inv.expiry_date ?? '';
         }
-      } catch { /* silencioso — campos ficam vazios */ }
+      } catch { /* silencioso */ }
     }
 
     setForm({
@@ -693,11 +661,14 @@ export default function AdminMenu() {
       categoryId: cat?.id ?? '',
       description: description?.trim() || '',
       price: convertPriceFromStorage(Number(product.price), currency),
+      priceCost: product.price_cost ? convertPriceFromStorage(Number(product.price_cost), currency) : '',
       is_pizza: cat?.is_pizza ?? false,
       is_marmita: cat?.is_marmita ?? false,
       image_url: product.image_url || '',
       categoryDetail: categoryDetail?.trim() || '',
       subcategoryId: product.subcategory_id ?? null,
+      printDest: (product.print_destination ?? cat?.print_destination ?? 'kitchen') as 'kitchen' | 'bar',
+      hasInventory,
       invQuantity,
       invMinQuantity,
       invUnit,
@@ -715,6 +686,8 @@ export default function AdminMenu() {
       is_marmita: cat?.is_marmita ?? false,
       categoryDetail: cat?.extra_field != null ? f.categoryDetail : '',
       subcategoryId: null,
+      // Herda destino de impressão da nova categoria como sugestão
+      printDest: (cat?.print_destination ?? f.printDest) as 'kitchen' | 'bar',
     }));
   };
 
@@ -734,17 +707,20 @@ export default function AdminMenu() {
       : form.description.trim() || null;
     setSaving(true);
     try {
+      const costPrice = form.priceCost.trim() ? convertPriceToStorage(form.priceCost, currency) : null;
       const payload = {
         restaurant_id: restaurantId,
         name,
         category: categoryName,
         description: descriptionFinal,
         price,
+        price_cost: costPrice,
         is_pizza: cfg.isPizza,
         is_marmita: cfg.isMarmita,
         image_url: form.image_url.trim() || null,
         is_active: true,
         subcategory_id: form.subcategoryId || null,
+        print_destination: form.printDest,
       };
       let savedProductId = editingProduct?.id ?? '';
 
@@ -769,8 +745,8 @@ export default function AdminMenu() {
         await saveUpsellsMutation.mutateAsync({ productId: savedProductId, upsellIds: selectedUpsellIds });
       }
 
-      // Upsert de estoque quando categoria tem controle ativo
-      if (formCat?.has_inventory && savedProductId) {
+      // Upsert de estoque por produto (independente da categoria)
+      if (form.hasInventory && savedProductId) {
         const invQty    = parseFloat((form.invQuantity || '0').replace(',', '.')) || 0;
         const invMinQty = parseFloat((form.invMinQuantity || '5').replace(',', '.')) || 0;
         await supabase.from('inventory_items').upsert({
@@ -782,6 +758,12 @@ export default function AdminMenu() {
           expiry_date:   form.invExpiry || null,
           updated_at:    new Date().toISOString(),
         }, { onConflict: 'restaurant_id,product_id' });
+      } else if (!form.hasInventory && savedProductId && editingProduct) {
+        // Se desativou estoque em produto que tinha, remove o item de estoque
+        await supabase.from('inventory_items')
+          .delete()
+          .eq('product_id', savedProductId)
+          .eq('restaurant_id', restaurantId);
       }
 
       setModalOpen(false);
@@ -883,41 +865,6 @@ export default function AdminMenu() {
       await loadProducts();
       toast({ title: 'Categoria removida!' });
     } catch (e) { toast({ title: 'Erro ao remover categoria', variant: 'destructive' }); }
-  };
-
-  const handleToggleCategoryInventory = async (categoryId: string, currentValue: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('categories')
-        .update({ has_inventory: !currentValue })
-        .eq('id', categoryId)
-        .eq('restaurant_id', restaurantId!);
-      if (error) throw error;
-      await loadCategoriesAndSubcategories();
-      toast({
-        title: !currentValue ? 'Estoque ativado!' : 'Estoque desativado',
-        description: !currentValue
-          ? 'Gerencie o estoque desta categoria em Controle de Estoque.'
-          : 'Esta categoria não terá mais controle de estoque.',
-      });
-    } catch {
-      toast({ title: 'Erro ao atualizar categoria', variant: 'destructive' });
-    }
-  };
-
-  const handleChangeCategoryDest = async (categoryId: string, dest: 'kitchen' | 'bar') => {
-    try {
-      const { error } = await supabase
-        .from('categories')
-        .update({ print_destination: dest })
-        .eq('id', categoryId)
-        .eq('restaurant_id', restaurantId!);
-      if (error) throw error;
-      await loadCategoriesAndSubcategories();
-      toast({ title: dest === 'kitchen' ? 'Destino: Cozinha Central' : 'Destino: Garçom / Bar' });
-    } catch {
-      toast({ title: 'Erro ao atualizar destino de impressão', variant: 'destructive' });
-    }
   };
 
   // ─── Slug ─────────────────────────────────────────────────────────────────────
@@ -1165,8 +1112,6 @@ export default function AdminMenu() {
                         isSelected={selectedCategoryId === cat.id}
                         onSelect={() => setSelectedCategoryId(cat.id)}
                         onDelete={() => handleDeleteCategory(cat)}
-                        onToggleInventory={handleToggleCategoryInventory}
-                        onChangeDest={handleChangeCategoryDest}
                       />
                     ))}
                   </SortableContext>
@@ -1341,112 +1286,25 @@ export default function AdminMenu() {
 
       {/* ── Product Form Modal ─────────────────────────────────────────────── */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSaveProduct} className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="p-name">Nome *</Label>
-                <Input id="p-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder={categoryConfig.isPizza ? 'Ex: Margherita, Calabresa' : 'Ex: nome do produto'} required />
-              </div>
-              <div className="space-y-2">
-                <Label>Categoria *</Label>
-                <Select value={form.categoryId} onValueChange={handleCategoryChange} required>
-                  <SelectTrigger><SelectValue placeholder={categories.length ? 'Selecione' : 'Crie uma categoria'} /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.name}{cat.is_pizza && ' (pizza)'}{cat.is_marmita && ' (marmita)'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {subcategoriesOfSelected.length > 0 && (
-              <div className="space-y-2">
-                <Label>Subcategoria (opcional)</Label>
-                <Select value={form.subcategoryId ?? 'none'} onValueChange={(v) => setForm((f) => ({ ...f, subcategoryId: v === 'none' ? null : v }))}>
-                  <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhuma</SelectItem>
-                    {subcategoriesOfSelected.map((sub) => <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {categoryConfig.isPizza && (
-              <div className="flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-                <Info className="h-4 w-4 shrink-0 mt-0.5" />
-                <span>Produto configurado como <strong>pizza</strong>. Configure tamanhos e bordas em <strong>Configurações Avançadas</strong>.</span>
-              </div>
-            )}
-            {categoryConfig.isMarmita && (
-              <div className="flex gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-                <Info className="h-4 w-4 shrink-0 mt-0.5" />
-                <span>Produto configurado como <strong>marmita</strong>. Configure proteínas e acompanhamentos em <strong>Configurações Avançadas</strong>.</span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {categoryConfig.extraField && (
-                <div className="space-y-2">
-                  <Label>{categoryConfig.extraLabel}</Label>
-                  <Input value={form.categoryDetail} onChange={(e) => setForm((f) => ({ ...f, categoryDetail: e.target.value }))}
-                    placeholder={categoryConfig.extraPlaceholder} />
-                </div>
+        <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto p-0">
+          {/* Modal Header */}
+          <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border sticky top-0 bg-background z-10">
+            <div>
+              <DialogTitle className="text-lg font-semibold">
+                {editingProduct ? 'Editar Produto' : 'Novo Produto'}
+              </DialogTitle>
+              {editingProduct && (
+                <p className="text-xs text-muted-foreground mt-0.5">{editingProduct.category}</p>
               )}
-              <div className="space-y-2">
-                <Label htmlFor="p-price">{categoryConfig.priceLabel || 'Preço'} ({getCurrencySymbol(currency)}) *</Label>
-                <Input id="p-price" type="text" inputMode="decimal" value={form.price}
-                  onChange={(e) => setForm((f) => ({ ...f, price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))}
-                  placeholder={currency === 'PYG' ? '25.000' : '0,00'} required />
-              </div>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="p-desc">Descrição</Label>
-              <Textarea id="p-desc" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder={categoryConfig.isPizza ? 'Ex: Molho de tomate, mussarela e manjericão' : 'Descrição opcional do produto'}
-                rows={3} className="resize-none" />
-            </div>
+          <form onSubmit={handleSaveProduct} className="px-6 pb-6 space-y-5 pt-5">
 
-            {/* Image upload */}
-            <div className="space-y-2">
-              <Label>Imagem do produto</Label>
-              {form.image_url ? (
-                <div className="flex gap-4 p-3 border rounded-lg bg-muted/30 items-start">
-                  <div className="w-20 h-20 rounded-lg overflow-hidden border bg-muted flex-shrink-0">
-                    <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    <Input type="url" value={form.image_url} onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))} placeholder="URL da imagem" />
-                    <div className="flex gap-2">
-                      <label className="cursor-pointer flex-1">
-                        <input type="file" accept="image/*" className="sr-only" disabled={imageUploading || !restaurantId}
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file || !restaurantId) return;
-                            setImageUploading(true);
-                            try { const url = await uploadProductImage(restaurantId, file); setForm((f) => ({ ...f, image_url: url })); toast({ title: 'Imagem enviada!' }); }
-                            catch (err) { toast({ title: 'Erro ao enviar imagem', description: err instanceof Error ? err.message : 'Tente outro arquivo.', variant: 'destructive' }); }
-                            finally { setImageUploading(false); e.target.value = ''; }
-                          }}
-                        />
-                        <Button type="button" variant="outline" size="sm" className="w-full" disabled={imageUploading}>
-                          {imageUploading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enviando...</> : <><Upload className="h-4 w-4 mr-2" />Trocar imagem</>}
-                        </Button>
-                      </label>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setForm((f) => ({ ...f, image_url: '' }))}>Remover</Button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
+            {/* ── BLOCO 1: Imagem + Identidade ── */}
+            <div className="flex gap-4 items-start">
+              {/* Image upload — compacto à esquerda */}
+              <div className="flex-shrink-0">
                 <label className="cursor-pointer block">
                   <input type="file" accept="image/*" className="sr-only" disabled={imageUploading || !restaurantId}
                     onChange={async (e) => {
@@ -1458,74 +1316,332 @@ export default function AdminMenu() {
                       finally { setImageUploading(false); e.target.value = ''; }
                     }}
                   />
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-muted/50 transition-colors">
+                  <div className={`relative w-24 h-24 rounded-xl border-2 overflow-hidden flex items-center justify-center transition-all ${
+                    form.image_url
+                      ? 'border-border hover:border-primary/40'
+                      : 'border-dashed border-border hover:border-primary/50 bg-muted/40 hover:bg-muted/70'
+                  }`}>
                     {imageUploading ? (
-                      <div className="flex flex-col items-center gap-2"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="text-sm text-muted-foreground">Enviando...</span></div>
+                      <div className="flex flex-col items-center gap-1">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        <span className="text-[10px] text-muted-foreground">Enviando…</span>
+                      </div>
+                    ) : form.image_url ? (
+                      <>
+                        <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Upload className="h-5 w-5 text-white" />
+                        </div>
+                      </>
                     ) : (
-                      <div className="flex flex-col items-center gap-1.5"><Upload className="h-6 w-6 text-muted-foreground" /><span className="text-sm font-medium">Clique para fazer upload</span></div>
+                      <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                        <Upload className="h-5 w-5" />
+                        <span className="text-[10px] font-medium text-center leading-tight">Foto do<br/>produto</span>
+                      </div>
                     )}
                   </div>
-                  <Input type="url" value={form.image_url} onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))} placeholder="Ou cole uma URL de imagem" className="mt-2" />
                 </label>
-              )}
+                {form.image_url && (
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, image_url: '' }))}
+                    className="mt-1 w-full text-[10px] text-muted-foreground hover:text-destructive transition-colors text-center"
+                  >
+                    Remover
+                  </button>
+                )}
+              </div>
+
+              {/* Nome, Categoria, Subcategoria */}
+              <div className="flex-1 space-y-3 min-w-0">
+                <div className="space-y-1.5">
+                  <Label htmlFor="p-name" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nome *</Label>
+                  <Input
+                    id="p-name"
+                    value={form.name}
+                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder={categoryConfig.isPizza ? 'Ex: Margherita, Calabresa' : 'Ex: nome do produto'}
+                    required
+                    className="h-10 text-base font-medium"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Categoria *</Label>
+                    <Select value={form.categoryId} onValueChange={handleCategoryChange} required>
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder={categories.length ? 'Selecione' : 'Crie uma categoria'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}{cat.is_pizza && ' (pizza)'}{cat.is_marmita && ' (marmita)'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {subcategoriesOfSelected.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Subcategoria</Label>
+                      <Select value={form.subcategoryId ?? 'none'} onValueChange={(v) => setForm((f) => ({ ...f, subcategoryId: v === 'none' ? null : v }))}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {subcategoriesOfSelected.map((sub) => <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider invisible">_</Label>
+                      {/* URL da imagem como fallback */}
+                      <Input
+                        type="url"
+                        value={form.image_url}
+                        onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
+                        placeholder="Ou cole URL da foto"
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Seção de Estoque — visível quando categoria tem has_inventory = true */}
+            {/* Banners de info */}
+            {categoryConfig.isPizza && (
+              <div className="flex gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs text-primary/80">
+                <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>Categoria do tipo <strong>pizza</strong> — configure tamanhos e bordas em <strong>Configurações Avançadas</strong>.</span>
+              </div>
+            )}
+            {categoryConfig.isMarmita && (
+              <div className="flex gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs text-primary/80">
+                <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>Categoria do tipo <strong>marmita</strong> — configure proteínas e acompanhamentos em <strong>Configurações Avançadas</strong>.</span>
+              </div>
+            )}
+
+            {/* Extra field se categoria tiver */}
+            {categoryConfig.extraField && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{categoryConfig.extraLabel}</Label>
+                <Input value={form.categoryDetail} onChange={(e) => setForm((f) => ({ ...f, categoryDetail: e.target.value }))}
+                  placeholder={categoryConfig.extraPlaceholder} />
+              </div>
+            )}
+
+            {/* ── BLOCO 2: Descrição ── */}
+            <div className="space-y-1.5">
+              <Label htmlFor="p-desc" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Descrição</Label>
+              <Textarea
+                id="p-desc"
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder={categoryConfig.isPizza ? 'Ex: Molho de tomate, mussarela e manjericão' : 'Descrição opcional — aparece no cardápio público'}
+                rows={2}
+                className="resize-none text-sm"
+              />
+            </div>
+
+            {/* ── BLOCO 3: Precificação ── */}
             {(() => {
-              const formCatInv = categories.find((c) => c.id === form.categoryId);
-              if (!formCatInv?.has_inventory) return null;
+              const saleVal = convertPriceToStorage(form.price, currency);
+              const costVal = form.priceCost.trim() ? convertPriceToStorage(form.priceCost, currency) : null;
+              const margin = costVal && !isNaN(costVal) && saleVal > 0
+                ? ((saleVal - costVal) / saleVal) * 100
+                : null;
+              const marginColor = margin === null ? 'text-muted-foreground'
+                : margin >= 40 ? 'text-emerald-600 dark:text-emerald-400'
+                : margin >= 20 ? 'text-amber-600 dark:text-amber-400'
+                : 'text-red-600 dark:text-red-400';
+              const marginBg = margin === null ? 'bg-muted/40'
+                : margin >= 40 ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800'
+                : margin >= 20 ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
+                : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800';
+
               return (
-                <div className="rounded-lg border border-primary/25 bg-primary/5 p-3.5 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary/70">
-                    <Boxes className="h-3.5 w-3.5" />
-                    Estoque
-                    <span className="font-normal normal-case text-muted-foreground ml-1">— categoria com controle ativo</span>
+                <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <BarChart2 className="h-3.5 w-3.5" />
+                    Precificação
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="space-y-1.5 col-span-2">
-                      <Label className="text-xs">Quantidade atual</Label>
-                      <div className="flex gap-1.5">
-                        <Input
-                          type="text" inputMode="decimal"
-                          value={form.invQuantity}
-                          onChange={(e) => setForm((f) => ({ ...f, invQuantity: e.target.value }))}
-                          placeholder="0"
-                          className="flex-1"
-                        />
-                        <Select value={form.invUnit} onValueChange={(v) => setForm((f) => ({ ...f, invUnit: v }))}>
-                          <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {['un', 'kg', 'g', 'L', 'ml', 'cx', 'pç', 'por'].map((u) => (
-                              <SelectItem key={u} value={u}>{u}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                  <div className="grid grid-cols-3 gap-3">
+                    {/* Preço de venda */}
+                    <div className="space-y-1.5 col-span-1">
+                      <Label htmlFor="p-price" className="text-xs text-muted-foreground">
+                        {categoryConfig.priceLabel || 'Preço de venda'} ({getCurrencySymbol(currency)}) *
+                      </Label>
+                      <Input
+                        id="p-price"
+                        type="text"
+                        inputMode="decimal"
+                        value={form.price}
+                        onChange={(e) => setForm((f) => ({ ...f, price: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))}
+                        placeholder={currency === 'PYG' ? '25.000' : '0,00'}
+                        required
+                        className="font-semibold tabular-nums"
+                      />
+                    </div>
+
+                    {/* Custo */}
+                    <div className="space-y-1.5 col-span-1">
+                      <Label htmlFor="p-cost" className="text-xs text-muted-foreground">
+                        Custo ({getCurrencySymbol(currency)})
+                      </Label>
+                      <Input
+                        id="p-cost"
+                        type="text"
+                        inputMode="decimal"
+                        value={form.priceCost}
+                        onChange={(e) => setForm((f) => ({ ...f, priceCost: currency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value }))}
+                        placeholder={currency === 'PYG' ? '15.000' : '0,00'}
+                        className="tabular-nums"
+                      />
+                    </div>
+
+                    {/* Margem calculada */}
+                    <div className="space-y-1.5 col-span-1">
+                      <Label className="text-xs text-muted-foreground">Margem de lucro</Label>
+                      <div className={`flex items-center justify-center h-10 rounded-lg border font-bold text-lg tabular-nums ${marginBg} ${marginColor}`}>
+                        {margin !== null ? `${margin.toFixed(1)}%` : '—'}
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Qtd. mínima</Label>
-                      <Input
-                        type="text" inputMode="decimal"
-                        value={form.invMinQuantity}
-                        onChange={(e) => setForm((f) => ({ ...f, invMinQuantity: e.target.value }))}
-                        placeholder="5"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Validade</Label>
-                      <Input
-                        type="date"
-                        value={form.invExpiry}
-                        onChange={(e) => setForm((f) => ({ ...f, invExpiry: e.target.value }))}
-                        min={new Date().toISOString().split('T')[0]}
-                      />
-                    </div>
                   </div>
+                  {margin !== null && (
+                    <p className={`text-xs font-medium ${marginColor}`}>
+                      {margin >= 40 ? '✓ Margem saudável (≥ 40%)' : margin >= 20 ? '⚠ Margem moderada (20–40%)' : '✗ Margem baixa (< 20%)'}
+                    </p>
+                  )}
                 </div>
               );
             })()}
 
-            {/* ── Seção Sugestões de Upsell ── */}
+            {/* ── BLOCO 4: Destino de Impressão por produto ── */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <Printer className="h-3.5 w-3.5" />
+                Destino de impressão
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, printDest: 'kitchen' }))}
+                  className={`flex items-center gap-2.5 rounded-xl border p-3 text-sm font-medium transition-all ${
+                    form.printDest === 'kitchen'
+                      ? 'border-blue-400 bg-blue-50 text-blue-700 shadow-sm dark:border-blue-600 dark:bg-blue-950/40 dark:text-blue-300'
+                      : 'border-border bg-background hover:bg-muted/40 text-muted-foreground'
+                  }`}
+                >
+                  <ChefHat className="h-4 w-4 flex-shrink-0" />
+                  <div className="text-left">
+                    <div className="font-semibold">Cozinha Central</div>
+                    <div className="text-[11px] opacity-70">Cozinhas e grelhados</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, printDest: 'bar' }))}
+                  className={`flex items-center gap-2.5 rounded-xl border p-3 text-sm font-medium transition-all ${
+                    form.printDest === 'bar'
+                      ? 'border-orange-400 bg-orange-50 text-orange-700 shadow-sm dark:border-orange-600 dark:bg-orange-950/40 dark:text-orange-300'
+                      : 'border-border bg-background hover:bg-muted/40 text-muted-foreground'
+                  }`}
+                >
+                  <Wine className="h-4 w-4 flex-shrink-0" />
+                  <div className="text-left">
+                    <div className="font-semibold">Garçom / Bar</div>
+                    <div className="text-[11px] opacity-70">Bebidas e frios</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* ── BLOCO 5: Estoque por produto ── */}
+            <div className="rounded-xl border border-border overflow-hidden">
+              {/* Toggle header */}
+              <div
+                className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
+                  form.hasInventory ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-muted/30 hover:bg-muted/50'
+                }`}
+                onClick={() => setForm((f) => ({ ...f, hasInventory: !f.hasInventory }))}
+              >
+                <div onClick={(e) => e.stopPropagation()}>
+                  <Switch
+                    checked={form.hasInventory}
+                    onCheckedChange={(v) => setForm((f) => ({ ...f, hasInventory: v }))}
+                  />
+                </div>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Boxes className={`h-4 w-4 flex-shrink-0 ${form.hasInventory ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
+                  <div>
+                    <div className={`text-sm font-semibold ${form.hasInventory ? 'text-emerald-700 dark:text-emerald-300' : 'text-foreground'}`}>
+                      Controle de Estoque
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {form.hasInventory ? 'Rastreando quantidade e validade' : 'Ativar para rastrear este produto'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Campos de estoque */}
+              <AnimatePresence>
+                {form.hasInventory && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-4 pb-4 pt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-border/60">
+                      <div className="space-y-1.5 col-span-2">
+                        <Label className="text-xs text-muted-foreground">Quantidade atual</Label>
+                        <div className="flex gap-1.5">
+                          <Input
+                            type="text" inputMode="decimal"
+                            value={form.invQuantity}
+                            onChange={(e) => setForm((f) => ({ ...f, invQuantity: e.target.value }))}
+                            placeholder="0"
+                            className="flex-1"
+                          />
+                          <Select value={form.invUnit} onValueChange={(v) => setForm((f) => ({ ...f, invUnit: v }))}>
+                            <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {['un', 'kg', 'g', 'L', 'ml', 'cx', 'pç', 'por'].map((u) => (
+                                <SelectItem key={u} value={u}>{u}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Qtd. mínima</Label>
+                        <Input
+                          type="text" inputMode="decimal"
+                          value={form.invMinQuantity}
+                          onChange={(e) => setForm((f) => ({ ...f, invMinQuantity: e.target.value }))}
+                          placeholder="5"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Validade</Label>
+                        <Input
+                          type="date"
+                          value={form.invExpiry}
+                          onChange={(e) => setForm((f) => ({ ...f, invExpiry: e.target.value }))}
+                          min={new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* ── BLOCO 6: Sugestões de Upsell ── */}
             {(() => {
               const upsellCandidates = products.filter(
                 (p) =>
@@ -1538,98 +1654,88 @@ export default function AdminMenu() {
               );
               const selectedUpsellProducts = products.filter((p) => selectedUpsellIds.includes(p.id));
               return (
-                <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20 p-3.5 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Sugestões de Upsell
-                    <span className="font-normal normal-case text-muted-foreground ml-1">— até 3 produtos</span>
+                <div className="rounded-xl border border-amber-200/70 bg-amber-50/40 dark:border-amber-800/70 dark:bg-amber-950/20 overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-200/60 dark:border-amber-800/60">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">Sugestões de Upsell</span>
+                    <span className="text-xs text-muted-foreground ml-1">— até 3 produtos complementares</span>
                   </div>
 
-                  {/* Produtos já selecionados */}
-                  {selectedUpsellProducts.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {selectedUpsellProducts.map((p) => (
-                        <div
-                          key={p.id}
-                          className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-700 rounded-lg px-2 py-1 text-xs"
-                        >
-                          {p.image_url ? (
-                            <img src={p.image_url} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
-                          ) : (
-                            <span className="w-5 h-5 flex items-center justify-center text-muted-foreground">🍽</span>
-                          )}
-                          <span className="font-medium text-foreground max-w-[120px] truncate">{p.name}</span>
-                          <button
-                            type="button"
-                            className="text-muted-foreground hover:text-destructive transition-colors"
-                            onClick={() => setSelectedUpsellIds((ids) => ids.filter((id) => id !== p.id))}
-                          >
-                            <XIcon className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Seletor com busca */}
-                  {selectedUpsellIds.length < 3 && (
-                    <div className="space-y-1.5">
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                        <Input
-                          value={upsellSearch}
-                          onChange={(e) => setUpsellSearch(e.target.value)}
-                          placeholder="Buscar produto para sugerir..."
-                          className="pl-8 h-8 text-sm bg-white dark:bg-slate-800"
-                        />
+                  <div className="p-4 space-y-3">
+                    {/* Produtos selecionados */}
+                    {selectedUpsellProducts.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedUpsellProducts.map((p) => (
+                          <div key={p.id} className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-700 rounded-lg px-2 py-1 text-xs shadow-sm">
+                            {p.image_url
+                              ? <img src={p.image_url} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
+                              : <span className="w-5 h-5 flex items-center justify-center text-muted-foreground">🍽</span>
+                            }
+                            <span className="font-medium text-foreground max-w-[120px] truncate">{p.name}</span>
+                            <button type="button" className="text-muted-foreground hover:text-destructive transition-colors ml-0.5"
+                              onClick={() => setSelectedUpsellIds((ids) => ids.filter((id) => id !== p.id))}>
+                              <XIcon className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                      {upsellSearch.trim() !== '' && (
-                        <div className="max-h-40 overflow-y-auto rounded-md border border-border bg-white dark:bg-slate-900 divide-y divide-border/60">
-                          {upsellCandidates.length === 0 ? (
-                            <p className="text-xs text-muted-foreground p-3 text-center">Nenhum resultado</p>
-                          ) : (
-                            upsellCandidates.slice(0, 8).map((p) => (
-                              <button
-                                key={p.id}
-                                type="button"
-                                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 text-left transition-colors"
-                                onClick={() => {
-                                  setSelectedUpsellIds((ids) => ids.length < 3 ? [...ids, p.id] : ids);
-                                  setUpsellSearch('');
-                                }}
-                              >
-                                {p.image_url ? (
-                                  <img src={p.image_url} alt="" className="w-7 h-7 rounded object-cover flex-shrink-0" />
-                                ) : (
-                                  <div className="w-7 h-7 rounded bg-muted flex items-center justify-center text-xs flex-shrink-0">🍽</div>
-                                )}
-                                <div className="min-w-0">
-                                  <p className="text-xs font-medium text-foreground truncate">{p.name}</p>
-                                  <p className="text-[11px] text-muted-foreground">{p.category}</p>
-                                </div>
-                                <Plus className="h-3.5 w-3.5 text-primary ml-auto flex-shrink-0" />
-                              </button>
-                            ))
-                          )}
+                    )}
+
+                    {selectedUpsellIds.length < 3 && (
+                      <div className="space-y-1.5">
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                          <Input value={upsellSearch} onChange={(e) => setUpsellSearch(e.target.value)}
+                            placeholder="Buscar produto para sugerir..."
+                            className="pl-8 h-8 text-sm bg-white dark:bg-slate-800"
+                          />
                         </div>
-                      )}
-                      {upsellSearch.trim() === '' && selectedUpsellIds.length === 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          Digite para buscar produtos que aparecerão como sugestão quando este item for adicionado ao carrinho.
-                        </p>
-                      )}
-                    </div>
-                  )}
+                        {upsellSearch.trim() !== '' && (
+                          <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-white dark:bg-slate-900 divide-y divide-border/60 shadow-sm">
+                            {upsellCandidates.length === 0
+                              ? <p className="text-xs text-muted-foreground p-3 text-center">Nenhum resultado</p>
+                              : upsellCandidates.slice(0, 8).map((p) => (
+                                <button key={p.id} type="button"
+                                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 text-left transition-colors"
+                                  onClick={() => { setSelectedUpsellIds((ids) => ids.length < 3 ? [...ids, p.id] : ids); setUpsellSearch(''); }}>
+                                  {p.image_url
+                                    ? <img src={p.image_url} alt="" className="w-7 h-7 rounded object-cover flex-shrink-0" />
+                                    : <div className="w-7 h-7 rounded bg-muted flex items-center justify-center text-xs flex-shrink-0">🍽</div>
+                                  }
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-medium text-foreground truncate">{p.name}</p>
+                                    <p className="text-[11px] text-muted-foreground">{p.category}</p>
+                                  </div>
+                                  <Plus className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                                </button>
+                              ))
+                            }
+                          </div>
+                        )}
+                        {upsellSearch.trim() === '' && selectedUpsellIds.length === 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Digite para buscar produtos que aparecerão como sugestão no carrinho.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })()}
 
-            <DialogFooter className="gap-2">
-              <Button type="button" variant="outline" onClick={() => setModalOpen(false)} disabled={saving}>Cancelar</Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</> : editingProduct ? 'Salvar Alterações' : 'Adicionar ao Cardápio'}
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <Button type="button" variant="outline" onClick={() => setModalOpen(false)} disabled={saving}>
+                Cancelar
               </Button>
-            </DialogFooter>
+              <Button type="submit" disabled={saving} className="min-w-[160px]">
+                {saving
+                  ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando…</>
+                  : editingProduct ? 'Salvar Alterações' : 'Adicionar ao Cardápio'
+                }
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

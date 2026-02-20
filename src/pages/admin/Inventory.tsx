@@ -388,7 +388,6 @@ export default function AdminInventory() {
           .from('categories')
           .select('*')
           .eq('restaurant_id', restaurantId)
-          .eq('has_inventory', true)
           .order('order_index', { ascending: true }),
         supabase
           .from('products')
@@ -412,9 +411,11 @@ export default function AdminInventory() {
         setInventoryMap(map);
       }
 
-      // Seleciona primeira categoria automaticamente
+      // Seleciona primeira categoria com has_inventory automaticamente (se houver)
       if (catRes.data?.length && !selectedCategoryId) {
-        setSelectedCategoryId(catRes.data[0].id);
+        const firstWithInv = catRes.data.find((c) => c.has_inventory);
+        if (firstWithInv) setSelectedCategoryId(firstWithInv.id);
+        else setSelectedCategoryId(catRes.data[0].id);
       }
     } finally {
       setLoading(false);
@@ -499,7 +500,18 @@ export default function AdminInventory() {
 
   // ─── Dados derivados ────────────────────────────────────────────────────────
 
-  const selectedCategory = categories.find((c) => c.id === selectedCategoryId) ?? null;
+  // Categorias que têm ao menos um produto com estoque ativo (item cadastrado)
+  const categoriesWithInventory = useMemo(() => {
+    const catNamesWithItems = new Set(
+      products.filter((p) => !!inventoryMap[p.id]).map((p) => p.category)
+    );
+    // Também inclui categorias marcadas com has_inventory no DB (legado)
+    return categories.filter(
+      (c) => c.has_inventory || catNamesWithItems.has(c.name)
+    );
+  }, [categories, products, inventoryMap]);
+
+  const selectedCategory = categoriesWithInventory.find((c) => c.id === selectedCategoryId) ?? null;
 
   const categoryProducts = useMemo(() => {
     if (!selectedCategory) return [];
@@ -528,11 +540,11 @@ export default function AdminInventory() {
     return result;
   }, [productsWithInventory, search, filter]);
 
-  // Stats globais (todas as categorias com inventário)
+  // Stats globais: categorias com has_inventory OU produtos com inventory_item individual
   const allInventoryProducts = useMemo(() => {
     const catNames = new Set(categories.map((c) => c.name));
     return products
-      .filter((p) => catNames.has(p.category))
+      .filter((p) => catNames.has(p.category) || !!inventoryMap[p.id])
       .map((p) => ({ ...p, inventoryItem: inventoryMap[p.id] }));
   }, [products, categories, inventoryMap]);
 
@@ -840,7 +852,7 @@ export default function AdminInventory() {
                   <div className="py-4 flex justify-center">
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   </div>
-                ) : categories.map((cat) => {
+                ) : categoriesWithInventory.map((cat) => {
                   const catProds = products.filter((p) => p.category === cat.name).map((p) => ({ ...p, inventoryItem: inventoryMap[p.id] }));
                   const hasAlert = catProds.some((p) => {
                     const s = getInventoryStatus(p.inventoryItem);

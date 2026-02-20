@@ -149,6 +149,8 @@ export interface Product {
   order_index?: number;
   /** Subcategoria opcional (ex: agrupamento dentro da categoria) */
   subcategory_id?: string | null;
+  /** Destino de impressão do cupom por produto: 'kitchen' = Cozinha Central | 'bar' = Garçom/Bar */
+  print_destination?: 'kitchen' | 'bar' | null;
   created_at: string;
   updated_at: string;
 }
