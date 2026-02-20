@@ -372,7 +372,7 @@ export default function AdminSettings() {
     if (!restaurantId) return;
     try {
       setSaving(true);
-      const { error } = await supabase.from('restaurants').update({
+      const updatePayload: Record<string, unknown> = {
         name:                    formData.name,
         slug:                    formData.slug || undefined,
         phone:                   formData.phone,
@@ -391,19 +391,24 @@ export default function AdminSettings() {
         exchange_rates:          formData.exchange_rates,
         payment_currencies:      formData.payment_currencies,
         pix_key:                 formData.pix_key?.trim() || null,
-        pix_key_type:            formData.pix_key?.trim() ? formData.pix_key_type : null,
         bank_account:            (formData.bank_account.bank_name || formData.bank_account.agency || formData.bank_account.account || formData.bank_account.holder)
           ? formData.bank_account
           : null,
         updated_at:              new Date().toISOString(),
-      }).eq('id', restaurantId);
+      };
+      const { error } = await supabase.from('restaurants').update(updatePayload).eq('id', restaurantId);
       if (error) throw error;
       // Persiste o idioma do painel via store (localStorage + Zustand → reatividade imediata)
       setStoreLang(panelLangLocal);
       toast({ title: '✅ ' + t('settings.title') + ' — ' + t('common.success') });
     } catch (err) {
       console.error('Erro ao salvar:', err);
-      toast({ title: 'Erro ao salvar configurações', variant: 'destructive' });
+      const msg = err instanceof Error ? err.message : '';
+      toast({
+        title: 'Erro ao salvar configurações',
+        description: msg || undefined,
+        variant: 'destructive',
+      });
     } finally {
       setSaving(false);
     }
