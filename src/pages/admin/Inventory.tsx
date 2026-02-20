@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import {
@@ -64,6 +65,8 @@ import {
   X,
   Check,
   Settings,
+  FileDown,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
@@ -263,27 +266,21 @@ function ProductRow({ product, currency, onEdit, onQuickAdjust, onHistory, onReg
       </TableCell>
 
       {/* Ações */}
-      <TableCell className="w-[120px] p-1.5">
+      <TableCell className="w-[100px] p-1.5">
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          {!inv ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs gap-1 text-primary hover:text-primary"
-              onClick={() => onRegister(product)}
-            >
-              <PackagePlus className="h-3.5 w-3.5" />
-              Cadastrar
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-8 w-8 ${!inv ? 'text-primary hover:text-primary hover:bg-primary/10' : ''}`}
+            onClick={() => inv ? onEdit(product) : onRegister(product)}
+            title={inv ? 'Editar estoque' : 'Cadastrar no estoque'}
+          >
+            <Edit className="h-3.5 w-3.5" />
+          </Button>
+          {inv && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onHistory(product)} title="Histórico">
+              <History className="h-3.5 w-3.5" />
             </Button>
-          ) : (
-            <>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(product)} title="Editar">
-                <Edit className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onHistory(product)} title="Histórico">
-                <History className="h-3.5 w-3.5" />
-              </Button>
-            </>
           )}
         </div>
       </TableCell>
@@ -381,6 +378,64 @@ export default function AdminInventory() {
   }, [restaurantId]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  // ─── Helpers de exportação ─────────────────────────────────────────────────
+
+  const buildExportRows = () => {
+    const statusLabel = (item: InventoryItem | undefined): string => {
+      const s = getInventoryStatus(item);
+      return s === 'in_stock' ? 'Em estoque' : s === 'low_stock' ? 'Estoque baixo' : s === 'out_of_stock' ? 'Esgotado' : s === 'expired' ? 'Vencido' : 'Não cadastrado';
+    };
+    return allInventoryProducts.map((p) => {
+      const inv = p.inventoryItem;
+      const saleP = inv?.sale_price && inv.sale_price > 0 ? inv.sale_price : Number(p.price_sale || p.price);
+      const costP = inv?.cost_price && inv.cost_price > 0 ? inv.cost_price : (p.price_cost ? Number(p.price_cost) : null);
+      const margin = costP && saleP > 0 ? ((saleP - costP) / saleP) * 100 : null;
+      return {
+        Produto:            p.name,
+        Categoria:          p.category,
+        SKU:                p.sku ?? '',
+        'Qtd. Atual':       inv ? Number(inv.quantity) : '',
+        Unidade:            inv?.unit ?? '',
+        'Qtd. Mínima':      inv ? Number(inv.min_quantity) : '',
+        'Preço Venda':      formatPrice(saleP, currency),
+        'Custo':            costP ? formatPrice(costP, currency) : '',
+        'Margem (%)':       margin !== null ? `${margin.toFixed(1)}%` : '',
+        Validade:           inv?.expiry_date ? new Date(inv.expiry_date + 'T12:00:00').toLocaleDateString('pt-BR') : '',
+        Status:             statusLabel(inv),
+        'Atualizado em':    inv ? new Date(inv.updated_at).toLocaleDateString('pt-BR') : '',
+        Notas:              inv?.notes ?? '',
+      };
+    });
+  };
+
+  const handleExportXLSX = () => {
+    const rows = buildExportRows();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    // Largura automática por coluna
+    const colWidths = Object.keys(rows[0] ?? {}).map((k) => ({ wch: Math.max(k.length, 12) }));
+    ws['!cols'] = colWidths;
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Estoque');
+    XLSX.writeFile(wb, `estoque-${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const handleExportCSV = () => {
+    const rows = buildExportRows();
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]);
+    const csvLines = [
+      headers.join(';'),
+      ...rows.map((r) => headers.map((h) => `"${String(r[h as keyof typeof r] ?? '').replace(/"/g, '""')}"`).join(';')),
+    ];
+    const blob = new Blob(['\uFEFF' + csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `estoque-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const loadHistory = async (productWithInv: ProductWithInventory) => {
     if (!productWithInv.inventoryItem) return;
@@ -627,14 +682,31 @@ export default function AdminInventory() {
               className="pl-8 h-8 w-44 text-sm"
             />
           </div>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={loadAll}>
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Atualizar</span>
+          </Button>
           <Button
             variant="outline"
             size="sm"
             className="h-8 gap-1.5"
-            onClick={loadAll}
+            onClick={handleExportCSV}
+            disabled={allInventoryProducts.length === 0}
+            title="Exportar estoque como CSV"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Atualizar</span>
+            <FileDown className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">CSV</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5"
+            onClick={handleExportXLSX}
+            disabled={allInventoryProducts.length === 0}
+            title="Exportar estoque como Excel"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Excel</span>
           </Button>
         </div>
       </div>

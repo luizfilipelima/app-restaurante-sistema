@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import {
@@ -86,7 +86,6 @@ import {
   QrCode,
   GripVertical,
   Edit,
-  Download,
   Package,
   Pizza,
   ExternalLink,
@@ -131,6 +130,11 @@ const formDefaults = {
   image_url: '',
   categoryDetail: '',
   subcategoryId: '' as string | null,
+  // Campos de estoque (visíveis quando categoria tem has_inventory = true)
+  invQuantity: '',
+  invMinQuantity: '5',
+  invUnit: 'un',
+  invExpiry: '',
 };
 
 // ─── SortableCategoryItem ──────────────────────────────────────────────────────
@@ -373,10 +377,6 @@ export default function AdminMenu() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [menuLinkCopied, setMenuLinkCopied] = useState(false);
 
-  // CSV
-  const [showImportModal, setShowImportModal] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   // Pizza config
   const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]);
   const [pizzaDoughs, setPizzaDoughs] = useState<PizzaDough[]>([]);
@@ -592,7 +592,7 @@ export default function AdminMenu() {
     setModalOpen(true);
   };
 
-  const openEdit = (product: Product) => {
+  const openEdit = async (product: Product) => {
     setEditingProduct(product);
     const cat = categories.find((c) => c.name === product.category);
     const desc = product.description || '';
@@ -600,6 +600,31 @@ export default function AdminMenu() {
     const [categoryDetail, description] = hasDetail
       ? (desc.split(/ - (.+)/).slice(0, 2) as [string, string])
       : ['', desc];
+
+    // Valores base
+    let invQuantity = '';
+    let invMinQuantity = '5';
+    let invUnit = 'un';
+    let invExpiry = '';
+
+    // Se a categoria tem estoque, carrega dados do item de estoque
+    if (cat?.has_inventory && restaurantId) {
+      try {
+        const { data: inv } = await supabase
+          .from('inventory_items')
+          .select('*')
+          .eq('product_id', product.id)
+          .eq('restaurant_id', restaurantId)
+          .maybeSingle();
+        if (inv) {
+          invQuantity    = String(Number(inv.quantity));
+          invMinQuantity = String(Number(inv.min_quantity));
+          invUnit        = inv.unit ?? 'un';
+          invExpiry      = inv.expiry_date ?? '';
+        }
+      } catch { /* silencioso — campos ficam vazios */ }
+    }
+
     setForm({
       name: product.name,
       categoryId: cat?.id ?? '',
@@ -610,6 +635,10 @@ export default function AdminMenu() {
       image_url: product.image_url || '',
       categoryDetail: categoryDetail?.trim() || '',
       subcategoryId: product.subcategory_id ?? null,
+      invQuantity,
+      invMinQuantity,
+      invUnit,
+      invExpiry,
     });
     setModalOpen(true);
   };
@@ -654,16 +683,39 @@ export default function AdminMenu() {
         is_active: true,
         subcategory_id: form.subcategoryId || null,
       };
+      let savedProductId = editingProduct?.id ?? '';
+
       if (editingProduct) {
         const { error } = await supabase.from('products').update(payload).eq('id', editingProduct.id);
         if (error) throw error;
         toast({ title: 'Produto atualizado!' });
       } else {
         const { data: nextOrder } = await supabase.rpc('get_next_product_order_index', { p_restaurant_id: restaurantId, p_category: categoryName });
-        const { error } = await supabase.from('products').insert({ ...payload, order_index: nextOrder ?? 0 });
+        const { data: newProd, error } = await supabase
+          .from('products')
+          .insert({ ...payload, order_index: nextOrder ?? 0 })
+          .select('id')
+          .single();
         if (error) throw error;
+        savedProductId = newProd?.id ?? '';
         toast({ title: 'Produto adicionado ao cardápio!' });
       }
+
+      // Upsert de estoque quando categoria tem controle ativo
+      if (formCat?.has_inventory && savedProductId) {
+        const invQty    = parseFloat((form.invQuantity || '0').replace(',', '.')) || 0;
+        const invMinQty = parseFloat((form.invMinQuantity || '5').replace(',', '.')) || 0;
+        await supabase.from('inventory_items').upsert({
+          restaurant_id: restaurantId,
+          product_id:    savedProductId,
+          quantity:      invQty,
+          min_quantity:  invMinQty,
+          unit:          form.invUnit || 'un',
+          expiry_date:   form.invExpiry || null,
+          updated_at:    new Date().toISOString(),
+        }, { onConflict: 'restaurant_id,product_id' });
+      }
+
       setModalOpen(false);
       loadProducts();
       loadCategoriesAndSubcategories();
@@ -800,59 +852,6 @@ export default function AdminMenu() {
   };
 
   // ─── CSV ──────────────────────────────────────────────────────────────────────
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !restaurantId) return;
-    try {
-      const text = await file.text();
-      const lines = text.split('\n').filter((l) => l.trim());
-      if (lines.length < 2) { toast({ title: 'Arquivo CSV inválido', variant: 'destructive' }); return; }
-      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
-      const productsToImport: Record<string, unknown>[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map((v) => v.trim());
-        if (values.length < headers.length) continue;
-        const product: Record<string, unknown> = { restaurant_id: restaurantId, is_pizza: false, is_marmita: false, is_active: true };
-        headers.forEach((h, idx) => {
-          const v = values[idx];
-          if (h === 'name') product.name = v;
-          else if (h === 'category') product.category = v;
-          else if (h === 'price') product.price = parseFloat(v) || 0;
-          else if (h === 'price_sale') product.price_sale = parseFloat(v) || product.price;
-          else if (h === 'price_cost') product.price_cost = parseFloat(v) || null;
-          else if (h === 'sku') product.sku = v || null;
-          else if (h === 'description') product.description = v || null;
-          else if (h === 'is_by_weight') product.is_by_weight = v.toLowerCase() === 'true' || v === '1';
-        });
-        if (product.name) productsToImport.push(product);
-      }
-      if (productsToImport.length === 0) { toast({ title: 'Nenhum produto válido no CSV', variant: 'destructive' }); return; }
-      const { error } = await supabase.from('products').insert(productsToImport);
-      if (error) throw error;
-      toast({ title: `${productsToImport.length} produto(s) importado(s) com sucesso!` });
-      setShowImportModal(false);
-      await loadProducts();
-    } catch (e: unknown) {
-      toast({ title: 'Erro ao importar CSV', description: e instanceof Error ? e.message : 'Verifique o arquivo.', variant: 'destructive' });
-    }
-  };
-
-  const handleExportCSV = () => {
-    const headers = ['name', 'category', 'price', 'price_sale', 'price_cost', 'sku', 'description', 'is_by_weight'];
-    const rows = products.map((p) => [
-      p.name, p.category, p.price.toString(), (p.price_sale || p.price).toString(),
-      (p.price_cost || '').toString(), p.sku || '', p.description || '', p.is_by_weight ? 'true' : 'false',
-    ]);
-    const csv = [headers.join(','), ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `produtos_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
 
   // ─── Pizza CRUD ───────────────────────────────────────────────────────────────
 
@@ -1012,14 +1011,6 @@ export default function AdminMenu() {
           <Button variant="outline" size="sm" onClick={() => setShowOnlineModal(true)} className="h-8 gap-1.5">
             <QrCode className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Cardápio Online</span>
-          </Button>
-
-          {/* CSV */}
-          <Button variant="outline" size="sm" onClick={() => setShowImportModal(true)} className="h-8 gap-1.5">
-            <Upload className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExportCSV} className="h-8 gap-1.5">
-            <Download className="h-3.5 w-3.5" />
           </Button>
 
           {/* New product */}
@@ -1390,6 +1381,61 @@ export default function AdminMenu() {
               )}
             </div>
 
+            {/* Seção de Estoque — visível quando categoria tem has_inventory = true */}
+            {(() => {
+              const formCatInv = categories.find((c) => c.id === form.categoryId);
+              if (!formCatInv?.has_inventory) return null;
+              return (
+                <div className="rounded-lg border border-primary/25 bg-primary/5 p-3.5 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary/70">
+                    <Boxes className="h-3.5 w-3.5" />
+                    Estoque
+                    <span className="font-normal normal-case text-muted-foreground ml-1">— categoria com controle ativo</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="space-y-1.5 col-span-2">
+                      <Label className="text-xs">Quantidade atual</Label>
+                      <div className="flex gap-1.5">
+                        <Input
+                          type="text" inputMode="decimal"
+                          value={form.invQuantity}
+                          onChange={(e) => setForm((f) => ({ ...f, invQuantity: e.target.value }))}
+                          placeholder="0"
+                          className="flex-1"
+                        />
+                        <Select value={form.invUnit} onValueChange={(v) => setForm((f) => ({ ...f, invUnit: v }))}>
+                          <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {['un', 'kg', 'g', 'L', 'ml', 'cx', 'pç', 'por'].map((u) => (
+                              <SelectItem key={u} value={u}>{u}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Qtd. mínima</Label>
+                      <Input
+                        type="text" inputMode="decimal"
+                        value={form.invMinQuantity}
+                        onChange={(e) => setForm((f) => ({ ...f, invMinQuantity: e.target.value }))}
+                        placeholder="5"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Validade</Label>
+                      <Input
+                        type="date"
+                        value={form.invExpiry}
+                        onChange={(e) => setForm((f) => ({ ...f, invExpiry: e.target.value }))}
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             <DialogFooter className="gap-2">
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)} disabled={saving}>Cancelar</Button>
               <Button type="submit" disabled={saving}>
@@ -1746,28 +1792,6 @@ export default function AdminMenu() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Import CSV Modal ────────────────────────────────────────────────── */}
-      <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Importar Produtos via CSV</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Formato esperado (separado por vírgulas):<br />
-              <code className="text-xs bg-slate-100 dark:bg-slate-800 p-2 rounded block mt-2">
-                name,category,price,price_sale,price_cost,sku,description,is_by_weight<br />
-                Refrigerante,Bebidas,5.00,6.00,3.50,REF001,Refrigerante gelado,false
-              </code>
-            </p>
-            <div>
-              <Label>Arquivo CSV</Label>
-              <Input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileUpload} className="mt-1" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowImportModal(false)}>Fechar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
     </div>
   );
