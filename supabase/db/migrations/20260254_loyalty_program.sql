@@ -38,25 +38,93 @@ ALTER TABLE orders
 ALTER TABLE loyalty_programs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE loyalty_points   ENABLE ROW LEVEL SECURITY;
 
--- Admin pode ver/editar seu próprio programa
-CREATE POLICY "loyalty_programs_owner" ON loyalty_programs
+-- Helper inline: verifica se o usuário autenticado é admin deste restaurante
+-- (restaurant_admin com restaurant_id correspondente, ou super_admin)
+
+-- loyalty_programs: admin do restaurante pode ler e modificar
+CREATE POLICY "loyalty_programs_select" ON loyalty_programs FOR SELECT
   USING (
-    restaurant_id IN (
-      SELECT id FROM restaurants
-      WHERE owner_id = auth.uid() OR id IN (
-        SELECT restaurant_id FROM restaurant_users WHERE user_id = auth.uid()
-      )
+    EXISTS (
+      SELECT 1 FROM public.users u
+      WHERE u.id = (SELECT auth.uid())
+        AND (
+          (u.role = 'restaurant_admin' AND u.restaurant_id = loyalty_programs.restaurant_id)
+          OR u.role = 'super_admin'
+        )
     )
   );
 
--- loyalty_points: leitura via RPC pública (SECURITY DEFINER abaixo)
-CREATE POLICY "loyalty_points_owner" ON loyalty_points
+CREATE POLICY "loyalty_programs_insert" ON loyalty_programs FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.users u
+      WHERE u.id = (SELECT auth.uid())
+        AND (
+          (u.role = 'restaurant_admin' AND u.restaurant_id = loyalty_programs.restaurant_id)
+          OR u.role = 'super_admin'
+        )
+    )
+  );
+
+CREATE POLICY "loyalty_programs_update" ON loyalty_programs FOR UPDATE
   USING (
-    restaurant_id IN (
-      SELECT id FROM restaurants
-      WHERE owner_id = auth.uid() OR id IN (
-        SELECT restaurant_id FROM restaurant_users WHERE user_id = auth.uid()
-      )
+    EXISTS (
+      SELECT 1 FROM public.users u
+      WHERE u.id = (SELECT auth.uid())
+        AND (
+          (u.role = 'restaurant_admin' AND u.restaurant_id = loyalty_programs.restaurant_id)
+          OR u.role = 'super_admin'
+        )
+    )
+  );
+
+CREATE POLICY "loyalty_programs_delete" ON loyalty_programs FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.users u
+      WHERE u.id = (SELECT auth.uid())
+        AND (
+          (u.role = 'restaurant_admin' AND u.restaurant_id = loyalty_programs.restaurant_id)
+          OR u.role = 'super_admin'
+        )
+    )
+  );
+
+-- loyalty_points: somente admin/super_admin pode ler diretamente
+-- (clientes acessam via RPC SECURITY DEFINER)
+CREATE POLICY "loyalty_points_select" ON loyalty_points FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.users u
+      WHERE u.id = (SELECT auth.uid())
+        AND (
+          (u.role = 'restaurant_admin' AND u.restaurant_id = loyalty_points.restaurant_id)
+          OR u.role = 'super_admin'
+        )
+    )
+  );
+
+CREATE POLICY "loyalty_points_insert" ON loyalty_points FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.users u
+      WHERE u.id = (SELECT auth.uid())
+        AND (
+          (u.role = 'restaurant_admin' AND u.restaurant_id = loyalty_points.restaurant_id)
+          OR u.role = 'super_admin'
+        )
+    )
+  );
+
+CREATE POLICY "loyalty_points_update" ON loyalty_points FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.users u
+      WHERE u.id = (SELECT auth.uid())
+        AND (
+          (u.role = 'restaurant_admin' AND u.restaurant_id = loyalty_points.restaurant_id)
+          OR u.role = 'super_admin'
+        )
     )
   );
 
