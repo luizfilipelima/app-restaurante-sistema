@@ -13,20 +13,30 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { useRestaurant } from '@/hooks/queries';
 import { supabase } from '@/lib/supabase';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getComandaPublicUrl } from '@/lib/utils';
 import { FeatureGuard } from '@/components/auth/FeatureGuard';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { QRCodeSVG } from 'qrcode.react';
+import QRCodeLib from 'qrcode';
 import {
   ScanBarcode, Receipt, CheckCircle2, X, Loader2,
   Banknote, CreditCard, Smartphone, AlertCircle,
   Trash2, User, Clock, ShoppingBag, RefreshCw,
-  ChevronRight, Wifi, WifiOff,
+  ChevronRight, Wifi, WifiOff, QrCode,
+  Download, Printer, ExternalLink,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -72,6 +82,174 @@ function getDisplayTotal(
   if (totalAmount != null && totalAmount > 0) return totalAmount;
   const list = items ?? [];
   return list.reduce((s, i) => s + Number(i.total_price), 0);
+}
+
+// ─── Modal do QR Code da Comanda ─────────────────────────────────────────────
+
+function QRModal({
+  open,
+  onClose,
+  url,
+  restaurantName,
+  logo,
+}: {
+  open: boolean;
+  onClose: () => void;
+  url: string;
+  restaurantName: string;
+  logo: string | null;
+}) {
+  const [downloading, setDownloading] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const png = await QRCodeLib.toDataURL(url, {
+        type: 'image/png', margin: 2, width: 512,
+        color: { dark: '#0f172a', light: '#00000000' },
+        errorCorrectionLevel: 'H',
+      });
+      const a = document.createElement('a');
+      a.href = png;
+      a.download = `qrcode-comanda-${restaurantName.replace(/\s+/g, '-').toLowerCase()}.png`;
+      a.click();
+    } catch (e) { console.error(e); } finally { setDownloading(false); }
+  };
+
+  const handlePrint = async () => {
+    setPrinting(true);
+    try {
+      const qrPng = await QRCodeLib.toDataURL(url, {
+        type: 'image/png', margin: 2, width: 280,
+        color: { dark: '#0f172a', light: '#00000000' },
+        errorCorrectionLevel: 'H',
+      });
+      const logoHtml = logo
+        ? `<img src="${logo}" alt="" style="height:64px;width:64px;border-radius:16px;object-fit:cover;border:1px solid #e2e8f0;margin-bottom:12px" />`
+        : '';
+      const win = window.open('', '_blank');
+      if (!win) { alert('Permita pop-ups para imprimir.'); return; }
+      win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>QR Comanda</title>
+        <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff}
+        .card{text-align:center;max-width:320px}.logo{margin-bottom:8px}.title{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#64748b;margin-bottom:4px}
+        .name{font-size:18px;font-weight:700;color:#0f172a;margin-bottom:20px}.qr{padding:12px;border:2px solid #f1f5f9;border-radius:16px;display:inline-block;margin-bottom:14px}
+        .url{font-size:10px;color:#94a3b8;word-break:break-all;font-family:monospace;margin-bottom:14px}.hint{font-size:11px;color:#64748b;background:#f8fafc;padding:12px;border-radius:12px;line-height:1.5}
+        </style></head><body><div class="card">${logoHtml}<p class="title">Escaneie para abrir sua comanda</p>
+        <p class="name">${restaurantName}</p><div class="qr"><img src="${qrPng}" width="280" height="280"/></div>
+        <p class="url">${url}</p><p class="hint">Aponte a câmera do celular. Nenhum aplicativo necessário.</p></div>
+        <script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}<\/script></body></html>`);
+      win.document.close();
+    } catch (e) { console.error(e); } finally { setPrinting(false); }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-sm p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 pb-4">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-white flex items-center gap-2 text-base">
+              <QrCode className="h-4 w-4 text-[#F87116]" />
+              QR Code da Comanda
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Card do QR */}
+          <div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-4">
+            {logo ? (
+              <img src={logo} alt={restaurantName} className="h-14 w-14 rounded-xl object-cover border border-slate-200 shadow-sm" />
+            ) : (
+              <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center shadow-sm">
+                <QrCode className="h-7 w-7 text-white" />
+              </div>
+            )}
+
+            <div className="text-center leading-tight">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                Escaneie para abrir sua comanda
+              </p>
+              <p className="text-sm font-bold text-slate-900 mt-0.5">{restaurantName}</p>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <QRCodeSVG
+                value={url}
+                size={200}
+                level="H"
+                includeMargin={false}
+                fgColor="#0f172a"
+                bgColor="#f8fafc"
+                imageSettings={logo ? { src: logo, height: 36, width: 36, excavate: true } : undefined}
+              />
+            </div>
+
+            <p className="text-[10px] text-slate-400 font-mono text-center break-all leading-relaxed px-2">
+              {url}
+            </p>
+          </div>
+        </div>
+
+        {/* Ações */}
+        <div className="bg-slate-900 px-6 pb-6 pt-3 space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-3 transition-colors disabled:opacity-50"
+            >
+              {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              Baixar PNG
+            </button>
+            <button
+              onClick={handlePrint}
+              disabled={printing}
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#F87116] hover:bg-orange-500 text-white text-xs font-semibold py-3 transition-colors disabled:opacity-50"
+            >
+              {printing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Printer className="h-3.5 w-3.5" />}
+              Imprimir
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleCopy}
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium py-2.5 transition-colors"
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                {copied ? (
+                  <motion.span key="ok" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                    className="flex items-center gap-1.5 text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Copiado!
+                  </motion.span>
+                ) : (
+                  <motion.span key="copy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-1.5">
+                    <ScanBarcode className="h-3.5 w-3.5" /> Copiar link
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </button>
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium py-2.5 transition-colors"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Testar
+            </a>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ─── Componente: Card de comanda ativa ────────────────────────────────────────
@@ -157,6 +335,10 @@ function CashierContent() {
   const restaurantId = useAdminRestaurantId();
   const currency     = useAdminCurrency();
   const scannerRef   = useRef<HTMLInputElement>(null);
+
+  const { data: restaurant } = useRestaurant(restaurantId);
+  const comandaUrl = restaurant?.slug ? getComandaPublicUrl(restaurant.slug) : null;
+  const [showQRModal, setShowQRModal] = useState(false);
 
   // Estado da lista de comandas ativas
   const [activeComandas, setActiveComandas] = useState<ActiveComanda[]>([]);
@@ -397,6 +579,17 @@ function CashierContent() {
   return (
     <div className="space-y-6 h-full">
 
+      {/* ── Modal QR Code ── */}
+      {comandaUrl && restaurant && (
+        <QRModal
+          open={showQRModal}
+          onClose={() => setShowQRModal(false)}
+          url={comandaUrl}
+          restaurantName={restaurant.name}
+          logo={restaurant.logo ?? null}
+        />
+      )}
+
       {/* ── Cabeçalho ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -406,6 +599,18 @@ function CashierContent() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Botão QR Code */}
+          {comandaUrl && (
+            <motion.button
+              onClick={() => setShowQRModal(true)}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm transition-colors"
+            >
+              <QrCode className="h-3.5 w-3.5 text-[#F87116]" />
+              QR Code
+            </motion.button>
+          )}
           {/* Indicador Ao Vivo */}
           <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
             isLive

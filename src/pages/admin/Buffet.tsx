@@ -35,6 +35,8 @@ import {
   ShoppingBag,
   Receipt,
   Zap,
+  AlertCircle,
+  AlertTriangle,
 } from 'lucide-react';
 
 // ─── Padrão CMD-XXXX ──────────────────────────────────────────────────────────
@@ -193,154 +195,165 @@ function ScannerPanel({
     <div className="flex flex-col gap-4 h-full">
 
       {/* ── Bloco Scanner ──────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        {/* Header do bloco */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50/60">
-          <ScanLine className="h-4 w-4 text-[#F87116]" />
-          <span className="text-sm font-semibold text-slate-800">Scanner / Entrada</span>
+      <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-sm">
+
+        {/* Header */}
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+            <ScanLine className="h-4 w-4 text-slate-500" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground leading-tight">Scanner / Entrada</h2>
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Nº da comanda, CMD-XXXX ou SKU do produto
+            </p>
+          </div>
         </div>
 
-        <div className="p-4 space-y-4">
-          {/* Input principal */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-600">
-              Nº da comanda, código CMD-XXXX ou SKU do produto
-            </label>
-            <Input
-              ref={scannerRef}
-              value={scannerInput}
-              onChange={(e) => setScannerInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { onScannerEnter(scannerInput); setScannerInput(''); }
-              }}
-              placeholder="Escanear ou digitar…"
-              className="text-xl h-12 font-mono border-slate-200 focus:border-[#F87116] focus:ring-[#F87116]/20 bg-slate-50"
-              autoFocus
-            />
-          </div>
+        {/* Input principal */}
+        <div className="relative">
+          <input
+            ref={scannerRef}
+            value={scannerInput}
+            onChange={(e) => setScannerInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { onScannerEnter(scannerInput); setScannerInput(''); }
+            }}
+            placeholder="Escanear ou digitar…"
+            autoFocus
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full h-12 px-4 rounded-xl border border-input bg-background font-mono text-lg tracking-widest text-center placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-[#F87116]/30 focus:border-[#F87116] transition-colors"
+          />
+          {loadingVirtual && (
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+        </div>
 
-          {/* Peso — aparece ao selecionar produto pesável */}
-          <AnimatePresence>
-            {selectedProduct?.is_by_weight && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-amber-800">
-                    <Scale className="h-3.5 w-3.5" />
-                    {selectedProduct.name}
-                    <span className="ml-auto font-normal text-amber-600">
-                      {formatCurrency(selectedProduct.price_sale || selectedProduct.price, currency)}/kg
-                    </span>
+        {/* Peso — aparece ao selecionar produto pesável */}
+        <AnimatePresence>
+          {selectedProduct?.is_by_weight && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-amber-800">
+                  <Scale className="h-3.5 w-3.5" />
+                  {selectedProduct.name}
+                  <span className="ml-auto font-normal text-amber-600">
+                    {formatCurrency(selectedProduct.price_sale || selectedProduct.price, currency)}/kg
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    ref={weightRef}
+                    type="text"
+                    inputMode="decimal"
+                    value={weightInput}
+                    onChange={(e) => setWeightInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') onWeightSubmit(); }}
+                    placeholder="0.350 kg"
+                    className="text-xl h-12 font-mono flex-1 border-amber-200 focus:border-amber-400 bg-white"
+                    autoFocus
+                  />
+                  <Button onClick={onWeightSubmit} size="lg" className="h-12 px-5 bg-amber-500 hover:bg-amber-600 text-white">
+                    <Calculator className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Comanda de Buffet selecionada */}
+        <AnimatePresence>
+          {selectedComanda && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              className="rounded-xl border border-[#F87116]/30 bg-orange-50 p-3"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-[#F87116] flex items-center justify-center">
+                    <Hash className="h-3.5 w-3.5 text-white" />
                   </div>
-                  <div className="flex gap-2">
-                    <Input
-                      ref={weightRef}
-                      type="text"
-                      inputMode="decimal"
-                      value={weightInput}
-                      onChange={(e) => setWeightInput(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') onWeightSubmit(); }}
-                      placeholder="0.350 kg"
-                      className="text-xl h-12 font-mono flex-1 border-amber-200 focus:border-amber-400 bg-white"
-                      autoFocus
-                    />
-                    <Button onClick={onWeightSubmit} size="lg" className="h-12 px-5 bg-amber-500 hover:bg-amber-600 text-white">
-                      <Calculator className="h-5 w-5" />
-                    </Button>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-700">Comanda #{selectedComanda.number}</p>
+                    <p className="text-[11px] text-slate-500">{selectedComanda.items?.length ?? 0} itens</p>
                   </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-[#F87116]">
+                    {formatCurrency(selectedComanda.total_amount, currency)}
+                  </span>
+                  <button onClick={onDeselectComanda} className="h-6 w-6 flex items-center justify-center rounded-md text-slate-400 hover:bg-orange-100 hover:text-slate-600 transition-colors">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+              <p className="text-[10px] text-[#F87116] font-medium mt-1.5 pl-9">
+                Ativa — escaneie produtos para adicionar
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          {/* Comanda de Buffet selecionada */}
+        {/* Comanda Digital (CMD-XXXX) */}
+        <FeatureGuard feature="feature_virtual_comanda" bannerVariant="inline">
           <AnimatePresence>
-            {selectedComanda && (
+            {activeVirtualComanda ? (
               <motion.div
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 6 }}
-                className="rounded-xl border border-[#F87116]/30 bg-orange-50 p-3"
+                exit={{ opacity: 0, y: 4 }}
+                className="rounded-xl border border-emerald-200 bg-emerald-50 p-3"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-lg bg-[#F87116] flex items-center justify-center">
-                      <Hash className="h-3.5 w-3.5 text-white" />
+                    <div className="h-7 w-7 rounded-lg bg-emerald-500 flex items-center justify-center">
+                      <Smartphone className="h-3.5 w-3.5 text-white" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-700">Comanda #{selectedComanda.number}</p>
-                      <p className="text-[11px] text-slate-500">{selectedComanda.items?.length ?? 0} itens</p>
+                      <p className="flex items-center gap-1 text-xs font-semibold text-emerald-800">
+                        <Link2 className="h-3 w-3" />
+                        {activeVirtualComanda.short_code}
+                      </p>
+                      {activeVirtualComanda.customer_name && (
+                        <p className="text-[11px] text-emerald-600">{activeVirtualComanda.customer_name}</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-base font-bold text-[#F87116]">
-                      {formatCurrency(selectedComanda.total_amount, currency)}
+                    <span className="text-sm font-bold text-emerald-700">
+                      {loadingVirtual
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : formatCurrency(activeVirtualComanda.total_amount, currency)
+                      }
                     </span>
-                    <button onClick={onDeselectComanda} className="h-6 w-6 flex items-center justify-center rounded-md text-slate-400 hover:bg-orange-100 hover:text-slate-600 transition-colors">
-                      <X className="h-3.5 w-3.5" />
+                    <button onClick={onDeselectVirtual} className="h-6 w-6 flex items-center justify-center rounded-md text-emerald-400 hover:bg-emerald-100 hover:text-emerald-700 transition-colors">
+                      <Link2Off className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
+                <p className="text-[10px] text-emerald-600 mt-1.5 pl-9">Próximos itens irão para esta comanda digital</p>
               </motion.div>
+            ) : (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+              >
+                <Smartphone className="h-3.5 w-3.5 flex-shrink-0" />
+                Escaneie <span className="font-mono font-semibold text-foreground">CMD-XXXX</span> para vincular comanda digital
+              </motion.p>
             )}
           </AnimatePresence>
-
-          {/* Comanda Digital (CMD-XXXX) */}
-          <FeatureGuard feature="feature_virtual_comanda" bannerVariant="inline">
-            <AnimatePresence>
-              {activeVirtualComanda ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 6 }}
-                  className="rounded-xl border border-emerald-200 bg-emerald-50 p-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-lg bg-emerald-500 flex items-center justify-center">
-                        <Smartphone className="h-3.5 w-3.5 text-white" />
-                      </div>
-                      <div>
-                        <p className="flex items-center gap-1 text-xs font-semibold text-emerald-800">
-                          <Link2 className="h-3 w-3" />
-                          {activeVirtualComanda.short_code}
-                        </p>
-                        {activeVirtualComanda.customer_name && (
-                          <p className="text-[11px] text-emerald-600">{activeVirtualComanda.customer_name}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base font-bold text-emerald-700">
-                        {loadingVirtual
-                          ? <Loader2 className="h-4 w-4 animate-spin" />
-                          : formatCurrency(activeVirtualComanda.total_amount, currency)
-                        }
-                      </span>
-                      <button onClick={onDeselectVirtual} className="h-6 w-6 flex items-center justify-center rounded-md text-emerald-400 hover:bg-emerald-100 hover:text-emerald-700 transition-colors">
-                        <Link2Off className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-emerald-600 mt-1.5 pl-9">Próximos itens irão para esta comanda</p>
-                </motion.div>
-              ) : (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex items-center gap-1.5 text-[11px] text-slate-400"
-                >
-                  <Smartphone className="h-3.5 w-3.5 flex-shrink-0" />
-                  Escaneie <span className="font-mono font-bold text-slate-600">CMD-XXXX</span> para vincular comanda digital
-                </motion.p>
-              )}
-            </AnimatePresence>
-          </FeatureGuard>
-        </div>
+        </FeatureGuard>
       </div>
 
       {/* ── Produtos ──────────────────────────────────────────────────── */}
@@ -410,13 +423,15 @@ function ScannerPanel({
 // ─── Componente: Card de Comanda ──────────────────────────────────────────────
 
 function ComandaCard({
-  comanda, isSelected, currency, onSelect, onClose,
+  comanda, isSelected, currency, onSelect, onClose, onDelete, deleting,
 }: {
   comanda: ComandaWithItems;
   isSelected: boolean;
   currency: CurrencyCode;
   onSelect: () => void;
   onClose: (e: React.MouseEvent) => void;
+  onDelete: (e: React.MouseEvent) => void;
+  deleting: boolean;
 }) {
   const urgency  = getTimeUrgency(comanda.opened_at);
   const styles   = URGENCY_STYLES[urgency];
@@ -440,8 +455,8 @@ function ComandaCard({
 
       {/* Conteúdo principal */}
       <div className="p-4 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 pr-7">
             <span className="text-lg font-bold text-slate-900">#{comanda.number}</span>
             <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${styles.badge}`}>
               <Clock className="h-2.5 w-2.5" />
@@ -468,6 +483,19 @@ function ComandaCard({
         </div>
       </div>
 
+      {/* Botão excluir (canto superior direito) */}
+      <button
+        onClick={onDelete}
+        disabled={deleting}
+        className="absolute right-2 top-3 h-7 w-7 flex items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors"
+        title="Excluir comanda"
+      >
+        {deleting
+          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          : <Trash2 className="h-3.5 w-3.5" />
+        }
+      </button>
+
       {/* Itens (expandidos quando selecionado) */}
       <AnimatePresence>
         {isSelected && itemCount > 0 && (
@@ -479,10 +507,7 @@ function ComandaCard({
           >
             <div className="px-4 pb-3 pt-2 space-y-1.5 max-h-60 overflow-y-auto">
               {comanda.items?.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-2 text-xs"
-                >
+                <div key={item.id} className="flex items-center gap-2 text-xs">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-slate-800 truncate">{item.description}</p>
                     <p className="text-slate-400">
@@ -530,6 +555,9 @@ export default function Buffet() {
   const [selectedProduct,    setSelectedProduct]     = useState<Product | null>(null);
   const [showCloseDialog,    setShowCloseDialog]     = useState(false);
   const [closingComandaId,   setClosingComandaId]    = useState<string | null>(null);
+  const [showDeleteDialog,   setShowDeleteDialog]    = useState(false);
+  const [deletingComandaId,  setDeletingComandaId]   = useState<string | null>(null);
+  const [confirmDeleting,    setConfirmDeleting]     = useState(false);
   const [activeVirtualComanda, setActiveVirtualComanda] = useState<ActiveVirtualComanda | null>(null);
   const [loadingVirtual,     setLoadingVirtual]      = useState(false);
 
@@ -695,6 +723,34 @@ export default function Buffet() {
     await handleAddProduct(selectedProduct, weight);
   };
 
+  const handleRequestDelete = (comandaId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeletingComandaId(comandaId);
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingComandaId) return;
+    setConfirmDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('comandas')
+        .update({ status: 'cancelled' })
+        .eq('id', deletingComandaId);
+      if (error) throw error;
+      if (selectedComandaId === deletingComandaId) setSelectedComandaId(null);
+      refresh();
+      toast({ title: 'Comanda excluída', description: 'A comanda foi cancelada com sucesso.' });
+    } catch {
+      toast({ title: 'Erro ao excluir comanda', variant: 'destructive' });
+    } finally {
+      setConfirmDeleting(false);
+      setShowDeleteDialog(false);
+      setDeletingComandaId(null);
+      scannerRef.current?.focus();
+    }
+  };
+
   const handleRemoveItem = async (itemId: string) => {
     if (!selectedComanda) return;
     try {
@@ -719,6 +775,7 @@ export default function Buffet() {
   // ── Métricas rápidas ──────────────────────────────────────────────────────────
   const totalAberto = comandas.reduce((s, c) => s + c.total_amount, 0);
   const closingComanda = closingComandaId ? comandas.find((c) => c.id === closingComandaId) : null;
+  const deletingComanda = deletingComandaId ? comandas.find((c) => c.id === deletingComandaId) : null;
 
   // ── Loading ───────────────────────────────────────────────────────────────────
   if (loading && comandas.length === 0) {
@@ -837,12 +894,68 @@ export default function Buffet() {
                     setClosingComandaId(comanda.id);
                     setShowCloseDialog(true);
                   }}
+                  onDelete={(e) => handleRequestDelete(comanda.id, e)}
+                  deleting={deletingComandaId === comanda.id && confirmDeleting}
                 />
               ))}
             </div>
           </AnimatePresence>
         </div>
       </div>
+
+      {/* ── Modal: Excluir Comanda ──────────────────────────────────────── */}
+      <Dialog open={showDeleteDialog} onOpenChange={(v) => { if (!confirmDeleting) { setShowDeleteDialog(v); if (!v) setDeletingComandaId(null); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="h-9 w-9 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <DialogTitle>Excluir Comanda</DialogTitle>
+            </div>
+          </DialogHeader>
+          {deletingComanda && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+                <p className="text-xs text-slate-500 mb-1">Comanda #{deletingComanda.number}</p>
+                <p className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                  {formatCurrency(deletingComanda.total_amount, currency)}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {deletingComanda.items?.length ?? 0} item(s) · {formatTimeOpen(deletingComanda.opened_at)} aberta
+                </p>
+              </div>
+
+              <div className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-200 p-3">
+                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-700 leading-relaxed">
+                  Esta ação <strong>não pode ser desfeita</strong>. Todos os itens da comanda serão removidos permanentemente.
+                </p>
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => { setShowDeleteDialog(false); setDeletingComandaId(null); }}
+                  disabled={confirmDeleting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={handleConfirmDelete}
+                  disabled={confirmDeleting}
+                >
+                  {confirmDeleting
+                    ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Excluindo…</>
+                    : <><Trash2 className="h-4 w-4 mr-2" />Excluir Comanda</>
+                  }
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* ── Modal: Fechar Comanda ───────────────────────────────────────── */}
       <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>

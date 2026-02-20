@@ -51,8 +51,9 @@ const AdminInventory         = lazyWithRetry(() => import('./pages/admin/Invento
 const AdminTables           = lazyWithRetry(() => import('./pages/admin/Tables'));
 const UpgradePage           = lazyWithRetry(() => import('./pages/admin/UpgradePage'));
 
-// Cozinha (KDS)
+// Cozinha (KDS) e Expedição (Expo Screen)
 const KitchenDisplay        = lazyWithRetry(() => import('./pages/kitchen/KitchenDisplay'));
+const ExpoScreen            = lazyWithRetry(() => import('./pages/kitchen/ExpoScreen'));
 
 // Cardápio público
 const PublicMenu            = lazyWithRetry(() => import('./pages/public/Menu'));
@@ -141,6 +142,8 @@ const adminRoutes = (
     <Route path="cashier" element={<AdminCashier />} />
     {/* QR Code para impressão — link de entrada das Comandas Digitais (Enterprise) */}
     <Route path="comanda-qr" element={<AdminComandaQRCode />} />
+    {/* Expo Screen — Tela de Expedição / Garçom (pedidos prontos para entrega) */}
+    <Route path="expo" element={<ExpoScreen />} />
     {/* Página de upgrade — exibida quando o usuário tenta acessar uma feature bloqueada */}
     <Route path="upgrade" element={<UpgradePage />} />
   </>
@@ -295,6 +298,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Expo Screen — Tela de Expedição standalone para garçons */}
+          <Route
+            path="/expo"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.KITCHEN, UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN]}>
+                <ExpoScreen />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
         </Suspense>
@@ -320,6 +332,22 @@ function App() {
         {/* Comanda Digital (Enterprise): cliente abre e acompanha a sua comanda */}
         <Route path="/:restaurantSlug/comanda" element={<VirtualComanda />} />
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+        <Route
+          path="/kitchen"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.KITCHEN, UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN]}>
+              <KitchenDisplay />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/expo"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.KITCHEN, UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN]}>
+              <ExpoScreen />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/admin/*"
           element={

@@ -459,14 +459,17 @@ export default function AdminOrders() {
 
                       // Botão de avanço de status:
                       // - Comanda: sempre vai direto para Concluído
-                      // - Mesa em preparo: também vai direto para Concluído
+                      // - Mesa em preparo: vai direto para Concluído
+                      // - Mesa em Prontos ou Em Entrega: mostra "Concluir" (não faz sentido "Saiu para Entrega")
                       const completedConfig = statusConfig[OrderStatus.COMPLETED];
                       const tablePreparingOverride = isTableOrder && status === OrderStatus.PREPARING;
-                      const nextStatus = (isComandaOrder || tablePreparingOverride) ? OrderStatus.COMPLETED : config.nextStatus;
-                      const nextLabel = (isComandaOrder || tablePreparingOverride) ? completedConfig.label : config.nextLabel;
-                      const NextIconComponent = (isComandaOrder || tablePreparingOverride) ? completedConfig.icon : config.nextIcon;
-                      const gradientClass = (isComandaOrder || tablePreparingOverride) ? completedConfig.gradient : config.gradient;
-                      const hideForTable = isTableOrder && (status === OrderStatus.READY || status === OrderStatus.DELIVERING);
+                      const tableReadyOverride = isTableOrder && status === OrderStatus.READY;
+                      const tableDeliveringOverride = isTableOrder && status === OrderStatus.DELIVERING;
+                      const goToCompleted = isComandaOrder || tablePreparingOverride || tableReadyOverride || tableDeliveringOverride;
+                      const nextStatus = goToCompleted ? OrderStatus.COMPLETED : config.nextStatus;
+                      const nextLabel = goToCompleted ? 'Concluir' : config.nextLabel;
+                      const NextIconComponent = goToCompleted ? completedConfig.icon : config.nextIcon;
+                      const gradientClass = goToCompleted ? completedConfig.gradient : config.gradient;
 
                       // WhatsApp "saiu para entrega"
                       const buildWhatsAppDeliveryUrl = () => {
@@ -650,7 +653,7 @@ export default function AdminOrders() {
                             )}
 
                             {/* ── Botão avançar status ── */}
-                            {!hideForTable && nextStatus && NextIconComponent && (
+                            {nextStatus && NextIconComponent && (
                               <Button
                                 size="sm"
                                 disabled={updatingOrderId === order.id}

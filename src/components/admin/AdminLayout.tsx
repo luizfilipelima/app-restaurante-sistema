@@ -39,6 +39,7 @@ import {
   QrCode,
   Users,
   Boxes,
+  ConciergeBell,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -161,6 +162,12 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
         icon: ScanBarcode,
         featureFlag: 'feature_virtual_comanda',
         featureLabel: 'Plano Enterprise',
+      },
+      {
+        kind: 'leaf',
+        name: 'Expo Screen',
+        href: `${base}/expo`,
+        icon: ConciergeBell,
       },
     ],
   },
