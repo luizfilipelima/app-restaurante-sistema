@@ -23,7 +23,7 @@ import {
   Phone, Globe, ImageIcon, CheckCircle2, XCircle,
   Sun, AlarmClock, X, Wifi, Languages, Store,
   Gift, Star, Trophy, Users, ExternalLink, Link2,
-  MessageCircle, AtSign, Repeat,
+  MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode,
 } from 'lucide-react';
 import { useLoyaltyProgram, useSaveLoyaltyProgram, useLoyaltyMetrics, useRestaurant } from '@/hooks/queries';
 import { useCanAccess } from '@/hooks/useUserRole';
@@ -271,6 +271,8 @@ export default function AdminSettings() {
     print_settings_by_sector: defaultSectorSettings(),
     exchange_rates:          { pyg_per_brl: 3600, ars_per_brl: 1150 },
     payment_currencies:      ['BRL', 'PYG'] as string[],
+    pix_key:                 '',
+    bank_account:            { bank_name: '', agency: '', account: '', holder: '' } as { bank_name: string; agency: string; account: string; holder: string },
   });
 
   const set = <K extends keyof typeof formData>(k: K, v: (typeof formData)[K]) =>
@@ -343,6 +345,19 @@ export default function AdminSettings() {
         payment_currencies:      Array.isArray(data.payment_currencies) && data.payment_currencies.length > 0
           ? data.payment_currencies
           : ['BRL', 'PYG'],
+        pix_key:                 data.pix_key ?? '',
+        bank_account:            (() => {
+          const ba = data.bank_account;
+          if (ba && typeof ba === 'object' && !Array.isArray(ba)) {
+            return {
+              bank_name: String((ba as Record<string, unknown>).bank_name ?? ''),
+              agency:    String((ba as Record<string, unknown>).agency ?? ''),
+              account:   String((ba as Record<string, unknown>).account ?? ''),
+              holder:    String((ba as Record<string, unknown>).holder ?? ''),
+            };
+          }
+          return { bank_name: '', agency: '', account: '', holder: '' };
+        })(),
       });
     } catch (err) {
       console.error('Erro ao carregar restaurante:', err);
@@ -373,6 +388,10 @@ export default function AdminSettings() {
         print_settings_by_sector: formData.print_settings_by_sector,
         exchange_rates:          formData.exchange_rates,
         payment_currencies:      formData.payment_currencies,
+        pix_key:                 formData.pix_key?.trim() || null,
+        bank_account:            (formData.bank_account.bank_name || formData.bank_account.agency || formData.bank_account.account || formData.bank_account.holder)
+          ? formData.bank_account
+          : null,
         updated_at:              new Date().toISOString(),
       }).eq('id', restaurantId);
       if (error) throw error;
@@ -424,6 +443,7 @@ export default function AdminSettings() {
               { value: 'perfil',       icon: Store,   label: t('settings.tabs.profile')   },
               { value: 'regional',     icon: Globe,   label: t('settings.tabs.regional')  },
               { value: 'contato',      icon: Phone,   label: t('settings.tabs.contact')   },
+              { value: 'pagamentos',   icon: CreditCard, label: 'PIX e Transferência'     },
               { value: 'horarios',     icon: Clock,   label: 'Horários'                   },
               { value: 'impressao',    icon: Printer, label: 'Impressão'                  },
               { value: 'cambio',       icon: Repeat,  label: 'Câmbio'                     },
@@ -901,6 +921,95 @@ export default function AdminSettings() {
                   </a>
                 )}
               </FieldGroup>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
+          </div>
+        </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            ABA 3b — PIX e Transferência (dados para o cliente enviar o pagamento)
+        ══════════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="pagamentos" className="mt-0 space-y-5">
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
+              <div className="h-9 w-9 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                <QrCode className="h-[18px] w-[18px] text-emerald-600" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Chave PIX do restaurante</h2>
+                <p className="text-[11px] text-muted-foreground">
+                  Onde o cliente envia o pagamento quando escolhe PIX. Exibido no checkout e rastreamento do pedido.
+                </p>
+              </div>
+            </div>
+            <div className="p-5">
+              <FieldGroup>
+                <SectionLabel>Chave PIX</SectionLabel>
+                <Input
+                  value={formData.pix_key}
+                  onChange={(e) => set('pix_key', e.target.value)}
+                  placeholder="Ex: (11) 99999-9999, CPF, e-mail ou chave aleatória"
+                  className="font-mono"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  CPF, CNPJ, telefone, e-mail ou chave aleatória. O cliente verá isso ao finalizar o pedido.
+                </p>
+              </FieldGroup>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
+              <div className="h-9 w-9 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                <Landmark className="h-[18px] w-[18px] text-indigo-600" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Dados para transferência bancária</h2>
+                <p className="text-[11px] text-muted-foreground">
+                  Para Guaraní (PYG) ou Peso Argentino (ARS). O cliente envia para esta conta quando escolhe transferência.
+                </p>
+              </div>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldGroup>
+                  <SectionLabel>Banco</SectionLabel>
+                  <Input
+                    value={formData.bank_account.bank_name}
+                    onChange={(e) => set('bank_account', { ...formData.bank_account, bank_name: e.target.value })}
+                    placeholder="Ex: Banco Itaú, Banco Continental"
+                  />
+                </FieldGroup>
+                <FieldGroup>
+                  <SectionLabel>Agência</SectionLabel>
+                  <Input
+                    value={formData.bank_account.agency}
+                    onChange={(e) => set('bank_account', { ...formData.bank_account, agency: e.target.value })}
+                    placeholder="Ex: 1234"
+                  />
+                </FieldGroup>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldGroup>
+                  <SectionLabel>Conta</SectionLabel>
+                  <Input
+                    value={formData.bank_account.account}
+                    onChange={(e) => set('bank_account', { ...formData.bank_account, account: e.target.value })}
+                    placeholder="Ex: 12345-6"
+                  />
+                </FieldGroup>
+                <FieldGroup>
+                  <SectionLabel>Titular</SectionLabel>
+                  <Input
+                    value={formData.bank_account.holder}
+                    onChange={(e) => set('bank_account', { ...formData.bank_account, holder: e.target.value })}
+                    placeholder="Nome do titular da conta"
+                  />
+                </FieldGroup>
+              </div>
             </div>
           </div>
 

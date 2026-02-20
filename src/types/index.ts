@@ -111,6 +111,10 @@ export interface Restaurant {
   exchange_rates?: { pyg_per_brl?: number; ars_per_brl?: number } | null;
   /** Moedas disponíveis no alternador de pagamento no checkout */
   payment_currencies?: string[] | null;
+  /** Chave PIX do restaurante — onde o cliente envia o pagamento */
+  pix_key?: string | null;
+  /** Dados bancários para transferência (PYG/ARS): {bank_name, agency, account, holder} */
+  bank_account?: { bank_name?: string; agency?: string; account?: string; holder?: string } | null;
   /** Idioma da interface do cardápio público */
   language?: 'pt' | 'es' | 'en';
   /** Templates personalizáveis de mensagens WhatsApp */

@@ -18,9 +18,12 @@ import {
   Car,
   Gift,
   Wifi,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OrderStatus, DeliveryType } from '@/types';
+import { toast } from '@/hooks/use-toast';
 
 // ── Tipos locais ──────────────────────────────────────────────────────────────
 
@@ -51,6 +54,8 @@ interface TrackingRestaurant {
   whatsapp?: string | null;
   phone?: string | null;
   phone_country?: string | null;
+  pix_key?: string | null;
+  bank_account?: { bank_name?: string; agency?: string; account?: string; holder?: string } | null;
 }
 
 interface TrackingCourier {
@@ -150,6 +155,8 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const [live,    setLive]    = useState(false);
+  const [pixCopied, setPixCopied] = useState(false);
+  const [bankCopied, setBankCopied] = useState(false);
 
   // Armazena o timestamp de quando cada status foi detectado pelo frontend
   const [statusTimestamps, setStatusTimestamps] = useState<Partial<Record<OrderStatus, string>>>({});
@@ -174,9 +181,12 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
     })();
   }, [restaurantSlug]);
 
-  // ── Fetch inicial via RPC ─────────────────────────────────────────────────
-  const fetchOrder = useCallback(async () => {
+  // ── Fetch via RPC (com retry para eventual consistência após checkout) ────
+  const fetchOrder = useCallback(async (retryCount = 0) => {
     if (!orderId) { setError('ID inválido'); setLoading(false); return; }
+
+    const maxRetries = 3;
+    const retryDelayMs = 1500;
 
     try {
       const { data: rpc, error: rpcErr } = await supabase.rpc('get_order_tracking', {
@@ -184,12 +194,19 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
       });
 
       if (rpcErr) throw rpcErr;
-      if (!rpc?.ok) throw new Error(rpc?.error ?? 'Pedido não encontrado');
+      if (!rpc?.ok) {
+        const errMsg = rpc?.error ?? 'Pedido não encontrado';
+        if (retryCount < maxRetries && (errMsg.includes('não encontrado') || errMsg.includes('not found') || errMsg.includes('Pedido'))) {
+          await new Promise((r) => setTimeout(r, retryDelayMs));
+          return fetchOrder(retryCount + 1);
+        }
+        throw new Error(errMsg);
+      }
 
       const tracking = rpc as { ok: true; order: TrackingOrder; restaurant: TrackingRestaurant; courier: TrackingCourier | null };
       setData({ order: tracking.order, restaurant: tracking.restaurant, courier: tracking.courier });
+      setError(null);
 
-      // Registra o timestamp inicial: pending = created_at, status atual = updated_at
       if (!initialLoaded.current) {
         initialLoaded.current = true;
         const ts: Partial<Record<OrderStatus, string>> = {
@@ -265,11 +282,12 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-slate-100">
-        <div className="relative h-14 w-14">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
+        <div className="relative h-16 w-16">
           <div className="absolute inset-0 rounded-full border-4 border-orange-100" />
           <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-orange-500 animate-spin" />
         </div>
+        <p className="text-sm text-slate-500 font-medium animate-pulse">{t('tracking.loading')}</p>
       </div>
     );
   }
@@ -277,27 +295,30 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
   if (error || !data) {
     const isTechnicalError = error?.toLowerCase().includes('record') || error?.toLowerCase().includes('not assigned');
     const displayError = isTechnicalError ? t('tracking.notFoundDesc') : (error ?? t('tracking.notFoundDesc'));
+    const backPath = tenantSlugProp ? '/' : (restaurantSlug ? `/${restaurantSlug}` : '/');
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-orange-50 to-slate-100 p-6">
-        <XCircle className="h-16 w-16 text-red-400" />
-        <h2 className="text-xl font-bold text-slate-700">{t('tracking.notFound')}</h2>
-        <p className="text-sm text-slate-500 text-center max-w-xs">{displayError}</p>
-        <div className="flex flex-col sm:flex-row gap-3 mt-2">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gradient-to-br from-slate-50 via-white to-orange-50/30 p-6">
+        <div className="flex flex-col items-center max-w-sm text-center">
+          <div className="h-20 w-20 rounded-full bg-red-50 flex items-center justify-center mb-4">
+            <XCircle className="h-10 w-10 text-red-500" strokeWidth={2} />
+          </div>
+          <h1 className="text-xl font-bold text-slate-800">{t('tracking.notFound')}</h1>
+          <p className="text-sm text-slate-500 mt-2 leading-relaxed">{displayError}</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
           <button
-            onClick={() => { setError(null); setLoading(true); fetchOrder(); }}
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-orange-100 text-orange-700 font-semibold text-sm hover:bg-orange-200 transition-colors"
+            onClick={() => { setError(null); setLoading(true); fetchOrder(0); }}
+            className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-orange-500 text-white font-semibold text-sm hover:bg-orange-600 active:scale-[0.98] transition-all shadow-sm"
           >
             {t('tracking.retry')}
           </button>
-          {restaurantSlug && (
-            <button
-              onClick={() => navigate(`/${restaurantSlug}`)}
-              className="flex items-center gap-2 text-sm font-medium text-orange-600 hover:underline"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              {t('tracking.backToMenu')}
-            </button>
-          )}
+          <button
+            onClick={() => navigate(backPath)}
+            className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t('tracking.backToMenu')}
+          </button>
         </div>
       </div>
     );
@@ -345,16 +366,14 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-slate-50">
 
       {/* ── Topo ─────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-slate-100 px-4 py-3 flex items-center gap-3 shadow-sm">
-        {restaurantSlug && (
-          <button
-            onClick={() => navigate(`/${restaurantSlug}`)}
-            className="p-1.5 rounded-full hover:bg-slate-100 transition-colors"
-            aria-label={t('tracking.backToMenu')}
-          >
-            <ArrowLeft className="h-5 w-5 text-slate-600" />
-          </button>
-        )}
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 py-3 flex items-center gap-3 shadow-sm">
+        <button
+          onClick={() => navigate(tenantSlugProp ? '/' : (restaurantSlug ? `/${restaurantSlug}` : '/'))}
+          className="p-2 rounded-full hover:bg-slate-100 active:bg-slate-200 transition-colors -ml-1"
+          aria-label={t('tracking.backToMenu')}
+        >
+          <ArrowLeft className="h-5 w-5 text-slate-600" />
+        </button>
 
         {restaurant.logo && (
           <img
@@ -564,12 +583,84 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
               {(() => {
                 const pm = order.payment_method;
                 if (pm === 'pix')  return t('tracking.paymentPix');
+                if (pm === 'bank_transfer') return 'Transferência Bancária';
+                if (pm === 'qrcode') return 'QR Code na entrega';
                 if (pm === 'card') return t('tracking.paymentCard');
                 if (pm === 'cash') return t('tracking.paymentCash');
                 return t('tracking.paymentTable');
               })()}
             </p>
           </div>
+
+          {/* Dados para pagamento PIX ou Transferência (pedido pendente) */}
+          {order.status === OrderStatus.PENDING && (order.payment_method === 'pix' || order.payment_method === 'bank_transfer') && (
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              {order.payment_method === 'pix' && restaurant.pix_key && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                  <p className="text-xs font-semibold text-emerald-800 mb-1.5">Envie o PIX para:</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-sm font-mono text-emerald-900 break-all bg-white/80 px-2.5 py-2 rounded-lg border border-emerald-100">
+                      {restaurant.pix_key}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(restaurant.pix_key!);
+                          setPixCopied(true);
+                          toast({ title: 'Chave PIX copiada!' });
+                          setTimeout(() => setPixCopied(false), 2000);
+                        } catch {
+                          toast({ title: 'Não foi possível copiar', variant: 'destructive' });
+                        }
+                      }}
+                      className="flex-shrink-0 h-10 w-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition-colors"
+                      title="Copiar chave PIX"
+                    >
+                      {pixCopied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-emerald-700 mt-2">Envie o comprovante pelo WhatsApp após o pagamento.</p>
+                </div>
+              )}
+              {order.payment_method === 'bank_transfer' && restaurant.bank_account && (restaurant.bank_account.bank_name || restaurant.bank_account.agency || restaurant.bank_account.account || restaurant.bank_account.holder) && (
+                <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200">
+                  <p className="text-xs font-semibold text-indigo-800 mb-2">Envie a transferência para:</p>
+                  <div className="space-y-1.5 text-sm text-indigo-900">
+                    {restaurant.bank_account.bank_name && <p><span className="text-indigo-600">Banco:</span> {restaurant.bank_account.bank_name}</p>}
+                    {restaurant.bank_account.agency && <p><span className="text-indigo-600">Agência:</span> {restaurant.bank_account.agency}</p>}
+                    {restaurant.bank_account.account && <p><span className="text-indigo-600">Conta:</span> {restaurant.bank_account.account}</p>}
+                    {restaurant.bank_account.holder && <p><span className="text-indigo-600">Titular:</span> {restaurant.bank_account.holder}</p>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const ba = restaurant.bank_account;
+                      const lines = [
+                        ba?.bank_name && `Banco: ${ba.bank_name}`,
+                        ba?.agency && `Agência: ${ba.agency}`,
+                        ba?.account && `Conta: ${ba.account}`,
+                        ba?.holder && `Titular: ${ba.holder}`,
+                      ].filter(Boolean);
+                      try {
+                        await navigator.clipboard.writeText(lines.join('\n'));
+                        setBankCopied(true);
+                        toast({ title: 'Dados bancários copiados!' });
+                        setTimeout(() => setBankCopied(false), 2000);
+                      } catch {
+                        toast({ title: 'Não foi possível copiar', variant: 'destructive' });
+                      }
+                    }}
+                    className="mt-2 flex items-center gap-2 text-xs font-medium text-indigo-700 hover:text-indigo-800"
+                  >
+                    {bankCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {bankCopied ? 'Copiado!' : 'Copiar dados'}
+                  </button>
+                  <p className="text-xs text-indigo-700 mt-2">Envie o comprovante pelo WhatsApp após o pagamento.</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
       </main>

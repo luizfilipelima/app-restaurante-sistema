@@ -35,7 +35,7 @@ import {
   ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote,
   Send, Trash2, MapPin, Loader2, Gift, Minus, Plus,
   User, StickyNote, Check, X as XIcon, ShoppingBag,
-  QrCode, Landmark, Info,
+  QrCode, Landmark, Info, Copy,
 } from 'lucide-react';
 import MapAddressPicker from '@/components/public/MapAddressPicker';
 import { fetchLoyaltyStatus, redeemLoyalty } from '@/hooks/queries';
@@ -110,8 +110,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const paymentPrefsKey = `checkout_payment_${restaurantId || 'default'}`;
   const [pixKey, setPixKey] = useState('');
   const [savePixKey, setSavePixKey] = useState(false);
-  const [bankAccount, setBankAccount] = useState({ bank_name: '', agency: '', account: '', holder: '' });
-  const [saveBankAccount, setSaveBankAccount] = useState(false);
+  const [pixCopied, setPixCopied] = useState(false);
+  const [bankCopied, setBankCopied] = useState(false);
 
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
   const geoStorageKey = `checkout_geo_${restaurantId || 'default'}`;
@@ -146,9 +146,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
       const prefs = localStorage.getItem(paymentPrefsKey);
       if (prefs) {
-        const data = JSON.parse(prefs) as { pix_key?: string; bank_account?: typeof bankAccount };
+        const data = JSON.parse(prefs) as { pix_key?: string };
         if (data.pix_key) setPixKey(data.pix_key);
-        if (data.bank_account) setBankAccount(data.bank_account);
       }
     } catch { /* ignore */ }
   }, [restaurantId, paymentPrefsKey]);
@@ -269,14 +268,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           prefs.pix_key = pixKey.trim();
           localStorage.setItem(paymentPrefsKey, JSON.stringify(prefs));
         }
-        if (saveBankAccount && (displayCurrency === 'PYG' || displayCurrency === 'ARS')) {
-          const ba = bankAccount;
-          if (ba.bank_name || ba.agency || ba.account || ba.holder) {
-            const prefs = JSON.parse(localStorage.getItem(paymentPrefsKey) || '{}');
-            prefs.bank_account = ba;
-            localStorage.setItem(paymentPrefsKey, JSON.stringify(prefs));
-          }
-        }
       } catch { /* ignore */ }
     }
 
@@ -347,7 +338,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         payment_method: isTableOrder ? PaymentMethod.TABLE : paymentMethod,
         payment_change_for: isTableOrder ? null : (paymentMethod === PaymentMethod.CASH && changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null),
         payment_pix_key: !isTableOrder && (paymentMethod === PaymentMethod.PIX || paymentMethod === PaymentMethod.QRCODE) && pixKey.trim() ? pixKey.trim() : null,
-        payment_bank_account: !isTableOrder && paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS') && (bankAccount.bank_name || bankAccount.agency || bankAccount.account || bankAccount.holder) ? bankAccount : null,
+        payment_bank_account: !isTableOrder && paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS') && currentRestaurant?.bank_account && (currentRestaurant.bank_account.bank_name || currentRestaurant.bank_account.agency || currentRestaurant.bank_account.account || currentRestaurant.bank_account.holder) ? currentRestaurant.bank_account : null,
         order_source: isTableOrder ? 'table' : (finalDeliveryType === DeliveryType.DELIVERY ? 'delivery' : 'pickup'),
         table_id: isTableOrder && tableId ? tableId : null,
         status: 'pending',
@@ -425,13 +416,18 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           if (paymentMethod === PaymentMethod.PIX) pagamentoDetalhes += (pagamentoDetalhes ? '\n' : '') + '📤 Cliente deve enviar o comprovante de pagamento PIX após confirmar o pedido.';
         }
         if (paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS')) {
-          const ba = bankAccount;
-          if (ba.bank_name || ba.agency || ba.account || ba.holder) {
-            pagamentoDetalhes = ['Banco: ' + ba.bank_name, 'Agência: ' + ba.agency, 'Conta: ' + ba.account, 'Titular: ' + ba.holder].filter((s) => !s.endsWith(': ')).join(' | ');
+          const ba = currentRestaurant?.bank_account;
+          if (ba && (ba.bank_name || ba.agency || ba.account || ba.holder)) {
+            pagamentoDetalhes = ['Banco: ' + (ba.bank_name ?? ''), 'Agência: ' + (ba.agency ?? ''), 'Conta: ' + (ba.account ?? ''), 'Titular: ' + (ba.holder ?? '')].filter((s) => !s.endsWith(': ')).join(' | ');
           }
         }
 
         const taxaLine = deliveryFee > 0 ? `Taxa entrega: ${formatCurrency(deliveryFee, baseCurrency)}` : '';
+
+        const baRest = currentRestaurant?.bank_account;
+        const contaRest = baRest && (baRest.bank_name || baRest.agency || baRest.account || baRest.holder)
+          ? ['Banco: ' + (baRest.bank_name ?? ''), 'Agência: ' + (baRest.agency ?? ''), 'Conta: ' + (baRest.account ?? ''), 'Titular: ' + (baRest.holder ?? '')].filter((s) => !s.endsWith(': ')).join(' | ')
+          : '';
 
         const restaurantTemplates = (currentRestaurant as { whatsapp_templates?: Record<string, string> | null })?.whatsapp_templates;
         const message = processTemplate(getTemplate('new_order', restaurantTemplates), {
@@ -443,6 +439,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           detalhes_endereco: deliveryType === DeliveryType.DELIVERY ? (addressDetails?.trim() ?? '') : '',
           pagamento:         paymentLabel,
           pagamento_detalhes: pagamentoDetalhes,
+          pix_restaurante:   (currentRestaurant?.pix_key || '').trim() || undefined,
+          conta_restaurante: contaRest || undefined,
           troco:             trocoFormatted,
           subtotal:          formatCurrency(subtotal, baseCurrency),
           taxa_entrega:      taxaLine,
@@ -469,21 +467,31 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         }
 
         clearCart();
-        const isPix = paymentMethod === PaymentMethod.PIX;
-        toast({
-          title: '✅ ' + t('checkout.successOrderTitle'),
-          description: isPix
-            ? `${t('checkout.successOrderDesc')} Lembre-se de enviar o comprovante de pagamento PIX pelo WhatsApp após confirmar o pedido.`
-            : t('checkout.successOrderDesc'),
-          className: 'bg-green-50 border-green-200',
-        });
-        window.open(generateWhatsAppLink(whatsappNumber, message), '_blank', 'noopener,noreferrer');
-
         const newOrderId = (rpcResult as { order_id?: string })?.order_id;
-        if (newOrderId) {
-          const trackPath = isSubdomain ? `/track/${newOrderId}` : `/${restaurantSlug}/track/${newOrderId}`;
-          setTimeout(() => navigate(trackPath), 600);
+        const trackPath = newOrderId
+          ? (isSubdomain ? `/track/${newOrderId}` : `/${restaurantSlug}/track/${newOrderId}`)
+          : null;
+
+        if (trackPath) {
+          navigate(trackPath, { replace: true });
+          const isPix = paymentMethod === PaymentMethod.PIX;
+          toast({
+            title: '✅ ' + t('checkout.successOrderTitle'),
+            description: isPix
+              ? `${t('checkout.successOrderDesc')} Lembre-se de enviar o comprovante de pagamento PIX pelo WhatsApp após confirmar o pedido.`
+              : t('checkout.successOrderDesc'),
+            className: 'bg-green-50 border-green-200',
+          });
+          setTimeout(() => {
+            window.open(generateWhatsAppLink(whatsappNumber, message), '_blank', 'noopener,noreferrer');
+          }, 400);
         } else {
+          toast({
+            title: '✅ ' + t('checkout.successOrderTitle'),
+            description: t('checkout.successOrderDesc'),
+            className: 'bg-green-50 border-green-200',
+          });
+          window.open(generateWhatsAppLink(whatsappNumber, message), '_blank', 'noopener,noreferrer');
           setTimeout(() => handleBackToMenu(), 800);
         }
       } else {
@@ -925,14 +933,43 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
                       {value === PaymentMethod.PIX && paymentMethod === PaymentMethod.PIX && (
                         <div className="mt-2 px-1 space-y-2">
-                          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-100">
-                            <Info className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-                            <p className="text-xs text-emerald-800">
-                              Após enviar o pedido no WhatsApp, envie o comprovante de pagamento PIX.
-                            </p>
-                          </div>
+                          {currentRestaurant?.pix_key ? (
+                            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                              <p className="text-xs font-semibold text-emerald-800 mb-1.5">Envie o PIX para:</p>
+                              <div className="flex items-center gap-2">
+                                <code className="flex-1 text-sm font-mono text-emerald-900 break-all bg-white/80 px-2.5 py-2 rounded-lg border border-emerald-100">
+                                  {currentRestaurant.pix_key}
+                                </code>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(currentRestaurant.pix_key!);
+                                      setPixCopied(true);
+                                      toast({ title: 'Chave PIX copiada!', variant: 'default' });
+                                      setTimeout(() => setPixCopied(false), 2000);
+                                    } catch {
+                                      toast({ title: 'Não foi possível copiar', variant: 'destructive' });
+                                    }
+                                  }}
+                                  className="flex-shrink-0 h-10 w-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition-colors touch-manipulation"
+                                  title="Copiar chave PIX"
+                                >
+                                  {pixCopied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+                                </button>
+                              </div>
+                              <p className="text-xs text-emerald-700 mt-2">Após enviar o pedido no WhatsApp, envie o comprovante de pagamento.</p>
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-100">
+                              <Info className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                              <p className="text-xs text-amber-800">
+                                O restaurante ainda não configurou a chave PIX. Após enviar o pedido no WhatsApp, envie o comprovante informando o valor.
+                              </p>
+                            </div>
+                          )}
                           <div>
-                            <Label className="text-xs text-slate-500 mb-1 block">Sua chave PIX <span className="text-slate-300">(opcional)</span></Label>
+                            <Label className="text-xs text-slate-500 mb-1 block">Sua chave PIX <span className="text-slate-300">(opcional, para identificação)</span></Label>
                             <Input
                               placeholder="CPF, e-mail, telefone ou chave aleatória"
                               value={pixKey}
@@ -949,17 +986,57 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
                       {value === PaymentMethod.BANK_TRANSFER && paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS') && (
                         <div className="mt-2 px-1 space-y-2">
-                          <p className="text-xs text-slate-500">Dados da conta para transferência (opcional)</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            <Input placeholder="Banco" value={bankAccount.bank_name} onChange={(e) => setBankAccount((b) => ({ ...b, bank_name: e.target.value }))} className="h-10 text-sm" />
-                            <Input placeholder="Agência" value={bankAccount.agency} onChange={(e) => setBankAccount((b) => ({ ...b, agency: e.target.value }))} className="h-10 text-sm" />
-                            <Input placeholder="Conta" value={bankAccount.account} onChange={(e) => setBankAccount((b) => ({ ...b, account: e.target.value }))} className="h-10 text-sm" />
-                            <Input placeholder="Titular" value={bankAccount.holder} onChange={(e) => setBankAccount((b) => ({ ...b, holder: e.target.value }))} className="h-10 text-sm col-span-2" />
-                          </div>
-                          <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
-                            <input type="checkbox" checked={saveBankAccount} onChange={(e) => setSaveBankAccount(e.target.checked)} className="rounded" />
-                            Salvar para próximos pedidos
-                          </label>
+                          {currentRestaurant?.bank_account && (currentRestaurant.bank_account.bank_name || currentRestaurant.bank_account.agency || currentRestaurant.bank_account.account || currentRestaurant.bank_account.holder) ? (
+                            <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200">
+                              <p className="text-xs font-semibold text-indigo-800 mb-2">Envie a transferência para:</p>
+                              <div className="space-y-1.5 text-sm text-indigo-900">
+                                {currentRestaurant.bank_account.bank_name && (
+                                  <p><span className="text-indigo-600">Banco:</span> {currentRestaurant.bank_account.bank_name}</p>
+                                )}
+                                {currentRestaurant.bank_account.agency && (
+                                  <p><span className="text-indigo-600">Agência:</span> {currentRestaurant.bank_account.agency}</p>
+                                )}
+                                {currentRestaurant.bank_account.account && (
+                                  <p><span className="text-indigo-600">Conta:</span> {currentRestaurant.bank_account.account}</p>
+                                )}
+                                {currentRestaurant.bank_account.holder && (
+                                  <p><span className="text-indigo-600">Titular:</span> {currentRestaurant.bank_account.holder}</p>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const lines = [
+                                    currentRestaurant.bank_account?.bank_name && `Banco: ${currentRestaurant.bank_account.bank_name}`,
+                                    currentRestaurant.bank_account?.agency && `Agência: ${currentRestaurant.bank_account.agency}`,
+                                    currentRestaurant.bank_account?.account && `Conta: ${currentRestaurant.bank_account.account}`,
+                                    currentRestaurant.bank_account?.holder && `Titular: ${currentRestaurant.bank_account.holder}`,
+                                  ].filter(Boolean);
+                                  const text = lines.join('\n');
+                                  try {
+                                    await navigator.clipboard.writeText(text);
+                                    setBankCopied(true);
+                                    toast({ title: 'Dados bancários copiados!', variant: 'default' });
+                                    setTimeout(() => setBankCopied(false), 2000);
+                                  } catch {
+                                    toast({ title: 'Não foi possível copiar', variant: 'destructive' });
+                                  }
+                                }}
+                                className="mt-2 flex items-center gap-2 text-xs font-medium text-indigo-700 hover:text-indigo-800 transition-colors touch-manipulation"
+                              >
+                                {bankCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                {bankCopied ? 'Copiado!' : 'Copiar dados'}
+                              </button>
+                              <p className="text-xs text-indigo-700 mt-2">Após enviar o pedido no WhatsApp, envie o comprovante de transferência.</p>
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-100">
+                              <Info className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                              <p className="text-xs text-amber-800">
+                                O restaurante ainda não configurou os dados bancários. Entre em contato pelo WhatsApp.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
 

@@ -136,6 +136,7 @@
   },
   "tracking": {
     "pageTitle": "Acompanhe seu Pedido",
+    "loading": "Carregando pedido...",
     "notFound": "Pedido não encontrado",
     "notFoundDesc": "Verifique o link ou entre em contato com o restaurante.",
     "retry": "Tentar novamente",

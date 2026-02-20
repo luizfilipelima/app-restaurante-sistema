@@ -25,6 +25,8 @@ export const TEMPLATE_VARS = {
     { key: 'detalhes_endereco',  label: 'Detalhes do endereço', example: 'Apto 12, Bloco B',  description: 'Complemento do endereço' },
     { key: 'pagamento',          label: 'Pagamento',            example: 'PIX',               description: 'Método de pagamento' },
     { key: 'pagamento_detalhes', label: 'Detalhes do pagamento', example: 'Chave PIX: 11999999999', description: 'Chave PIX do cliente ou conta para transferência' },
+    { key: 'pix_restaurante',    label: 'Chave PIX do restaurante', example: '11999999999',   description: 'Chave PIX onde o cliente deve enviar o pagamento' },
+    { key: 'conta_restaurante',  label: 'Dados bancários do restaurante', example: 'Banco X - Ag 123 - Cc 456 - Titular Y', description: 'Conta para transferência bancária' },
     { key: 'troco',              label: 'Troco para',           example: 'R$ 50,00',          description: 'Valor do troco (dinheiro)' },
     { key: 'subtotal',           label: 'Subtotal',             example: 'R$ 38,90',          description: 'Subtotal do pedido' },
     { key: 'taxa_entrega',       label: 'Taxa de entrega',      example: 'Taxa entrega: R$ 5,00', description: 'Linha com a taxa de entrega' },
