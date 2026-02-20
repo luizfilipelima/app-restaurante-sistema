@@ -1,16 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import PublicMenu from '@/pages/public/Menu';
-import PublicCheckout from '@/pages/public/Checkout';
-import MenuViewOnly from '@/pages/public/MenuViewOnly';
-import MenuTable from '@/pages/public/MenuTable';
-import VirtualComanda from '@/pages/public/VirtualComanda';
-import OrderTracking from '@/pages/public/OrderTracking';
-import OrderConfirmation from '@/pages/public/OrderConfirmation';
-import LinkBio from '@/pages/public/LinkBio';
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
 import { supabase } from '@/lib/supabase';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
+
+// Rotas públicas — lazy para reduzir bundle inicial (cardápio carrega só o necessário)
+const PublicMenu = lazyWithRetry(() => import('@/pages/public/Menu'));
+const PublicCheckout = lazyWithRetry(() => import('@/pages/public/Checkout'));
+const MenuViewOnly = lazyWithRetry(() => import('@/pages/public/MenuViewOnly'));
+const MenuTable = lazyWithRetry(() => import('@/pages/public/MenuTable'));
+const VirtualComanda = lazyWithRetry(() => import('@/pages/public/VirtualComanda'));
+const OrderTracking = lazyWithRetry(() => import('@/pages/public/OrderTracking'));
+const OrderConfirmation = lazyWithRetry(() => import('@/pages/public/OrderConfirmation'));
+const LinkBio = lazyWithRetry(() => import('@/pages/public/LinkBio'));
+
+function StoreLoadingFallback() {
+  return (
+    <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
+      <div className="h-9 w-9 rounded-full border-2 border-orange-100 border-t-orange-500 animate-spin" />
+      <p className="text-xs text-slate-400">Carregando...</p>
+    </div>
+  );
+}
 
 interface StoreLayoutProps {
   /** Slug do tenant (subdomínio), usado para buscar restaurante no Supabase */
@@ -51,17 +63,19 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<PublicMenu tenantSlug={tenantSlug} />} />
+      <Suspense fallback={<StoreLoadingFallback />}>
+        <Routes>
+          <Route path="/" element={<PublicMenu tenantSlug={tenantSlug} />} />
         <Route path="/menu" element={<MenuViewOnly tenantSlug={tenantSlug} />} />
         <Route path="/cardapio/:tableNumber" element={<MenuTable tenantSlug={tenantSlug} />} />
         <Route path="/checkout" element={<PublicCheckout tenantSlug={tenantSlug} />} />
         <Route path="/order-confirmed" element={<OrderConfirmation tenantSlug={tenantSlug} />} />
         <Route path="/comanda" element={<VirtualComanda tenantSlug={tenantSlug} />} />
         <Route path="/track/:orderId" element={<OrderTracking tenantSlug={tenantSlug} />} />
-        <Route path="/bio" element={<LinkBio tenantSlug={tenantSlug} />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="/bio" element={<LinkBio tenantSlug={tenantSlug} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
