@@ -24,7 +24,6 @@ interface StoreLayoutProps {
  */
 export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [languageReady, setLanguageReady] = useState(false);
 
   useEffect(() => {
     if (!tenantSlug) return;
@@ -38,27 +37,17 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
           .single();
         setLogoUrl(data?.logo ?? null);
         const lang = (data?.language === 'es' ? 'es' : 'pt') as MenuLanguage;
-        await i18n.changeLanguage(lang);
+        i18n.changeLanguage(lang);
         setStoredMenuLanguage(lang);
       } catch {
         setLogoUrl(null);
-        await i18n.changeLanguage('pt');
+        i18n.changeLanguage('pt');
         setStoredMenuLanguage('pt');
-      } finally {
-        setLanguageReady(true);
       }
     })();
   }, [tenantSlug]);
 
   useDynamicFavicon(logoUrl);
-
-  if (!languageReady) {
-    return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-2 border-slate-300 border-t-slate-600" />
-      </div>
-    );
-  }
 
   return (
     <BrowserRouter>

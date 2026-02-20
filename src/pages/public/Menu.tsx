@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
 import { getSubdomain } from '@/lib/subdomain';
 import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide, Category, Subcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
+import { useRestaurantMenuData } from '@/hooks/queries';
 import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,28 +81,48 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
 
   const navigate = useNavigate();
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [categoriesFromDb, setCategoriesFromDb] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [loading, setLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
-  
-  // Estados para pizza
-  const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]);
-  const [pizzaFlavors, setPizzaFlavors] = useState<PizzaFlavor[]>([]);
-  const [pizzaDoughs, setPizzaDoughs] = useState<PizzaDough[]>([]);
-  const [pizzaEdges, setPizzaEdges] = useState<PizzaEdge[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [pizzaModalOpen, setPizzaModalOpen] = useState(false);
-  
-  // Estados para marmita
-  const [marmitaSizes, setMarmitaSizes] = useState<MarmitaSize[]>([]);
-  const [marmitaProteins, setMarmitaProteins] = useState<MarmitaProtein[]>([]);
-  const [marmitaSides, setMarmitaSides] = useState<MarmitaSide[]>([]);
   const [marmitaModalOpen, setMarmitaModalOpen] = useState(false);
+
+  const { data: menuData, isLoading: loading, isError } = useRestaurantMenuData(restaurantSlug);
+
+  const { restaurant, products, categories, categoriesFromDb, subcategories, pizzaSizes, pizzaFlavors, pizzaDoughs, pizzaEdges, marmitaSizes, marmitaProteins, marmitaSides } = useMemo(() => {
+    if (!menuData) {
+      return {
+        restaurant: null as Restaurant | null,
+        products: [] as Product[],
+        categories: [] as string[],
+        categoriesFromDb: [] as Category[],
+        subcategories: [] as Subcategory[],
+        pizzaSizes: [] as PizzaSize[],
+        pizzaFlavors: [] as PizzaFlavor[],
+        pizzaDoughs: [] as PizzaDough[],
+        pizzaEdges: [] as PizzaEdge[],
+        marmitaSizes: [] as MarmitaSize[],
+        marmitaProteins: [] as MarmitaProtein[],
+        marmitaSides: [] as MarmitaSide[],
+      };
+    }
+    const p = menuData.products.length > 0 ? menuData.products : MOCK_PRODUCTS;
+    const c = menuData.products.length > 0 ? menuData.categories : sortCategories(['Pizza', 'Bebidas', 'Sobremesas']);
+    return {
+      restaurant: menuData.restaurant,
+      products: p,
+      categories: c,
+      categoriesFromDb: menuData.categoriesFromDb,
+      subcategories: menuData.subcategories,
+      pizzaSizes: menuData.pizzaSizes,
+      pizzaFlavors: menuData.pizzaFlavors,
+      pizzaDoughs: menuData.pizzaDoughs,
+      pizzaEdges: menuData.pizzaEdges,
+      marmitaSizes: menuData.marmitaSizes,
+      marmitaProteins: menuData.marmitaProteins,
+      marmitaSides: menuData.marmitaSides,
+    };
+  }, [menuData]);
 
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
 
@@ -132,8 +152,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   }, [cartRestaurantId]);
 
   useEffect(() => {
-    loadRestaurantData();
-  }, [restaurantSlug]);
+    if (!menuData?.restaurant) return;
+    const r = menuData.restaurant;
+    setCurrentRestaurant(r);
+    setCartRestaurant(r.id);
+    const lang: MenuLanguage = r.language === 'es' ? 'es' : 'pt';
+    i18n.changeLanguage(lang);
+    setStoredMenuLanguage(lang);
+  }, [menuData?.restaurant, setCurrentRestaurant, setCartRestaurant]);
 
   // Atualizar título e meta tags de compartilhamento (logo do restaurante como imagem destacada)
   useEffect(() => {
@@ -141,118 +167,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     else document.title = t('menu.title');
   }, [restaurant?.name, t]);
   useSharingMeta(restaurant ? { name: restaurant.name, logo: restaurant.logo } : null);
-
-  const loadRestaurantData = async () => {
-    if (!restaurantSlug) return;
-
-    try {
-      setLoading(true);
-
-      // Buscar restaurante
-      const { data: restaurantData } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('slug', restaurantSlug)
-        .eq('is_active', true)
-        .single();
-
-      if (restaurantData) {
-        setRestaurant(restaurantData);
-        setCurrentRestaurant(restaurantData);
-        setCartRestaurant(restaurantData.id);
-        const lang: MenuLanguage = restaurantData.language === 'es' ? 'es' : 'pt';
-        i18n.changeLanguage(lang);
-        setStoredMenuLanguage(lang);
-
-        // Buscar categorias ordenadas
-        const { data: categoriesData } = await supabase
-          .from('categories')
-          .select('*')
-          .eq('restaurant_id', restaurantData.id)
-          .order('order_index', { ascending: true });
-        const categoriesList = categoriesData ?? [];
-        setCategoriesFromDb(categoriesList);
-        // Subcategorias (opcional; tabela pode não existir antes da migration)
-        let subcategoriesData: Subcategory[] = [];
-        try {
-          const { data: subData } = await supabase.from('subcategories').select('*').eq('restaurant_id', restaurantData.id).order('order_index', { ascending: true });
-          subcategoriesData = subData ?? [];
-        } catch {
-          // ignorar se tabela subcategories não existir
-        }
-        setSubcategories(subcategoriesData);
-
-        // Criar mapa de ordem de categorias
-        const categoryOrderMap = new Map<string, number>();
-        categoriesList.forEach((cat) => {
-          categoryOrderMap.set(cat.name, cat.order_index);
-        });
-
-        // Buscar produtos (ordem do admin via order_index)
-        const { data: productsData } = await supabase
-          .from('products')
-          .select('*')
-          .eq('restaurant_id', restaurantData.id)
-          .eq('is_active', true)
-          .order('order_index', { ascending: true });
-
-        if (productsData && productsData.length > 0) {
-          // Ordenar produtos: primeiro por categoria (order_index do banco), depois por order_index do produto
-          const sortedProducts = [...productsData].sort((a, b) => {
-            const orderA = categoryOrderMap.get(a.category) ?? CATEGORY_ORDER[a.category] ?? 999;
-            const orderB = categoryOrderMap.get(b.category) ?? CATEGORY_ORDER[b.category] ?? 999;
-            if (orderA !== orderB) {
-              return orderA - orderB;
-            }
-            return (a.order_index ?? 0) - (b.order_index ?? 0);
-          });
-          
-          setProducts(sortedProducts);
-          
-          // Ordenar categorias usando order_index do banco
-          const uniqueCategories = Array.from(new Set(productsData.map((p) => p.category)));
-          const sortedCategories = uniqueCategories.sort((a, b) => {
-            const orderA = categoryOrderMap.get(a) ?? CATEGORY_ORDER[a] ?? 999;
-            const orderB = categoryOrderMap.get(b) ?? CATEGORY_ORDER[b] ?? 999;
-            return orderA - orderB;
-          });
-          setCategories(sortedCategories);
-        } else {
-          // Fallback para Mock Data se não houver produtos no banco
-          setProducts(MOCK_PRODUCTS);
-          setCategories(sortCategories(['Pizza', 'Bebidas', 'Sobremesas']));
-        }
-
-        // Buscar dados de pizza
-        const [sizesRes, flavorsRes, doughsRes, edgesRes] = await Promise.all([
-          supabase.from('pizza_sizes').select('*').eq('restaurant_id', restaurantData.id).order('order_index'),
-          supabase.from('pizza_flavors').select('*').eq('restaurant_id', restaurantData.id).eq('is_active', true).order('name'),
-          supabase.from('pizza_doughs').select('*').eq('restaurant_id', restaurantData.id).eq('is_active', true).order('name'),
-          supabase.from('pizza_edges').select('*').eq('restaurant_id', restaurantData.id).eq('is_active', true).order('name'),
-        ]);
-
-        if (sizesRes.data) setPizzaSizes(sizesRes.data);
-        if (flavorsRes.data) setPizzaFlavors(flavorsRes.data);
-        if (doughsRes.data) setPizzaDoughs(doughsRes.data);
-        if (edgesRes.data) setPizzaEdges(edgesRes.data);
-
-        // Buscar dados de marmita
-        const [marmitaSizesRes, marmitaProteinsRes, marmitaSidesRes] = await Promise.all([
-          supabase.from('marmita_sizes').select('*').eq('restaurant_id', restaurantData.id).eq('is_active', true).order('order_index'),
-          supabase.from('marmita_proteins').select('*').eq('restaurant_id', restaurantData.id).eq('is_active', true).order('name'),
-          supabase.from('marmita_sides').select('*').eq('restaurant_id', restaurantData.id).eq('is_active', true).order('category', { ascending: true }).order('name'),
-        ]);
-
-        if (marmitaSizesRes.data) setMarmitaSizes(marmitaSizesRes.data);
-        if (marmitaProteinsRes.data) setMarmitaProteins(marmitaProteinsRes.data);
-        if (marmitaSidesRes.data) setMarmitaSides(marmitaSidesRes.data);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleProductClick = (product: Product) => {
     const isPizzaProduct = product.is_pizza || product.category?.toLowerCase() === 'pizza';
@@ -322,7 +236,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     );
   }
 
-  if (!restaurant) return <div>{t('menu.restaurantNotFound')}</div>;
+  if (!loading && (!menuData || isError || !restaurant)) return <div className="min-h-screen flex items-center justify-center p-4">{t('menu.restaurantNotFound')}</div>;
+  if (!restaurant) return null;
 
   const currency = restaurant.currency === 'PYG' ? 'PYG' : 'BRL';
 

@@ -8,6 +8,8 @@ export type { OrderCoordinate } from './useOrderCoordinates';
 export { useProductUpsells, useSaveProductUpsells, fetchUpsellsForProducts } from './useProductUpsells';
 export type { UpsellRow } from './useProductUpsells';
 export { useDeliveryZones } from './useDeliveryZones';
+export { useRestaurantMenuData } from './useRestaurantMenuData';
+export type { RestaurantMenuData } from './useRestaurantMenuData';
 export { useTables } from './useTables';
 export { useWaiterCalls } from './useWaiterCalls';
 export { useOrders } from './useOrders';

@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
 import { getSubdomain } from '@/lib/subdomain';
-import { Restaurant, Product, Category, Subcategory } from '@/types';
+import { useRestaurantMenuData } from '@/hooks/queries';
 import { Clock, Search, Utensils, Coffee, IceCream, UtensilsCrossed } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,26 +12,12 @@ import { useTranslation } from 'react-i18next';
 import ProductCardViewOnly from '@/components/public/ProductCardViewOnly';
 
 const CATEGORY_ICONS: Record<string, any> = {
-  'Marmitas': UtensilsCrossed,
-  'Pizza': Utensils,
-  'Bebidas': Coffee,
-  'Sobremesas': IceCream,
-  'default': Utensils
+  Marmitas: UtensilsCrossed,
+  Pizza: Utensils,
+  Bebidas: Coffee,
+  Sobremesas: IceCream,
+  default: Utensils,
 };
-
-// Ordem de categorias: pratos principais primeiro, bebidas por último
-const CATEGORY_ORDER: Record<string, number> = {
-  'Marmitas': 0,
-  'Pizza': 1,
-  'Massas': 2,
-  'Lanches': 3,
-  'Aperitivos': 4,
-  'Combos': 5,
-  'Sobremesas': 6,
-  'Bebidas': 7,
-  'Outros': 8,
-};
-
 
 interface MenuViewOnlyProps {
   /** Quando renderizado dentro de StoreLayout (subdomínio), o slug é passado por prop */
@@ -49,18 +34,22 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
     params.restaurantSlug ??
     (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
 
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [categoriesFromDb, setCategoriesFromDb] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    loadRestaurantData();
-  }, [restaurantSlug]);
+  const { data: menuData, isLoading: loading, isError } = useRestaurantMenuData(restaurantSlug);
+
+  const { restaurant, products, categories, categoriesFromDb, subcategories } = useMemo(() => {
+    if (!menuData)
+      return { restaurant: null, products: [], categories: [], categoriesFromDb: [], subcategories: [] };
+    return {
+      restaurant: menuData.restaurant,
+      products: menuData.products,
+      categories: menuData.categories,
+      categoriesFromDb: menuData.categoriesFromDb,
+      subcategories: menuData.subcategories,
+    };
+  }, [menuData]);
 
   // Atualizar título e meta tags de compartilhamento (logo do restaurante como imagem destacada)
   useEffect(() => {
@@ -72,86 +61,12 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
   }, [restaurant?.name, t]);
   useSharingMeta(restaurant ? { name: restaurant.name, logo: restaurant.logo } : null);
 
-  const loadRestaurantData = async () => {
-    if (!restaurantSlug) return;
-
-    try {
-      setLoading(true);
-
-      // Buscar restaurante
-      const { data: restaurantData } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('slug', restaurantSlug)
-        .eq('is_active', true)
-        .single();
-
-      if (restaurantData) {
-        const lang: MenuLanguage = restaurantData.language === 'es' ? 'es' : 'pt';
-        i18n.changeLanguage(lang);
-        setStoredMenuLanguage(lang);
-        setRestaurant(restaurantData);
-
-        // Buscar categorias ordenadas
-        const { data: categoriesData } = await supabase
-          .from('categories')
-          .select('*')
-          .eq('restaurant_id', restaurantData.id)
-          .order('order_index', { ascending: true });
-        const categoriesList = categoriesData ?? [];
-        setCategoriesFromDb(categoriesList);
-        let subcategoriesData: Subcategory[] = [];
-        try {
-          const { data: subData } = await supabase.from('subcategories').select('*').eq('restaurant_id', restaurantData.id).order('order_index', { ascending: true });
-          subcategoriesData = subData ?? [];
-        } catch {
-          // ignorar se tabela subcategories não existir
-        }
-        setSubcategories(subcategoriesData);
-
-        // Criar mapa de ordem de categorias
-        const categoryOrderMap = new Map<string, number>();
-        categoriesList.forEach((cat) => {
-          categoryOrderMap.set(cat.name, cat.order_index);
-        });
-
-        // Buscar produtos (ordem do admin via order_index)
-        const { data: productsData } = await supabase
-          .from('products')
-          .select('*')
-          .eq('restaurant_id', restaurantData.id)
-          .eq('is_active', true)
-          .order('order_index', { ascending: true });
-
-        if (productsData && productsData.length > 0) {
-          // Ordenar produtos: primeiro por categoria (order_index do banco), depois por order_index do produto
-          const sortedProducts = [...productsData].sort((a, b) => {
-            const orderA = categoryOrderMap.get(a.category) ?? CATEGORY_ORDER[a.category] ?? 999;
-            const orderB = categoryOrderMap.get(b.category) ?? CATEGORY_ORDER[b.category] ?? 999;
-            if (orderA !== orderB) {
-              return orderA - orderB;
-            }
-            return (a.order_index ?? 0) - (b.order_index ?? 0);
-          });
-          
-          setProducts(sortedProducts);
-          
-          // Ordenar categorias usando order_index do banco
-          const uniqueCategories = Array.from(new Set(productsData.map((p) => p.category)));
-          const sortedCategories = uniqueCategories.sort((a, b) => {
-            const orderA = categoryOrderMap.get(a) ?? CATEGORY_ORDER[a] ?? 999;
-            const orderB = categoryOrderMap.get(b) ?? CATEGORY_ORDER[b] ?? 999;
-            return orderA - orderB;
-          });
-          setCategories(sortedCategories);
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (!menuData?.restaurant) return;
+    const lang: MenuLanguage = menuData.restaurant.language === 'es' ? 'es' : 'pt';
+    i18n.changeLanguage(lang);
+    setStoredMenuLanguage(lang);
+  }, [menuData?.restaurant]);
 
   // Filtrar produtos por categoria e busca
   const filteredProducts = products.filter((product) => {
@@ -197,7 +112,8 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
     );
   }
 
-  if (!restaurant) return <div className="min-h-screen flex items-center justify-center">{t('menu.restaurantNotFound')}</div>;
+  if (!loading && (!menuData || isError || !restaurant)) return <div className="min-h-screen flex items-center justify-center p-4">{t('menu.restaurantNotFound')}</div>;
+  if (!restaurant) return null;
 
   const currency = restaurant.currency === 'PYG' ? 'PYG' : 'BRL';
 
