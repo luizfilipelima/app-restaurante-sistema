@@ -47,6 +47,7 @@ const AdminBuffet           = lazyWithRetry(() => import('./pages/admin/Buffet')
 const AdminCashier          = lazyWithRetry(() => import('./pages/admin/Cashier'));
 const AdminComandaQRCode    = lazyWithRetry(() => import('./pages/admin/ComandaQRCode'));
 const AdminProductsInventory = lazyWithRetry(() => import('./pages/admin/ProductsInventory'));
+const AdminInventory         = lazyWithRetry(() => import('./pages/admin/Inventory'));
 const AdminTables           = lazyWithRetry(() => import('./pages/admin/Tables'));
 const UpgradePage           = lazyWithRetry(() => import('./pages/admin/UpgradePage'));
 
@@ -81,6 +82,7 @@ const adminRoutes = (
     <Route index element={<AdminDashboard />} />
     <Route path="orders" element={<AdminOrders />} />
     <Route path="menu" element={<AdminMenu />} />
+    <Route path="inventory" element={<AdminInventory />} />
     <Route
       path="buffet"
       element={

@@ -38,6 +38,7 @@ import {
   ScanBarcode,
   QrCode,
   Users,
+  Boxes,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -172,6 +173,13 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
         name: 'Central do Cardápio',
         href: `${base}/menu`,
         icon: UtensilsCrossed,
+        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
+      },
+      {
+        kind: 'leaf',
+        name: 'Controle de Estoque',
+        href: `${base}/inventory`,
+        icon: Boxes,
         roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
       },
     ],

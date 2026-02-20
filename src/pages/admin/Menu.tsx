@@ -94,6 +94,7 @@ import {
   Eye,
   EyeOff,
   ChevronRight,
+  Boxes,
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
 
@@ -140,9 +141,10 @@ interface SortableCategoryItemProps {
   isSelected: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onToggleInventory: (id: string, current: boolean) => void;
 }
 
-function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete }: SortableCategoryItemProps) {
+function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete, onToggleInventory }: SortableCategoryItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: category.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
 
@@ -180,12 +182,31 @@ function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete 
           <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isSelected ? 'rotate-90' : ''}`} />
         )}
         <span className="truncate text-sm font-medium">{category.name}</span>
+        {category.has_inventory && (
+          <span title="Estoque ativo">
+            <Boxes className={`h-3 w-3 shrink-0 ml-0.5 ${isSelected ? 'text-primary-foreground/70' : 'text-primary/70'}`} />
+          </span>
+        )}
         <Badge
           variant={isSelected ? 'secondary' : 'outline'}
           className={`ml-auto shrink-0 text-xs h-4 px-1.5 ${isSelected ? 'bg-primary-foreground/20 text-primary-foreground border-0' : ''}`}
         >
           {count}
         </Badge>
+      </button>
+
+      {/* Toggle de estoque — aparece no hover */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onToggleInventory(category.id, !!category.has_inventory); }}
+        className={`p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
+          category.has_inventory
+            ? isSelected ? 'text-primary-foreground/80 hover:text-primary-foreground' : 'text-primary/70 hover:text-primary'
+            : isSelected ? 'text-primary-foreground/40 hover:text-primary-foreground' : 'text-muted-foreground/40 hover:text-primary'
+        }`}
+        title={category.has_inventory ? 'Estoque ativo — clique para desativar' : 'Ativar controle de estoque nesta categoria'}
+      >
+        <Boxes className="h-3.5 w-3.5" />
       </button>
 
       <button
@@ -339,6 +360,7 @@ export default function AdminMenu() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categoryFormName, setCategoryFormName] = useState('');
   const [categoryFormType, setCategoryFormType] = useState<string>(CATEGORY_TYPES[0].id);
+  const [categoryFormInventory, setCategoryFormInventory] = useState(false);
 
   // Config modal (Pizza / Marmita)
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -707,12 +729,14 @@ export default function AdminMenu() {
       const { error } = await supabase.from('categories').insert({
         restaurant_id: restaurantId, name, order_index: categories.length,
         is_pizza: preset.is_pizza, is_marmita: preset.is_marmita,
+        has_inventory: categoryFormInventory,
         extra_field: preset.extra_field, extra_label: preset.extra_label, extra_placeholder: preset.extra_placeholder,
       });
       if (error) throw error;
       setShowCategoryModal(false);
       setCategoryFormName('');
       setCategoryFormType(CATEGORY_TYPES[0].id);
+      setCategoryFormInventory(false);
       await loadCategoriesAndSubcategories();
       toast({ title: 'Categoria adicionada!' });
     } catch (e) { toast({ title: 'Erro ao adicionar categoria', variant: 'destructive' }); }
@@ -737,6 +761,26 @@ export default function AdminMenu() {
       await loadProducts();
       toast({ title: 'Categoria removida!' });
     } catch (e) { toast({ title: 'Erro ao remover categoria', variant: 'destructive' }); }
+  };
+
+  const handleToggleCategoryInventory = async (categoryId: string, currentValue: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .update({ has_inventory: !currentValue })
+        .eq('id', categoryId)
+        .eq('restaurant_id', restaurantId!);
+      if (error) throw error;
+      await loadCategoriesAndSubcategories();
+      toast({
+        title: !currentValue ? 'Estoque ativado!' : 'Estoque desativado',
+        description: !currentValue
+          ? 'Gerencie o estoque desta categoria em Controle de Estoque.'
+          : 'Esta categoria não terá mais controle de estoque.',
+      });
+    } catch {
+      toast({ title: 'Erro ao atualizar categoria', variant: 'destructive' });
+    }
   };
 
   // ─── Slug ─────────────────────────────────────────────────────────────────────
@@ -1042,6 +1086,7 @@ export default function AdminMenu() {
                         isSelected={selectedCategoryId === cat.id}
                         onSelect={() => setSelectedCategoryId(cat.id)}
                         onDelete={() => handleDeleteCategory(cat)}
+                        onToggleInventory={handleToggleCategoryInventory}
                       />
                     ))}
                   </SortableContext>
@@ -1373,6 +1418,20 @@ export default function AdminMenu() {
                   {CATEGORY_TYPES.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            {/* Toggle de estoque */}
+            <div className={`flex items-start gap-3 rounded-lg border p-3.5 transition-colors cursor-pointer ${categoryFormInventory ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/40'}`}
+              onClick={() => setCategoryFormInventory((v) => !v)}>
+              <Switch checked={categoryFormInventory} onCheckedChange={setCategoryFormInventory} className="mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <Boxes className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                  <span className="text-sm font-medium">Controle de Estoque</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Ativa o gerenciamento de quantidade, custo e validade para os produtos desta categoria.
+                </p>
+              </div>
             </div>
           </div>
           <DialogFooter>

@@ -374,6 +374,7 @@ export interface Category {
   order_index: number;
   is_pizza?: boolean;
   is_marmita?: boolean;
+  has_inventory?: boolean;
   extra_field?: string | null;
   extra_label?: string | null;
   extra_placeholder?: string | null;
@@ -389,6 +390,37 @@ export interface Subcategory {
   order_index: number;
   created_at: string;
   updated_at: string;
+}
+
+// ==================== INVENTORY TYPES ====================
+
+export type InventoryMovementType = 'sale' | 'restock' | 'adjustment' | 'loss' | 'return';
+
+export type InventoryStatus = 'in_stock' | 'low_stock' | 'out_of_stock' | 'expired';
+
+export interface InventoryItem {
+  id: string;
+  restaurant_id: string;
+  product_id: string;
+  quantity: number;
+  min_quantity: number;
+  unit: string;
+  cost_price: number;
+  sale_price: number;
+  expiry_date?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryMovement {
+  id: string;
+  inventory_item_id: string;
+  order_id?: string | null;
+  quantity_change: number;
+  movement_type: InventoryMovementType;
+  notes?: string | null;
+  created_at: string;
 }
 
 // ==================== BUFFET COMANDAS TYPES ====================
