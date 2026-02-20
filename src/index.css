@@ -163,22 +163,35 @@
     @apply bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent;
   }
 
-  /* ========== Admin Panel (estilo Shopeers/moderno) ========== */
+  /* ========== Admin Panel — Dark Sidebar + Floating Panel ========== */
+
+  /* Cor base da sidebar e fundo escuro */
+  --admin-sidebar-bg: #0d1a10;
+
   .admin-sidebar {
-    @apply bg-white border-r border-slate-200/80;
+    background-color: var(--admin-sidebar-bg);
   }
   .admin-sidebar .nav-item-active {
-    @apply bg-slate-100 text-slate-900 border-l-4;
-    border-left-color: #F87116;
+    @apply bg-orange-500/10 text-orange-300 border-l-4;
+    border-left-color: theme('colors.orange.400');
   }
   .admin-sidebar .nav-item {
-    @apply text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-4 border-l-transparent;
+    @apply text-slate-300 hover:bg-white/[0.06] hover:text-white border-l-4 border-l-transparent;
   }
+
+  /* Cards do painel — fundo branco, borda sutil */
   .admin-card {
     @apply bg-white rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow;
   }
   .admin-metric-card {
     @apply bg-white rounded-xl border border-slate-200/80 p-5 shadow-sm;
+  }
+
+  /* Painel flutuante: a área de conteúdo "flutua" sobre o fundo escuro */
+  .admin-content-panel {
+    @apply bg-slate-50 md:rounded-tl-2xl overflow-x-hidden;
+    /* margin que expõe o fundo escuro ao redor */
+    @apply md:ml-2 md:mr-3 md:mt-3;
   }
 
   /* Esconder scrollbar mas permitir scroll */
