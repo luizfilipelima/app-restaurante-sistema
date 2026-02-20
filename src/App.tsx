@@ -66,6 +66,7 @@ const MenuViewOnly          = lazyWithRetry(() => import('./pages/public/MenuVie
 const MenuTable             = lazyWithRetry(() => import('./pages/public/MenuTable'));
 const VirtualComanda        = lazyWithRetry(() => import('./pages/public/VirtualComanda'));
 const OrderTracking         = lazyWithRetry(() => import('./pages/public/OrderTracking'));
+const OrderConfirmation     = lazyWithRetry(() => import('./pages/public/OrderConfirmation'));
 const LinkBio               = lazyWithRetry(() => import('./pages/public/LinkBio'));
 
 // ─── Fallback de carregamento ─────────────────────────────────────────────────
@@ -445,6 +446,7 @@ function App() {
         <Route path="/:restaurantSlug/menu" element={<MenuViewOnly />} />
         <Route path="/:restaurantSlug/cardapio/:tableNumber" element={<MenuTable />} />
         <Route path="/:restaurantSlug/checkout" element={<PublicCheckout />} />
+        <Route path="/:restaurantSlug/order-confirmed" element={<OrderConfirmation />} />
         {/* Comanda Digital (Enterprise): cliente abre e acompanha a sua comanda */}
         <Route path="/:restaurantSlug/comanda" element={<VirtualComanda />} />
         {/* Rastreamento de Pedido — rota pública para acompanhamento em tempo real */}

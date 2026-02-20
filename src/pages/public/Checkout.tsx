@@ -456,11 +456,14 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         clearCart();
         const newOrderId = (rpcResult as { order_id?: string })?.order_id;
-        const trackPath = newOrderId
-          ? (isSubdomain ? `/track/${newOrderId}` : `/${restaurantSlug}/track/${newOrderId}`)
+        const orderType = deliveryType === DeliveryType.DELIVERY ? 'delivery' : 'pickup';
+        const confirmPath = newOrderId
+          ? (isSubdomain
+              ? `/order-confirmed?orderId=${encodeURIComponent(newOrderId)}&type=${orderType}`
+              : `/${restaurantSlug}/order-confirmed?orderId=${encodeURIComponent(newOrderId)}&type=${orderType}`)
           : null;
 
-        if (trackPath && newOrderId) {
+        if (confirmPath && newOrderId) {
           sessionStorage.setItem(`order_just_placed_${newOrderId}`, '1');
           const isPix = paymentMethod === PaymentMethod.PIX;
           toast({
@@ -471,7 +474,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             className: 'bg-green-50 border-green-200',
           });
           window.open(generateWhatsAppLink(whatsappNumber, message), '_blank', 'noopener,noreferrer');
-          window.location.assign(window.location.origin + trackPath);
+          window.location.assign(window.location.origin + confirmPath);
         } else {
           toast({
             title: '✅ ' + t('checkout.successOrderTitle'),

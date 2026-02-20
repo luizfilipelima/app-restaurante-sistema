@@ -91,6 +91,14 @@
     "successOrderDesc": "Redirecionando para o WhatsApp...",
     "errorFinalizeTitle": "Erro ao finalizar pedido"
   },
+  "orderConfirmation": {
+    "title": "Pedido realizado!",
+    "deliveryMessage": "Você será avisado no WhatsApp assim que o delivery estiver a caminho.",
+    "pickupMessage": "Você será avisado no WhatsApp quando estiver pronto para retirada.",
+    "whatsappInfo": "O restaurante recebeu seu pedido e irá confirmar pelo WhatsApp em breve.",
+    "trackOrder": "Acompanhar pedido",
+    "invalidLink": "Link inválido ou pedido não encontrado."
+  },
   "productCard": {
     "add": "Adicionar",
     "customize": "Personalizar",
