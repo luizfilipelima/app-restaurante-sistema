@@ -235,6 +235,9 @@ export interface MarmitaProtein {
   created_at: string;
 }
 
+/** Dias da semana para oferta recorrente: mon, tue, wed, thu, fri, sat, sun. Null = oferta única. */
+export type OfferRepeatDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
 export interface ProductOffer {
   id: string;
   restaurant_id: string;
@@ -244,6 +247,8 @@ export interface ProductOffer {
   starts_at: string;
   ends_at: string;
   label?: string | null;
+  /** Dias da semana em que a oferta repete. Null/vazio = oferta única */
+  repeat_days?: OfferRepeatDay[] | null;
   is_active: boolean;
   sort_order: number;
   created_at?: string;

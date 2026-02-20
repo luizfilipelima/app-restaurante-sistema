@@ -9,7 +9,7 @@ async function fetchOffers(restaurantId: string | null): Promise<ProductOffer[]>
     .from('product_offers')
     .select(`
       id, restaurant_id, product_id, offer_price, original_price, starts_at, ends_at,
-      label, is_active, sort_order, created_at, updated_at,
+      label, repeat_days, is_active, sort_order, created_at, updated_at,
       product:products(id, name, price, price_sale, image_url, category, is_active)
     `)
     .eq('restaurant_id', restaurantId)
@@ -18,24 +18,44 @@ async function fetchOffers(restaurantId: string | null): Promise<ProductOffer[]>
   return (data ?? []).map((row: any) => ({ ...row, product: row.product as Product }));
 }
 
-/** Ofertas vigentes para o cardápio público (starts_at <= now <= ends_at) */
+const DOW_TO_DAY: Record<number, string> = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' };
+
+/** Ofertas vigentes para o cardápio público (one-time ou recorrentes) */
 async function fetchActiveOffersForMenu(restaurantId: string | null): Promise<Array<ProductOffer & { product: Product }>> {
   if (!restaurantId) return [];
-  const now = new Date().toISOString();
+  const now = new Date();
+  const nowIso = now.toISOString();
   const { data, error } = await supabase
     .from('product_offers')
     .select(`
       id, restaurant_id, product_id, offer_price, original_price, starts_at, ends_at,
-      label, is_active, sort_order,
+      label, repeat_days, is_active, sort_order,
       product:products(*)
     `)
     .eq('restaurant_id', restaurantId)
     .eq('is_active', true)
-    .lte('starts_at', now)
-    .gte('ends_at', now)
-    .order('sort_order', { ascending: true });
+    .gte('ends_at', nowIso);
   if (error) throw error;
-  return (data ?? []).map((row: any) => ({ ...row, product: row.product as Product }));
+  const rows = (data ?? []).map((row: any) => ({ ...row, product: row.product as Product }));
+  return rows.filter((offer: ProductOffer & { product: Product }) => {
+    const start = new Date(offer.starts_at);
+    const end = new Date(offer.ends_at);
+    const repeatDays = offer.repeat_days as string[] | null | undefined;
+    if (repeatDays && repeatDays.length > 0) {
+      const today = now.getDay();
+      const todayKey = DOW_TO_DAY[today];
+      if (!todayKey || !(repeatDays as readonly string[]).includes(todayKey)) return false;
+      const todayStr = now.toISOString().slice(0, 10);
+      const startStr = start.toISOString().slice(0, 10);
+      const endStr = end.toISOString().slice(0, 10);
+      if (todayStr < startStr || todayStr > endStr) return false;
+      const t = now.getHours() * 60 + now.getMinutes();
+      const tStart = start.getHours() * 60 + start.getMinutes();
+      const tEnd = end.getHours() * 60 + end.getMinutes();
+      return t >= tStart && t <= tEnd;
+    }
+    return start <= now && now <= end;
+  }).sort((a: ProductOffer, b: ProductOffer) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 }
 
 /** Ofertas vigentes por slug do restaurante (cardápio público) */
@@ -68,6 +88,7 @@ export function useProductOffers(restaurantId: string | null) {
       starts_at: string;
       ends_at: string;
       label?: string | null;
+      repeat_days?: string[] | null;
       sort_order?: number;
     }) => {
       if (!restaurantId) throw new Error('Restaurante não definido');

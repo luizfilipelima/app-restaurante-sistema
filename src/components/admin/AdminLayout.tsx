@@ -218,17 +218,17 @@ const buildNavSections = (
       },
       {
         kind: 'leaf',
-        name: t('nav.items.offers'),
-        href: `${base}/offers`,
-        icon: Tag,
-        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
-      },
-      {
-        kind: 'leaf',
         name: t('nav.items.inventory'),
         href: `${base}/inventory`,
         icon: Boxes,
         // Estoque: gerente e acima
+        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
+      },
+      {
+        kind: 'leaf',
+        name: t('nav.items.offers'),
+        href: `${base}/offers`,
+        icon: Tag,
         roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
       },
     ],
