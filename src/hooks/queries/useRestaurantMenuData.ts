@@ -12,6 +12,8 @@ import type {
   MarmitaSize,
   MarmitaProtein,
   MarmitaSide,
+  ProductAddonGroup,
+  ProductAddonItem,
 } from '@/types';
 
 const CATEGORY_ORDER: Record<string, number> = {
@@ -50,6 +52,8 @@ export interface RestaurantMenuData {
   marmitaSides: MarmitaSide[];
   /** Mapa combo_product_id -> itens do combo (para exibir no cardápio) */
   productComboItemsMap: Record<string, ProductComboItemWithProduct[]>;
+  /** Mapa product_id -> grupos de adicionais com itens */
+  productAddonsMap: Record<string, Array<ProductAddonGroup & { items: ProductAddonItem[] }>>;
 }
 
 async function fetchRestaurantMenuData(restaurantSlug: string): Promise<RestaurantMenuData | null> {
@@ -100,8 +104,8 @@ async function fetchRestaurantMenuData(restaurantSlug: string): Promise<Restaura
 
   let products: Product[] = [];
   let categories: string[] = [];
-
   let productComboItemsMap: Record<string, ProductComboItemWithProduct[]> = {};
+  let productAddonsMap: Record<string, Array<ProductAddonGroup & { items: ProductAddonItem[] }>> = {};
 
   if (productsData.length > 0) {
     const sorted = [...productsData].sort((a: Product, b: Product) => {
@@ -135,6 +139,36 @@ async function fetchRestaurantMenuData(restaurantSlug: string): Promise<Restaura
         productComboItemsMap = {};
       }
     }
+
+    // Carregar adicionais por produto
+    try {
+      const { data: addonGroups } = await supabase
+        .from('product_addon_groups')
+        .select('*')
+        .in('product_id', productsData.map((p: Product) => p.id))
+        .order('order_index', { ascending: true });
+      if (addonGroups?.length) {
+        const groupIds = addonGroups.map((g: any) => g.id);
+        const { data: addonItems } = await supabase
+          .from('product_addon_items')
+          .select('*')
+          .in('addon_group_id', groupIds)
+          .order('order_index', { ascending: true });
+        const itemsByGroup: Record<string, ProductAddonItem[]> = {};
+        (addonItems ?? []).forEach((i: any) => {
+          const gid = i.addon_group_id;
+          if (!itemsByGroup[gid]) itemsByGroup[gid] = [];
+          itemsByGroup[gid].push(i as ProductAddonItem);
+        });
+        addonGroups.forEach((g: any) => {
+          const pid = g.product_id;
+          if (!productAddonsMap[pid]) productAddonsMap[pid] = [];
+          productAddonsMap[pid].push({ ...g, items: itemsByGroup[g.id] ?? [] });
+        });
+      }
+    } catch {
+      productAddonsMap = {};
+    }
   }
 
   return {
@@ -151,6 +185,7 @@ async function fetchRestaurantMenuData(restaurantSlug: string): Promise<Restaura
     marmitaProteins: (marmitaProteinsRes.data ?? []) as MarmitaProtein[],
     marmitaSides: (marmitaSidesRes.data ?? []) as MarmitaSide[],
     productComboItemsMap,
+    productAddonsMap,
   };
 }
 

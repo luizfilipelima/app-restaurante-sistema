@@ -57,7 +57,8 @@ export const useCartStore = create<CartState>()(
               i.observations === item.observations
             );
           }
-          return i.observations === item.observations;
+          const sameAddons = (JSON.stringify(i.addons ?? []) === JSON.stringify(item.addons ?? []));
+          return sameAddons && i.observations === item.observations;
         });
 
         if (existingIndex >= 0) {

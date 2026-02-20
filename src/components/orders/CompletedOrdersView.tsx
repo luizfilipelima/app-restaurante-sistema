@@ -257,6 +257,9 @@ function OrderRow({ order, currency, onPrint }: OrderRowProps) {
                         <div className="min-w-0">
                           <span className="text-xs font-medium text-foreground">
                             {item.product_name}
+                            {((item as { addons?: Array<{ name: string }> }).addons ?? []).length > 0 && (
+                              <span className="text-muted-foreground"> + {((item as { addons: Array<{ name: string }> }).addons).map((a) => a.name).join(', ')}</span>
+                            )}
                           </span>
                           {item.observations && (
                             <p className="text-[11px] text-muted-foreground">{item.observations}</p>

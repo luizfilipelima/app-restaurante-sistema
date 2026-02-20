@@ -13,7 +13,7 @@ const ORDERS_SELECT = `
   status, notes, is_paid, courier_id, order_source, table_id, virtual_comanda_id, created_at, updated_at, accepted_at, ready_at, delivered_at,
   delivery_zone:delivery_zones(id, location_name, fee),
   virtual_comandas(short_code),
-  order_items(id, order_id, product_name, quantity, unit_price, total_price, observations, pizza_size, pizza_flavors, pizza_dough, pizza_edge),
+  order_items(id, order_id, product_name, quantity, unit_price, total_price, observations, pizza_size, pizza_flavors, pizza_dough, pizza_edge, addons),
   courier:couriers(id, name, phone, phone_country)
 `;
 

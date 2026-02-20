@@ -45,6 +45,7 @@ interface ExpoOrderItem {
   pizza_flavors?: string[] | null;
   pizza_dough?: string | null;
   pizza_edge?: string | null;
+  addons?: Array<{ addonItemId: string; name: string; price: number }> | null;
 }
 
 interface ExpoOrder {
@@ -213,6 +214,14 @@ function ExpoCard({
                   )}
                 </div>
               )}
+              {/* Adicionais */}
+              {item.addons && Array.isArray(item.addons) && item.addons.length > 0 && (
+                <div className="mt-0.5 text-xs text-amber-300 pl-2 border-l border-amber-500/50 space-y-0.5">
+                  {item.addons.map((a: { name: string; price?: number }, i: number) => (
+                    <p key={i}>+ {a.name}{a.price ? ` (+R$ ${Number(a.price).toFixed(2)})` : ''}</p>
+                  ))}
+                </div>
+              )}
               {/* Observação */}
               {item.observations && (
                 <p className="text-xs font-bold text-red-400 mt-0.5 flex items-center gap-1 uppercase">
@@ -340,7 +349,7 @@ export default function ExpoScreen() {
           id, restaurant_id, customer_name, order_source, table_id, notes,
           status, updated_at, ready_at, accepted_at, delivered_at,
           order_items(id, product_name, quantity, observations,
-            pizza_size, pizza_flavors, pizza_dough, pizza_edge)
+            pizza_size, pizza_flavors, pizza_dough, pizza_edge, addons)
         `)
         .eq('restaurant_id', restaurantId)
         .eq('status', 'ready')

@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useAdminRestaurantId, useAdminCurrency, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import { useProductOffers } from '@/hooks/queries';
 import { supabase } from '@/lib/supabase';
@@ -15,6 +14,7 @@ const REPEAT_DAYS: { key: OfferRepeatDay; label: string }[] = [
   { key: 'sat', label: 'Sáb' },
   { key: 'sun', label: 'Dom' },
 ];
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Tag, Plus, Pencil, Trash2, Loader2, ArrowRight, Package, Calendar, Repeat } from 'lucide-react';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
 import { toast } from '@/hooks/use-toast';
@@ -51,8 +60,12 @@ export default function AdminOffers() {
   const { t } = useAdminTranslation();
   const { offers, loading, createOffer, updateOffer, deleteOffer, refetch } = useProductOffers(restaurantId);
   const [products, setProducts] = useState<Product[]>([]);
+  type StatusFilter = 'all' | 'active' | 'scheduled' | 'expired';
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingOffer, setEditingOffer] = useState<ProductOffer | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     product_id: '',
@@ -214,24 +227,49 @@ export default function AdminOffers() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t('offers.deleteConfirm'))) return;
+    if (!deleteTarget || deleteTarget.id !== id) return;
+    setDeleting(true);
     try {
       await deleteOffer(id);
       toast({ title: t('offers.deleteOk') });
+      setDeleteTarget(null);
       refetch();
     } catch {
       toast({ title: 'Erro ao remover', variant: 'destructive' });
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const getOfferStatus = (o: ProductOffer) => {
+  const getOfferStatus = (o: ProductOffer): { type: StatusFilter; label: string; color: string } => {
     const now = new Date();
     const start = new Date(o.starts_at);
     const end = new Date(o.ends_at);
-    if (isBefore(now, start)) return { label: t('offers.scheduled'), color: 'bg-amber-500/15 text-amber-700' };
-    if (isAfter(now, end)) return { label: 'Expirada', color: 'bg-slate-200 text-slate-600' };
-    return { label: t('offers.active'), color: 'bg-emerald-500/15 text-emerald-700' };
+    if (isBefore(now, start)) return { type: 'scheduled', label: t('offers.scheduled'), color: 'bg-amber-500/15 text-amber-700' };
+    if (isAfter(now, end)) return { type: 'expired', label: t('offers.expired'), color: 'bg-slate-200 text-slate-600' };
+    return { type: 'active', label: t('offers.active'), color: 'bg-emerald-500/15 text-emerald-700' };
   };
+
+  const { filteredOffers, stats } = useMemo(() => {
+    const now = new Date();
+    const statuses = offers.map((o) => {
+      const start = new Date(o.starts_at);
+      const end = new Date(o.ends_at);
+      const type: StatusFilter = isBefore(now, start) ? 'scheduled' : isAfter(now, end) ? 'expired' : 'active';
+      return { offer: o, type };
+    });
+    const stats = {
+      all: offers.length,
+      active: statuses.filter((s) => s.type === 'active').length,
+      scheduled: statuses.filter((s) => s.type === 'scheduled').length,
+      expired: statuses.filter((s) => s.type === 'expired').length,
+    };
+    const filtered =
+      statusFilter === 'all'
+        ? offers
+        : offers.filter((_, i) => statuses[i].type === statusFilter);
+    return { filteredOffers: filtered, stats };
+  }, [offers, statusFilter]);
 
   if (loading && offers.length === 0) {
     return (
@@ -267,83 +305,175 @@ export default function AdminOffers() {
 
       {offers.length === 0 ? (
         <Card>
-          <CardContent className="p-12 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-orange-100 mb-4">
-              <Tag className="h-7 w-7 text-orange-600" />
+          <CardContent className="p-14 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 mb-5">
+              <Tag className="h-8 w-8 text-orange-600" />
             </div>
-            <p className="font-semibold text-foreground mb-1">{t('offers.noOffers')}</p>
-            <p className="text-sm text-muted-foreground mb-6">{t('offers.noOffersDesc')}</p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={() => openCreate()}>
+            <p className="font-semibold text-lg text-foreground mb-2">{t('offers.noOffers')}</p>
+            <p className="text-sm text-muted-foreground mb-8 max-w-md mx-auto">{t('offers.noOffersDesc')}</p>
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Button size="lg" onClick={() => openCreate()}>
                 <Plus className="h-4 w-4 mr-2" />
                 {t('offers.addOffer')}
               </Button>
-              <Button asChild variant="outline">
-                <Link to={`${basePath}/menu`}>Ir para Central do Cardápio</Link>
+              <Button asChild variant="outline" size="lg">
+                <Link to={`${basePath}/menu`}>
+                  Ir para Central do Cardápio
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Link>
               </Button>
             </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {offers.map((offer) => {
-            const status = getOfferStatus(offer);
-            const product = offer.product;
-            return (
-              <Card key={offer.id} className="overflow-hidden">
-                <div className="flex">
-                  <div className="w-20 h-20 flex-shrink-0 bg-muted flex items-center justify-center">
-                    {product?.image_url ? (
-                      <img src={product.image_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <Package className="h-8 w-8 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0 p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-semibold truncate">{product?.name ?? '—'}</p>
-                        <p className="text-xs text-muted-foreground truncate">{product?.category}</p>
-                      </div>
-                      <Badge variant="outline" className={status.color}>
-                        {status.label}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 flex items-center gap-2 text-sm">
-                      <span className="line-through text-muted-foreground">{formatCurrency(offer.original_price, currency)}</span>
-                      <span className="font-bold text-orange-600">{formatCurrency(offer.offer_price, currency)}</span>
-                      {offer.label && <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">{offer.label}</span>}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {offer.repeat_days && offer.repeat_days.length > 0 ? (
-                        <>
-                          Recorre: {offer.repeat_days.map((d) => REPEAT_DAYS.find((x) => x.key === d)?.label ?? d).join(', ')} ·{' '}
-                          {format(new Date(offer.starts_at), 'HH:mm', { locale: ptBR })}–{format(new Date(offer.ends_at), 'HH:mm', { locale: ptBR })}
-                        </>
-                      ) : (
-                        <>
-                          {format(new Date(offer.starts_at), "dd/MM HH:mm", { locale: ptBR })} — {format(new Date(offer.ends_at), "dd/MM HH:mm", { locale: ptBR })}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-1 p-2 border-t bg-muted/30">
-                  <Button variant="ghost" size="sm" onClick={() => openEdit(offer)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(offer.id)} className="text-destructive hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+              <TabsList className="h-11 px-1">
+                <TabsTrigger value="all" className="gap-2 px-4">
+                  {t('offers.filterAll')}
+                  <span className="text-xs text-muted-foreground">({stats.all})</span>
+                </TabsTrigger>
+                <TabsTrigger value="active" className="gap-2 px-4">
+                  {t('offers.filterActive')}
+                  <span className="text-xs text-muted-foreground">({stats.active})</span>
+                </TabsTrigger>
+                <TabsTrigger value="scheduled" className="gap-2 px-4">
+                  {t('offers.filterScheduled')}
+                  <span className="text-xs text-muted-foreground">({stats.scheduled})</span>
+                </TabsTrigger>
+                <TabsTrigger value="expired" className="gap-2 px-4">
+                  {t('offers.filterExpired')}
+                  <span className="text-xs text-muted-foreground">({stats.expired})</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          <Card>
+            {filteredOffers.length === 0 ? (
+              <CardContent className="py-16 text-center">
+                <p className="text-muted-foreground mb-4">{t('offers.noOffersInFilter')}</p>
+                <Button variant="outline" onClick={() => setStatusFilter('all')}>
+                  {t('offers.viewAllOffers')}
+                </Button>
+              </CardContent>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[48px]" />
+                    <TableHead>{t('offers.tableProduct')}</TableHead>
+                    <TableHead>{t('offers.tablePrices')}</TableHead>
+                    <TableHead>{t('offers.tableLabel')}</TableHead>
+                    <TableHead>{t('offers.tablePeriod')}</TableHead>
+                    <TableHead>{t('offers.tableStatus')}</TableHead>
+                    <TableHead className="w-[100px] text-right">{t('offers.tableActions')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredOffers.map((offer) => {
+                    const status = getOfferStatus(offer);
+                    const product = offer.product;
+                    return (
+                      <TableRow key={offer.id}>
+                        <TableCell className="w-12 p-3">
+                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                            {product?.image_url ? (
+                              <img src={product.image_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <Package className="h-5 w-5 text-muted-foreground" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{product?.name ?? '—'}</p>
+                            <p className="text-xs text-muted-foreground">{product?.category ?? '—'}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="line-through text-muted-foreground text-sm">{formatCurrency(offer.original_price, currency)}</span>
+                            <span className="font-semibold text-orange-600">{formatCurrency(offer.offer_price, currency)}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {offer.label ? (
+                            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-medium">{offer.label}</span>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {offer.repeat_days && offer.repeat_days.length > 0 ? (
+                            <span>
+                              {offer.repeat_days.map((d) => REPEAT_DAYS.find((x) => x.key === d)?.label ?? d).join(', ')} ·{' '}
+                              {format(new Date(offer.starts_at), 'HH:mm', { locale: ptBR })}–{format(new Date(offer.ends_at), 'HH:mm', { locale: ptBR })}
+                            </span>
+                          ) : (
+                            <span>
+                              {format(new Date(offer.starts_at), "dd/MM HH:mm", { locale: ptBR })} — {format(new Date(offer.ends_at), "dd/MM HH:mm", { locale: ptBR })}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={status.color}>
+                            {status.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => openEdit(offer)} title="Editar">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteTarget({ id: offer.id, name: product?.name ?? 'esta oferta' })}
+                              className="text-destructive hover:text-destructive"
+                              title="Excluir"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </Card>
+        </>
       )}
 
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('offers.deleteTitle')}</DialogTitle>
+            <DialogDescription>
+              {deleteTarget ? t('offers.deleteDesc', { name: deleteTarget.name }) : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteTarget && handleDelete(deleteTarget.id)}
+              disabled={deleting}
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              {t('common.delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Tag className="h-5 w-5 text-orange-500" />
@@ -354,97 +484,103 @@ export default function AdminOffers() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">{t('offers.product')} *</Label>
-              <Select
-                value={form.product_id}
-                onValueChange={handleProductChange}
-                required
-                disabled={!!editingOffer}
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Selecione o produto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name} — {formatCurrency(Number(p.price_sale || p.price), currency)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">{t('offers.product')} *</Label>
+                  <Select
+                    value={form.product_id}
+                    onValueChange={handleProductChange}
+                    required
+                    disabled={!!editingOffer}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Selecione o produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name} — {formatCurrency(Number(p.price_sale || p.price), currency)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">{t('offers.originalPrice')}</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={form.original_price}
-                  onChange={(e) => setForm((f) => ({ ...f, original_price: currency === 'PYG' ? e.target.value.replace(/\D/g, '') : e.target.value }))}
-                  className="h-11"
-                  placeholder={getCurrencySymbol(currency)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">{t('offers.offerPrice')} *</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={form.offer_price}
-                  onChange={(e) => setForm((f) => ({ ...f, offer_price: currency === 'PYG' ? e.target.value.replace(/\D/g, '') : e.target.value }))}
-                  className="h-11"
-                  placeholder={getCurrencySymbol(currency)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">{t('offers.label')}</Label>
-              <Input
-                value={form.label}
-                onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
-                placeholder={t('offers.labelPlaceholder')}
-                className="h-11"
-              />
-            </div>
-
-            <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="immediate"
-                  checked={form.immediate}
-                  onChange={(e) => setForm((f) => ({ ...f, immediate: e.target.checked }))}
-                  className="h-4 w-4 rounded border-input"
-                />
-                <Label htmlFor="immediate" className="cursor-pointer font-medium text-sm">Oferta imediata (inicia agora, fim em 24h)</Label>
-              </div>
-              {!form.immediate && (
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">{t('offers.startDate')}</Label>
-                    <div className="flex gap-2">
-                      <Input type="date" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} className="flex-1" />
-                      <Input type="time" value={form.starts_at_time} onChange={(e) => setForm((f) => ({ ...f, starts_at_time: e.target.value }))} className="w-24" />
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">{t('offers.originalPrice')}</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={form.original_price}
+                      onChange={(e) => setForm((f) => ({ ...f, original_price: currency === 'PYG' ? e.target.value.replace(/\D/g, '') : e.target.value }))}
+                      className="h-11"
+                      placeholder={getCurrencySymbol(currency)}
+                    />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">{t('offers.endDate')}</Label>
-                    <div className="flex gap-2">
-                      <Input type="date" value={form.ends_at} onChange={(e) => setForm((f) => ({ ...f, ends_at: e.target.value }))} className="flex-1" />
-                      <Input type="time" value={form.ends_at_time} onChange={(e) => setForm((f) => ({ ...f, ends_at_time: e.target.value }))} className="w-24" />
-                    </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">{t('offers.offerPrice')} *</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={form.offer_price}
+                      onChange={(e) => setForm((f) => ({ ...f, offer_price: currency === 'PYG' ? e.target.value.replace(/\D/g, '') : e.target.value }))}
+                      className="h-11"
+                      placeholder={getCurrencySymbol(currency)}
+                    />
                   </div>
                 </div>
-              )}
-              {form.immediate && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5" />
-                  Início: agora · Fim: em 24 horas
-                </p>
-              )}
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">{t('offers.label')}</Label>
+                  <Input
+                    value={form.label}
+                    onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+                    placeholder={t('offers.labelPlaceholder')}
+                    className="h-11"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="immediate"
+                      checked={form.immediate}
+                      onChange={(e) => setForm((f) => ({ ...f, immediate: e.target.checked }))}
+                      className="h-4 w-4 rounded border-input"
+                    />
+                    <Label htmlFor="immediate" className="cursor-pointer font-medium text-sm">Oferta imediata (inicia agora, fim em 24h)</Label>
+                  </div>
+                  {!form.immediate && (
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">{t('offers.startDate')}</Label>
+                        <div className="flex gap-2">
+                          <Input type="date" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} className="flex-1" />
+                          <Input type="time" value={form.starts_at_time} onChange={(e) => setForm((f) => ({ ...f, starts_at_time: e.target.value }))} className="w-24" />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">{t('offers.endDate')}</Label>
+                        <div className="flex gap-2">
+                          <Input type="date" value={form.ends_at} onChange={(e) => setForm((f) => ({ ...f, ends_at: e.target.value }))} className="flex-1" />
+                          <Input type="time" value={form.ends_at_time} onChange={(e) => setForm((f) => ({ ...f, ends_at_time: e.target.value }))} className="w-24" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {form.immediate && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      Início: agora · Fim: em 24 horas
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="rounded-xl border bg-muted/30 p-4 space-y-3">

@@ -208,6 +208,13 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                                 {item.pizzaEdge && <p>{t('cart.edge')}: {item.pizzaEdge}</p>}
                               </div>
                             )}
+                            {item.addons && item.addons.length > 0 && (
+                              <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                                {item.addons.map((a, i) => (
+                                  <p key={i}>+ {a.name} {a.price > 0 ? `(+${formatCurrency(a.price, currency)})` : ''}</p>
+                                ))}
+                              </div>
+                            )}
                             {item.observations && (
                               <p className="text-xs text-orange-500 mt-1 italic line-clamp-1">Obs: {item.observations}</p>
                             )}

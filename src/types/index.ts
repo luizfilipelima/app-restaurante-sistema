@@ -235,6 +235,31 @@ export interface MarmitaProtein {
   created_at: string;
 }
 
+/** Grupo de adicionais do produto (ex: Borda, Extras) */
+export interface ProductAddonGroup {
+  id: string;
+  product_id: string;
+  name: string;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Item de adicional (ex: Borda Catupiry +R$5) */
+export interface ProductAddonItem {
+  id: string;
+  addon_group_id: string;
+  name: string;
+  price: number;
+  cost?: number;
+  cost_currency?: 'BRL' | 'PYG' | 'ARS';
+  in_stock: boolean;
+  ingredient_id?: string | null;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
 /** Dias da semana para oferta recorrente: mon, tue, wed, thu, fri, sat, sun. Null = oferta única. */
 export type OfferRepeatDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
@@ -399,6 +424,8 @@ export interface CartItem {
   marmitaWeight?: number;
   marmitaProteins?: string[];
   marmitaSides?: string[];
+  /** Adicionais do produto (ex: Borda Catupiry +R$5) */
+  addons?: Array<{ addonItemId: string; name: string; price: number }>;
 }
 
 export interface CheckoutData {

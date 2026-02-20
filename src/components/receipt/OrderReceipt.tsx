@@ -123,16 +123,22 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
             <span>Item</span>
             <span>Total</span>
           </div>
-          {items.map((item) => (
-            <div key={item.id} className="receipt-row receipt-row-item">
-              <span>{item.quantity}x</span>
-              <span className="receipt-item-name">
-                {item.product_name}
-                {item.observations ? ` (${item.observations})` : ''}
-              </span>
-              <span>{formatCurrency(Number(item.total_price), currency)}</span>
-            </div>
-          ))}
+          {items.map((item) => {
+            const addons = (item as { addons?: Array<{ name: string; price?: number }> }).addons;
+            const addonsStr = addons && Array.isArray(addons) && addons.length > 0
+              ? ' + ' + addons.map((a) => a.name).join(', ')
+              : '';
+            return (
+              <div key={item.id} className="receipt-row receipt-row-item">
+                <span>{item.quantity}x</span>
+                <span className="receipt-item-name">
+                  {item.product_name}{addonsStr}
+                  {item.observations ? ` (${item.observations})` : ''}
+                </span>
+                <span>{formatCurrency(Number(item.total_price), currency)}</span>
+              </div>
+            );
+          })}
         </section>
 
         <div className="receipt-line">{SEP}</div>

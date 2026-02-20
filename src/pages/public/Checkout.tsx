@@ -364,6 +364,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           pizza_dough: item.pizzaDough ?? null,
           pizza_edge: item.pizzaEdge ?? null,
           is_upsell: item.isUpsell ?? false,
+          addons: item.addons && item.addons.length > 0 ? item.addons : null,
         };
       });
 
@@ -388,7 +389,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             i.unitPrice * i.quantity +
             (i.pizzaEdgePrice ?? 0) * i.quantity +
             (i.pizzaDoughPrice ?? 0) * i.quantity;
-          return `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''} — ${formatCurrency(itemTotal, baseCurrency)}`;
+          const addonsStr = i.addons && i.addons.length > 0
+            ? ' + ' + i.addons.map((a) => a.name + (a.price > 0 ? ` (+${formatCurrency(a.price, baseCurrency)})` : '')).join(', ')
+            : '';
+          return `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''}${addonsStr} — ${formatCurrency(itemTotal, baseCurrency)}`;
         }).join('\n');
 
         const bairro = deliveryType === DeliveryType.DELIVERY && selectedZoneId
@@ -628,6 +632,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     {item.marmitaSize && (
                       <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
                         {[item.marmitaSize, item.marmitaProteins?.join(', ')].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                    {item.addons && item.addons.length > 0 && (
+                      <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                        + {item.addons.map((a) => a.name).join(', ')}
                       </p>
                     )}
                     {item.observations && (

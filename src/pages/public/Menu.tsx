@@ -15,6 +15,7 @@ import { isWithinOpeningHours, formatCurrency } from '@/lib/utils';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import ProductCard from '@/components/public/ProductCard';
+import ProductAddonModal from '@/components/public/ProductAddonModal';
 import CartDrawer from '@/components/public/CartDrawer';
 import PizzaModal from '@/components/public/PizzaModal';
 import MarmitaModal from '@/components/public/MarmitaModal';
@@ -86,6 +87,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [pizzaModalOpen, setPizzaModalOpen] = useState(false);
   const [marmitaModalOpen, setMarmitaModalOpen] = useState(false);
+  const [addonModalProduct, setAddonModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
 
   const { data: menuData, isLoading: loading, isError } = useRestaurantMenuData(restaurantSlug);
   const { data: activeOffers = [] } = useActiveOffers(restaurantSlug);
@@ -95,7 +97,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     return m;
   }, [activeOffers]);
 
-  const { restaurant, products, categories, categoriesFromDb, subcategories, pizzaSizes, pizzaFlavors, pizzaDoughs, pizzaEdges, marmitaSizes, marmitaProteins, marmitaSides, productComboItemsMap } = useMemo(() => {
+  const { restaurant, products, categories, categoriesFromDb, subcategories, pizzaSizes, pizzaFlavors, pizzaDoughs, pizzaEdges, marmitaSizes, marmitaProteins, marmitaSides, productComboItemsMap, productAddonsMap } = useMemo(() => {
     if (!menuData) {
       return {
         restaurant: null as Restaurant | null,
@@ -111,6 +113,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         marmitaProteins: [] as MarmitaProtein[],
         marmitaSides: [] as MarmitaSide[],
         productComboItemsMap: {} as Record<string, Array<{ product: Product; quantity: number }>>,
+        productAddonsMap: {} as Record<string, Array<{ id: string; name: string; items: Array<{ id: string; name: string; price: number }> }>>,
       };
     }
     const p = menuData.products.length > 0 ? menuData.products : MOCK_PRODUCTS;
@@ -129,6 +132,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       marmitaProteins: menuData.marmitaProteins,
       marmitaSides: menuData.marmitaSides,
       productComboItemsMap: menuData.productComboItemsMap ?? {},
+      productAddonsMap: menuData.productAddonsMap ?? {},
     };
   }, [menuData]);
 
@@ -178,13 +182,17 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
   const handleOfferProductClick = (offer: { product: Product; offer_price: number; original_price: number; label?: string | null }) => {
     const p = offer.product;
+    const addons = productAddonsMap[p.id];
     const isPizza = p.is_pizza || p.category?.toLowerCase() === 'pizza';
+    const isMarmita = p.is_marmita;
     if (isPizza) {
       setSelectedProduct({ ...p, price: offer.offer_price });
       setPizzaModalOpen(true);
-    } else if (p.is_marmita) {
+    } else if (isMarmita) {
       setSelectedProduct({ ...p, price: offer.offer_price });
       setMarmitaModalOpen(true);
+    } else if (addons && addons.length > 0) {
+      setAddonModalProduct({ product: p, basePrice: offer.offer_price });
     } else {
       useCartStore.getState().addItem({
         productId: p.id,
@@ -197,13 +205,17 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   };
 
   const handleProductClick = (product: Product) => {
+    const addons = productAddonsMap[product.id];
     const isPizzaProduct = product.is_pizza || product.category?.toLowerCase() === 'pizza';
+    const isMarmitaProduct = product.is_marmita;
     if (isPizzaProduct) {
       setSelectedProduct(product);
       setPizzaModalOpen(true);
-    } else if (product.is_marmita) {
+    } else if (isMarmitaProduct) {
       setSelectedProduct(product);
       setMarmitaModalOpen(true);
+    } else if (addons && addons.length > 0) {
+      setAddonModalProduct({ product, basePrice: Number(product.price_sale || product.price) });
     } else {
       useCartStore.getState().addItem({
         productId: product.id,
@@ -393,28 +405,26 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           </div>
         </div>
 
-        {/* ── Seção Ofertas (chamativa) ── */}
-        {activeOffers.length > 0 && (
-          <section className="rounded-2xl overflow-hidden border-2 border-orange-200 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 shadow-lg">
-            <div className="px-4 py-3 border-b border-orange-200/80 bg-orange-500/10 flex items-center gap-2">
-              <span className="text-lg">🔥</span>
-              <h2 className="text-base sm:text-lg font-bold text-orange-800 uppercase tracking-wider">Ofertas</h2>
-              <span className="text-xs font-semibold text-orange-600 bg-orange-200/60 px-2 py-0.5 rounded-full">{activeOffers.length}</span>
-            </div>
-            <div className="p-4 overflow-x-auto">
-              <div className="flex gap-4 pb-2 -mx-1 min-w-0">
-                {activeOffers.map((offer) => (
-                  <div key={offer.id} className="flex-shrink-0 w-[min(280px,85vw)]">
-                    <ProductCard
-                      product={offer.product}
-                      onClick={() => handleOfferProductClick(offer)}
-                      currency={currency}
-                      comboItems={productComboItemsMap?.[offer.product.id]}
-                      offer={{ price: offer.offer_price, originalPrice: offer.original_price, label: offer.label }}
-                    />
-                  </div>
-                ))}
-              </div>
+        {/* ── Seção Ofertas no topo (mesmo padrão de grid e ProductCard das categorias) ── */}
+        {activeOffers.length > 0 && selectedCategory === 'all' && (
+          <section className="space-y-3 sm:space-y-5">
+            <h2 className="text-sm-mobile-block sm:text-base font-semibold text-orange-700 uppercase tracking-wider px-1 flex items-center gap-2">
+              {t('menu.offers')}
+              <span className="text-xs font-semibold text-orange-600 bg-orange-200/60 px-2 py-0.5 rounded-full">
+                {activeOffers.length}
+              </span>
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {activeOffers.map((offer) => (
+                <ProductCard
+                  key={offer.id}
+                  product={offer.product}
+                  onClick={() => handleOfferProductClick(offer)}
+                  currency={currency}
+                  comboItems={productComboItemsMap?.[offer.product.id]}
+                  offer={{ price: offer.offer_price, originalPrice: offer.original_price, label: offer.label }}
+                />
+              ))}
             </div>
           </section>
         )}
@@ -625,6 +635,27 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           proteins={marmitaProteins}
           sides={marmitaSides}
           currency={currency}
+        />
+      )}
+
+      {addonModalProduct && (
+        <ProductAddonModal
+          open={!!addonModalProduct}
+          onClose={() => setAddonModalProduct(null)}
+          product={addonModalProduct.product}
+          addonGroups={productAddonsMap[addonModalProduct.product.id] ?? []}
+          currency={currency}
+          basePrice={addonModalProduct.basePrice}
+          onAddToCart={({ quantity: qty, unitPrice, addons }) => {
+            useCartStore.getState().addItem({
+              productId: addonModalProduct.product.id,
+              productName: addonModalProduct.product.name,
+              quantity: qty,
+              unitPrice,
+              addons: addons.length > 0 ? addons : undefined,
+            });
+            toast({ title: '✅ Adicionado ao carrinho!', description: `${addonModalProduct.product.name} foi adicionado`, className: 'bg-green-50 border-green-200' });
+          }}
         />
       )}
     </div>

@@ -41,8 +41,6 @@ import { GripVertical, Loader2, Check, X, Plus, Trash2, ChevronDown, ChevronRigh
 
 const CATEGORY_TYPES = [
   { id: 'default', label: 'Padrão', is_pizza: false, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
-  { id: 'pizza', label: 'Pizza (tamanhos e sabores)', is_pizza: true, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
-  { id: 'marmita', label: 'Marmitas (monte sua marmita)', is_pizza: false, is_marmita: true, extra_field: null, extra_label: null, extra_placeholder: null },
   { id: 'volume', label: 'Bebidas (volume)', is_pizza: false, is_marmita: false, extra_field: 'volume', extra_label: 'Volume ou medida', extra_placeholder: 'Ex: 350ml, 1L, 2L' },
   { id: 'portion', label: 'Sobremesas (porção)', is_pizza: false, is_marmita: false, extra_field: 'portion', extra_label: 'Porção', extra_placeholder: 'Ex: individual, fatia, 500g' },
   { id: 'detail', label: 'Combos (detalhe)', is_pizza: false, is_marmita: false, extra_field: 'detail', extra_label: 'Detalhe do combo', extra_placeholder: 'Ex: Pizza + Refrigerante' },

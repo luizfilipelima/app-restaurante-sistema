@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
@@ -10,18 +10,7 @@ import {
   formatPrice,
   convertBetweenCurrencies,
 } from '@/lib/priceHelper';
-import {
-  Product,
-  Restaurant,
-  PizzaSize,
-  PizzaDough,
-  PizzaEdge,
-  MarmitaSize,
-  MarmitaProtein,
-  MarmitaSide,
-  Category,
-  Subcategory,
-} from '@/types';
+import { Product, Restaurant, Category, Subcategory } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,7 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -77,13 +65,11 @@ import {
   Plus,
   Trash2,
   Loader2,
-  Info,
   Upload,
   Copy,
   Check,
   Search,
   LayoutGrid,
-  Settings,
   QrCode,
   GripVertical,
   Edit,
@@ -102,14 +88,13 @@ import {
   Tag,
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
-import { useProductUpsells, useSaveProductUpsells, useProductComboItems } from '@/hooks/queries';
+import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/ProductAddonsSection';
+import { useProductUpsells, useSaveProductUpsells, useProductComboItems, useProductAddons, useSaveProductAddons } from '@/hooks/queries';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORY_TYPES = [
   { id: 'default', label: 'Padrão', is_pizza: false, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
-  { id: 'pizza', label: 'Pizza (tamanhos e sabores)', is_pizza: true, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
-  { id: 'marmita', label: 'Marmitas (monte sua marmita)', is_pizza: false, is_marmita: true, extra_field: null, extra_label: null, extra_placeholder: null },
   { id: 'volume', label: 'Bebidas (volume)', is_pizza: false, is_marmita: false, extra_field: 'volume', extra_label: 'Volume ou medida', extra_placeholder: 'Ex: 350ml, 1L, 2L' },
   { id: 'portion', label: 'Sobremesas (porção)', is_pizza: false, is_marmita: false, extra_field: 'portion', extra_label: 'Porção', extra_placeholder: 'Ex: individual, fatia, 500g' },
   { id: 'detail', label: 'Combos (detalhe)', is_pizza: false, is_marmita: false, extra_field: 'detail', extra_label: 'Detalhe do combo', extra_placeholder: 'Ex: Pizza + Refrigerante' },
@@ -386,38 +371,12 @@ export default function AdminMenu() {
   const [categoryFormInventory, setCategoryFormInventory] = useState(false);
   const [categoryFormDest, setCategoryFormDest] = useState<'kitchen' | 'bar'>('kitchen');
 
-  // Config modal (Pizza / Marmita)
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [menuConfigLoading, setMenuConfigLoading] = useState(false);
-
   // QR / Online modal
   const [showOnlineModal, setShowOnlineModal] = useState(false);
   const [slug, setSlug] = useState('');
   const [slugSaving, setSlugSaving] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [menuLinkCopied, setMenuLinkCopied] = useState(false);
-
-  // Pizza config
-  const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]);
-  const [pizzaDoughs, setPizzaDoughs] = useState<PizzaDough[]>([]);
-  const [pizzaEdges, setPizzaEdges] = useState<PizzaEdge[]>([]);
-  const [showFormSize, setShowFormSize] = useState(false);
-  const [showFormDough, setShowFormDough] = useState(false);
-  const [showFormEdge, setShowFormEdge] = useState(false);
-  const [formSize, setFormSize] = useState({ name: '', max_flavors: 1, price_multiplier: 1, order_index: 0 });
-  const [formDough, setFormDough] = useState({ name: '', extra_price: '' });
-  const [formEdge, setFormEdge] = useState({ name: '', price: '' });
-
-  // Marmita config
-  const [marmitaSizes, setMarmitaSizes] = useState<MarmitaSize[]>([]);
-  const [marmitaProteins, setMarmitaProteins] = useState<MarmitaProtein[]>([]);
-  const [marmitaSides, setMarmitaSides] = useState<MarmitaSide[]>([]);
-  const [showFormMarmitaSize, setShowFormMarmitaSize] = useState(false);
-  const [showFormMarmitaProtein, setShowFormMarmitaProtein] = useState(false);
-  const [showFormMarmitaSide, setShowFormMarmitaSide] = useState(false);
-  const [formMarmitaSize, setFormMarmitaSize] = useState({ name: '', weight_grams: 500, base_price: '', price_per_gram: '', order_index: 0 });
-  const [formMarmitaProtein, setFormMarmitaProtein] = useState({ name: '', description: '', price_per_gram: '' });
-  const [formMarmitaSide, setFormMarmitaSide] = useState({ name: '', description: '', price_per_gram: '', category: '' });
 
   // Upsell
   const [upsellSearch, setUpsellSearch] = useState('');
@@ -430,6 +389,9 @@ export default function AdminMenu() {
   const [comboSearch, setComboSearch] = useState('');
   const isComboCategory = (categories.find((c) => c.id === (form.categoryId || selectedCategoryId || categories[0]?.id))?.extra_field) === 'detail';
   const { comboItems: existingComboItems } = useProductComboItems(isComboCategory ? editingProduct?.id ?? null : null);
+  const { addons } = useProductAddons(editingProduct?.id ?? null);
+  const saveAddonsMutation = useSaveProductAddons(null);
+  const addonSectionRef = useRef<{ getGroups: () => AddonGroupEdit[] }>(null);
 
   // Receita de ingredientes (para CMV preciso no BI)
   const [ingredients, setIngredients] = useState<Array<{ id: string; name: string; unit: string }>>([]);
@@ -517,26 +479,10 @@ export default function AdminMenu() {
 
   const loadMenuConfig = async () => {
     if (!restaurantId) return;
-    setMenuConfigLoading(true);
     try {
-      const [sizesRes, doughsRes, edgesRes, marmitaSizesRes, marmitaProteinsRes, marmitaSidesRes, ingredientsRes] = await Promise.all([
-        supabase.from('pizza_sizes').select('*').eq('restaurant_id', restaurantId).order('order_index'),
-        supabase.from('pizza_doughs').select('*').eq('restaurant_id', restaurantId).order('name'),
-        supabase.from('pizza_edges').select('*').eq('restaurant_id', restaurantId).order('name'),
-        supabase.from('marmita_sizes').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('order_index'),
-        supabase.from('marmita_proteins').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('name'),
-        supabase.from('marmita_sides').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('category', { ascending: true }).order('name'),
-        supabase.from('ingredients').select('id, name, unit').eq('restaurant_id', restaurantId).order('name'),
-      ]);
-      if (sizesRes.data) setPizzaSizes(sizesRes.data);
-      if (doughsRes.data) setPizzaDoughs(doughsRes.data);
-      if (edgesRes.data) setPizzaEdges(edgesRes.data);
-      if (marmitaSizesRes.data) setMarmitaSizes(marmitaSizesRes.data);
-      if (marmitaProteinsRes.data) setMarmitaProteins(marmitaProteinsRes.data);
-      if (marmitaSidesRes.data) setMarmitaSides(marmitaSidesRes.data);
-      if (ingredientsRes.data) setIngredients(ingredientsRes.data);
-    } catch (e) { console.error('Erro ao carregar config:', e); }
-    finally { setMenuConfigLoading(false); }
+      const { data } = await supabase.from('ingredients').select('id, name, unit').eq('restaurant_id', restaurantId).order('name');
+      if (data) setIngredients(data);
+    } catch (e) { console.error('Erro ao carregar ingredientes:', e); }
   };
 
   // ─── Derived data ─────────────────────────────────────────────────────────────
@@ -831,6 +777,30 @@ export default function AdminMenu() {
         await supabase.from('product_combo_items').delete().eq('combo_product_id', savedProductId);
       }
 
+      // Adicionais do produto (sempre salva para garantir sincronia, inclusive ao limpar)
+      if (savedProductId) {
+        const addonGroups = addonSectionRef.current?.getGroups() ?? [];
+        const groupsToSave = addonGroups
+          .filter((g) => g.name.trim())
+          .map((g) => ({
+            name: g.name.trim(),
+            order_index: g.order_index,
+            items: g.items
+              .filter((it) => it.name.trim())
+              .map((it) => ({
+                name: it.name.trim(),
+                price: it.price,
+                cost: it.cost,
+                cost_currency: it.cost_currency,
+                in_stock: it.in_stock,
+                ingredient_id: it.ingredient_id || null,
+                order_index: it.order_index,
+              })),
+          }))
+          .filter((g) => g.items.length > 0);
+        await saveAddonsMutation.mutateAsync({ productId: savedProductId, groups: groupsToSave });
+      }
+
       // Receita de ingredientes (para CMV preciso no BI)
       if (savedProductId) {
         await supabase.from('product_ingredients').delete().eq('product_id', savedProductId);
@@ -990,144 +960,29 @@ export default function AdminMenu() {
     finally { setSlugSaving(false); }
   };
 
-  // ─── CSV ──────────────────────────────────────────────────────────────────────
-
-  // ─── Pizza CRUD ───────────────────────────────────────────────────────────────
-
-  const handleSubmitSize = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!restaurantId) return;
-    try {
-      const { error } = await supabase.from('pizza_sizes').insert({ restaurant_id: restaurantId, ...formSize });
-      if (error) throw error;
-      setFormSize({ name: '', max_flavors: 1, price_multiplier: 1, order_index: pizzaSizes.length });
-      setShowFormSize(false);
-      loadMenuConfig();
-      toast({ title: 'Tamanho adicionado!' });
-    } catch { toast({ title: 'Erro ao salvar tamanho', variant: 'destructive' }); }
-  };
-
-  const handleSubmitDough = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!restaurantId) return;
-    const extra_price = convertPriceToStorage(String(formDough.extra_price), currency);
-    try {
-      const { error } = await supabase.from('pizza_doughs').insert({ restaurant_id: restaurantId, name: formDough.name, extra_price, is_active: true });
-      if (error) throw error;
-      setFormDough({ name: '', extra_price: '' });
-      setShowFormDough(false);
-      loadMenuConfig();
-      toast({ title: 'Massa adicionada!' });
-    } catch { toast({ title: 'Erro ao salvar massa', variant: 'destructive' }); }
-  };
-
-  const handleSubmitEdge = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!restaurantId) return;
-    const price = convertPriceToStorage(String(formEdge.price), currency);
-    try {
-      const { error } = await supabase.from('pizza_edges').insert({ restaurant_id: restaurantId, name: formEdge.name, price, is_active: true });
-      if (error) throw error;
-      setFormEdge({ name: '', price: '' });
-      setShowFormEdge(false);
-      loadMenuConfig();
-      toast({ title: 'Borda adicionada!' });
-    } catch { toast({ title: 'Erro ao salvar borda', variant: 'destructive' }); }
-  };
-
-  const deleteSize = async (id: string) => {
-    if (!confirm('Excluir este tamanho?')) return;
-    await supabase.from('pizza_sizes').delete().eq('id', id);
-    loadMenuConfig();
-    toast({ title: 'Tamanho excluído!' });
-  };
-
-  const deleteDough = async (id: string) => {
-    if (!confirm('Excluir esta massa?')) return;
-    await supabase.from('pizza_doughs').delete().eq('id', id);
-    loadMenuConfig();
-    toast({ title: 'Massa excluída!' });
-  };
-
-  const deleteEdge = async (id: string) => {
-    if (!confirm('Excluir esta borda?')) return;
-    await supabase.from('pizza_edges').delete().eq('id', id);
-    loadMenuConfig();
-    toast({ title: 'Borda excluída!' });
-  };
-
-  // ─── Marmita CRUD ─────────────────────────────────────────────────────────────
-
-  const handleSubmitMarmitaSize = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!restaurantId) return;
-    const base_price = convertPriceToStorage(String(formMarmitaSize.base_price), currency);
-    const price_per_gram = convertPriceToStorage(String(formMarmitaSize.price_per_gram), currency);
-    try {
-      const { error } = await supabase.from('marmita_sizes').insert({ restaurant_id: restaurantId, name: formMarmitaSize.name, weight_grams: formMarmitaSize.weight_grams, base_price, price_per_gram, order_index: formMarmitaSize.order_index, is_active: true });
-      if (error) throw error;
-      setFormMarmitaSize({ name: '', weight_grams: 500, base_price: '', price_per_gram: '', order_index: marmitaSizes.length });
-      setShowFormMarmitaSize(false);
-      loadMenuConfig();
-      toast({ title: 'Tamanho de marmita adicionado!' });
-    } catch { toast({ title: 'Erro ao salvar tamanho', variant: 'destructive' }); }
-  };
-
-  const handleSubmitMarmitaProtein = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!restaurantId) return;
-    const price_per_gram = convertPriceToStorage(String(formMarmitaProtein.price_per_gram), currency);
-    try {
-      const { error } = await supabase.from('marmita_proteins').insert({ restaurant_id: restaurantId, name: formMarmitaProtein.name, description: formMarmitaProtein.description || null, price_per_gram, is_active: true });
-      if (error) throw error;
-      setFormMarmitaProtein({ name: '', description: '', price_per_gram: '' });
-      setShowFormMarmitaProtein(false);
-      loadMenuConfig();
-      toast({ title: 'Proteína adicionada!' });
-    } catch { toast({ title: 'Erro ao salvar proteína', variant: 'destructive' }); }
-  };
-
-  const handleSubmitMarmitaSide = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!restaurantId) return;
-    const price_per_gram = convertPriceToStorage(String(formMarmitaSide.price_per_gram), currency);
-    try {
-      const { error } = await supabase.from('marmita_sides').insert({ restaurant_id: restaurantId, name: formMarmitaSide.name, description: formMarmitaSide.description || null, price_per_gram, category: formMarmitaSide.category || null, is_active: true });
-      if (error) throw error;
-      setFormMarmitaSide({ name: '', description: '', price_per_gram: '', category: '' });
-      setShowFormMarmitaSide(false);
-      loadMenuConfig();
-      toast({ title: 'Acompanhamento adicionado!' });
-    } catch { toast({ title: 'Erro ao salvar acompanhamento', variant: 'destructive' }); }
-  };
-
-  const deleteMarmitaSize = async (id: string) => { if (!confirm('Excluir?')) return; await supabase.from('marmita_sizes').delete().eq('id', id); loadMenuConfig(); };
-  const deleteMarmitaProtein = async (id: string) => { if (!confirm('Excluir?')) return; await supabase.from('marmita_proteins').delete().eq('id', id); loadMenuConfig(); };
-  const deleteMarmitaSide = async (id: string) => { if (!confirm('Excluir?')) return; await supabase.from('marmita_sides').delete().eq('id', id); loadMenuConfig(); };
-
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
 
       {/* ── Page Header ──────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Central do Cardápio</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">Central do Cardápio</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             {totalProducts} produto{totalProducts !== 1 ? 's' : ''} · {activeProducts} ativo{activeProducts !== 1 ? 's' : ''}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Search */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Search — desktop-first, campo mais largo */}
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
               placeholder="Buscar produto..."
-              className="pl-8 h-8 w-44 text-sm"
+              className="pl-9 h-9 w-44 min-[900px]:w-64 text-sm"
             />
           </div>
 
@@ -1142,12 +997,6 @@ export default function AdminMenu() {
               <Switch checked={showInventory} onCheckedChange={setShowInventory} className="h-4 w-7" />
             </div>
           </div>
-
-          {/* Settings */}
-          <Button variant="outline" size="sm" onClick={() => setShowConfigModal(true)} className="h-8 gap-1.5">
-            <Settings className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Configurações</span>
-          </Button>
 
           {/* Gestão de Ofertas */}
           <Button variant="outline" size="sm" asChild className="h-8 gap-1.5">
@@ -1173,19 +1022,19 @@ export default function AdminMenu() {
         </div>
       </div>
 
-      {/* ── Two-column master-detail layout ──────────────────────────────────── */}
-      <div className="flex gap-4 items-start min-h-[500px]">
+      {/* ── Two-column master-detail layout (desktop-first) ───────────────────── */}
+      <div className="flex gap-5 xl:gap-6 items-start min-h-[520px]">
 
         {/* ── Left: Category Sidebar ──────────────────────────────────────────── */}
-        <div className="w-56 xl:w-64 flex-shrink-0">
-          <Card className="dark:bg-slate-900 sticky top-4">
-            <CardHeader className="pb-2 pt-4 px-3">
+        <div className="w-60 xl:w-72 flex-shrink-0">
+          <Card className="dark:bg-slate-900 sticky top-4 shadow-sm">
+            <CardHeader className="pb-2 pt-5 px-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categorias</CardTitle>
                 {savingCategoryOrder && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
               </div>
             </CardHeader>
-            <CardContent className="px-2 pb-3 space-y-0.5">
+            <CardContent className="px-3 pb-4 space-y-1">
 
               {/* "Todas" */}
               <button
@@ -1251,7 +1100,7 @@ export default function AdminMenu() {
         <div className="flex-1 min-w-0">
 
           {/* Panel header */}
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <h2 className="text-base font-semibold text-foreground">
                 {selectedCategory ? selectedCategory.name : 'Todos os Produtos'}
@@ -1338,15 +1187,15 @@ export default function AdminMenu() {
                   {sortedCategoryNames.map((categoryName) => {
                     const catProducts = groupedProducts[categoryName] ?? [];
                     return (
-                      <div key={categoryName} className="space-y-1.5">
+                      <div key={categoryName} className="space-y-2">
                         {/* Show category header only in "All" mode */}
                         {!selectedCategoryId && (
-                          <div className="flex items-center gap-2 px-1">
+                          <div className="flex items-center gap-2 px-1.5 py-1">
                             <span className="text-sm font-semibold text-foreground">{categoryName}</span>
                             <Badge variant="outline" className="text-xs">{catProducts.length}</Badge>
                           </div>
                         )}
-                        <div className="rounded-lg border border-border overflow-hidden">
+                        <div className="rounded-xl border border-border overflow-hidden shadow-sm">
                           <Table>
                             <TableHeader>
                               <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -1523,20 +1372,6 @@ export default function AdminMenu() {
               </div>
             </div>
 
-            {/* Banners de info */}
-            {categoryConfig.isPizza && (
-              <div className="flex gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs text-primary/80">
-                <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                <span>Categoria do tipo <strong>pizza</strong> — configure tamanhos e bordas em <strong>Configurações Avançadas</strong>.</span>
-              </div>
-            )}
-            {categoryConfig.isMarmita && (
-              <div className="flex gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs text-primary/80">
-                <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                <span>Categoria do tipo <strong>marmita</strong> — configure proteínas e acompanhamentos em <strong>Configurações Avançadas</strong>.</span>
-              </div>
-            )}
-
             {/* Combo Builder (categoria Combos) */}
             {isComboCategory && (
               <div className="rounded-xl border border-primary/25 bg-primary/5 overflow-hidden">
@@ -1614,6 +1449,15 @@ export default function AdminMenu() {
                 </div>
               </div>
             )}
+
+            {/* Adicionais do produto */}
+            <ProductAddonsSection
+              ref={addonSectionRef}
+              addons={addons}
+              currency={currency}
+              costCurrency={form.costCurrency}
+              ingredients={ingredients}
+            />
 
             {/* Extra field (não-Combo) se categoria tiver */}
             {categoryConfig.extraField && !isComboCategory && (
@@ -2088,230 +1932,6 @@ export default function AdminMenu() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCategoryModal(false)}>Cancelar</Button>
             <Button onClick={handleAddCategory} disabled={!categoryFormName.trim()}>Adicionar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Advanced Config Modal (Pizza / Marmita) ──────────────────────────── */}
-      <Dialog open={showConfigModal} onOpenChange={setShowConfigModal}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Configurações Avançadas do Cardápio</DialogTitle>
-          </DialogHeader>
-          {menuConfigLoading ? (
-            <div className="flex justify-center py-12"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
-          ) : (
-            <Tabs defaultValue="pizza" className="mt-2">
-              <TabsList>
-                <TabsTrigger value="pizza">🍕 Pizza</TabsTrigger>
-                <TabsTrigger value="marmita">🥘 Marmita</TabsTrigger>
-              </TabsList>
-
-              {/* Pizza tab */}
-              <TabsContent value="pizza" className="space-y-5 mt-4">
-                {/* Sizes */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-semibold">Tamanhos</CardTitle>
-                      <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormSize(!showFormSize)}>
-                        <Plus className="h-3 w-3 mr-1" /> Add
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-0">
-                    {showFormSize && (
-                      <form onSubmit={handleSubmitSize} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                        <div className="grid grid-cols-3 gap-2">
-                          <div><Label className="text-xs">Nome</Label><Input value={formSize.name} onChange={(e) => setFormSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Média" required className="h-8 text-sm" /></div>
-                          <div><Label className="text-xs">Máx. Sabores</Label><Input type="number" min={1} value={formSize.max_flavors} onChange={(e) => setFormSize((f) => ({ ...f, max_flavors: +e.target.value }))} className="h-8 text-sm" /></div>
-                          <div><Label className="text-xs">Multiplicador</Label><Input type="number" step="0.01" min={0.1} value={formSize.price_multiplier} onChange={(e) => setFormSize((f) => ({ ...f, price_multiplier: +e.target.value }))} className="h-8 text-sm" /></div>
-                        </div>
-                        <div className="flex gap-2"><Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button><Button type="button" size="sm" variant="outline" onClick={() => setShowFormSize(false)} className="flex-1 h-7 text-xs">Cancelar</Button></div>
-                      </form>
-                    )}
-                    <ul className="space-y-1.5">
-                      {pizzaSizes.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum tamanho cadastrado.</p>}
-                      {pizzaSizes.map((s) => (
-                        <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
-                          <span className="text-xs"><strong>{s.name}</strong> · {s.max_flavors} sabor(es) · ×{s.price_multiplier}</span>
-                          <Button type="button" size="sm" variant="ghost" onClick={() => deleteSize(s.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                {/* Doughs */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-semibold">Massas</CardTitle>
-                      <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormDough(!showFormDough)}>
-                        <Plus className="h-3 w-3 mr-1" /> Add
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-0">
-                    {showFormDough && (
-                      <form onSubmit={handleSubmitDough} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div><Label className="text-xs">Nome</Label><Input value={formDough.name} onChange={(e) => setFormDough((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Fina, Grossa" required className="h-8 text-sm" /></div>
-                          <div><Label className="text-xs">Preço extra ({getCurrencySymbol(currency)})</Label><Input type="text" value={formDough.extra_price} onChange={(e) => setFormDough((f) => ({ ...f, extra_price: e.target.value }))} placeholder="0,00" required className="h-8 text-sm" /></div>
-                        </div>
-                        <div className="flex gap-2"><Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button><Button type="button" size="sm" variant="outline" onClick={() => setShowFormDough(false)} className="flex-1 h-7 text-xs">Cancelar</Button></div>
-                      </form>
-                    )}
-                    <ul className="space-y-1.5">
-                      {pizzaDoughs.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhuma massa cadastrada.</p>}
-                      {pizzaDoughs.map((d) => (
-                        <li key={d.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
-                          <span className="text-xs"><strong>{d.name}</strong> · +{formatCurrency(Number(d.extra_price), currency)}</span>
-                          <Button type="button" size="sm" variant="ghost" onClick={() => deleteDough(d.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                {/* Edges */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-semibold">Bordas</CardTitle>
-                      <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormEdge(!showFormEdge)}>
-                        <Plus className="h-3 w-3 mr-1" /> Add
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-0">
-                    {showFormEdge && (
-                      <form onSubmit={handleSubmitEdge} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div><Label className="text-xs">Nome</Label><Input value={formEdge.name} onChange={(e) => setFormEdge((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Catupiry" required className="h-8 text-sm" /></div>
-                          <div><Label className="text-xs">Preço ({getCurrencySymbol(currency)})</Label><Input type="text" value={formEdge.price} onChange={(e) => setFormEdge((f) => ({ ...f, price: e.target.value }))} placeholder="0,00" required className="h-8 text-sm" /></div>
-                        </div>
-                        <div className="flex gap-2"><Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button><Button type="button" size="sm" variant="outline" onClick={() => setShowFormEdge(false)} className="flex-1 h-7 text-xs">Cancelar</Button></div>
-                      </form>
-                    )}
-                    <ul className="space-y-1.5">
-                      {pizzaEdges.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhuma borda cadastrada.</p>}
-                      {pizzaEdges.map((edge) => (
-                        <li key={edge.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
-                          <span className="text-xs"><strong>{edge.name}</strong> · {formatCurrency(Number(edge.price), currency)}</span>
-                          <Button type="button" size="sm" variant="ghost" onClick={() => deleteEdge(edge.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Marmita tab */}
-              <TabsContent value="marmita" className="space-y-5 mt-4">
-                {/* Sizes */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-semibold">Tamanhos de Marmita</CardTitle>
-                      <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormMarmitaSize(!showFormMarmitaSize)}>
-                        <Plus className="h-3 w-3 mr-1" /> Add
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-0">
-                    {showFormMarmitaSize && (
-                      <form onSubmit={handleSubmitMarmitaSize} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div><Label className="text-xs">Nome</Label><Input value={formMarmitaSize.name} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: P, M, G" required className="h-8 text-sm" /></div>
-                          <div><Label className="text-xs">Peso (g)</Label><Input type="number" value={formMarmitaSize.weight_grams} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, weight_grams: +e.target.value }))} className="h-8 text-sm" /></div>
-                          <div><Label className="text-xs">Preço base ({getCurrencySymbol(currency)})</Label><Input type="text" value={formMarmitaSize.base_price} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, base_price: e.target.value }))} placeholder="0,00" required className="h-8 text-sm" /></div>
-                          <div><Label className="text-xs">Preço/g ({getCurrencySymbol(currency)})</Label><Input type="text" value={formMarmitaSize.price_per_gram} onChange={(e) => setFormMarmitaSize((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,02" required className="h-8 text-sm" /></div>
-                        </div>
-                        <div className="flex gap-2"><Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button><Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSize(false)} className="flex-1 h-7 text-xs">Cancelar</Button></div>
-                      </form>
-                    )}
-                    <ul className="space-y-1.5">
-                      {marmitaSizes.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum tamanho cadastrado.</p>}
-                      {marmitaSizes.map((s) => (
-                        <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
-                          <span className="text-xs"><strong>{s.name}</strong> · {s.weight_grams}g · base {formatCurrency(Number(s.base_price), currency)}</span>
-                          <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSize(s.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                {/* Proteins */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-semibold">Proteínas</CardTitle>
-                      <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormMarmitaProtein(!showFormMarmitaProtein)}>
-                        <Plus className="h-3 w-3 mr-1" /> Add
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-0">
-                    {showFormMarmitaProtein && (
-                      <form onSubmit={handleSubmitMarmitaProtein} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div><Label className="text-xs">Nome</Label><Input value={formMarmitaProtein.name} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Frango" required className="h-8 text-sm" /></div>
-                          <div><Label className="text-xs">Preço/g ({getCurrencySymbol(currency)})</Label><Input type="text" value={formMarmitaProtein.price_per_gram} onChange={(e) => setFormMarmitaProtein((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,02" required className="h-8 text-sm" /></div>
-                        </div>
-                        <div className="flex gap-2"><Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button><Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaProtein(false)} className="flex-1 h-7 text-xs">Cancelar</Button></div>
-                      </form>
-                    )}
-                    <ul className="space-y-1.5">
-                      {marmitaProteins.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhuma proteína cadastrada.</p>}
-                      {marmitaProteins.map((p) => (
-                        <li key={p.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
-                          <span className="text-xs"><strong>{p.name}</strong> · {formatCurrency(Number(p.price_per_gram), currency)}/g</span>
-                          <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaProtein(p.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                {/* Sides */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-semibold">Acompanhamentos</CardTitle>
-                      <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => setShowFormMarmitaSide(!showFormMarmitaSide)}>
-                        <Plus className="h-3 w-3 mr-1" /> Add
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-0">
-                    {showFormMarmitaSide && (
-                      <form onSubmit={handleSubmitMarmitaSide} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div><Label className="text-xs">Nome</Label><Input value={formMarmitaSide.name} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Arroz Branco" required className="h-8 text-sm" /></div>
-                          <div><Label className="text-xs">Categoria</Label><Input value={formMarmitaSide.category} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, category: e.target.value }))} placeholder="Ex: Arroz" className="h-8 text-sm" /></div>
-                          <div><Label className="text-xs">Preço/g ({getCurrencySymbol(currency)})</Label><Input type="text" value={formMarmitaSide.price_per_gram} onChange={(e) => setFormMarmitaSide((f) => ({ ...f, price_per_gram: e.target.value }))} placeholder="0,02" required className="h-8 text-sm" /></div>
-                        </div>
-                        <div className="flex gap-2"><Button type="submit" size="sm" className="flex-1 h-7 text-xs">Salvar</Button><Button type="button" size="sm" variant="outline" onClick={() => setShowFormMarmitaSide(false)} className="flex-1 h-7 text-xs">Cancelar</Button></div>
-                      </form>
-                    )}
-                    <ul className="space-y-1.5">
-                      {marmitaSides.length === 0 && <p className="text-xs text-muted-foreground py-2">Nenhum acompanhamento cadastrado.</p>}
-                      {marmitaSides.map((s) => (
-                        <li key={s.id} className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-md bg-muted/50">
-                          <span className="text-xs"><strong>{s.name}</strong> {s.category && `(${s.category})`} · {formatCurrency(Number(s.price_per_gram), currency)}/g</span>
-                          <Button type="button" size="sm" variant="ghost" onClick={() => deleteMarmitaSide(s.id)} className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfigModal(false)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

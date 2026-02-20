@@ -389,6 +389,14 @@ function OrderCard({ order, isNew, onAction, actionLabel, actionColor, variant }
                     )}
                   </div>
                 )}
+                {/* Addons */}
+                {item.addons && Array.isArray(item.addons) && item.addons.length > 0 && (
+                  <div className="mt-1 text-sm text-amber-300 pl-2 border-l-2 border-amber-500/50">
+                    {item.addons.map((a: { name: string; price?: number }, i: number) => (
+                      <p key={i}>+ {a.name}{a.price ? ` (+R$ ${Number(a.price).toFixed(2)})` : ''}</p>
+                    ))}
+                  </div>
+                )}
                 {/* Item Observation */}
                 {item.observations && (
                   <p className="text-red-400 font-bold text-sm mt-1 uppercase flex items-center gap-1">

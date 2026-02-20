@@ -8,7 +8,7 @@ const COMPLETED_ORDERS_SELECT = `
   status, notes, is_paid, courier_id, order_source, table_id,
   created_at, updated_at,
   delivery_zone:delivery_zones(id, location_name, fee),
-  order_items(id, order_id, product_name, quantity, unit_price, total_price, observations),
+  order_items(id, order_id, product_name, quantity, unit_price, total_price, observations, addons),
   courier:couriers(id, name, phone, phone_country)
 `;
 
