@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { CheckCircle2, MessageCircle, ExternalLink, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, MessageCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getSubdomain } from '@/lib/subdomain';
 
@@ -28,17 +28,9 @@ export default function OrderConfirmation({ tenantSlug: tenantSlugProp }: OrderC
 
   const isDelivery = type === 'delivery';
 
-  const trackPath = orderId
-    ? (restaurantSlug && !subdomain ? `/${restaurantSlug}/track/${orderId}` : `/track/${orderId}`)
-    : null;
-
   const handleBackToMenu = () => {
     if (restaurantSlug && !subdomain) navigate(`/${restaurantSlug}`);
     else navigate('/');
-  };
-
-  const handleOpenTracking = () => {
-    if (trackPath) window.location.href = trackPath;
   };
 
   // Scroll to top on mount (mobile)
@@ -115,22 +107,13 @@ export default function OrderConfirmation({ tenantSlug: tenantSlugProp }: OrderC
           </p>
         </motion.div>
 
-        {/* CTA: Acompanhar pedido */}
+        {/* CTA: Voltar ao cardápio */}
         <motion.div
           initial={{ y: 16, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="mt-8 w-full max-w-sm space-y-3"
+          className="mt-8 w-full max-w-sm"
         >
-          {trackPath && (
-            <Button
-              onClick={handleOpenTracking}
-              className="w-full h-12 sm:h-14 rounded-xl text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg transition-all touch-manipulation"
-            >
-              <ExternalLink className="w-5 h-5 mr-2" />
-              {t('orderConfirmation.trackOrder')}
-            </Button>
-          )}
           <Button
             variant="outline"
             onClick={handleBackToMenu}
