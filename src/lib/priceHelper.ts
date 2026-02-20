@@ -11,6 +11,9 @@
 
 export type CurrencyCode = 'BRL' | 'PYG' | 'ARS' | 'USD';
 
+/** Alias para moeda de custo (compatível com CurrencyCode) */
+export type CostCurrencyCode = CurrencyCode;
+
 /** Formata inteiro com ponto como separador de milhar (formato Paraguai). */
 function formatIntegerWithDotsPyG(n: number): string {
   const s = Math.round(Math.max(0, n)).toString();

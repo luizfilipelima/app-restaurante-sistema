@@ -397,6 +397,8 @@ export interface OrderItem {
   pizza_flavors?: string[]; // Array de nomes dos sabores
   pizza_dough?: string;
   pizza_edge?: string;
+  /** Adicionais do produto (ex: Borda Catupiry +R$5) */
+  addons?: Array<{ addonItemId?: string; name: string; price?: number }>;
   created_at: string;
 }
 
