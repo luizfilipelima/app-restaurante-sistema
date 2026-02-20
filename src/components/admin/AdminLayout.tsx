@@ -41,6 +41,7 @@ import {
   Users,
   Boxes,
   ConciergeBell,
+  Instagram,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -493,6 +494,19 @@ export default function AdminLayout({
     );
   };
 
+  const bioUrl = restaurant?.slug
+    ? (typeof window !== 'undefined' && window.location.hostname.includes('localhost')
+        ? `http://localhost:5173/${restaurant.slug}/bio`
+        : `https://${restaurant.slug}.quiero.food/bio`)
+    : '';
+  const copyBioLink = () => {
+    if (!bioUrl) return;
+    navigator.clipboard.writeText(bioUrl).then(
+      () => toast({ title: 'Link da Bio copiado!', description: bioUrl }),
+      () => toast({ title: 'Erro', description: 'Não foi possível copiar o link.', variant: 'destructive' })
+    );
+  };
+
   if (!restaurantId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -644,6 +658,31 @@ export default function AdminLayout({
 
             {/* Ações rápidas do header */}
             <div className="flex items-center gap-2">
+              {/* Botão "Link da Bio" — Instagram link-in-bio */}
+              {bioUrl && (
+                <div className="flex items-center gap-1 border border-pink-200 rounded-lg overflow-hidden bg-gradient-to-r from-pink-50 to-purple-50">
+                  <a
+                    href={bioUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 h-9 text-sm font-medium text-pink-600 hover:bg-pink-100/60 transition-colors"
+                    title="Abrir link da bio"
+                  >
+                    <Instagram className="h-4 w-4 flex-shrink-0" />
+                    <span className="hidden lg:inline">Link da Bio</span>
+                    <ExternalLink className="h-3 w-3 opacity-60" />
+                  </a>
+                  <div className="w-px h-5 bg-pink-200" />
+                  <button
+                    onClick={copyBioLink}
+                    className="flex items-center justify-center w-9 h-9 text-pink-500 hover:bg-pink-100/60 hover:text-pink-700 transition-colors"
+                    title={`Copiar link da bio: ${bioUrl}`}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
               {/* Botão "Ver Cardápio" — ação utilitária no header */}
               {cardapioUrl && (
                 <div className="flex items-center gap-1 border border-slate-200 rounded-lg overflow-hidden">
@@ -728,8 +767,18 @@ export default function AdminLayout({
               </span>
             </div>
 
-            {/* Botão "Ver Cardápio" no mobile header */}
+            {/* Botões de link no mobile header */}
             <div className="flex items-center gap-1">
+              {bioUrl && (
+                <button
+                  onClick={copyBioLink}
+                  title="Copiar link da bio"
+                  className="flex items-center gap-1 px-2 h-8 rounded-lg text-xs font-medium text-pink-600 border border-pink-200 bg-pink-50 hover:bg-pink-100 transition-colors"
+                >
+                  <Instagram className="h-3.5 w-3.5" />
+                  <Copy className="h-3 w-3 opacity-70" />
+                </button>
+              )}
               {cardapioUrl && (
                 <a
                   href={cardapioUrl}

@@ -7,6 +7,7 @@ import MenuViewOnly from '@/pages/public/MenuViewOnly';
 import MenuTable from '@/pages/public/MenuTable';
 import VirtualComanda from '@/pages/public/VirtualComanda';
 import OrderTracking from '@/pages/public/OrderTracking';
+import LinkBio from '@/pages/public/LinkBio';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
 import { supabase } from '@/lib/supabase';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
@@ -68,6 +69,7 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
         <Route path="/checkout" element={<PublicCheckout tenantSlug={tenantSlug} />} />
         <Route path="/comanda" element={<VirtualComanda tenantSlug={tenantSlug} />} />
         <Route path="/track/:orderId" element={<OrderTracking tenantSlug={tenantSlug} />} />
+        <Route path="/bio" element={<LinkBio tenantSlug={tenantSlug} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />

@@ -65,6 +65,7 @@ const MenuViewOnly          = lazyWithRetry(() => import('./pages/public/MenuVie
 const MenuTable             = lazyWithRetry(() => import('./pages/public/MenuTable'));
 const VirtualComanda        = lazyWithRetry(() => import('./pages/public/VirtualComanda'));
 const OrderTracking         = lazyWithRetry(() => import('./pages/public/OrderTracking'));
+const LinkBio               = lazyWithRetry(() => import('./pages/public/LinkBio'));
 
 // ─── Fallback de carregamento ─────────────────────────────────────────────────
 
@@ -279,6 +280,8 @@ function App() {
           <Route path="/:restaurantSlug/comanda" element={<VirtualComanda />} />
           {/* Rastreamento de Pedido — rota pública para acompanhamento em tempo real */}
           <Route path="/:restaurantSlug/track/:orderId" element={<OrderTracking />} />
+          {/* Link da Bio */}
+          <Route path="/:restaurantSlug/bio" element={<LinkBio />} />
           {/*
            * ── Super Admin Shell ───────────────────────────────────────────
            * SuperAdminLayout (dark sidebar) envolve as páginas de gestão do SaaS.
@@ -436,6 +439,8 @@ function App() {
         <Route path="/:restaurantSlug/comanda" element={<VirtualComanda />} />
         {/* Rastreamento de Pedido — rota pública para acompanhamento em tempo real */}
         <Route path="/:restaurantSlug/track/:orderId" element={<OrderTracking />} />
+        {/* Link da Bio para Instagram */}
+        <Route path="/:restaurantSlug/bio" element={<LinkBio />} />
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
 
         {/* Painel do restaurante — URL canônica com slug (domínio principal) */}
