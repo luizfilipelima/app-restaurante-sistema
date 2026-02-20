@@ -67,7 +67,13 @@ export function ProtectedRoute({ children, allowedRoles, requiredFeature }: Prot
     }
 
     if (!hasFeature) {
-      return <Navigate to="/admin/upgrade" state={{ from: location, feature: requiredFeature }} replace />;
+      // Extrai o basePath da URL atual para redirecionar para /{slug}/painel/upgrade
+      // Formatos possíveis: /{slug}/painel/... ou /admin/...
+      const slugPainelMatch = location.pathname.match(/^\/([^/]+)\/painel/);
+      const upgradePath = slugPainelMatch
+        ? `/${slugPainelMatch[1]}/painel/upgrade`
+        : '/admin/upgrade';
+      return <Navigate to={upgradePath} state={{ from: location, feature: requiredFeature }} replace />;
     }
   }
 

@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { UserRole } from '@/types';
+import AdminRedirect from './admin/AdminRedirect';
 
 interface PublicRouteProps {
   children: React.ReactNode;
@@ -23,9 +24,11 @@ export function PublicRoute({ children }: PublicRouteProps) {
       case UserRole.SUPER_ADMIN:
         return <Navigate to="/super-admin" replace />;
       case UserRole.RESTAURANT_ADMIN:
-        return <Navigate to="/admin" replace />;
+        // AdminRedirect resolve o slug e navega para /{slug}/painel
+        return <AdminRedirect />;
       case UserRole.KITCHEN:
-        return <Navigate to="/kitchen" replace />;
+        // AdminRedirect vai para /{slug}/kds (usa restaurant_id do usuário)
+        return <AdminRedirect />;
       default:
         return <Navigate to="/" replace />;
     }

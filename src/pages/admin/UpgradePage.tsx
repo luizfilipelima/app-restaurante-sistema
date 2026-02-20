@@ -1,6 +1,6 @@
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
 import {
   useRestaurantSubscription,
@@ -214,6 +214,7 @@ export default function UpgradePage() {
   const location   = useLocation();
   const navigate   = useNavigate();
   const restaurantId = useAdminRestaurantId();
+  const basePath     = useAdminBasePath();
   const { data: restaurant } = useRestaurant(restaurantId);
 
   // Assinatura atual e catálogo de planos
@@ -497,7 +498,7 @@ export default function UpgradePage() {
           </a>
           <span className="hidden sm:block text-slate-300">·</span>
           <Link
-            to="/admin"
+            to={basePath}
             className="text-slate-500 hover:text-slate-800 transition-colors"
           >
             Voltar ao Dashboard

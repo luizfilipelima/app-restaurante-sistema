@@ -162,9 +162,8 @@ export default function Register() {
       // Pequena pausa para o toast aparecer antes do redirect
       await new Promise((r) => setTimeout(r, 400));
 
-      // Redireciona para as configurações para completar o setup (logo, horários, etc.)
-      const restaurantId = (tenantData as { restaurant_id?: string })?.restaurant_id;
-      navigate(restaurantId ? '/admin/settings' : '/admin');
+      // Redireciona para o painel — AdminRedirect resolve o slug e navega para /{slug}/painel
+      navigate('/admin');
 
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Ocorreu um erro. Tente novamente.');

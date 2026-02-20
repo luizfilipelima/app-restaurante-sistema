@@ -39,12 +39,21 @@ interface RoleProtectedRouteProps {
  */
 export function RoleProtectedRoute({
   allowedRoles,
-  redirectTo = '/admin/orders',
+  redirectTo,
   children,
 }: RoleProtectedRouteProps) {
   const location = useLocation();
   const { isLoading } = useUserRole();
   const hasAccess = useCanAccess(allowedRoles);
+
+  // Infere o destino de redirect a partir da URL atual:
+  //   /{slug}/painel/... → /{slug}/painel/orders
+  //   /admin/...         → /admin/orders  (legado)
+  const inferredRedirect = (() => {
+    if (redirectTo) return redirectTo;
+    const m = location.pathname.match(/^\/([^/]+)\/painel/);
+    return m ? `/${m[1]}/painel/orders` : '/admin/orders';
+  })();
 
   if (isLoading) {
     return (
@@ -55,7 +64,7 @@ export function RoleProtectedRoute({
   }
 
   if (!hasAccess) {
-    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+    return <Navigate to={inferredRedirect} state={{ from: location }} replace />;
   }
 
   return <>{children}</>;

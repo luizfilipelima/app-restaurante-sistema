@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageTransition } from '@/components/ui/PageTransition';
 import { useAuthStore } from '@/store/authStore';
-import { AdminRestaurantContext, useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
+import { AdminRestaurantContext, useAdminRestaurantId, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { useCanAccess } from '@/hooks/useUserRole';
@@ -136,16 +136,14 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
       {
         kind: 'leaf',
         name: 'Cozinha (KDS)',
-        // URL do KDS no subdomínio dedicado: kds.quiero.food/{slug}
-        // Fallback para o caminho local com restaurant_id quando o slug ainda
-        // não estiver configurado (evita quebrar o acesso à cozinha).
+        // URL canônica: /{slug}/kds (mesma origem, sem abrir nova aba)
+        // Fallback para query-string quando o slug não estiver disponível ainda.
         href: restaurantSlug
-          ? `https://kds.quiero.food/${restaurantSlug}`
+          ? `/${restaurantSlug}/kds`
           : restaurantId
-            ? `${window.location.origin}/kitchen?restaurant_id=${restaurantId}`
-            : 'https://kds.quiero.food',
+            ? `/kitchen?restaurant_id=${restaurantId}`
+            : '/kitchen',
         icon: ChefHat,
-        external: true, // abre em nova aba
       },
       {
         kind: 'leaf',
@@ -166,7 +164,12 @@ const buildNavSections = (base: string, restaurantId: string | null, restaurantS
       {
         kind: 'leaf',
         name: 'Expo Screen',
-        href: `${base}/expo`,
+        // URL canônica: /{slug}/garcom
+        href: restaurantSlug
+          ? `/${restaurantSlug}/garcom`
+          : restaurantId
+            ? `/expo?restaurant_id=${restaurantId}`
+            : '/expo',
         icon: ConciergeBell,
       },
     ],
@@ -309,9 +312,10 @@ function NavLinkItem({ item, isActive }: { item: NavLeaf; isActive: boolean }) {
 // Clicável: leva para a página de planos com contexto da feature bloqueada.
 
 function LockedNavItem({ item }: { item: NavLeaf }) {
+  const basePath = useAdminBasePath();
   return (
     <Link
-      to="/admin/upgrade"
+      to={`${basePath}/upgrade`}
       state={item.featureFlag ? { feature: item.featureFlag } : undefined}
       title={`${item.featureLabel ?? 'Plano superior'} — clique para ver os planos disponíveis`}
       className="group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg
@@ -469,6 +473,7 @@ export default function AdminLayout({
     restaurantId,
     restaurant: restaurant ?? null,
     isSuperAdminView,
+    basePath: base,
   };
 
   // Itens planos para o nav mobile (scroll horizontal)

@@ -4,41 +4,53 @@ import AdminLayout from './AdminLayout';
 import { useResolveRestaurantId } from '@/hooks/useResolveRestaurantId';
 
 /**
- * Envolve o AdminLayout para rotas /admin (restaurant_admin) e
- * /super-admin/restaurants/:identifier (super_admin gerenciando um restaurante).
+ * Envolve o AdminLayout para três cenários de rota:
  *
- * O parâmetro :identifier aceita slug amigável ("pizzaria-do-joao") ou UUID bruto.
- * O hook useResolveRestaurantId resolve o identifier para o UUID real do restaurante,
- * que é necessário para todas as queries do AdminLayout e sub-páginas.
+ *  1. /:slug/painel/*  (restaurant_admin — URL canônica com slug)
+ *     basePath = /{slug}/painel
  *
- * Nota sobre o basePath:
- *   O basePath mantém o identifier original (slug ou UUID) da URL, não o UUID resolvido.
- *   Isso garante que todos os links gerados dentro do admin (ex: /admin/orders) continuem
- *   apontando para a URL amigável do restaurante.
+ *  2. /admin/*  (restaurant_admin — URL legada, mantida para backward compat)
+ *     basePath = /admin
+ *
+ *  3. /super-admin/restaurants/:identifier/*  (super_admin gerenciando um restaurante)
+ *     basePath = /super-admin/restaurants/{identifier}
+ *
+ * O parâmetro :identifier aceita slug amigável ou UUID bruto (super-admin).
+ * O parâmetro :slug é sempre um slug amigável (restaurant_admin, URL canônica).
  */
 export default function AdminLayoutWrapper() {
-  // :identifier só existe nas rotas super-admin; nas rotas /admin é undefined.
-  const { identifier } = useParams<{ identifier?: string }>();
+  // :identifier → rotas super-admin (/super-admin/restaurants/:identifier)
+  // :slug        → rotas canônicas  (/:slug/painel/*)
+  const { identifier, slug } = useParams<{ identifier?: string; slug?: string }>();
+
   const isSuperAdminView = !!identifier;
 
   /**
-   * Resolve o identifier para o UUID real do restaurante.
-   *   - Se identifier é UUID → retorna imediatamente (sem network).
-   *   - Se identifier é slug → faz lookup no banco (1 query, cacheada 10 min).
-   *   - Se identifier é undefined (rota /admin) → restaurantId = null (usa user.restaurant_id).
+   * Resolve o identifier / slug para o UUID real do restaurante.
+   * - Se :identifier  → pode ser slug ou UUID (super-admin)
+   * - Se :slug        → é sempre slug amigável (restaurant_admin)
+   * - Se nenhum       → rota legada /admin (sem parâmetro); restaurantId = null
    */
-  const { restaurantId: resolvedId, isLoading } = useResolveRestaurantId(identifier);
-
-  // Mantém o identifier original na URL (slug legível vs UUID bruto).
-  const basePath = isSuperAdminView
-    ? `/super-admin/restaurants/${identifier}`
-    : '/admin';
+  const resolveTarget = identifier ?? slug ?? null;
+  const { restaurantId: resolvedId, isLoading } = useResolveRestaurantId(resolveTarget);
 
   /**
-   * Aguarda a resolução do slug → UUID antes de montar o AdminLayout.
-   * Só acontece na primeira visita com um slug novo; depois é servido do cache.
+   * basePath:
+   *  - Super-admin → mantém o identifier original na URL (amigável vs UUID)
+   *  - Slug canônico → /{slug}/painel
+   *  - Legado /admin → /admin
    */
-  if (isSuperAdminView && isLoading) {
+  const basePath = isSuperAdminView
+    ? `/super-admin/restaurants/${identifier}`
+    : slug
+      ? `/${slug}/painel`
+      : '/admin';
+
+  /**
+   * Aguarda a resolução do identifier / slug → UUID antes de montar o AdminLayout.
+   * Só acontece na primeira visita com um valor novo; depois é servido do cache.
+   */
+  if ((isSuperAdminView || !!slug) && isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3 text-slate-500">

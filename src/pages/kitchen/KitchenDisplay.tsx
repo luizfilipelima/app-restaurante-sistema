@@ -13,7 +13,9 @@ import { Clock, AlertTriangle, ChefHat, ArrowRight, LayoutDashboard, UtensilsCro
 export default function KitchenDisplay() {
   const { user } = useAuthStore();
 
-  // slug via path param (subdomínio kds: kds.quiero.food/:slug)
+  // slug via path param:
+  //   /{slug}/kds  (rota canônica, app subdomain)
+  //   kds.quiero.food/{slug}  (subdomínio kds)
   const { slug: slugFromPath } = useParams<{ slug?: string }>();
 
   // slug / restaurant_id via query params (legado: app.quiero.food/kitchen?slug=...)
@@ -21,7 +23,7 @@ export default function KitchenDisplay() {
   const slugFromQuery       = searchParams.get('slug');
   const restaurantIdFromUrl = searchParams.get('restaurant_id');
 
-  // Prioridade: path param (kds subdomain) > query param > restaurant_id na URL > perfil do usuário
+  // Prioridade: path param > query param > restaurant_id na URL > perfil do usuário
   const slug = slugFromPath || slugFromQuery;
 
   const [resolvedId, setResolvedId] = useState<string | null>(null);
@@ -223,7 +225,7 @@ export default function KitchenDisplay() {
             <div className="flex items-center gap-4">
               {user?.role === 'restaurant_admin' && (
                 <Link
-                  to="/admin/orders"
+                  to={slug ? `/${slug}/painel/orders` : '/admin/orders'}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium transition-colors border border-slate-700"
                 >
                   <LayoutDashboard className="h-4 w-4" />

@@ -575,7 +575,7 @@ export default function SuperAdminDashboard() {
                   revenue={revenueByRestaurant[r.id] ?? 0}
                   onAdmin={() => navigate(`/super-admin/restaurants/${id}`)}
                   onSubscription={() => navigate(`/super-admin/restaurants/${id}/subscription`)}
-                  onKitchen={() => window.open(`${window.location.origin}/kitchen?restaurant_id=${r.id}`, '_blank')}
+                  onKitchen={() => window.open(r.slug ? `/${r.slug}/kds` : `/kitchen?restaurant_id=${r.id}`, '_blank')}
                   onMenu={() => window.open(`/${r.slug}`, '_blank')}
                   onToggle={() => toggleStatus(r.id, r.is_active)}
                   onDelete={() => { setToDelete(r); setDeleteConfirm(''); }}

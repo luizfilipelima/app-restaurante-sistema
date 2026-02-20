@@ -17,6 +17,9 @@ import StoreLayout from './layouts/StoreLayout';
 import AdminLayoutWrapper from './components/admin/AdminLayoutWrapper';
 import SuperAdminLayout from './components/super-admin/SuperAdminLayout';
 
+// Componente de redirecionamento pós-login (resolve slug → /{slug}/painel)
+import AdminRedirect from './components/admin/AdminRedirect';
+
 // ─── Páginas — carregadas sob demanda (lazy) ─────────────────────────────────
 // Cada página gera um chunk JS separado no build, reduzindo o bundle inicial.
 
@@ -142,8 +145,6 @@ const adminRoutes = (
     <Route path="cashier" element={<AdminCashier />} />
     {/* QR Code para impressão — link de entrada das Comandas Digitais (Enterprise) */}
     <Route path="comanda-qr" element={<AdminComandaQRCode />} />
-    {/* Expo Screen — Tela de Expedição / Garçom (pedidos prontos para entrega) */}
-    <Route path="expo" element={<ExpoScreen />} />
     {/* Página de upgrade — exibida quando o usuário tenta acessar uma feature bloqueada */}
     <Route path="upgrade" element={<UpgradePage />} />
   </>
@@ -280,8 +281,56 @@ function App() {
           >
             {adminRoutes}
           </Route>
+          {/*
+           * ── Painel do restaurante (URL canônica com slug) ─────────────────
+           * /:slug/painel/* — AdminLayoutWrapper lê :slug e define basePath
+           */}
+          <Route
+            path="/:slug/painel"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.RESTAURANT_ADMIN]}>
+                <AdminLayoutWrapper />
+              </ProtectedRoute>
+            }
+          >
+            {adminRoutes}
+          </Route>
+
+          {/* /:slug/kds — Display de Cozinha para o restaurante */}
+          <Route
+            path="/:slug/kds"
+            element={
+              <ProtectedRoute allowedRoles={KDS_ROLES}>
+                <KitchenDisplay />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* /:slug/garcom — Expo Screen (Tela do Garçom / Expedição) */}
+          <Route
+            path="/:slug/garcom"
+            element={
+              <ProtectedRoute allowedRoles={KDS_ROLES}>
+                <ExpoScreen />
+              </ProtectedRoute>
+            }
+          />
+
+          {/*
+           * Rotas legadas /admin, /kitchen, /expo — redirecionam para as URLs
+           * canônicas com slug. Mantidas para backward compat (bookmarks, links antigos).
+           */}
           <Route
             path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.RESTAURANT_ADMIN]}>
+                <AdminRedirect />
+              </ProtectedRoute>
+            }
+          />
+          {/* /admin/* — sub-rotas legadas (upgrade, register redirect, etc.) */}
+          <Route
+            path="/admin/*"
             element={
               <ProtectedRoute allowedRoles={[UserRole.RESTAURANT_ADMIN]}>
                 <AdminLayoutWrapper />
@@ -293,16 +342,15 @@ function App() {
           <Route
             path="/kitchen"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.KITCHEN, UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute allowedRoles={KDS_ROLES}>
                 <KitchenDisplay />
               </ProtectedRoute>
             }
           />
-          {/* Expo Screen — Tela de Expedição standalone para garçons */}
           <Route
             path="/expo"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.KITCHEN, UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute allowedRoles={KDS_ROLES}>
                 <ExpoScreen />
               </ProtectedRoute>
             }
@@ -332,22 +380,37 @@ function App() {
         {/* Comanda Digital (Enterprise): cliente abre e acompanha a sua comanda */}
         <Route path="/:restaurantSlug/comanda" element={<VirtualComanda />} />
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+
+        {/* Painel do restaurante — URL canônica com slug (domínio principal) */}
         <Route
-          path="/kitchen"
+          path="/:slug/painel"
           element={
-            <ProtectedRoute allowedRoles={[UserRole.KITCHEN, UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN]}>
+            <ProtectedRoute allowedRoles={[UserRole.RESTAURANT_ADMIN]}>
+              <AdminLayoutWrapper />
+            </ProtectedRoute>
+          }
+        >
+          {adminRoutes}
+        </Route>
+        <Route
+          path="/:slug/kds"
+          element={
+            <ProtectedRoute allowedRoles={KDS_ROLES}>
               <KitchenDisplay />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/expo"
+          path="/:slug/garcom"
           element={
-            <ProtectedRoute allowedRoles={[UserRole.KITCHEN, UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN]}>
+            <ProtectedRoute allowedRoles={KDS_ROLES}>
               <ExpoScreen />
             </ProtectedRoute>
           }
         />
+
+        {/* Rotas legadas */}
+        <Route path="/admin" element={<ProtectedRoute allowedRoles={[UserRole.RESTAURANT_ADMIN]}><AdminRedirect /></ProtectedRoute>} />
         <Route
           path="/admin/*"
           element={
@@ -358,6 +421,22 @@ function App() {
         >
           {adminRoutes}
         </Route>
+        <Route
+          path="/kitchen"
+          element={
+            <ProtectedRoute allowedRoles={KDS_ROLES}>
+              <KitchenDisplay />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/expo"
+          element={
+            <ProtectedRoute allowedRoles={KDS_ROLES}>
+              <ExpoScreen />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
       </Suspense>
       </ErrorBoundary>

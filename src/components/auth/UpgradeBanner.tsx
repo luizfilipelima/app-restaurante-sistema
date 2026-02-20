@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Lock, Sparkles, ArrowRight } from 'lucide-react';
 
 interface UpgradeBannerProps {
@@ -20,11 +20,8 @@ interface UpgradeBannerProps {
 /**
  * Banner de upgrade exibido como fallback quando uma feature está bloqueada.
  *
- * Usado principalmente como `fallback` prop do <FeatureGuard>, mas pode ser
- * inserido em qualquer lugar para comunicar que um recurso requer upgrade.
- *
- * Leva o usuário para /admin/upgrade com o featureFlag no state de navegação,
- * para que a página de planos exiba o contexto correto (qual feature estava bloqueada).
+ * Leva o usuário para {basePath}/upgrade com o featureFlag no state de navegação,
+ * onde basePath é inferido da URL atual (/{slug}/painel ou /admin).
  */
 export function UpgradeBanner({
   featureFlag,
@@ -33,7 +30,14 @@ export function UpgradeBanner({
   description,
   variant = 'full',
 }: UpgradeBannerProps) {
+  const location = useLocation();
   const upgradeState = featureFlag ? { feature: featureFlag } : undefined;
+
+  // Detecta /{slug}/painel/... ou fallback /admin
+  const slugPainelMatch = location.pathname.match(/^\/([^/]+)\/painel/);
+  const upgradePath = slugPainelMatch
+    ? `/${slugPainelMatch[1]}/painel/upgrade`
+    : '/admin/upgrade';
 
   if (variant === 'inline') {
     return (
@@ -50,7 +54,7 @@ export function UpgradeBanner({
           )}
         </div>
         <Link
-          to="/admin/upgrade"
+          to={upgradePath}
           state={upgradeState}
           className="flex-shrink-0 flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors shadow-sm"
         >
@@ -61,15 +65,12 @@ export function UpgradeBanner({
     );
   }
 
-  // variant === 'full' — ocupa o espaço da página/seção bloqueada
   return (
     <div className="flex min-h-[28rem] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-8 text-center">
-      {/* Ícone */}
       <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
         <Lock className="h-8 w-8" />
       </div>
 
-      {/* Texto principal */}
       <h3 className="text-xl font-bold text-slate-800">
         {featureLabel ?? 'Funcionalidade bloqueada'}
       </h3>
@@ -83,9 +84,8 @@ export function UpgradeBanner({
         </span>
       )}
 
-      {/* CTA */}
       <Link
-        to="/admin/upgrade"
+        to={upgradePath}
         state={upgradeState}
         className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#F87116] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#ea580c] hover:shadow-md"
       >
