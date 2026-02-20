@@ -142,7 +142,7 @@ export default function Register() {
         return;
       }
 
-      const { data: tenantData, error: tenantError } = await supabase.rpc('setup_new_tenant', {
+      const { error: tenantError } = await supabase.rpc('setup_new_tenant', {
         p_restaurant_name: restaurantName.trim(),
         p_slug:            slug,
         p_phone:           phone.trim() || null,
