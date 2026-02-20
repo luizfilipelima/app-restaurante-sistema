@@ -433,6 +433,11 @@ export default function AdminMenu() {
   const isComboCategory = categoryConfig.extraField === 'detail';
   const { comboItems: existingComboItems } = useProductComboItems(isComboCategory ? editingProduct?.id ?? null : null);
 
+  // Receita de ingredientes (para CMV preciso no BI)
+  const [ingredients, setIngredients] = useState<Array<{ id: string; name: string; unit: string }>>([]);
+  const [productRecipeItems, setProductRecipeItems] = useState<Array<{ ingredient_id: string; ingredient_name: string; quantity_per_unit: number; unit: string }>>([]);
+  const [recipeSearch, setRecipeSearch] = useState('');
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -516,13 +521,14 @@ export default function AdminMenu() {
     if (!restaurantId) return;
     setMenuConfigLoading(true);
     try {
-      const [sizesRes, doughsRes, edgesRes, marmitaSizesRes, marmitaProteinsRes, marmitaSidesRes] = await Promise.all([
+      const [sizesRes, doughsRes, edgesRes, marmitaSizesRes, marmitaProteinsRes, marmitaSidesRes, ingredientsRes] = await Promise.all([
         supabase.from('pizza_sizes').select('*').eq('restaurant_id', restaurantId).order('order_index'),
         supabase.from('pizza_doughs').select('*').eq('restaurant_id', restaurantId).order('name'),
         supabase.from('pizza_edges').select('*').eq('restaurant_id', restaurantId).order('name'),
         supabase.from('marmita_sizes').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('order_index'),
         supabase.from('marmita_proteins').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('name'),
         supabase.from('marmita_sides').select('*').eq('restaurant_id', restaurantId).eq('is_active', true).order('category', { ascending: true }).order('name'),
+        supabase.from('ingredients').select('id, name, unit').eq('restaurant_id', restaurantId).order('name'),
       ]);
       if (sizesRes.data) setPizzaSizes(sizesRes.data);
       if (doughsRes.data) setPizzaDoughs(doughsRes.data);
@@ -530,6 +536,7 @@ export default function AdminMenu() {
       if (marmitaSizesRes.data) setMarmitaSizes(marmitaSizesRes.data);
       if (marmitaProteinsRes.data) setMarmitaProteins(marmitaProteinsRes.data);
       if (marmitaSidesRes.data) setMarmitaSides(marmitaSidesRes.data);
+      if (ingredientsRes.data) setIngredients(ingredientsRes.data);
     } catch (e) { console.error('Erro ao carregar config:', e); }
     finally { setMenuConfigLoading(false); }
   };
@@ -639,6 +646,8 @@ export default function AdminMenu() {
     setSelectedUpsellIds([]);
     setComboItems([]);
     setComboSearch('');
+    setProductRecipeItems([]);
+    setRecipeSearch('');
     setEditingProduct(null);
     const catId = preselectedCategoryId || selectedCategoryId || categories[0]?.id || '';
     const cat = categories.find((c) => c.id === catId);
@@ -716,6 +725,24 @@ export default function AdminMenu() {
       invUnit,
       invExpiry,
     });
+    setProductRecipeItems([]);
+    setRecipeSearch('');
+    if (restaurantId) {
+      try {
+        const { data } = await supabase
+          .from('product_ingredients')
+          .select('ingredient_id, quantity_per_unit, unit, ingredients(name)')
+          .eq('product_id', product.id);
+        if (data?.length) {
+          setProductRecipeItems(data.map((pi: { ingredient_id: string; quantity_per_unit: number; unit: string; ingredients: { name: string } | null }) => ({
+            ingredient_id: pi.ingredient_id,
+            ingredient_name: (pi.ingredients as { name: string } | null)?.name ?? '',
+            quantity_per_unit: Number(pi.quantity_per_unit),
+            unit: pi.unit ?? 'un',
+          })));
+        }
+      } catch { /* silencioso */ }
+    }
     setModalOpen(true);
   };
 
@@ -800,6 +827,21 @@ export default function AdminMenu() {
         );
       } else if (savedProductId && (editingProduct?.is_combo || isCombo) && comboItems.length === 0) {
         await supabase.from('product_combo_items').delete().eq('combo_product_id', savedProductId);
+      }
+
+      // Receita de ingredientes (para CMV preciso no BI)
+      if (savedProductId) {
+        await supabase.from('product_ingredients').delete().eq('product_id', savedProductId);
+        if (productRecipeItems.length > 0) {
+          await supabase.from('product_ingredients').insert(
+            productRecipeItems.map((ri) => ({
+              product_id: savedProductId,
+              ingredient_id: ri.ingredient_id,
+              quantity_per_unit: ri.quantity_per_unit,
+              unit: ri.unit,
+            }))
+          );
+        }
       }
 
       // Upsert de estoque por produto (independente da categoria) — sincroniza custo e venda
@@ -1806,6 +1848,73 @@ export default function AdminMenu() {
                   </motion.div>
                 )}
               </AnimatePresence>
+            </div>
+
+            {/* ── BLOCO 5b: Receita de ingredientes (CMV no BI) ── */}
+            <div className="rounded-xl border border-violet-200/70 bg-violet-50/40 dark:border-violet-800/70 dark:bg-violet-950/20 overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-violet-200/60 dark:border-violet-800/60">
+                <ChefHat className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-400">Receita (ingredientes)</span>
+                <span className="text-xs text-muted-foreground ml-1">— custo real e CMV no Dashboard BI</span>
+              </div>
+              <div className="p-4 space-y-3">
+                {productRecipeItems.length > 0 && (
+                  <div className="space-y-2">
+                    {productRecipeItems.map((ri) => (
+                      <div key={ri.ingredient_id} className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-violet-200 dark:border-violet-700 rounded-lg px-3 py-2 text-sm">
+                        <span className="font-medium truncate flex-1">{ri.ingredient_name}</span>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          className="w-16 h-7 text-xs text-center"
+                          value={ri.quantity_per_unit}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value.replace(',', '.'));
+                            setProductRecipeItems((list) => list.map((x) => x.ingredient_id === ri.ingredient_id ? { ...x, quantity_per_unit: isNaN(v) ? 0 : v } : x));
+                          }}
+                        />
+                        <span className="text-xs text-muted-foreground w-8">{ri.unit}/un.</span>
+                        <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => setProductRecipeItems((list) => list.filter((x) => x.ingredient_id !== ri.ingredient_id))}>
+                          <XIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                    <Input value={recipeSearch} onChange={(e) => setRecipeSearch(e.target.value)} placeholder="Buscar ingrediente para adicionar à receita..." className="pl-8 h-8 text-sm bg-white dark:bg-slate-800" />
+                  </div>
+                  {recipeSearch.trim() !== '' && (
+                    <div className="max-h-36 overflow-y-auto rounded-lg border border-border bg-white dark:bg-slate-900 divide-y divide-border/60">
+                      {ingredients
+                        .filter((i) => !productRecipeItems.some((ri) => ri.ingredient_id === i.id) && i.name.toLowerCase().includes(recipeSearch.toLowerCase()))
+                        .slice(0, 6)
+                        .map((ing) => (
+                          <button
+                            key={ing.id}
+                            type="button"
+                            className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 text-left text-sm"
+                            onClick={() => {
+                              setProductRecipeItems((list) => [...list, { ingredient_id: ing.id, ingredient_name: ing.name, quantity_per_unit: 1, unit: ing.unit }]);
+                              setRecipeSearch('');
+                            }}
+                          >
+                            <span>{ing.name}</span>
+                            <Plus className="h-3.5 w-3.5 text-violet-500" />
+                          </button>
+                        ))}
+                      {ingredients.filter((i) => !productRecipeItems.some((ri) => ri.ingredient_id === i.id) && i.name.toLowerCase().includes(recipeSearch.toLowerCase())).length === 0 && (
+                        <p className="text-xs text-muted-foreground p-3 text-center">Nenhum ingrediente encontrado. Cadastre em Estoque → Ingredientes.</p>
+                      )}
+                    </div>
+                  )}
+                  {recipeSearch.trim() === '' && productRecipeItems.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Digite para buscar ingredientes. Quando o produto for vendido, o estoque dos ingredientes será consumido e o CMV será calculado automaticamente.</p>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* ── BLOCO 6: Sugestões de Upsell ── */}

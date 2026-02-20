@@ -540,6 +540,55 @@ export interface InventoryMovement {
   created_at: string;
 }
 
+// ==================== INGREDIENTS TYPES ====================
+
+export interface Ingredient {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  unit: string;
+  cost_per_unit: number;
+  cost_currency?: 'BRL' | 'PYG' | 'ARS' | null;
+  sku?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IngredientStock {
+  id: string;
+  ingredient_id: string;
+  quantity: number;
+  min_quantity: number;
+  expiry_date?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IngredientMovement {
+  id: string;
+  ingredient_stock_id: string;
+  order_id?: string | null;
+  product_id?: string | null;
+  quantity_change: number;
+  movement_type: InventoryMovementType;
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface ProductIngredient {
+  id: string;
+  product_id: string;
+  ingredient_id: string;
+  quantity_per_unit: number;
+  unit: string;
+  notes?: string | null;
+  created_at: string;
+  /** Populated via join */
+  ingredient?: Ingredient;
+}
+
 // ==================== BUFFET COMANDAS TYPES ====================
 
 export type ComandaStatus = 'open' | 'closed';

@@ -175,6 +175,8 @@ export default function AdminDashboard() {
   const avgPrepTime = operational?.avg_prep_time ?? 0;
   const avgDeliveryTime = operational?.avg_delivery_time ?? 0;
   const grossProfit = financial?.gross_profit ?? 0;
+  const totalCost = financial?.total_cost ?? 0;
+  const costByIngredients = financial?.cost_by_ingredients ?? 0;
 
   const restaurantName = restaurant?.name ?? 'Restaurante';
   const periodLabel = period === '30' ? t('dashboard.filters.last30') : period === '365' ? t('dashboard.filters.lastYear') : t('dashboard.filters.allTime');
@@ -584,7 +586,9 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-1.5">
                 <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.profit')}</p>
                 <span
-                  title="O lucro depende do cadastro do preço de custo dos produtos. Verifique os itens do cardápio."
+                  title={costByIngredients > 0
+                    ? 'Lucro calculado com CMV baseado em ingredientes (receitas cadastradas).'
+                    : 'O lucro depende do cadastro do preço de custo dos produtos ou receitas de ingredientes.'}
                   className="cursor-help text-slate-400 hover:text-slate-600"
                 >
                   <HelpCircle className="h-3.5 w-3.5" />
@@ -597,7 +601,17 @@ export default function AdminDashboard() {
             <p className={`text-3xl font-bold mt-2 ${grossProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
               {formatCurrency(grossProfit, currency)}
             </p>
-            <p className="text-xs text-slate-400 mt-1">{t('dashboard.kpis.profitDesc')}</p>
+            {totalCost > 0 && (
+              <p className="text-xs text-slate-500 mt-0.5">
+                CMV: {formatCurrency(totalCost, currency)}
+                {costByIngredients > 0 && (
+                  <span className="text-emerald-600 ml-1" title="Parte do CMV vinda de receitas de ingredientes">
+                    (ingredientes)
+                  </span>
+                )}
+              </p>
+            )}
+            <p className="text-xs text-slate-400 mt-0.5">{t('dashboard.kpis.profitDesc')}</p>
           </motion.div>
 
           {/* Ticket Médio */}

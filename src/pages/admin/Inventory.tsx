@@ -40,6 +40,7 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -68,7 +69,10 @@ import {
   Settings,
   FileDown,
   FileSpreadsheet,
+  ChefHat,
+  Box,
 } from 'lucide-react';
+import InventoryIngredients from './InventoryIngredients';
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
@@ -757,13 +761,31 @@ export default function AdminInventory() {
     <div className="space-y-4">
 
       {/* ── Page Header ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Controle de Estoque</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Gerencie quantidades, custos e validades dos seus produtos
+            Produtos, ingredientes e custos vinculados ao faturamento
           </p>
         </div>
+      </div>
+
+      {/* ── Tabs: Produtos | Ingredientes ───────────────────────────────────── */}
+      <Tabs defaultValue="products" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2 h-11">
+          <TabsTrigger value="products" className="gap-2">
+            <Box className="h-4 w-4" />
+            Produtos
+          </TabsTrigger>
+          <TabsTrigger value="ingredients" className="gap-2">
+            <ChefHat className="h-4 w-4" />
+            Ingredientes
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="products" className="mt-4 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div className="sr-only">Ações do painel de produtos</div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative">
@@ -1439,6 +1461,13 @@ export default function AdminInventory() {
           )}
         </DialogContent>
       </Dialog>
+
+        </TabsContent>
+
+        <TabsContent value="ingredients" className="mt-4">
+          <InventoryIngredients />
+        </TabsContent>
+      </Tabs>
 
     </div>
   );

@@ -68,6 +68,8 @@ export interface DashboardOperational {
 
 export interface DashboardFinancial {
   gross_profit: number;
+  total_cost?: number;
+  cost_by_ingredients?: number;
   cancel_rate: number;
   avg_ticket_by_channel: { channel: string; avg_ticket: number }[];
 }
