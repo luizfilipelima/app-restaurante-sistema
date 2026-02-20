@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCartStore } from '@/store/cartStore';
 import { supabase } from '@/lib/supabase';
 import { getSubdomain } from '@/lib/subdomain';
-import { DeliveryZone, PaymentMethod, DeliveryType } from '@/types';
+import { PaymentMethod, DeliveryType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,7 +37,7 @@ import {
   QrCode, Landmark, Info, Copy, AlertCircle,
 } from 'lucide-react';
 import MapAddressPicker from '@/components/public/MapAddressPicker';
-import { fetchLoyaltyStatus, redeemLoyalty } from '@/hooks/queries';
+import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones } from '@/hooks/queries';
 import LoyaltyCard from '@/components/public/LoyaltyCard';
 
 // Coordenadas padrão por moeda — Tríplice Fronteira
@@ -102,7 +102,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
   // ── Entrega ──
   const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
-  const [zones, setZones] = useState<DeliveryZone[]>([]);
+  const { data: rawZones = [] } = useDeliveryZones(restaurantId ?? null);
+  const zones = rawZones.filter((z) => z.is_active);
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
   const [latitude, setLatitude] = useState<number>(-25.5278);
   const [longitude, setLongitude] = useState<number>(-54.5828);
@@ -181,9 +182,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     fetchLoyaltyStatus(restaurantId, customerPhone).then((s) => setLoyaltyStatus(s));
   }, [customerPhone, restaurantId]);
 
-  useEffect(() => {
-    if (restaurantId) loadZones();
-  }, [restaurantId]);
 
   useEffect(() => {
     if (!restaurantId || currentRestaurant?.id === restaurantId) return;
@@ -206,13 +204,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   }, [currentRestaurant?.name, t]);
 
   useSharingMeta(currentRestaurant ? { name: currentRestaurant.name, logo: currentRestaurant.logo } : null);
-
-  const loadZones = async () => {
-    if (!restaurantId) return;
-    const { data } = await supabase
-      .from('delivery_zones').select('*').eq('restaurant_id', restaurantId).eq('is_active', true);
-    if (data) setZones(data);
-  };
 
   const handleBackToMenu = () => {
     if (isTableOrder && isSubdomain) navigate(`/cardapio/${tableNumber}`);
@@ -437,19 +428,19 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         clearCart();
         const newOrderId = (rpcResult as { order_id?: string })?.order_id;
-        const orderType = deliveryType === DeliveryType.DELIVERY ? 'delivery' : 'pickup';
-        const confirmPath = newOrderId
-          ? (isSubdomain
-              ? `/order-confirmed?orderId=${encodeURIComponent(newOrderId)}&type=${orderType}`
-              : `/${restaurantSlug}/order-confirmed?orderId=${encodeURIComponent(newOrderId)}&type=${orderType}`)
-          : null;
 
-        if (confirmPath && newOrderId) {
+        // Abre WhatsApp ANTES de navegar — window.open precisa ser chamado sem
+        // hard-reload em seguida, pois navegações completas (window.location)
+        // cancelam popups no mobile. navigate() do React Router é client-side.
+        window.open(generateWhatsAppLink(whatsappNumber, message), '_blank', 'noopener,noreferrer');
+
+        if (newOrderId) {
           sessionStorage.setItem(`order_just_placed_${newOrderId}`, '1');
-          window.open(generateWhatsAppLink(whatsappNumber, message), '_blank', 'noopener,noreferrer');
-          window.location.assign(window.location.origin + confirmPath);
+          const trackPath = isSubdomain
+            ? `/track/${newOrderId}`
+            : `/${restaurantSlug}/track/${newOrderId}`;
+          navigate(trackPath);
         } else {
-          window.open(generateWhatsAppLink(whatsappNumber, message), '_blank', 'noopener,noreferrer');
           setTimeout(() => handleBackToMenu(), 800);
         }
       } else {
@@ -731,7 +722,45 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
         )}
 
-        {/* ── 4. Endereço (apenas delivery, não-mesa) ── */}
+        {/* ── 4. Zona de entrega (apenas delivery, não-mesa) ── */}
+        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
+          <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
+              <div className="h-6 w-6 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
+                <Map className="h-3.5 w-3.5 text-teal-600" />
+              </div>
+              <span className="text-sm font-semibold text-slate-800">{t('checkout.zoneLabel')}</span>
+              {zones.length > 0 && selectedZoneId && (
+                <Check className="h-4 w-4 text-teal-500 ml-auto flex-shrink-0" />
+              )}
+            </div>
+            <div className="p-4">
+              {zones.length > 0 ? (
+                <Select value={selectedZoneId} onValueChange={(v) => { setSelectedZoneId(v); setFormError(null); }}>
+                  <SelectTrigger className="h-12 bg-slate-50 border-slate-200 rounded-xl text-sm focus:bg-white">
+                    <SelectValue placeholder={t('checkout.zonePlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {zones.map((zone) => (
+                      <SelectItem key={zone.id} value={zone.id}>
+                        <div className="flex items-center justify-between gap-6 w-full">
+                          <span>{zone.location_name}</span>
+                          <span className="text-muted-foreground text-xs font-semibold">
+                            {zone.fee === 0 ? 'Grátis' : formatCurrency(convertForDisplay(zone.fee), displayCurrency)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm text-slate-500">{t('checkout.zoneNoZones')}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── 5. Endereço de entrega com mapa (apenas delivery, não-mesa) ── */}
         {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
           <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
@@ -772,44 +801,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   className="h-12 bg-slate-50 border-slate-200 rounded-xl text-base focus:bg-white"
                 />
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── 5. Zona de entrega (apenas delivery, não-mesa) ── */}
-        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
-          <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
-              <div className="h-6 w-6 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
-                <Map className="h-3.5 w-3.5 text-teal-600" />
-              </div>
-              <span className="text-sm font-semibold text-slate-800">{t('checkout.zoneLabel')}</span>
-              {zones.length > 0 && selectedZoneId && (
-                <Check className="h-4 w-4 text-teal-500 ml-auto flex-shrink-0" />
-              )}
-            </div>
-            <div className="p-4">
-              {zones.length > 0 ? (
-                <Select value={selectedZoneId} onValueChange={(v) => { setSelectedZoneId(v); setFormError(null); }}>
-                  <SelectTrigger className="h-12 bg-slate-50 border-slate-200 rounded-xl text-sm focus:bg-white">
-                    <SelectValue placeholder={t('checkout.zonePlaceholder')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {zones.map((zone) => (
-                      <SelectItem key={zone.id} value={zone.id}>
-                        <div className="flex items-center justify-between gap-6 w-full">
-                          <span>{zone.location_name}</span>
-                          <span className="text-muted-foreground text-xs font-semibold">
-                            {zone.fee === 0 ? 'Grátis' : formatCurrency(convertForDisplay(zone.fee), displayCurrency)}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="text-sm text-slate-500">{t('checkout.zoneNoZones')}</p>
-              )}
             </div>
           </div>
         )}
