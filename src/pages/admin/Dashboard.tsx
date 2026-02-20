@@ -80,7 +80,7 @@ function getDateRange(period: PeriodValue) {
 }
 
 export default function AdminDashboard() {
-  const { t } = useAdminTranslation();
+  const { t, lang: adminLang } = useAdminTranslation();
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
   const queryClient = useQueryClient();
@@ -209,24 +209,21 @@ export default function AdminDashboard() {
   const handlePrintReport = () => {
     setPrinting(true);
 
-    // Dynamically inject the correct @page size so we override the receipt's 80mm rule.
     const existingOverride = document.getElementById('dashboard-report-page-style');
     if (existingOverride) existingOverride.remove();
 
-    const paperW = restaurant?.print_paper_width as '58mm' | '80mm' | null | undefined;
-    const pageSize = paperW === '58mm' ? '58mm auto'
-                   : paperW === '80mm' ? '80mm auto'
-                   : 'A4 portrait';
-    const pageMargin = paperW ? '4mm 3mm' : '0';
-
+    // Relatório Premium: sempre A4 para documento elegante/PDF
     const styleEl = document.createElement('style');
-    styleEl.id  = 'dashboard-report-page-style';
-    styleEl.textContent = `@media print { @page { size: ${pageSize}; margin: ${pageMargin}; } }`;
+    styleEl.id = 'dashboard-report-page-style';
+    styleEl.textContent = `@media print {
+      @page { size: A4 portrait; margin: 12mm; }
+      body.print-dashboard-report { background: white !important; }
+      #dashboard-print-report * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }`;
     document.head.appendChild(styleEl);
 
     document.body.classList.add('print-dashboard-report');
 
-    // Give the DOM a tick to apply styles before printing
     requestAnimationFrame(() => {
       window.print();
       document.body.classList.remove('print-dashboard-report');
@@ -501,19 +498,20 @@ export default function AdminDashboard() {
               </SelectContent>
             </Select>
 
-            {/* Print Report */}
+            {/* Exportar Relatório (PDF/Impressão A4) */}
             <Button
               variant="outline"
               size="sm"
               className="h-9 gap-1.5 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-[#F87116] hover:border-orange-200"
               disabled={!analytics || printing}
               onClick={handlePrintReport}
+              title={t('print.exportReportTitle')}
             >
               {printing
                 ? <Loader2 className="h-4 w-4 animate-spin" />
                 : <Printer className="h-4 w-4" />
               }
-              <span className="hidden sm:inline">{t('print.printBtn')}</span>
+              <span className="hidden sm:inline">{t('print.exportReport')}</span>
             </Button>
 
             {/* Export */}
@@ -1318,6 +1316,7 @@ export default function AdminDashboard() {
           restaurantName={restaurantName}
           restaurantLogo={restaurant?.logo ?? undefined}
           period={periodLabel}
+          periodDates={`${format(start, 'dd/MM/yyyy', { locale: ptBR })} a ${format(end, 'dd/MM/yyyy', { locale: ptBR })}`}
           areaLabel={areaFilter !== 'all' ? areaLabel : t('dashboard.filters.all')}
           generatedAt={new Date()}
           currency={currency}
@@ -1329,9 +1328,12 @@ export default function AdminDashboard() {
           avgDeliveryTime={avgDeliveryTime}
           paymentMethods={paymentMethods}
           topProducts={topProducts}
+          bottomProducts={bottomProducts}
+          movementByHour={movementByHour}
           dailyRevenue={dailyRevenue}
-          printPaperWidth={restaurant?.print_paper_width as '58mm' | '80mm' | null}
+          printPaperWidth={undefined}
           t={t}
+          lang={adminLang}
         />
     </div>
   );

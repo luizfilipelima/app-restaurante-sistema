@@ -13,7 +13,7 @@ import {
 import { Category, Product, InventoryItem, InventoryMovement } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -48,7 +48,6 @@ import {
   AlertTriangle,
   TrendingDown,
   BarChart2,
-  ChevronRight,
   Edit,
   Plus,
   Minus,
@@ -193,6 +192,11 @@ function ProductRow({ product, currency, onEdit, onQuickAdjust, onHistory, onReg
         {product.sku && <div className="text-xs text-muted-foreground">SKU: {product.sku}</div>}
       </TableCell>
 
+      {/* Categoria */}
+      <TableCell className="text-sm text-muted-foreground whitespace-nowrap max-w-[100px] truncate" title={product.category}>
+        {product.category}
+      </TableCell>
+
       {/* Preço Venda */}
       <TableCell className="whitespace-nowrap text-sm tabular-nums">
         {formatPrice(salePrice, currency)}
@@ -311,7 +315,7 @@ function EmptyInventoryState({
     : filter !== 'all'
       ? 'Tente outro filtro ou limpe a busca.'
       : !hasConfigured
-        ? 'Clique em "Cadastrar próximo" para registrar o primeiro produto desta categoria no estoque.'
+        ? 'Clique em "Cadastrar próximo" para registrar o primeiro produto no estoque.'
         : 'Todos os produtos cadastrados estão filtrados.';
   return (
     <Card className="border-dashed">
@@ -346,7 +350,6 @@ export default function AdminInventory() {
 
   // UI
   const [loading, setLoading] = useState(true);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [filter, setFilter] = useState<InventoryFilter>('all');
   const [search, setSearch] = useState('');
 
@@ -376,6 +379,10 @@ export default function AdminInventory() {
   const [historyModal, setHistoryModal] = useState(false);
   const [historyProduct, setHistoryProduct] = useState<ProductWithInventory | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Modal para selecionar produto a cadastrar no estoque
+  const [registerModal, setRegisterModal] = useState(false);
+  const [registerSearch, setRegisterSearch] = useState('');
 
   // ─── Data loading ──────────────────────────────────────────────────────────
 
@@ -411,12 +418,6 @@ export default function AdminInventory() {
         setInventoryMap(map);
       }
 
-      // Seleciona primeira categoria com has_inventory automaticamente (se houver)
-      if (catRes.data?.length && !selectedCategoryId) {
-        const firstWithInv = catRes.data.find((c) => c.has_inventory);
-        if (firstWithInv) setSelectedCategoryId(firstWithInv.id);
-        else setSelectedCategoryId(catRes.data[0].id);
-      }
     } finally {
       setLoading(false);
     }
@@ -500,47 +501,7 @@ export default function AdminInventory() {
 
   // ─── Dados derivados ────────────────────────────────────────────────────────
 
-  // Categorias que têm ao menos um produto com estoque ativo (item cadastrado)
-  const categoriesWithInventory = useMemo(() => {
-    const catNamesWithItems = new Set(
-      products.filter((p) => !!inventoryMap[p.id]).map((p) => p.category)
-    );
-    // Também inclui categorias marcadas com has_inventory no DB (legado)
-    return categories.filter(
-      (c) => c.has_inventory || catNamesWithItems.has(c.name)
-    );
-  }, [categories, products, inventoryMap]);
-
-  const selectedCategory = categoriesWithInventory.find((c) => c.id === selectedCategoryId) ?? null;
-
-  const categoryProducts = useMemo(() => {
-    if (!selectedCategory) return [];
-    return products.filter((p) => p.category === selectedCategory.name);
-  }, [products, selectedCategory]);
-
-  const productsWithInventory: ProductWithInventory[] = useMemo(() => (
-    categoryProducts.map((p) => ({ ...p, inventoryItem: inventoryMap[p.id] }))
-  ), [categoryProducts, inventoryMap]);
-
-  const filtered = useMemo(() => {
-    // Mostra apenas produtos COM estoque cadastrado
-    let result = productsWithInventory.filter((p) => !!p.inventoryItem);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter((p) => p.name.toLowerCase().includes(q) || (p.sku ?? '').toLowerCase().includes(q));
-    }
-    if (filter === 'low') result = result.filter((p) => getInventoryStatus(p.inventoryItem) === 'low_stock');
-    if (filter === 'out') result = result.filter((p) => getInventoryStatus(p.inventoryItem) === 'out_of_stock');
-    if (filter === 'expiring') {
-      result = result.filter((p) => {
-        const days = getDaysUntilExpiry(p.inventoryItem?.expiry_date);
-        return days !== null && days <= 30 && days >= 0;
-      });
-    }
-    return result;
-  }, [productsWithInventory, search, filter]);
-
-  // Stats globais: categorias com has_inventory OU produtos com inventory_item individual
+  // Produtos elegíveis (em categorias ou com inventory_item) + inventoryItem
   const allInventoryProducts = useMemo(() => {
     const catNames = new Set(categories.map((c) => c.name));
     return products
@@ -562,6 +523,37 @@ export default function AdminInventory() {
     const expired = allInventoryProducts.filter((p) => getInventoryStatus(p.inventoryItem) === 'expired').length;
     return { total, configured, inStock, low, out, expiring, expired };
   }, [allInventoryProducts]);
+
+  // Produtos com estoque cadastrado (lista única)
+  const productsWithInventory: ProductWithInventory[] = useMemo(() => (
+    allInventoryProducts.filter((p) => !!p.inventoryItem)
+  ), [allInventoryProducts]);
+
+  const filtered = useMemo(() => {
+    let result = productsWithInventory;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.sku ?? '').toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+      );
+    }
+    if (filter === 'low') result = result.filter((p) => getInventoryStatus(p.inventoryItem) === 'low_stock');
+    if (filter === 'out') result = result.filter((p) => getInventoryStatus(p.inventoryItem) === 'out_of_stock');
+    if (filter === 'expiring') {
+      result = result.filter((p) => {
+        const days = getDaysUntilExpiry(p.inventoryItem?.expiry_date);
+        return days !== null && days <= 30 && days >= 0;
+      });
+    }
+    return result;
+  }, [productsWithInventory, search, filter]);
+
+  // Produtos sem estoque (para cadastro)
+  const productsWithoutInventory = useMemo(() => (
+    products.filter((p) => !inventoryMap[p.id] && p.is_active)
+  ), [products, inventoryMap]);
 
   // ─── Handlers — Edit/Register ───────────────────────────────────────────────
 
@@ -812,17 +804,17 @@ export default function AdminInventory() {
         </div>
       </div>
 
-      {/* ── Aviso: nenhuma categoria com estoque ────────────────────────────── */}
-      {!loading && categories.length === 0 && (
+      {/* ── Aviso: nenhum produto cadastrado ─────────────────────────────────── */}
+      {!loading && products.length === 0 && (
         <Card className="border-dashed">
           <CardContent className="p-10 text-center space-y-4">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
               <Package className="h-8 w-8 text-slate-400" />
             </div>
             <div>
-              <p className="font-semibold text-foreground text-lg mb-1">Nenhuma categoria com estoque ativo</p>
+              <p className="font-semibold text-foreground text-lg mb-1">Nenhum produto cadastrado</p>
               <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                Ative o controle de estoque em pelo menos uma categoria pelo Central do Cardápio para começar a gerenciar.
+                Cadastre produtos pelo Central do Cardápio para poder gerenciar o estoque.
               </p>
             </div>
             <Button asChild>
@@ -835,108 +827,46 @@ export default function AdminInventory() {
         </Card>
       )}
 
-      {/* ── Layout duas colunas ──────────────────────────────────────────────── */}
-      {(loading || categories.length > 0) && (
-        <div className="flex gap-4 items-start min-h-[500px]">
+      {/* ── Painel principal (layout único, sem sidebar) ──────────────────────── */}
+      {(loading || products.length > 0) && (
+        <div className="min-h-[500px]">
 
-          {/* ── Sidebar de categorias ──────────────────────────────────────── */}
-          <div className="w-56 xl:w-64 flex-shrink-0">
-            <Card className="sticky top-4">
-              <CardHeader className="pb-2 pt-4 px-3">
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Categorias
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-2 pb-3 space-y-0.5">
-                {loading ? (
-                  <div className="py-4 flex justify-center">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  </div>
-                ) : categoriesWithInventory.map((cat) => {
-                  const catProds = products.filter((p) => p.category === cat.name).map((p) => ({ ...p, inventoryItem: inventoryMap[p.id] }));
-                  const hasAlert = catProds.some((p) => {
-                    const s = getInventoryStatus(p.inventoryItem);
-                    return s === 'out_of_stock' || s === 'expired';
-                  });
-                  const hasWarning = !hasAlert && catProds.some((p) => getInventoryStatus(p.inventoryItem) === 'low_stock');
-                  const isSelected = selectedCategoryId === cat.id;
-
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => { setSelectedCategoryId(cat.id); setFilter('all'); setSearch(''); }}
-                      className={`w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition-colors ${
-                        isSelected ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/70 text-foreground'
-                      }`}
-                    >
-                      {cat.is_pizza ? (
-                        <Pizza className="h-3.5 w-3.5 shrink-0" />
-                      ) : cat.is_marmita ? (
-                        <UtensilsCrossed className="h-3.5 w-3.5 shrink-0" />
-                      ) : (
-                        <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isSelected ? 'rotate-90' : ''}`} />
-                      )}
-                      <span className="flex-1 text-left truncate">{cat.name}</span>
-                      {hasAlert ? (
-                        <span className={`h-2 w-2 rounded-full flex-shrink-0 ${isSelected ? 'bg-red-300' : 'bg-red-500'}`} />
-                      ) : hasWarning ? (
-                        <span className={`h-2 w-2 rounded-full flex-shrink-0 ${isSelected ? 'bg-amber-300' : 'bg-amber-400'}`} />
-                      ) : null}
-                      <Badge
-                        variant={isSelected ? 'secondary' : 'outline'}
-                        className={`ml-auto shrink-0 text-xs h-4 px-1.5 ${isSelected ? 'bg-primary-foreground/20 text-primary-foreground border-0' : ''}`}
-                      >
-                        {catProds.length}
-                      </Badge>
-                    </button>
-                  );
-                })}
-
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* ── Painel principal ───────────────────────────────────────────── */}
-          <div className="flex-1 min-w-0">
-
-            {/* Cabeçalho do painel */}
-            <div className="flex items-center justify-between mb-3 gap-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-semibold">
-                  {selectedCategory ? selectedCategory.name : 'Selecione uma categoria'}
-                </h2>
-                {selectedCategory && (
-                  <Badge variant="outline" className="text-xs">{filtered.length} produto{filtered.length !== 1 ? 's' : ''}</Badge>
-                )}
-                {filter !== 'all' && (
-                  <button
-                    onClick={() => setFilter('all')}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted/60 transition-colors"
-                  >
-                    <X className="h-3 w-3" />
-                    Limpar filtro
-                  </button>
-                )}
-              </div>
-              {selectedCategory && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-xs gap-1 flex-shrink-0"
-                  onClick={() => {
-                    const unconfigured = productsWithInventory.find((p) => !p.inventoryItem);
-                    if (unconfigured) openEdit(unconfigured);
-                  }}
+          {/* Cabeçalho do painel */}
+          <div className="flex items-center justify-between mb-3 gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-semibold">Produtos em estoque</h2>
+              <Badge variant="outline" className="text-xs">{filtered.length} produto{filtered.length !== 1 ? 's' : ''}</Badge>
+              {filter !== 'all' && (
+                <button
+                  onClick={() => setFilter('all')}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted/60 transition-colors"
                 >
-                  <PackagePlus className="h-3.5 w-3.5" />
-                  Cadastrar próximo
-                </Button>
+                  <X className="h-3 w-3" />
+                  Limpar filtro
+                </button>
               )}
             </div>
+            {productsWithoutInventory.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs gap-1 flex-shrink-0"
+                onClick={() => {
+                  if (productsWithoutInventory.length === 1) {
+                    openEdit({ ...productsWithoutInventory[0], inventoryItem: undefined });
+                  } else {
+                    setRegisterModal(true);
+                  }
+                }}
+              >
+                <PackagePlus className="h-3.5 w-3.5" />
+                Cadastrar no estoque
+              </Button>
+            )}
+          </div>
 
-            {/* Loading skeleton */}
-            {loading ? (
+          {/* Loading skeleton */}
+          {loading ? (
               <Card>
                 <CardContent className="p-6 space-y-3">
                   {[1, 2, 3].map((i) => (
@@ -951,24 +881,20 @@ export default function AdminInventory() {
                   ))}
                 </CardContent>
               </Card>
-            ) : !selectedCategory ? (
-              <Card className="border-dashed">
-                <CardContent className="p-12 text-center">
-                  <Package className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">Selecione uma categoria para ver os produtos</p>
-                </CardContent>
-              </Card>
             ) : filtered.length === 0 ? (
               <EmptyInventoryState
                 search={search}
                 filter={filter}
-                hasConfigured={productsWithInventory.some((p) => p.inventoryItem)}
-                onRegisterFirst={() => { const first = productsWithInventory[0]; if (first) openEdit(first); }}
+                hasConfigured={productsWithInventory.length > 0}
+                onRegisterFirst={() => {
+                  const first = productsWithoutInventory[0];
+                  if (first) openEdit({ ...first, inventoryItem: undefined });
+                }}
               />
             ) : (
               <AnimatePresence mode="wait">
                 <motion.div
-                  key={selectedCategoryId + filter}
+                  key={filter + search}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
@@ -980,6 +906,7 @@ export default function AdminInventory() {
                         <TableRow className="bg-muted/40 hover:bg-muted/40">
                           <TableHead className="w-12 p-2" />
                           <TableHead>Produto</TableHead>
+                          <TableHead className="whitespace-nowrap">Categoria</TableHead>
                           <TableHead className="whitespace-nowrap">Preço Venda</TableHead>
                           <TableHead className="whitespace-nowrap">Custo</TableHead>
                           <TableHead className="whitespace-nowrap">Margem</TableHead>
@@ -1024,9 +951,65 @@ export default function AdminInventory() {
                 </motion.div>
               </AnimatePresence>
             )}
-          </div>
         </div>
       )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          MODAL: Selecionar produto para cadastrar no estoque
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <Dialog open={registerModal} onOpenChange={setRegisterModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cadastrar produto no estoque</DialogTitle>
+            <p className="text-sm text-muted-foreground">Escolha o produto que deseja adicionar ao controle de estoque</p>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={registerSearch}
+                onChange={(e) => setRegisterSearch(e.target.value)}
+                placeholder="Buscar produto..."
+                className="pl-8"
+              />
+            </div>
+            <div className="max-h-[300px] overflow-y-auto space-y-1 pr-1">
+              {productsWithoutInventory
+                .filter((p) => {
+                  if (!registerSearch.trim()) return true;
+                  const q = registerSearch.toLowerCase();
+                  return p.name.toLowerCase().includes(q) || (p.sku ?? '').toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
+                })
+                .map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      openEdit({ ...p, inventoryItem: undefined });
+                      setRegisterModal(false);
+                      setRegisterSearch('');
+                    }}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-lg text-left hover:bg-muted/80 transition-colors border border-transparent hover:border-border"
+                  >
+                    <div className="w-10 h-10 rounded-md overflow-hidden bg-muted border flex-shrink-0">
+                      {p.image_url ? (
+                        <img src={p.image_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground/60">
+                          {p.is_pizza ? <Pizza className="h-5 w-5" /> : p.is_marmita ? <UtensilsCrossed className="h-5 w-5" /> : '🍽'}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{p.name}</div>
+                      <div className="text-xs text-muted-foreground">{p.category}</div>
+                    </div>
+                  </button>
+                ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ═══════════════════════════════════════════════════════════════════════
           MODAL: Editar / Cadastrar Item de Estoque

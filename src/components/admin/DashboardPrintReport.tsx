@@ -1,28 +1,36 @@
 /**
  * DashboardPrintReport
  *
- * Print-optimized closing report for the admin dashboard.
- * Hidden during normal view; shown exclusively during window.print()
- * when `body.print-dashboard-report` class is active.
+ * Relatório de Fechamento Premium — otimizado para impressão/PDF A4.
+ * Oculto na visualização normal; exibido apenas durante window.print()
+ * quando a classe body.print-dashboard-report está ativa.
  *
- * Supports both A4 paper and thermal paper (58mm / 80mm).
- * All labels use the admin panel language via the `t` prop.
+ * Estrutura: Cabeçalho de marca → KPIs → Operacional → Gráficos → Rankings.
+ * Cores: fundo branco, laranja em títulos/detalhes.
+ * Quebras de página: break-inside: avoid em cards e gráficos.
  */
 
 import { forwardRef } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import type { CurrencyCode } from '@/lib/priceHelper';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, es, enUS } from 'date-fns/locale';
 
-// ─────────────────────────────────────────────────────────────────────────────
+const ORANGE = '#f97316';
+
+export interface MovementByHourItem {
+  hour: string;
+  count: number;
+  isLowMovement?: boolean;
+}
 
 export interface DashboardPrintData {
   restaurantName:   string;
   restaurantLogo?:  string;
   period:           string;
+  periodDates?:     string;
   areaLabel:        string;
-  generatedAt:      Date;
+  generatedAt:     Date;
   currency:         CurrencyCode;
   totalRevenue:     number;
   totalOrders:      number;
@@ -32,12 +40,18 @@ export interface DashboardPrintData {
   avgDeliveryTime:  number;
   paymentMethods:   { name: string; value: number }[];
   topProducts:      { name: string; quantity: number }[];
+  bottomProducts?:  { name: string; quantity: number }[];
+  movementByHour?:  MovementByHourItem[];
   dailyRevenue:     { date: string; revenue: number; orders: number }[];
   printPaperWidth?: '58mm' | '80mm' | null;
   t:                (key: string) => string;
+  /** Idioma do painel para formatação de datas (pt, es, en) */
+  lang?: 'pt' | 'es' | 'en';
 }
 
-// ─── Bar mini chart rendered as a plain HTML div (print-safe) ────────────────
+const dateLocales = { pt: ptBR, es, en: enUS };
+
+// ─── Bar mini chart (print-safe, HTML) ───────────────────────────────────────
 
 function BarRow({
   label,
@@ -66,20 +80,17 @@ function BarRow({
   );
 }
 
-// ─── Section header ───────────────────────────────────────────────────────────
+// ─── Section (A4: break-inside avoid, título laranja) ─────────────────────────
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionA4({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div style={{ marginBottom: 20, breakInside: 'avoid', pageBreakInside: 'avoid' }}>
       <div style={{
-        borderBottom: '2px solid #111827',
-        paddingBottom: 3,
-        marginBottom: 8,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
+        borderBottom: `2px solid ${ORANGE}`,
+        paddingBottom: 4,
+        marginBottom: 10,
       }}>
-        <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#111827' }}>
+        <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: ORANGE }}>
           {title}
         </span>
       </div>
@@ -88,7 +99,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-// ─── KPI row: label — value ───────────────────────────────────────────────────
+// ─── KPI row ─────────────────────────────────────────────────────────────────
 
 function KpiRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
@@ -108,7 +119,7 @@ function KpiRow({ label, value, highlight }: { label: string; value: string; hig
   );
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Component ───────────────────────────────────────────────────────────────
 
 const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
   (props, ref) => {
@@ -116,6 +127,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
       restaurantName,
       restaurantLogo,
       period,
+      periodDates,
       areaLabel,
       generatedAt,
       currency,
@@ -127,15 +139,18 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
       avgDeliveryTime,
       paymentMethods,
       topProducts,
+      bottomProducts = [],
+      movementByHour = [],
       dailyRevenue,
       printPaperWidth,
       t,
+      lang = 'pt',
     } = props;
 
     const isThermal  = !!printPaperWidth;
-    const paperWidth = printPaperWidth ?? 'A4';
+    const isA4      = !isThermal;
+    const dateLocale = dateLocales[lang] ?? ptBR;
 
-    // hours saved: total_orders × 4 min / 60
     const totalMinSaved = totalOrders * 4;
     const hoursSaved    = Math.floor(totalMinSaved / 60);
     const minsSaved     = totalMinSaved % 60;
@@ -145,64 +160,72 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
 
     const paymentMethodNames: Record<string, string> = {
       pix:   'PIX',
-      card:  'Cartão / Tarjeta',
-      cash:  'Dinheiro / Efectivo',
-      table: 'Mesa / Mesa',
+      card:  'Cartão / Tarjeta / Card',
+      cash:  'Dinheiro / Efectivo / Cash',
+      table: 'Mesa / Mesa / Table',
     };
 
     const totalPayments = paymentMethods.reduce((s, p) => s + p.value, 0);
     const maxPayment    = paymentMethods.reduce((m, p) => Math.max(m, p.value), 0);
     const maxDailyRev   = dailyRevenue.reduce((m, d) => Math.max(m, d.revenue), 0);
+    const maxMovement   = movementByHour.reduce((m, h) => Math.max(m, h.count), 0);
 
-    // ── Typography scale by format ────────────────────────────────────────────
     const fs = isThermal
-      ? { title: 13, subtitle: 10, kpiLabel: 9, kpiValue: 10, section: 9 }
-      : { title: 18, subtitle: 11, kpiLabel: 10, kpiValue: 12, section: 10 };
+      ? { title: 13, subtitle: 10, kpiLabel: 9, kpiValue: 10 }
+      : { title: 20, subtitle: 11, kpiLabel: 10, kpiValue: 12 };
 
     const containerStyle: React.CSSProperties = {
-      fontFamily:      isThermal ? "'Courier New', Courier, monospace" : 'Arial, Helvetica, sans-serif',
+      fontFamily:      isThermal ? "'Courier New', Courier, monospace" : 'system-ui, -apple-system, Segoe UI, sans-serif',
       fontSize:        fs.kpiLabel,
       color:           '#111827',
       background:      'white',
-      width:           isThermal ? paperWidth : '100%',
-      maxWidth:        isThermal ? paperWidth : '210mm',
-      padding:         isThermal ? '4mm 3mm' : '10mm 14mm',
+      width:           isThermal ? (printPaperWidth ?? '80mm') : '100%',
+      maxWidth:        isA4 ? '210mm' : undefined,
+      padding:         isThermal ? '4mm 3mm' : '0',
       margin:          '0 auto',
       boxSizing:       'border-box' as const,
     };
 
     return (
-      <div id="dashboard-print-report" ref={ref}>
+      <div id="dashboard-print-report" ref={ref} className="dashboard-print-report-a4">
         <div style={containerStyle}>
 
-          {/* ── Cabeçalho ────────────────────────────────────────────────── */}
+          {/* ── Cabeçalho de Marca ───────────────────────────────────────────── */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
-            marginBottom: 12,
-            paddingBottom: 10,
-            borderBottom: '3px solid #111827',
+            gap: 12,
+            marginBottom: 20,
+            paddingBottom: 16,
+            borderBottom: `3px solid ${ORANGE}`,
+            breakInside: 'avoid',
           }}>
             {restaurantLogo && (
               <img
                 src={restaurantLogo}
                 alt={restaurantName}
-                style={{ width: isThermal ? 28 : 48, height: isThermal ? 28 : 48, objectFit: 'cover', borderRadius: 4 }}
+                style={{
+                  width: isA4 ? 56 : 28,
+                  height: isA4 ? 56 : 28,
+                  objectFit: 'contain',
+                  borderRadius: 6,
+                }}
               />
             )}
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: fs.title, fontWeight: 900, color: '#111827', lineHeight: 1.1 }}>
                 {restaurantName}
               </div>
-              <div style={{ fontSize: fs.subtitle, fontWeight: 700, color: '#374151', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <div style={{ fontSize: fs.subtitle, fontWeight: 700, color: ORANGE, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {t('print.title')}
               </div>
             </div>
-            {!isThermal && (
-              <div style={{ textAlign: 'right', fontSize: 9, color: '#6b7280', lineHeight: 1.6 }}>
-                <div><strong>{t('print.generatedAt')}:</strong></div>
-                <div>{format(generatedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</div>
+            {isA4 && (
+              <div style={{ textAlign: 'right', fontSize: 10, color: '#6b7280', lineHeight: 1.6 }}>
+                {periodDates && (
+                  <div><strong>{t('print.periodDates')}:</strong> {periodDates}</div>
+                )}
+                <div><strong>{t('print.generatedAt')}:</strong> {format(generatedAt, "dd/MM/yyyy 'às' HH:mm", { locale: dateLocale })}</div>
                 <div><strong>{t('print.period')}:</strong> {period}</div>
                 {areaLabel && areaLabel !== t('dashboard.filters.all') && (
                   <div><strong>{t('print.area')}:</strong> {areaLabel}</div>
@@ -211,41 +234,70 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
             )}
           </div>
 
-          {/* Thermal header info (compact) */}
           {isThermal && (
             <div style={{ fontSize: 9, color: '#374151', marginBottom: 8, lineHeight: 1.6 }}>
-              <div>{t('print.generatedAt')}: {format(generatedAt, 'dd/MM/yyyy HH:mm')}</div>
+              <div>{t('print.generatedAt')}: {format(generatedAt, 'dd/MM/yyyy HH:mm', { locale: dateLocale })}</div>
               <div>{t('print.period')}: {period}</div>
-              {areaLabel && areaLabel !== t('dashboard.filters.all') && (
-                <div>{t('print.area')}: {areaLabel}</div>
-              )}
             </div>
           )}
 
-          {/* ── Bloco Financeiro ─────────────────────────────────────────── */}
-          <Section title={t('print.financial')}>
-            <KpiRow
-              label={t('print.revenue')}
-              value={formatCurrency(totalRevenue, currency)}
-              highlight
-            />
-            <KpiRow
-              label={t('print.estimatedProfit')}
-              value={formatCurrency(grossProfit, currency)}
-              highlight={grossProfit > 0}
-            />
-            <KpiRow
-              label={t('print.avgTicket')}
-              value={formatCurrency(avgTicket, currency)}
-            />
-            <KpiRow
-              label={t('print.totalOrders')}
-              value={String(totalOrders)}
-            />
-          </Section>
+          {/* ── Seção 1: KPIs Financeiros (cards lado a lado) ───────────────── */}
+          {isA4 && (
+            <SectionA4 title={t('print.financial')}>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{
+                  flex: '1 1 140px',
+                  minWidth: 0,
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 8,
+                  padding: 12,
+                  background: '#fafafa',
+                  breakInside: 'avoid',
+                }}>
+                  <div style={{ fontSize: 9, color: '#6b7280', marginBottom: 4 }}>{t('print.revenue')}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>{formatCurrency(totalRevenue, currency)}</div>
+                </div>
+                <div style={{
+                  flex: '1 1 140px',
+                  minWidth: 0,
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 8,
+                  padding: 12,
+                  background: '#fafafa',
+                  breakInside: 'avoid',
+                }}>
+                  <div style={{ fontSize: 9, color: '#6b7280', marginBottom: 4 }}>{t('print.estimatedProfit')}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: grossProfit >= 0 ? '#059669' : '#dc2626' }}>{formatCurrency(grossProfit, currency)}</div>
+                </div>
+                <div style={{
+                  flex: '1 1 140px',
+                  minWidth: 0,
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 8,
+                  padding: 12,
+                  background: '#fafafa',
+                  breakInside: 'avoid',
+                }}>
+                  <div style={{ fontSize: 9, color: '#6b7280', marginBottom: 4 }}>{t('print.avgTicket')}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>{formatCurrency(avgTicket, currency)}</div>
+                </div>
+              </div>
+              <KpiRow label={t('print.totalOrders')} value={String(totalOrders)} />
+            </SectionA4>
+          )}
 
-          {/* ── Bloco Operacional ─────────────────────────────────────────── */}
-          <Section title={t('print.operations')}>
+          {isThermal && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 9, fontWeight: 800, marginBottom: 4, color: '#111827' }}>{t('print.financial')}</div>
+              <KpiRow label={t('print.revenue')} value={formatCurrency(totalRevenue, currency)} highlight />
+              <KpiRow label={t('print.estimatedProfit')} value={formatCurrency(grossProfit, currency)} />
+              <KpiRow label={t('print.avgTicket')} value={formatCurrency(avgTicket, currency)} />
+              <KpiRow label={t('print.totalOrders')} value={String(totalOrders)} />
+            </div>
+          )}
+
+          {/* ── Seção 2: Eficiência Operacional ─────────────────────────────── */}
+          <SectionA4 title={t('print.operations')}>
             <KpiRow
               label={t('print.kitchenAvg')}
               value={avgPrepTime > 0 ? `${Math.round(avgPrepTime)} min` : t('print.noData')}
@@ -257,14 +309,58 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
             {totalOrders > 0 && (
               <KpiRow
                 label={t('print.hoursSaved')}
-                value={`${hoursSavedStr}  (${totalOrders} ${t('print.hoursSavedDetail')})`}
+                value={`${hoursSavedStr} (${totalOrders} ${t('print.hoursSavedDetail')})`}
               />
             )}
-          </Section>
+          </SectionA4>
 
-          {/* ── Formas de Pagamento ──────────────────────────────────────── */}
+          {/* ── Seção 3: Gráficos de Performance ─────────────────────────────── */}
+          {isA4 && movementByHour.length > 0 && (
+            <SectionA4 title={t('print.hourlyMovement')}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                {movementByHour.map((h) => {
+                  const pct = maxMovement > 0 ? (h.count / maxMovement) * 100 : 0;
+                  const fill = h.isLowMovement ? '#f59e0b' : '#3b82f6';
+                  return (
+                    <div
+                      key={h.hour}
+                      style={{
+                        flex: '1 1 24px',
+                        minWidth: 24,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 2,
+                      }}
+                    >
+                      <div style={{ fontSize: 8, color: '#6b7280', whiteSpace: 'nowrap' }}>{h.hour}</div>
+                      <div style={{
+                        width: '100%',
+                        height: 40,
+                        background: '#e5e7eb',
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        justifyContent: 'center',
+                      }}>
+                        <div style={{
+                          width: '80%',
+                          height: `${Math.max(pct, 4)}%`,
+                          background: fill,
+                          borderRadius: 2,
+                        }} />
+                      </div>
+                      <div style={{ fontSize: 9, fontWeight: 600 }}>{h.count}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionA4>
+          )}
+
           {paymentMethods.length > 0 && (
-            <Section title={t('print.paymentMethods')}>
+            <SectionA4 title={t('print.paymentMethods')}>
               {paymentMethods.map((pm) => {
                 const pct  = totalPayments > 0 ? ((pm.value / totalPayments) * 100).toFixed(0) : '0';
                 const name = paymentMethodNames[pm.name] ?? pm.name;
@@ -277,96 +373,106 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
                 ) : (
                   <BarRow
                     key={pm.name}
-                    label={`${name}  (${pct}%)`}
+                    label={`${name} (${pct}%)`}
                     value={pm.value}
                     max={maxPayment}
                     formatted={formatCurrency(pm.value, currency)}
                   />
                 );
               })}
-            </Section>
+            </SectionA4>
           )}
 
-          {/* ── Itens Mais Vendidos ──────────────────────────────────────── */}
-          {topProducts.length > 0 && (
-            <Section title={t('print.topItems')}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #9ca3af' }}>
-                    <th style={{ textAlign: 'left', padding: '2px 0', fontWeight: 700, width: '4%' }}>#</th>
-                    <th style={{ textAlign: 'left', padding: '2px 4px', fontWeight: 700 }}>Produto</th>
-                    <th style={{ textAlign: 'right', padding: '2px 0', fontWeight: 700 }}>Qtd</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topProducts.slice(0, isThermal ? 8 : 12).map((item, i) => (
-                    <tr key={item.name} style={{ borderBottom: '1px dotted #e5e7eb' }}>
-                      <td style={{ padding: '2px 0', color: '#6b7280', fontSize: 9 }}>{i + 1}</td>
-                      <td style={{ padding: '2px 4px', maxWidth: isThermal ? '45mm' : '120mm', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {item.name}
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '2px 0', fontWeight: 700 }}>{item.quantity}</td>
+          {/* ── Seção 4: Ranking de Produtos ─────────────────────────────────── */}
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', breakInside: 'avoid' }}>
+            {topProducts.length > 0 && (
+              <SectionA4 title={t('print.topItems')}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #9ca3af' }}>
+                      <th style={{ textAlign: 'left', padding: '4px 0', fontWeight: 700, width: '4%' }}>#</th>
+                      <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 700 }}>Produto</th>
+                      <th style={{ textAlign: 'right', padding: '4px 0', fontWeight: 700 }}>Qtd</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Section>
-          )}
-
-          {/* ── Faturamento Diário (tabela — print-safe, sem SVG) ────────── */}
-          {dailyRevenue.length > 0 && (
-            <Section title={t('print.dailyRevenue')}>
-              {isThermal ? (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
+                  </thead>
                   <tbody>
-                    {dailyRevenue.map((d) => (
-                      <tr key={d.date} style={{ borderBottom: '1px dotted #e5e7eb' }}>
-                        <td style={{ padding: '2px 0', fontWeight: 600 }}>{d.date}</td>
-                        <td style={{ textAlign: 'right', padding: '2px 0' }}>{formatCurrency(d.revenue, currency)}</td>
-                        <td style={{ textAlign: 'right', padding: '2px 0', color: '#6b7280', fontSize: 8 }}>({d.orders}p)</td>
+                    {topProducts.slice(0, isThermal ? 8 : 12).map((item, i) => (
+                      <tr key={`top-${item.name}-${i}`} style={{ borderBottom: '1px dotted #e5e7eb' }}>
+                        <td style={{ padding: '4px 0', color: '#6b7280', fontSize: 9 }}>{i + 1}</td>
+                        <td style={{ padding: '4px 8px', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.name}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '4px 0', fontWeight: 700 }}>{item.quantity}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              ) : (
-                <>
-                  {/* A4: mini bar chart via CSS */}
-                  {dailyRevenue.map((d) => (
-                    <div key={d.date} style={{ marginBottom: 5 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, fontSize: 10 }}>
-                        <span style={{ fontWeight: 600 }}>{d.date}</span>
-                        <span>
-                          {formatCurrency(d.revenue, currency)}
-                          <span style={{ color: '#6b7280', fontSize: 9, marginLeft: 6 }}>({d.orders} ped.)</span>
-                        </span>
-                      </div>
-                      <div style={{ height: 8, background: '#e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                        <div style={{
-                          height: '100%',
-                          width: `${maxDailyRev > 0 ? (d.revenue / maxDailyRev) * 100 : 0}%`,
-                          background: '#1f2937',
-                          borderRadius: 4,
-                        }} />
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-            </Section>
+              </SectionA4>
+            )}
+
+            {bottomProducts.length > 0 && isA4 && (
+              <SectionA4 title={t('print.bottomItems')}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #9ca3af' }}>
+                      <th style={{ textAlign: 'left', padding: '4px 0', fontWeight: 700, width: '4%' }}>#</th>
+                      <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 700 }}>Produto</th>
+                      <th style={{ textAlign: 'right', padding: '4px 0', fontWeight: 700 }}>Qtd</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bottomProducts.slice(0, 12).map((item, i) => (
+                      <tr key={`bot-${item.name}-${i}`} style={{ borderBottom: '1px dotted #e5e7eb' }}>
+                        <td style={{ padding: '4px 0', color: '#6b7280', fontSize: 9 }}>{i + 1}</td>
+                        <td style={{ padding: '4px 8px', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.name}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '4px 0', fontWeight: 700 }}>{item.quantity}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </SectionA4>
+            )}
+          </div>
+
+          {/* ── Faturamento Diário (gráfico em barras) ───────────────────────── */}
+          {dailyRevenue.length > 0 && (
+            <SectionA4 title={t('print.dailyRevenue')}>
+              {dailyRevenue.map((d) => (
+                <div key={d.date} style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, fontSize: 10 }}>
+                    <span style={{ fontWeight: 600 }}>{d.date}</span>
+                    <span>
+                      {formatCurrency(d.revenue, currency)}
+                      <span style={{ color: '#6b7280', fontSize: 9, marginLeft: 6 }}>({d.orders})</span>
+                    </span>
+                  </div>
+                  <div style={{ height: 10, background: '#e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${maxDailyRev > 0 ? (d.revenue / maxDailyRev) * 100 : 0}%`,
+                      background: ORANGE,
+                      borderRadius: 4,
+                    }} />
+                  </div>
+                </div>
+              ))}
+            </SectionA4>
           )}
 
-          {/* ── Rodapé ───────────────────────────────────────────────────── */}
+          {/* ── Rodapé ──────────────────────────────────────────────────────── */}
           <div style={{
-            marginTop: 12,
+            marginTop: 16,
             paddingTop: 8,
             borderTop: '1px solid #9ca3af',
             display: 'flex',
             justifyContent: 'space-between',
-            fontSize: 8,
+            fontSize: 9,
             color: '#6b7280',
           }}>
             <span>{t('print.footer')}</span>
-            <span>{format(generatedAt, 'dd/MM/yyyy HH:mm')}</span>
+            <span>{format(generatedAt, 'dd/MM/yyyy HH:mm', { locale: dateLocale })}</span>
           </div>
 
         </div>

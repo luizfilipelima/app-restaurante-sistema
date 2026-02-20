@@ -24,7 +24,9 @@ import {
   Gift, Star, Trophy, Users, ExternalLink, Link2,
   MessageCircle, AtSign,
 } from 'lucide-react';
-import { useLoyaltyProgram, useSaveLoyaltyProgram, useLoyaltyMetrics } from '@/hooks/queries';
+import { useLoyaltyProgram, useSaveLoyaltyProgram, useLoyaltyMetrics, useRestaurant } from '@/hooks/queries';
+import { useCanAccess } from '@/hooks/useUserRole';
+import RestaurantUsersPanel from '@/components/admin/RestaurantUsersPanel';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -209,9 +211,15 @@ function SaveButton({ saving, onClick, label, savingLabel }: {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
+/** Roles que podem ver a gestão de usuários: proprietário e super-admin */
+const ROLES_USERS_MANAGEMENT = ['owner', 'restaurant_admin', 'super_admin'] as const;
+
 export default function AdminSettings() {
   const restaurantId = useAdminRestaurantId();
   const { t }        = useAdminTranslation();
+  const canAccessUsers = useCanAccess([...ROLES_USERS_MANAGEMENT]);
+  const { data: restaurant } = useRestaurant(restaurantId);
+  const [usersPanelOpen, setUsersPanelOpen] = useState(false);
   const { lang: panelLanguage, setLang: setStoreLang } = useAdminLanguageStore();
   const [loading,       setLoading]       = useState(true);
   const [saving,        setSaving]        = useState(false);
@@ -387,16 +395,15 @@ export default function AdminSettings() {
             overflow-x-auto scrollbar-hide
             border-b border-border rounded-none gap-0
           ">
-            {(
-              [
-                { value: 'perfil',       icon: Store,   label: t('settings.tabs.profile')   },
-                { value: 'regional',     icon: Globe,   label: t('settings.tabs.regional')  },
-                { value: 'contato',      icon: Phone,   label: t('settings.tabs.contact')   },
-                { value: 'horarios',     icon: Clock,   label: 'Horários'                   },
-                { value: 'impressao',    icon: Printer, label: 'Impressão'                  },
-                { value: 'fidelidade',   icon: Gift,    label: t('loyalty.tabLabel')        },
-              ] as const
-            ).map(({ value, icon: Icon, label }) => (
+            {[
+              { value: 'perfil',       icon: Store,   label: t('settings.tabs.profile')   },
+              { value: 'regional',     icon: Globe,   label: t('settings.tabs.regional')  },
+              { value: 'contato',      icon: Phone,   label: t('settings.tabs.contact')   },
+              { value: 'horarios',     icon: Clock,   label: 'Horários'                   },
+              { value: 'impressao',    icon: Printer, label: 'Impressão'                  },
+              { value: 'fidelidade',   icon: Gift,    label: t('loyalty.tabLabel')        },
+              ...(canAccessUsers ? [{ value: 'usuarios', icon: Users, label: t('settings.tabs.users') }] : []),
+            ].map(({ value, icon: Icon, label }) => (
               <TabsTrigger
                 key={value}
                 value={value}
@@ -1262,7 +1269,47 @@ export default function AdminSettings() {
           </div>
 
         </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            ABA — Gestão de Usuários (visível apenas para super-admin e proprietário)
+        ══════════════════════════════════════════════════════════════════════ */}
+        {canAccessUsers && (
+          <TabsContent value="usuarios" className="mt-0 space-y-5">
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                    <Users className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground">{t('settings.tabs.users')}</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {t('settings.usersDescription')}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setUsersPanelOpen(true)}
+                  className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  <Users className="h-4 w-4" />
+                  {t('settings.usersOpenPanel')}
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
+
+      {/* Painel de Gestão de Usuários (mesmo componente usado pelo super-admin) */}
+      {canAccessUsers && restaurantId && (
+        <RestaurantUsersPanel
+          open={usersPanelOpen}
+          onClose={() => setUsersPanelOpen(false)}
+          restaurantId={restaurantId}
+          restaurantName={restaurant?.name}
+        />
+      )}
     </div>
   );
 }

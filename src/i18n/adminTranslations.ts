@@ -140,7 +140,10 @@ const pt = {
       regional:   'Regional',
       contact:    'Contato',
       operation:  'Operação',
+      users:      'Usuários',
     },
+    usersDescription:    'Adicione, edite e gerencie os usuários que têm acesso ao painel deste restaurante.',
+    usersOpenPanel:      'Gerenciar Usuários',
     profile: {
       logo:               'Logo',
       logoDesc:           'PNG, JPG ou WebP — 80%',
@@ -339,7 +342,10 @@ const es: typeof pt = {
       regional:   'Regional',
       contact:    'Contacto',
       operation:  'Operación',
+      users:      'Usuarios',
     },
+    usersDescription:    'Agregue, edite y gestione los usuarios con acceso al panel de este restaurante.',
+    usersOpenPanel:      'Gestionar Usuarios',
     profile: {
       logo:               'Logo',
       logoDesc:           'PNG, JPG o WebP — 80%',
@@ -538,7 +544,10 @@ const en: typeof pt = {
       regional:   'Regional',
       contact:    'Contact',
       operation:  'Operation',
+      users:      'Users',
     },
+    usersDescription:    'Add, edit and manage users who have access to this restaurant\'s panel.',
+    usersOpenPanel:      'Manage Users',
     profile: {
       logo:               'Logo',
       logoDesc:           'PNG, JPG or WebP — 80%',
@@ -606,11 +615,16 @@ const en: typeof pt = {
 // ─── Add print section to each lang ─────────────────────────────────────────
 
 (pt as Record<string, unknown>).print = {
-  title:          'Relatório de Fechamento',
+  title:          'Relatório de Fechamento Premium',
   generatedAt:    'Gerado em',
   period:         'Período',
+  periodDates:    'Período dos dados',
   area:           'Área',
   financial:      'Resumo Financeiro',
+  exportReport:   'Exportar Relatório',
+  exportReportTitle: 'Gerar relatório em PDF/impressão A4',
+  hourlyMovement: 'Movimento por Hora',
+  bottomItems:    'Itens Menos Vendidos',
   revenue:        'Faturamento Total',
   estimatedProfit:'Lucro Estimado (CMV)',
   avgTicket:      'Ticket Médio',
@@ -631,11 +645,16 @@ const en: typeof pt = {
 };
 
 (es as Record<string, unknown>).print = {
-  title:          'Reporte de Cierre',
+  title:          'Reporte de Cierre Premium',
   generatedAt:    'Generado el',
   period:         'Período',
+  periodDates:    'Período de datos',
   area:           'Área',
   financial:      'Resumen Financiero',
+  exportReport:   'Exportar Reporte',
+  exportReportTitle: 'Generar reporte en PDF/impresión A4',
+  hourlyMovement: 'Movimiento por Hora',
+  bottomItems:    'Ítems Menos Vendidos',
   revenue:        'Facturación Total',
   estimatedProfit:'Ganancia Estimada (CMV)',
   avgTicket:      'Ticket Promedio',
@@ -656,11 +675,16 @@ const en: typeof pt = {
 };
 
 (en as Record<string, unknown>).print = {
-  title:          'Closing Report',
+  title:          'Premium Closing Report',
   generatedAt:    'Generated at',
   period:         'Period',
+  periodDates:    'Data period',
   area:           'Area',
   financial:      'Financial Summary',
+  exportReport:   'Export Report',
+  exportReportTitle: 'Generate PDF/print report (A4)',
+  hourlyMovement: 'Hourly Movement',
+  bottomItems:    'Least Selling Items',
   revenue:        'Total Revenue',
   estimatedProfit:'Estimated Profit (COGS)',
   avgTicket:      'Average Ticket',
