@@ -477,7 +477,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                         return (
                           <div key={sub.id} className="space-y-2">
                             <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                               {subProducts.map((product) => (
                                 <ProductCard
                                   key={product.id}
@@ -487,11 +487,11 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                                 />
                               ))}
                             </div>
-                          </div>
+                        </div>
                         );
                       })}
                       {productsWithoutSub.length > 0 && (
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {productsWithoutSub.map((product) => (
                             <ProductCard
                               key={product.id}
@@ -504,7 +504,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       )}
                     </>
                   ) : (
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {categoryProducts.map((product) => (
                         <ProductCard
                           key={product.id}
@@ -524,7 +524,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
                 {selectedCategory}
               </h2>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}

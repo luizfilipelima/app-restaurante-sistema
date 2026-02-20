@@ -489,7 +489,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-6 sm:pb-8 safe-area-inset-bottom">
+    <div className="min-h-screen bg-slate-50 pb-36 safe-area-inset-bottom">
       {/* Header - Mobile First */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30 safe-area-inset-top">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center gap-3 sm:gap-4">
@@ -797,58 +797,68 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
         )}
 
-        {/* Resumo e Botão Finalizar */}
-        <Card className="border-0 shadow-lg bg-white rounded-xl">
-          <CardContent className="pt-4 px-4 pb-4 space-y-3">
-            {!isTableOrder && (
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-500">{t('checkout.subtotal')}</span>
-                <span className="font-semibold text-slate-900">{formatCurrency(subtotal, currency)}</span>
-              </div>
-              {deliveryType === DeliveryType.DELIVERY && (
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-500">{t('checkout.deliveryFee')}</span>
-                  <span className="font-semibold text-red-600">{formatCurrency(deliveryFee, currency)}</span>
-                </div>
-              )}
-              <div className="flex justify-between items-center text-base font-bold border-t border-slate-200 pt-2.5">
-                <span className="text-slate-900">{t('checkout.total')}</span>
-                <span className="text-slate-900">{formatCurrency(total, currency)}</span>
-              </div>
+        {/* Resumo inline */}
+        {!isTableOrder && (
+          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm px-4 py-3.5 space-y-2">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-500">{t('checkout.subtotal')}</span>
+              <span className="font-semibold text-slate-900">{formatCurrency(subtotal, currency)}</span>
             </div>
+            {deliveryType === DeliveryType.DELIVERY && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-500">{t('checkout.deliveryFee')}</span>
+                <span className="font-semibold text-red-500">{formatCurrency(deliveryFee, currency)}</span>
+              </div>
             )}
-            
-            <Button 
-              size="lg" 
-              className={`w-full font-bold h-12 rounded-xl shadow-lg flex items-center justify-center gap-2 text-base touch-manipulation active:scale-[0.98] ${
-                isTableOrder
-                  ? 'bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white'
-                  : 'bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white'
-              }`}
-              onClick={handleCheckout}
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                  {t('checkout.sending')}
-                </span>
-              ) : isTableOrder ? (
-                <>
-                  <span>Fazer Pedido</span>
-                  <Send className="h-4 w-4 flex-shrink-0" />
-                </>
-              ) : (
-                <>
-                  <span>{t('checkout.sendWhatsApp')}</span>
-                  <Send className="h-4 w-4 flex-shrink-0" />
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+            <div className="flex justify-between items-center font-bold border-t border-slate-100 pt-2.5">
+              <span className="text-slate-900">{t('checkout.total')}</span>
+              <span className="text-lg text-slate-900">{formatCurrency(total, currency)}</span>
+            </div>
+          </div>
+        )}
 
+      </div>
+
+      {/* ── Barra de ação sticky (mobile) ── */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-100 px-4 pt-3 pb-4 shadow-2xl shadow-slate-900/10"
+        style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+      >
+        <div className="max-w-xl mx-auto flex items-center gap-3">
+          {!isTableOrder && (
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide leading-none">{t('checkout.total')}</span>
+              <span className="text-lg font-bold text-slate-900 leading-snug">{formatCurrency(total, currency)}</span>
+            </div>
+          )}
+          <Button
+            size="lg"
+            className={`flex-1 font-bold h-13 rounded-2xl shadow-lg flex items-center justify-center gap-2 text-base touch-manipulation active:scale-[0.98] transition-all ${
+              isTableOrder
+                ? 'bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white'
+                : 'bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white'
+            }`}
+            onClick={handleCheckout}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                {t('checkout.sending')}
+              </>
+            ) : isTableOrder ? (
+              <>
+                <span>Fazer Pedido</span>
+                <Send className="h-4 w-4 flex-shrink-0" />
+              </>
+            ) : (
+              <>
+                <span>{t('checkout.sendWhatsApp')}</span>
+                <Send className="h-4 w-4 flex-shrink-0" />
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* ── Dialog de Resgate de Fidelidade ── */}

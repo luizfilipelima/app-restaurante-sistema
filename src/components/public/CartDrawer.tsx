@@ -3,14 +3,8 @@ import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
-import { Plus, Minus, Trash2, MessageCircle, Sparkles } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { Plus, Minus, Trash2, MessageCircle, Sparkles, ShoppingBag, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { fetchUpsellsForProducts, type UpsellRow, useLoyaltyStatus } from '@/hooks/queries';
 import type { CartItem } from '@/types';
 import LoyaltyCard, { LoyaltyInvite } from './LoyaltyCard';
@@ -29,7 +23,6 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
   const { items, addItem, updateQuantity, removeItem, getSubtotal } = useCartStore();
   const [upsellRows, setUpsellRows] = useState<UpsellRow[]>([]);
 
-  // Fidelidade
   const { data: loyaltyStatus } = useLoyaltyStatus(
     open ? (restaurantId ?? null) : null,
     open ? (customerPhone ?? null) : null
@@ -43,7 +36,6 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
     if (!cartProductIds.length) { setUpsellRows([]); return; }
 
     fetchUpsellsForProducts(cartProductIds).then((byProduct) => {
-      // Priorizar: produto mais caro → último adicionado
       const mostExpensive = [...items]
         .filter((i) => !!i.productId)
         .sort((a, b) => b.unitPrice * b.quantity - a.unitPrice * a.quantity)[0];
@@ -58,7 +50,6 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
           (r) => r.upsell_product && r.upsell_product.is_active && !alreadyInCart.has(r.upsell_product_id)
         );
       }
-      // Complementar com outros produtos se < 3
       if (suggestions.length < 3) {
         for (const pid of cartProductIds) {
           if (pid === priorityId) continue;
@@ -85,7 +76,6 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
       isUpsell: true,
     };
     addItem(cartItem);
-    // Remove da lista de sugestões
     setUpsellRows((prev) => prev.filter((r) => r.upsell_product_id !== row.upsell_product_id));
   };
 
@@ -95,172 +85,198 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg md:max-w-xl lg:max-w-2xl max-h-[90vh] sm:max-h-[85vh] flex flex-col p-0 gap-0 safe-area-inset-bottom">
-        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b">
-          <DialogTitle className="text-lg sm:text-xl">{t('cart.title')}</DialogTitle>
-        </DialogHeader>
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            className="fixed inset-0 bg-black/60 z-50 touch-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+          />
 
-        {/* ── Fidelidade (compacta, fora do scroll principal) ── */}
-        {items.length > 0 && (
-          loyaltyStatus
-            ? <LoyaltyCard status={loyaltyStatus} compact />
-            : loyaltyStatus === null && restaurantId
-              ? <LoyaltyInvite enabled={true} />
-              : null
-        )}
-
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 sm:py-6 scroll-smooth">
-          {items.length === 0 ? (
-            <div className="text-center py-12 sm:py-16">
-              <p className="text-muted-foreground text-sm sm:text-base">{t('cart.empty')}</p>
+          {/* Bottom Sheet */}
+          <motion.div
+            className="fixed bottom-0 left-0 right-0 z-50 flex flex-col bg-white rounded-t-[28px] shadow-2xl overflow-hidden"
+            style={{ maxHeight: '92svh', paddingBottom: 'env(safe-area-inset-bottom)' }}
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 32, stiffness: 380, mass: 0.8 }}
+          >
+            {/* Drag indicator */}
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-grab active:cursor-grabbing" onClick={onClose}>
+              <div className="w-10 h-1 rounded-full bg-slate-200" />
             </div>
-          ) : (
-            <div className="space-y-3 sm:space-y-4">
-              {/* ── Aproveite Também (Upsell) ── */}
-              {upsellRows.length > 0 && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/20 p-3 space-y-2.5">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    {t('cart.upsellTitle')}
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-slate-900 flex items-center justify-center">
+                  <ShoppingBag className="h-4 w-4 text-white" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900">{t('cart.title')}</h2>
+                {items.length > 0 && (
+                  <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    {items.length}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={onClose}
+                className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 active:scale-95 transition-all"
+              >
+                <span className="text-sm font-bold">✕</span>
+              </button>
+            </div>
+
+            {/* Loyalty banner */}
+            {items.length > 0 && (
+              loyaltyStatus
+                ? <LoyaltyCard status={loyaltyStatus} compact />
+                : loyaltyStatus === null && restaurantId
+                  ? <LoyaltyInvite enabled={true} />
+                  : null
+            )}
+
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3">
+              {items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-4">
+                  <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center">
+                    <ShoppingBag className="h-7 w-7 text-slate-400" />
                   </div>
-                  <div className="space-y-1.5">
-                    {upsellRows.map((row) => {
-                      const p = row.upsell_product;
-                      if (!p) return null;
-                      const price = Number(p.price_sale || p.price);
-                      return (
-                        <div
-                          key={row.id}
-                          className="flex items-center gap-2.5 rounded-lg bg-white dark:bg-slate-900 border border-amber-100 dark:border-amber-800 p-2"
-                        >
-                          {p.image_url ? (
-                            <img
-                              src={p.image_url}
-                              alt={p.name}
-                              className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-lg flex-shrink-0">
-                              🍽
+                  <p className="text-slate-500 text-sm font-medium">{t('cart.empty')}</p>
+                </div>
+              ) : (
+                <>
+                  {/* Upsell */}
+                  {upsellRows.length > 0 && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3 space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        {t('cart.upsellTitle')}
+                      </div>
+                      <div className="space-y-1.5">
+                        {upsellRows.map((row) => {
+                          const p = row.upsell_product;
+                          if (!p) return null;
+                          const price = Number(p.price_sale || p.price);
+                          return (
+                            <div key={row.id} className="flex items-center gap-3 rounded-xl bg-white border border-amber-100 p-2.5">
+                              {p.image_url ? (
+                                <img src={p.image_url} alt={p.name} className="w-11 h-11 rounded-xl object-cover flex-shrink-0" />
+                              ) : (
+                                <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center text-xl flex-shrink-0">🍽</div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-slate-800 truncate">{p.name}</p>
+                                <p className="text-xs text-amber-700 font-semibold mt-0.5">{formatCurrency(price, currency)}</p>
+                              </div>
+                              <Button
+                                size="sm"
+                                className="h-8 w-8 p-0 rounded-full bg-amber-500 hover:bg-amber-600 text-white active:scale-95 touch-manipulation flex-shrink-0 border-0"
+                                onClick={() => addUpsellToCart(row)}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
                             </div>
-                          )}
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cart Items */}
+                  {items.map((item, index) => {
+                    const itemTotal = item.unitPrice * item.quantity;
+                    return (
+                      <div key={index} className="bg-white border border-slate-100 rounded-2xl p-3.5 shadow-sm">
+                        <div className="flex items-start justify-between gap-2 mb-3">
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-foreground truncate">{p.name}</p>
-                            <p className="text-xs text-muted-foreground">{formatCurrency(price, currency)}</p>
+                            <h4 className="font-semibold text-slate-900 text-sm leading-snug">{item.productName}</h4>
+                            {item.isPizza && (
+                              <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                                {item.pizzaSize && <p>{t('cart.size')}: {item.pizzaSize}</p>}
+                                {item.pizzaFlavors && item.pizzaFlavors.length > 0 && (
+                                  <p className="line-clamp-1">{t('cart.flavors')}: {item.pizzaFlavors.join(', ')}</p>
+                                )}
+                                {item.pizzaDough && <p>{t('cart.dough')}: {item.pizzaDough}</p>}
+                                {item.pizzaEdge && <p>{t('cart.edge')}: {item.pizzaEdge}</p>}
+                              </div>
+                            )}
+                            {item.observations && (
+                              <p className="text-xs text-orange-500 mt-1 italic line-clamp-1">Obs: {item.observations}</p>
+                            )}
                           </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 p-0 rounded-full border-amber-300 text-amber-700 hover:bg-amber-100 active:scale-95 touch-manipulation flex-shrink-0"
-                            onClick={() => addUpsellToCart(row)}
+                          <button
+                            onClick={() => removeItem(index)}
+                            className="h-7 w-7 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 active:scale-95 touch-manipulation transition-all flex-shrink-0"
                           >
-                            <Plus className="h-4 w-4" />
-                          </Button>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                      );
-                    })}
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center bg-slate-100 rounded-xl overflow-hidden">
+                            <button
+                              className="h-9 w-9 flex items-center justify-center text-slate-700 hover:bg-slate-200 active:scale-95 touch-manipulation transition-all"
+                              onClick={() => updateQuantity(index, item.quantity - 1)}
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </button>
+                            <span className="w-8 text-center text-sm font-bold text-slate-900">{item.quantity}</span>
+                            <button
+                              className="h-9 w-9 flex items-center justify-center text-slate-700 hover:bg-slate-200 active:scale-95 touch-manipulation transition-all"
+                              onClick={() => updateQuantity(index, item.quantity + 1)}
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <span className="font-bold text-slate-900 text-sm">
+                            {formatCurrency(itemTotal, currency)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            {items.length > 0 && (
+              <div className="flex-shrink-0 border-t border-slate-100 bg-white px-4 pt-3 pb-4 space-y-3">
+                {/* WhatsApp hint */}
+                <div className="flex items-start gap-2.5 rounded-2xl bg-sky-50 border border-sky-200 px-3.5 py-3">
+                  <MessageCircle className="h-4 w-4 text-sky-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-sky-800 leading-relaxed">
+                    <span className="font-semibold">{t('cart.sendLocationTitle')}</span>
+                    {' · '}
+                    <span className="text-sky-700">{t('cart.sendLocationDesc')}</span>
                   </div>
                 </div>
-              )}
 
-              {items.map((item, index) => {
-                const itemTotal = item.unitPrice * item.quantity;
-
-                return (
-                  <div
-                    key={index}
-                    className="border rounded-xl sm:rounded-lg p-3 sm:p-4 space-y-2.5 sm:space-y-3 bg-white"
-                  >
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-sm sm:text-base leading-tight">{item.productName}</h4>
-                        
-                        {item.isPizza && (
-                          <div className="text-xs sm:text-sm text-muted-foreground mt-1.5 sm:mt-2 space-y-0.5 sm:space-y-1">
-                            {item.pizzaSize && <p>{t('cart.size')}: {item.pizzaSize}</p>}
-                            {item.pizzaFlavors && item.pizzaFlavors.length > 0 && (
-                              <p className="line-clamp-2">
-                                {t('cart.flavors')}: {item.pizzaFlavors.join(', ')}
-                              </p>
-                            )}
-                            {item.pizzaDough && <p>{t('cart.dough')}: {item.pizzaDough}</p>}
-                            {item.pizzaEdge && <p>{t('cart.edge')}: {item.pizzaEdge}</p>}
-                          </div>
-                        )}
-                        
-                        {item.observations && (
-                          <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 sm:mt-2 line-clamp-2">
-                            {t('cart.obs')}: {item.observations}
-                          </p>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 touch-manipulation active:scale-95"
-                        onClick={() => removeItem(index)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-9 w-9 sm:h-10 sm:w-10 touch-manipulation active:scale-95"
-                          onClick={() => updateQuantity(index, item.quantity - 1)}
-                        >
-                          <Minus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </Button>
-                        <span className="w-8 sm:w-10 text-center text-sm sm:text-base font-semibold">{item.quantity}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-9 w-9 sm:h-10 sm:w-10 touch-manipulation active:scale-95"
-                          onClick={() => updateQuantity(index, item.quantity + 1)}
-                        >
-                          <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </Button>
-                      </div>
-                      <span className="font-semibold text-sm sm:text-base">
-                        {formatCurrency(itemTotal, currency)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {items.length > 0 && (
-          <DialogFooter className="flex flex-col md:flex-row md:items-start gap-4 px-4 sm:px-6 pb-4 sm:pb-6 pt-4 border-t bg-slate-50/50">
-            <div className="flex-1 min-w-0 md:max-w-sm rounded-xl bg-sky-50 border border-sky-200 p-3 sm:p-4 flex gap-2 sm:gap-3">
-              <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 text-sky-600 flex-shrink-0 mt-0.5" />
-              <div className="min-w-0 text-xs sm:text-sm text-sky-800">
-                <p className="font-semibold">{t('cart.sendLocationTitle')}</p>
-                <p className="text-sky-700 mt-0.5 leading-relaxed">{t('cart.sendLocationDesc')}</p>
+                {/* Subtotal + CTA */}
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm text-slate-500 font-medium">{t('cart.subtotal')}</span>
+                  <span className="text-xl font-bold text-slate-900">{formatCurrency(getSubtotal(), currency)}</span>
+                </div>
+                <button
+                  onClick={handleCheckout}
+                  className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-bold text-base flex items-center justify-between px-5 shadow-lg shadow-slate-900/20 transition-all touch-manipulation"
+                >
+                  <span>{t('cart.finalize')}</span>
+                  <ChevronRight className="h-5 w-5 opacity-60" />
+                </button>
               </div>
-            </div>
-            <div className="flex flex-col gap-3 md:min-w-[200px] md:shrink-0">
-              <div className="flex justify-between items-center text-base sm:text-lg font-bold">
-                <span>{t('cart.subtotal')}:</span>
-                <span>{formatCurrency(getSubtotal(), currency)}</span>
-              </div>
-              <Button 
-                size="lg" 
-                onClick={handleCheckout} 
-                className="w-full h-12 sm:h-14 text-sm sm:text-base font-semibold rounded-xl sm:rounded-2xl touch-manipulation active:scale-[0.98]"
-              >
-                {t('cart.finalize')}
-              </Button>
-            </div>
-          </DialogFooter>
-        )}
-      </DialogContent>
-    </Dialog>
+            )}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
