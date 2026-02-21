@@ -25,7 +25,7 @@ import {
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { useTableOrderStore } from '@/store/tableOrderStore';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
-import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours } from '@/lib/utils';
+import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours, getBankAccountForCurrency, hasBankAccountData, formatBankAccountLines } from '@/lib/utils';
 import { convertBetweenCurrencies, type CurrencyCode } from '@/lib/priceHelper';
 import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
@@ -82,6 +82,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const displayCurrency = paymentCurrencies.includes(paymentCurrency) ? paymentCurrency : baseCurrency;
   const convertForDisplay = (value: number) =>
     displayCurrency === baseCurrency ? value : convertBetweenCurrencies(value, baseCurrency, displayCurrency, exchangeRates);
+  const bankAccountSnapshot = getBankAccountForCurrency(currentRestaurant?.bank_account, displayCurrency);
 
   // ── Dados do cliente ──
   const [customerName, setCustomerName] = useState('');
@@ -328,16 +329,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       if (paymentMethod === PaymentMethod.PIX || paymentMethod === PaymentMethod.QRCODE) {
         if (paymentMethod === PaymentMethod.PIX) pagamentoDetalhes = '📤 Cliente deve enviar o comprovante de pagamento PIX após confirmar o pedido.';
       }
-      if (paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS')) {
-        const ba = currentRestaurant?.bank_account;
-        if (ba && (ba.bank_name || ba.agency || ba.account || ba.holder)) {
-          pagamentoDetalhes = ['Banco: ' + (ba.bank_name ?? ''), 'Agência: ' + (ba.agency ?? ''), 'Conta: ' + (ba.account ?? ''), 'Titular: ' + (ba.holder ?? '')].filter((s) => !s.endsWith(': ')).join(' | ');
-        }
+      if (paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS') && bankAccountSnapshot && hasBankAccountData(bankAccountSnapshot)) {
+        pagamentoDetalhes = formatBankAccountLines(bankAccountSnapshot).join(' | ');
       }
       const taxaLine = deliveryFee > 0 ? `Taxa entrega: ${formatCurrency(deliveryFee, baseCurrency)}` : '';
-      const baRest = currentRestaurant?.bank_account;
-      const contaRest = baRest && (baRest.bank_name || baRest.agency || baRest.account || baRest.holder)
-        ? ['Banco: ' + (baRest.bank_name ?? ''), 'Agência: ' + (baRest.agency ?? ''), 'Conta: ' + (baRest.account ?? ''), 'Titular: ' + (baRest.holder ?? '')].filter((s) => !s.endsWith(': ')).join(' | ')
+      const contaRest = bankAccountSnapshot && hasBankAccountData(bankAccountSnapshot)
+        ? formatBankAccountLines(bankAccountSnapshot).join(' | ')
         : '';
       const restaurantTemplates = (currentRestaurant as { whatsapp_templates?: Record<string, string> | null })?.whatsapp_templates;
       const menuLang = getStoredMenuLanguage();
@@ -401,7 +398,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         payment_method: isTableOrder ? PaymentMethod.TABLE : paymentMethod,
         payment_change_for: isTableOrder ? null : (paymentMethod === PaymentMethod.CASH && changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null),
         payment_pix_key: null,
-        payment_bank_account: !isTableOrder && paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS') && currentRestaurant?.bank_account && (currentRestaurant.bank_account.bank_name || currentRestaurant.bank_account.agency || currentRestaurant.bank_account.account || currentRestaurant.bank_account.holder) ? currentRestaurant.bank_account : null,
+        payment_bank_account: !isTableOrder && paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS') && bankAccountSnapshot && hasBankAccountData(bankAccountSnapshot) ? bankAccountSnapshot : null,
         order_source: isTableOrder ? 'table' : (finalDeliveryType === DeliveryType.DELIVERY ? 'delivery' : 'pickup'),
         table_id: isTableOrder && tableId ? tableId : null,
         status: 'pending',
@@ -865,7 +862,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               {(() => {
                 const baseOptions = [
                   { value: PaymentMethod.PIX, icon: Smartphone, label: 'PIX', desc: 'Envie o comprovante após confirmar', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', deliveryOnly: false },
-                  { value: PaymentMethod.BANK_TRANSFER, icon: Landmark, label: 'Transferência Bancária', desc: displayCurrency === 'PYG' || displayCurrency === 'ARS' ? 'Banco, agência, conta' : 'Disponível em Guaraní ou Peso', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600', deliveryOnly: false },
+                  { value: PaymentMethod.BANK_TRANSFER, icon: Landmark, label: 'Transferência Bancária', desc: displayCurrency === 'PYG' ? 'Banco, titular, alias' : displayCurrency === 'ARS' ? 'Banco, agência, conta' : 'Disponível em Guaraní ou Peso', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600', deliveryOnly: false },
                   { value: PaymentMethod.CASH, icon: Banknote, label: t('checkout.cash'), desc: 'Pague na entrega / retirada', iconBg: 'bg-green-100', iconColor: 'text-green-600', deliveryOnly: false },
                   { value: PaymentMethod.CARD, icon: CreditCard, label: t('checkout.cardOnDelivery'), desc: 'Débito ou crédito na entrega', iconBg: 'bg-blue-100', iconColor: 'text-blue-600', deliveryOnly: true },
                   { value: PaymentMethod.QRCODE, icon: QrCode, label: 'QR Code', desc: 'Na entrega', iconBg: 'bg-amber-100', iconColor: 'text-amber-600', deliveryOnly: true },
@@ -936,33 +933,25 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
                       {value === PaymentMethod.BANK_TRANSFER && paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS') && (
                         <div className="mt-2 px-1 space-y-2">
-                          {currentRestaurant?.bank_account && (currentRestaurant.bank_account.bank_name || currentRestaurant.bank_account.agency || currentRestaurant.bank_account.account || currentRestaurant.bank_account.holder) ? (
+                          {bankAccountSnapshot && hasBankAccountData(bankAccountSnapshot) ? (
                             <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200">
-                              <p className="text-xs font-semibold text-indigo-800 mb-2">Envie a transferência para:</p>
+                              <p className="text-xs font-semibold text-indigo-800 mb-2">
+                                Envie a transferência para{displayCurrency === 'PYG' ? ' (Guaraní)' : ' (Peso Argentino)'}:
+                              </p>
                               <div className="space-y-1.5 text-sm text-indigo-900">
-                                {currentRestaurant.bank_account.bank_name && (
-                                  <p><span className="text-indigo-600">Banco:</span> {currentRestaurant.bank_account.bank_name}</p>
-                                )}
-                                {currentRestaurant.bank_account.agency && (
-                                  <p><span className="text-indigo-600">Agência:</span> {currentRestaurant.bank_account.agency}</p>
-                                )}
-                                {currentRestaurant.bank_account.account && (
-                                  <p><span className="text-indigo-600">Conta:</span> {currentRestaurant.bank_account.account}</p>
-                                )}
-                                {currentRestaurant.bank_account.holder && (
-                                  <p><span className="text-indigo-600">Titular:</span> {currentRestaurant.bank_account.holder}</p>
-                                )}
+                                {formatBankAccountLines(bankAccountSnapshot).map((line) => {
+                                  const idx = line.indexOf(': ');
+                                  const label = idx >= 0 ? line.slice(0, idx) : line;
+                                  const value = idx >= 0 ? line.slice(idx + 2) : '';
+                                  return (
+                                    <p key={label}><span className="text-indigo-600">{label}:</span> {value}</p>
+                                  );
+                                })}
                               </div>
                               <button
                                 type="button"
                                 onClick={async () => {
-                                  const lines = [
-                                    currentRestaurant.bank_account?.bank_name && `Banco: ${currentRestaurant.bank_account.bank_name}`,
-                                    currentRestaurant.bank_account?.agency && `Agência: ${currentRestaurant.bank_account.agency}`,
-                                    currentRestaurant.bank_account?.account && `Conta: ${currentRestaurant.bank_account.account}`,
-                                    currentRestaurant.bank_account?.holder && `Titular: ${currentRestaurant.bank_account.holder}`,
-                                  ].filter(Boolean);
-                                  const text = lines.join('\n');
+                                  const text = formatBankAccountLines(bankAccountSnapshot).join('\n');
                                   try {
                                     await navigator.clipboard.writeText(text);
                                     setBankCopied(true);

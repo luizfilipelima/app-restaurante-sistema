@@ -84,6 +84,15 @@ export type PrintSettingsBySector = Partial<
   Record<'delivery' | 'table' | 'pickup' | 'buffet', SectorPrintSettings>
 >;
 
+/** Dados bancários por país — Paraguay (Banco, Titular, Alias) | Argentina (Banco, Agência, Conta, Titular) */
+export interface BankAccountByCountry {
+  pyg?: { bank_name?: string; holder?: string; alias?: string };
+  ars?: { bank_name?: string; agency?: string; account?: string; holder?: string };
+}
+
+/** Snapshot dos dados bancários exibidos no checkout (pyg ou ars conforme moeda) */
+export type PaymentBankAccountSnapshot = { bank_name?: string; holder?: string; alias?: string } | { bank_name?: string; agency?: string; account?: string; holder?: string };
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -113,8 +122,8 @@ export interface Restaurant {
   payment_currencies?: string[] | null;
   /** Chave PIX do restaurante — onde o cliente envia o pagamento */
   pix_key?: string | null;
-  /** Dados bancários para transferência (PYG/ARS): {bank_name, agency, account, holder} */
-  bank_account?: { bank_name?: string; agency?: string; account?: string; holder?: string } | null;
+  /** Dados bancários para transferência: pyg = Paraguay (Banco, Titular, Alias), ars = Argentina (Banco, Agência, Conta, Titular) */
+  bank_account?: BankAccountByCountry | null;
   /** Idioma da interface do cardápio público */
   language?: 'pt' | 'es' | 'en';
   /** Templates personalizáveis de mensagens WhatsApp */
@@ -274,6 +283,8 @@ export interface ProductOffer {
   label?: string | null;
   /** Dias da semana em que a oferta repete. Null/vazio = oferta única */
   repeat_days?: OfferRepeatDay[] | null;
+  /** Se true, oferta sempre visível no cardápio (ignora período) */
+  always_active?: boolean;
   is_active: boolean;
   sort_order: number;
   created_at?: string;
@@ -348,8 +359,8 @@ export interface Order {
   payment_change_for?: number; // Se pagamento em dinheiro, quanto o cliente vai pagar
   /** Chave PIX do cliente (quando pagamento PIX) */
   payment_pix_key?: string | null;
-  /** Dados da conta bancária do cliente para transferência (PYG/ARS) */
-  payment_bank_account?: { bank_name?: string; agency?: string; account?: string; holder?: string } | null;
+  /** Snapshot dos dados bancários exibidos ao cliente (pyg: Banco, Titular, Alias | ars: Banco, Agência, Conta, Titular) */
+  payment_bank_account?: PaymentBankAccountSnapshot | null;
   status: OrderStatus;
   notes?: string;
   is_paid: boolean; // Se pagamento foi confirmado (para priorização na cozinha)

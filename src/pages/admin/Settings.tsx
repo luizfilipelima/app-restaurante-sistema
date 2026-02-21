@@ -6,7 +6,7 @@ import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
 import { useAdminLanguageStore } from '@/store/adminLanguageStore';
-import { DayKey, PrintPaperWidth, type PrintSettingsBySector, type SectorPrintSettings } from '@/types';
+import { DayKey, PrintPaperWidth, type BankAccountByCountry, type PrintSettingsBySector, type SectorPrintSettings } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -88,6 +88,41 @@ function parseExchangeRates(raw: unknown): { pyg_per_brl: number; ars_per_brl: n
     pyg_per_brl: Math.max(1, Number(o.pyg_per_brl) || 3600),
     ars_per_brl: Math.max(1, Number(o.ars_per_brl) || 1150),
   };
+}
+
+function parseBankAccount(raw: unknown): BankAccountByCountry {
+  if (!raw || typeof raw !== 'object') return { pyg: {}, ars: {} };
+  const o = raw as Record<string, unknown>;
+  const hasLegacy = 'bank_name' in o || 'agency' in o || 'account' in o || 'holder' in o;
+  if (hasLegacy) {
+    return {
+      pyg: {},
+      ars: {
+        bank_name: String(o.bank_name ?? ''),
+        agency: String(o.agency ?? ''),
+        account: String(o.account ?? ''),
+        holder: String(o.holder ?? ''),
+      },
+    };
+  }
+  const pygRaw = o.pyg;
+  const arsRaw = o.ars;
+  const pyg = pygRaw && typeof pygRaw === 'object' && !Array.isArray(pygRaw)
+    ? {
+        bank_name: String((pygRaw as Record<string, unknown>).bank_name ?? ''),
+        holder: String((pygRaw as Record<string, unknown>).holder ?? ''),
+        alias: String((pygRaw as Record<string, unknown>).alias ?? ''),
+      }
+    : {};
+  const ars = arsRaw && typeof arsRaw === 'object' && !Array.isArray(arsRaw)
+    ? {
+        bank_name: String((arsRaw as Record<string, unknown>).bank_name ?? ''),
+        agency: String((arsRaw as Record<string, unknown>).agency ?? ''),
+        account: String((arsRaw as Record<string, unknown>).account ?? ''),
+        holder: String((arsRaw as Record<string, unknown>).holder ?? ''),
+      }
+    : {};
+  return { pyg, ars };
 }
 
 function parseSectorSettings(raw: unknown): PrintSettingsBySector {
@@ -276,8 +311,10 @@ export default function AdminSettings() {
     payment_currencies:      ['BRL', 'PYG'] as string[],
     pix_key:                 '',
     pix_key_type:            'random' as 'cpf' | 'email' | 'random',
-    bank_account:            { bank_name: '', agency: '', account: '', holder: '' } as { bank_name: string; agency: string; account: string; holder: string },
+    bank_account:            { pyg: {}, ars: {} } as BankAccountByCountry,
   });
+
+  const [bankCountry, setBankCountry] = useState<'pyg' | 'ars'>('pyg');
 
   const set = <K extends keyof typeof formData>(k: K, v: (typeof formData)[K]) =>
     setFormData(f => ({ ...f, [k]: v }));
@@ -351,18 +388,7 @@ export default function AdminSettings() {
           : ['BRL', 'PYG'],
         pix_key:                 data.pix_key ?? '',
         pix_key_type:            (['cpf', 'email', 'random'].includes(data.pix_key_type) ? data.pix_key_type : 'random') as 'cpf' | 'email' | 'random',
-        bank_account:            (() => {
-          const ba = data.bank_account;
-          if (ba && typeof ba === 'object' && !Array.isArray(ba)) {
-            return {
-              bank_name: String((ba as Record<string, unknown>).bank_name ?? ''),
-              agency:    String((ba as Record<string, unknown>).agency ?? ''),
-              account:   String((ba as Record<string, unknown>).account ?? ''),
-              holder:    String((ba as Record<string, unknown>).holder ?? ''),
-            };
-          }
-          return { bank_name: '', agency: '', account: '', holder: '' };
-        })(),
+        bank_account:            parseBankAccount(data.bank_account),
       });
     } catch (err) {
       console.error('Erro ao carregar restaurante:', err);
@@ -394,9 +420,13 @@ export default function AdminSettings() {
         exchange_rates:          formData.exchange_rates,
         payment_currencies:      formData.payment_currencies,
         pix_key:                 formData.pix_key?.trim() || null,
-        bank_account:            (formData.bank_account.bank_name || formData.bank_account.agency || formData.bank_account.account || formData.bank_account.holder)
-          ? formData.bank_account
-          : null,
+        bank_account:            (() => {
+          const { pyg, ars } = formData.bank_account;
+          const hasPyg = !!(pyg?.bank_name || pyg?.holder || pyg?.alias);
+          const hasArs = !!(ars?.bank_name || ars?.agency || ars?.account || ars?.holder);
+          if (!hasPyg && !hasArs) return null;
+          return { pyg: hasPyg ? pyg : undefined, ars: hasArs ? ars : undefined };
+        })(),
         updated_at:              new Date().toISOString(),
       };
       const { error } = await supabase.from('restaurants').update(updatePayload).eq('id', restaurantId);
@@ -1013,47 +1043,126 @@ export default function AdminSettings() {
               <div>
                 <h2 className="text-sm font-semibold text-foreground">Dados para transferência bancária</h2>
                 <p className="text-[11px] text-muted-foreground">
-                  Para Guaraní (PYG) ou Peso Argentino (ARS). O cliente envia para esta conta quando escolhe transferência.
+                  Configure os dados por país. Guaraní (PYG) usa Banco, Titular e Alias; Peso Argentino (ARS) usa Banco, Agência, Conta e Titular.
                 </p>
               </div>
             </div>
             <div className="p-5 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FieldGroup>
-                  <SectionLabel>Banco</SectionLabel>
-                  <Input
-                    value={formData.bank_account.bank_name}
-                    onChange={(e) => set('bank_account', { ...formData.bank_account, bank_name: e.target.value })}
-                    placeholder="Ex: Banco Itaú, Banco Continental"
-                  />
-                </FieldGroup>
-                <FieldGroup>
-                  <SectionLabel>Agência</SectionLabel>
-                  <Input
-                    value={formData.bank_account.agency}
-                    onChange={(e) => set('bank_account', { ...formData.bank_account, agency: e.target.value })}
-                    placeholder="Ex: 1234"
-                  />
-                </FieldGroup>
+              <div className="flex items-center gap-2">
+                <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">País</Label>
+                <div className="flex rounded-xl border border-border overflow-hidden bg-muted/30">
+                  <button
+                    type="button"
+                    onClick={() => setBankCountry('pyg')}
+                    className={`flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                      bankCountry === 'pyg'
+                        ? 'bg-[#F87116] text-white shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                    title="Paraguai (Guaraní)"
+                  >
+                    <span className="text-lg" aria-hidden>🇵🇾</span>
+                    <span className="sr-only">Paraguai (Guaraní)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBankCountry('ars')}
+                    className={`flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                      bankCountry === 'ars'
+                        ? 'bg-[#F87116] text-white shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                    title="Argentina (Peso)"
+                  >
+                    <span className="text-lg" aria-hidden>🇦🇷</span>
+                    <span className="sr-only">Argentina (Peso Argentino)</span>
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FieldGroup>
-                  <SectionLabel>Conta</SectionLabel>
-                  <Input
-                    value={formData.bank_account.account}
-                    onChange={(e) => set('bank_account', { ...formData.bank_account, account: e.target.value })}
-                    placeholder="Ex: 12345-6"
-                  />
-                </FieldGroup>
-                <FieldGroup>
-                  <SectionLabel>Titular</SectionLabel>
-                  <Input
-                    value={formData.bank_account.holder}
-                    onChange={(e) => set('bank_account', { ...formData.bank_account, holder: e.target.value })}
-                    placeholder="Nome do titular da conta"
-                  />
-                </FieldGroup>
-              </div>
+              {bankCountry === 'pyg' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <FieldGroup>
+                    <SectionLabel>Banco</SectionLabel>
+                    <Input
+                      value={formData.bank_account.pyg?.bank_name ?? ''}
+                      onChange={(e) => set('bank_account', {
+                        ...formData.bank_account,
+                        pyg: { ...formData.bank_account.pyg, bank_name: e.target.value },
+                      })}
+                      placeholder="Ex: Banco Continental"
+                    />
+                  </FieldGroup>
+                  <FieldGroup>
+                    <SectionLabel>Titular</SectionLabel>
+                    <Input
+                      value={formData.bank_account.pyg?.holder ?? ''}
+                      onChange={(e) => set('bank_account', {
+                        ...formData.bank_account,
+                        pyg: { ...formData.bank_account.pyg, holder: e.target.value },
+                      })}
+                      placeholder="Nome do titular"
+                    />
+                  </FieldGroup>
+                  <FieldGroup>
+                    <SectionLabel>Alias</SectionLabel>
+                    <Input
+                      value={formData.bank_account.pyg?.alias ?? ''}
+                      onChange={(e) => set('bank_account', {
+                        ...formData.bank_account,
+                        pyg: { ...formData.bank_account.pyg, alias: e.target.value },
+                      })}
+                      placeholder="Ex: MEU.ALIAS.CBU"
+                    />
+                  </FieldGroup>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FieldGroup>
+                    <SectionLabel>Banco</SectionLabel>
+                    <Input
+                      value={formData.bank_account.ars?.bank_name ?? ''}
+                      onChange={(e) => set('bank_account', {
+                        ...formData.bank_account,
+                        ars: { ...formData.bank_account.ars, bank_name: e.target.value },
+                      })}
+                      placeholder="Ex: Banco Galicia"
+                    />
+                  </FieldGroup>
+                  <FieldGroup>
+                    <SectionLabel>Agência</SectionLabel>
+                    <Input
+                      value={formData.bank_account.ars?.agency ?? ''}
+                      onChange={(e) => set('bank_account', {
+                        ...formData.bank_account,
+                        ars: { ...formData.bank_account.ars, agency: e.target.value },
+                      })}
+                      placeholder="Ex: 1234"
+                    />
+                  </FieldGroup>
+                  <FieldGroup>
+                    <SectionLabel>Conta</SectionLabel>
+                    <Input
+                      value={formData.bank_account.ars?.account ?? ''}
+                      onChange={(e) => set('bank_account', {
+                        ...formData.bank_account,
+                        ars: { ...formData.bank_account.ars, account: e.target.value },
+                      })}
+                      placeholder="Ex: 12345-6"
+                    />
+                  </FieldGroup>
+                  <FieldGroup>
+                    <SectionLabel>Titular</SectionLabel>
+                    <Input
+                      value={formData.bank_account.ars?.holder ?? ''}
+                      onChange={(e) => set('bank_account', {
+                        ...formData.bank_account,
+                        ars: { ...formData.bank_account.ars, holder: e.target.value },
+                      })}
+                      placeholder="Nome do titular da conta"
+                    />
+                  </FieldGroup>
+                </div>
+              )}
             </div>
           </div>
 

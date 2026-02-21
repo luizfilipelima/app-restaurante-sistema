@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { formatPrice } from './priceHelper';
+import type { BankAccountByCountry, PaymentBankAccountSnapshot } from '@/types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -122,4 +123,45 @@ export function isWithinOpeningHours(openingHours?: Record<string, { open: strin
   if (closeMinutes <= openMinutes) closeMinutes += 24 * 60;
   if (currentMinutes < openMinutes) currentMinutes += 24 * 60;
   return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+}
+
+/** Extrai dados bancários conforme moeda: PYG → pyg (Banco, Titular, Alias), ARS → ars (Banco, Agência, Conta, Titular). */
+export function getBankAccountForCurrency(
+  bankAccount: BankAccountByCountry | null | undefined,
+  currency: string
+): PaymentBankAccountSnapshot | null {
+  if (!bankAccount || typeof bankAccount !== 'object') return null;
+  const asAny = bankAccount as Record<string, unknown>;
+  const hasLegacy = 'bank_name' in asAny || 'agency' in asAny || 'account' in asAny || 'holder' in asAny;
+  if (hasLegacy && currency === 'ARS') {
+    const leg = asAny as { bank_name?: string; agency?: string; account?: string; holder?: string };
+    if (leg.bank_name || leg.agency || leg.account || leg.holder) return leg;
+    return null;
+  }
+  const ba = currency === 'PYG' ? (bankAccount as BankAccountByCountry).pyg : (bankAccount as BankAccountByCountry).ars;
+  if (!ba) return null;
+  const b = ba as Record<string, unknown>;
+  const hasData = !!(b.bank_name || b.holder || b.alias || b.agency || b.account);
+  if (!hasData) return null;
+  return ba as PaymentBankAccountSnapshot;
+}
+
+/** Verifica se o snapshot tem dados (pyg ou ars). */
+export function hasBankAccountData(ba: PaymentBankAccountSnapshot | null | undefined): boolean {
+  if (!ba || typeof ba !== 'object') return false;
+  const b = ba as Record<string, unknown>;
+  return !!(b.bank_name || b.holder || b.alias || b.agency || b.account);
+}
+
+/** Linhas para exibição/cópia do snapshot bancário. */
+export function formatBankAccountLines(ba: PaymentBankAccountSnapshot | null | undefined): string[] {
+  if (!ba || typeof ba !== 'object') return [];
+  const b = ba as Record<string, unknown>;
+  const lines: string[] = [];
+  if (b.bank_name) lines.push(`Banco: ${b.bank_name}`);
+  if (b.agency) lines.push(`Agência: ${b.agency}`);
+  if (b.account) lines.push(`Conta: ${b.account}`);
+  if (b.holder) lines.push(`Titular: ${b.holder}`);
+  if (b.alias) lines.push(`Alias: ${b.alias}`);
+  return lines;
 }

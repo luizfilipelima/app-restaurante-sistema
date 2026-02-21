@@ -44,7 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Tag, Plus, Pencil, Trash2, Loader2, ArrowRight, Package, Calendar, Repeat } from 'lucide-react';
+import { Tag, Plus, Pencil, Trash2, Loader2, ArrowRight, Package, Calendar, Repeat, Infinity } from 'lucide-react';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
 import { toast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
@@ -78,6 +78,7 @@ export default function AdminOffers() {
     label: '',
     immediate: true,
     repeat_days: [] as OfferRepeatDay[],
+    always_active: false,
   });
 
   useEffect(() => {
@@ -112,6 +113,7 @@ export default function AdminOffers() {
         label: '',
         immediate: true,
         repeat_days: [],
+        always_active: false,
       });
       setModalOpen(true);
       setSearchParams({});
@@ -134,6 +136,7 @@ export default function AdminOffers() {
       label: '',
       immediate: true,
       repeat_days: [],
+      always_active: false,
     });
     setModalOpen(true);
   };
@@ -153,6 +156,7 @@ export default function AdminOffers() {
       label: offer.label ?? '',
       immediate: false,
       repeat_days: (offer.repeat_days ?? []) as OfferRepeatDay[],
+      always_active: offer.always_active ?? false,
     });
     setModalOpen(true);
   };
@@ -183,14 +187,17 @@ export default function AdminOffers() {
     }
     let startsAt: Date;
     let endsAt: Date;
-    if (form.immediate) {
+    if (form.always_active) {
+      startsAt = new Date('2000-01-01T00:00:00');
+      endsAt = new Date('2099-12-31T23:59:59');
+    } else if (form.immediate) {
       startsAt = new Date();
       endsAt = new Date(startsAt.getTime() + 24 * 60 * 60 * 1000);
     } else {
       startsAt = new Date(`${form.starts_at}T${form.starts_at_time}:00`);
       endsAt = new Date(`${form.ends_at}T${form.ends_at_time}:00`);
     }
-    if (endsAt <= startsAt) {
+    if (endsAt <= startsAt && !form.always_active) {
       toast({ title: 'Data de fim deve ser após o início', variant: 'destructive' });
       return;
     }
@@ -204,6 +211,7 @@ export default function AdminOffers() {
           ends_at: endsAt.toISOString(),
           label: form.label.trim() || null,
           repeat_days: form.repeat_days.length > 0 ? form.repeat_days : null,
+          always_active: form.always_active,
           updated_at: new Date().toISOString(),
         });
         toast({ title: t('offers.updateOk') });
@@ -216,6 +224,7 @@ export default function AdminOffers() {
           ends_at: endsAt.toISOString(),
           label: form.label.trim() || null,
           repeat_days: form.repeat_days.length > 0 ? form.repeat_days : null,
+          always_active: form.always_active,
         });
         toast({ title: t('offers.createOk') });
       }
@@ -244,7 +253,10 @@ export default function AdminOffers() {
     }
   };
 
+  /** Status reflete visibilidade no cardápio: Ativa = aparece como oferta, Agendada/Expirada/Inativa = não aparece */
   const getOfferStatus = (o: ProductOffer): { type: StatusFilter; label: string; color: string } => {
+    if (!o.is_active) return { type: 'expired', label: t('offers.inactive'), color: 'bg-slate-200 text-slate-600' };
+    if (o.always_active) return { type: 'active', label: t('offers.active'), color: 'bg-emerald-500/15 text-emerald-700' };
     const now = new Date();
     const start = new Date(o.starts_at);
     const end = new Date(o.ends_at);
@@ -409,7 +421,12 @@ export default function AdminOffers() {
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {offer.repeat_days && offer.repeat_days.length > 0 ? (
+                          {offer.always_active ? (
+                            <span className="text-emerald-600 font-medium flex items-center gap-1">
+                              <Infinity className="h-3.5 w-3.5" />
+                              Sempre ativa
+                            </span>
+                          ) : offer.repeat_days && offer.repeat_days.length > 0 ? (
                             <span>
                               {offer.repeat_days.map((d) => REPEAT_DAYS.find((x) => x.key === d)?.label ?? d).join(', ')} ·{' '}
                               {format(new Date(offer.starts_at), 'HH:mm', { locale: ptBR })}–{format(new Date(offer.ends_at), 'HH:mm', { locale: ptBR })}
@@ -567,16 +584,36 @@ export default function AdminOffers() {
             </div>
 
             {/* ── 2. Período ───────────────────────────────────────────────────── */}
-            <div className="px-6 py-5 bg-muted/20 border-y border-border/50">
+            <div className="px-6 py-5 bg-muted/20 border-y border-border/50 space-y-4">
+              <label
+                htmlFor="always_active"
+                className="flex items-start gap-3 cursor-pointer group rounded-xl border-2 border-transparent p-4 transition-colors hover:bg-background/50 has-[:checked]:border-orange-300 has-[:checked]:bg-orange-50/50 dark:has-[:checked]:bg-orange-950/20"
+              >
+                <input
+                  type="checkbox"
+                  id="always_active"
+                  checked={form.always_active}
+                  onChange={(e) => setForm((f) => ({ ...f, always_active: e.target.checked, immediate: e.target.checked ? false : f.immediate }))}
+                  className="mt-0.5 h-4 w-4 rounded border-input text-orange-500 focus:ring-orange-500"
+                />
+                <div className="flex items-center gap-2">
+                  <Infinity className="h-4 w-4 text-orange-500" />
+                  <div>
+                    <span className="font-medium text-sm">Oferta sempre ativa</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">Fica sempre visível no cardápio, independente de data ou horário</p>
+                  </div>
+                </div>
+              </label>
               <div className="flex items-start gap-4">
                 <label
                   htmlFor="immediate"
-                  className="flex items-start gap-3 cursor-pointer group rounded-xl border-2 border-transparent p-4 transition-colors hover:bg-background/50 has-[:checked]:border-orange-300 has-[:checked]:bg-orange-50/50 dark:has-[:checked]:bg-orange-950/20"
+                  className={`flex items-start gap-3 cursor-pointer group rounded-xl border-2 border-transparent p-4 transition-colors hover:bg-background/50 has-[:checked]:border-orange-300 has-[:checked]:bg-orange-50/50 dark:has-[:checked]:bg-orange-950/20 ${form.always_active ? 'opacity-50 pointer-events-none' : ''}`}
                 >
                   <input
                     type="checkbox"
                     id="immediate"
                     checked={form.immediate}
+                    disabled={form.always_active}
                     onChange={(e) => setForm((f) => ({ ...f, immediate: e.target.checked }))}
                     className="mt-0.5 h-4 w-4 rounded border-input text-orange-500 focus:ring-orange-500"
                   />
@@ -587,7 +624,7 @@ export default function AdminOffers() {
                 </label>
               </div>
 
-              {!form.immediate && (
+              {!form.immediate && !form.always_active && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
                   <div className="space-y-3">
                     <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -631,15 +668,22 @@ export default function AdminOffers() {
                   </div>
                 </div>
               )}
-              {form.immediate && (
+              {form.immediate && !form.always_active && (
                 <p className="text-xs text-muted-foreground flex items-center gap-2 mt-4 pl-7">
                   <Calendar className="h-3.5 w-3.5" />
                   Início: agora · Fim: em 24 horas
                 </p>
               )}
+              {form.always_active && (
+                <p className="text-xs text-emerald-600 flex items-center gap-2 mt-4 pl-7 font-medium">
+                  <Infinity className="h-3.5 w-3.5" />
+                  Oferta sempre visível no cardápio
+                </p>
+              )}
             </div>
 
-            {/* ── 3. Repetir em dias da semana ─────────────────────────────────── */}
+            {/* ── 3. Repetir em dias da semana (só quando não é sempre ativa) ───── */}
+            {!form.always_active && (
             <div className="px-6 py-5 space-y-4">
               <div>
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -678,6 +722,7 @@ export default function AdminOffers() {
                 ))}
               </div>
             </div>
+            )}
 
             <DialogFooter className="px-6 py-4 border-t border-border/60 bg-muted/10 gap-2">
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)} disabled={saving}>

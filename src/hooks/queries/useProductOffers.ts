@@ -10,7 +10,7 @@ async function fetchOffers(restaurantId: string | null): Promise<ProductOffer[]>
     .from('product_offers')
     .select(`
       id, restaurant_id, product_id, offer_price, original_price, starts_at, ends_at,
-      label, repeat_days, is_active, sort_order, created_at, updated_at,
+      label, repeat_days, always_active, is_active, sort_order, created_at, updated_at,
       product:products(id, name, price, price_sale, image_url, category, is_active)
     `)
     .eq('restaurant_id', restaurantId)
@@ -21,7 +21,7 @@ async function fetchOffers(restaurantId: string | null): Promise<ProductOffer[]>
 
 const DOW_TO_DAY: Record<number, string> = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' };
 
-/** Ofertas vigentes para o cardápio público (one-time ou recorrentes) */
+/** Ofertas vigentes para o cardápio público (one-time, recorrentes ou sempre ativas) */
 async function fetchActiveOffersForMenu(restaurantId: string | null): Promise<Array<ProductOffer & { product: Product }>> {
   if (!restaurantId) return [];
   const now = new Date();
@@ -30,15 +30,16 @@ async function fetchActiveOffersForMenu(restaurantId: string | null): Promise<Ar
     .from('product_offers')
     .select(`
       id, restaurant_id, product_id, offer_price, original_price, starts_at, ends_at,
-      label, repeat_days, is_active, sort_order,
+      label, repeat_days, always_active, is_active, sort_order,
       product:products(*)
     `)
     .eq('restaurant_id', restaurantId)
     .eq('is_active', true)
-    .gte('ends_at', nowIso);
+    .or(`always_active.eq.true,ends_at.gte.${nowIso}`);
   if (error) throw error;
   const rows = (data ?? []).map((row: any) => ({ ...row, product: row.product as Product }));
   return rows.filter((offer: ProductOffer & { product: Product }) => {
+    if (offer.always_active) return true;
     const start = new Date(offer.starts_at);
     const end = new Date(offer.ends_at);
     const repeatDays = offer.repeat_days as string[] | null | undefined;
@@ -93,6 +94,7 @@ export function useProductOffers(restaurantId: string | null) {
       ends_at: string;
       label?: string | null;
       repeat_days?: string[] | null;
+      always_active?: boolean;
       sort_order?: number;
     }) => {
       if (!restaurantId) throw new Error('Restaurante não definido');

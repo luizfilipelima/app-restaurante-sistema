@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, hasBankAccountData, formatBankAccountLines } from '@/lib/utils';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import {
   CheckCircle2,
@@ -39,6 +39,7 @@ interface TrackingOrder {
   delivery_fee: number;
   total: number;
   payment_method: string;
+  payment_bank_account?: { bank_name?: string; agency?: string; account?: string; holder?: string; alias?: string } | null;
   order_source?: string | null;
   courier_id?: string | null;
   loyalty_redeemed?: boolean;
@@ -55,7 +56,7 @@ interface TrackingRestaurant {
   phone?: string | null;
   phone_country?: string | null;
   pix_key?: string | null;
-  bank_account?: { bank_name?: string; agency?: string; account?: string; holder?: string } | null;
+  bank_account?: { pyg?: { bank_name?: string; holder?: string; alias?: string }; ars?: { bank_name?: string; agency?: string; account?: string; holder?: string } } | { bank_name?: string; agency?: string; account?: string; holder?: string } | null;
 }
 
 interface TrackingCourier {
@@ -85,6 +86,24 @@ const PICKUP_STEPS: OrderStatus[] = [
   OrderStatus.READY,
   OrderStatus.COMPLETED,
 ];
+
+function getBankAccountForDisplay(
+  order: TrackingOrder,
+  restaurant: TrackingRestaurant
+): { bank_name?: string; agency?: string; account?: string; holder?: string; alias?: string } | null {
+  if (order.payment_bank_account && hasBankAccountData(order.payment_bank_account as { bank_name?: string; agency?: string; account?: string; holder?: string; alias?: string })) {
+    return order.payment_bank_account as { bank_name?: string; agency?: string; account?: string; holder?: string; alias?: string };
+  }
+  const ba = restaurant.bank_account;
+  if (!ba || typeof ba !== 'object') return null;
+  if ('bank_name' in ba || 'agency' in ba || 'account' in ba || 'holder' in ba) {
+    return ba as { bank_name?: string; agency?: string; account?: string; holder?: string };
+  }
+  const byCountry = ba as { pyg?: { bank_name?: string; holder?: string; alias?: string }; ars?: { bank_name?: string; agency?: string; account?: string; holder?: string } };
+  const ars = byCountry.ars && (byCountry.ars.bank_name || byCountry.ars.agency || byCountry.ars.account || byCountry.ars.holder) ? byCountry.ars : null;
+  const pyg = byCountry.pyg && (byCountry.pyg.bank_name || byCountry.pyg.holder || byCountry.pyg.alias) ? byCountry.pyg : null;
+  return (ars ?? pyg) ?? null;
+}
 
 function getStepIndex(status: OrderStatus, isDelivery: boolean): number {
   const steps = isDelivery ? DELIVERY_STEPS : PICKUP_STEPS;
@@ -636,42 +655,40 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
                   <p className="text-xs text-emerald-700 mt-2">Envie o comprovante pelo WhatsApp após o pagamento.</p>
                 </div>
               )}
-              {order.payment_method === 'bank_transfer' && restaurant.bank_account && (restaurant.bank_account.bank_name || restaurant.bank_account.agency || restaurant.bank_account.account || restaurant.bank_account.holder) && (
-                <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200">
-                  <p className="text-xs font-semibold text-indigo-800 mb-2">Envie a transferência para:</p>
-                  <div className="space-y-1.5 text-sm text-indigo-900">
-                    {restaurant.bank_account.bank_name && <p><span className="text-indigo-600">Banco:</span> {restaurant.bank_account.bank_name}</p>}
-                    {restaurant.bank_account.agency && <p><span className="text-indigo-600">Agência:</span> {restaurant.bank_account.agency}</p>}
-                    {restaurant.bank_account.account && <p><span className="text-indigo-600">Conta:</span> {restaurant.bank_account.account}</p>}
-                    {restaurant.bank_account.holder && <p><span className="text-indigo-600">Titular:</span> {restaurant.bank_account.holder}</p>}
+              {order.payment_method === 'bank_transfer' && (() => {
+                const ba = getBankAccountForDisplay(order, restaurant);
+                return ba && hasBankAccountData(ba) && (
+                  <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200">
+                    <p className="text-xs font-semibold text-indigo-800 mb-2">Envie a transferência para:</p>
+                    <div className="space-y-1.5 text-sm text-indigo-900">
+                      {formatBankAccountLines(ba).map((line) => {
+                        const idx = line.indexOf(': ');
+                        const label = idx >= 0 ? line.slice(0, idx) : line;
+                        const value = idx >= 0 ? line.slice(idx + 2) : '';
+                        return <p key={label}><span className="text-indigo-600">{label}:</span> {value}</p>;
+                      })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(formatBankAccountLines(ba).join('\n'));
+                          setBankCopied(true);
+                          toast({ title: 'Dados bancários copiados!' });
+                          setTimeout(() => setBankCopied(false), 2000);
+                        } catch {
+                          toast({ title: 'Não foi possível copiar', variant: 'destructive' });
+                        }
+                      }}
+                      className="mt-2 flex items-center gap-2 text-xs font-medium text-indigo-700 hover:text-indigo-800"
+                    >
+                      {bankCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {bankCopied ? 'Copiado!' : 'Copiar dados'}
+                    </button>
+                    <p className="text-xs text-indigo-700 mt-2">Envie o comprovante pelo WhatsApp após o pagamento.</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const ba = restaurant.bank_account;
-                      const lines = [
-                        ba?.bank_name && `Banco: ${ba.bank_name}`,
-                        ba?.agency && `Agência: ${ba.agency}`,
-                        ba?.account && `Conta: ${ba.account}`,
-                        ba?.holder && `Titular: ${ba.holder}`,
-                      ].filter(Boolean);
-                      try {
-                        await navigator.clipboard.writeText(lines.join('\n'));
-                        setBankCopied(true);
-                        toast({ title: 'Dados bancários copiados!' });
-                        setTimeout(() => setBankCopied(false), 2000);
-                      } catch {
-                        toast({ title: 'Não foi possível copiar', variant: 'destructive' });
-                      }
-                    }}
-                    className="mt-2 flex items-center gap-2 text-xs font-medium text-indigo-700 hover:text-indigo-800"
-                  >
-                    {bankCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    {bankCopied ? 'Copiado!' : 'Copiar dados'}
-                  </button>
-                  <p className="text-xs text-indigo-700 mt-2">Envie o comprovante pelo WhatsApp após o pagamento.</p>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
         </div>
