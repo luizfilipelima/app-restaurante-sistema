@@ -86,12 +86,26 @@ export default {
           "0%, 80%, 100%": { transform: "scale(0.8)", opacity: "0.5" },
           "40%": { transform: "scale(1.2)", opacity: "1" },
         },
+        "icon-draw": {
+          to: { strokeDashoffset: "0" },
+        },
+        "icon-glow": {
+          "0%, 100%": { opacity: "0.4", transform: "scale(0.95)" },
+          "50%": { opacity: "0.7", transform: "scale(1)" },
+        },
+        "text-fade": {
+          from: { opacity: "0", transform: "translateY(8px)" },
+          to: { opacity: "0.8", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "splash-breathe": "splash-breathe 2.2s ease-in-out infinite",
         "splash-dot": "splash-dot 0.8s ease-in-out infinite",
+        "icon-draw": "icon-draw 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards",
+        "icon-glow": "icon-glow 2.5s ease-in-out infinite",
+        "text-fade": "text-fade 0.8s ease-out 0.6s both",
       },
     },
   },

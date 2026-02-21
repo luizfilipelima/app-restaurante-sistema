@@ -123,10 +123,10 @@ export default function PizzaModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-2xl h-[100dvh] md:h-auto md:max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-gradient-to-b from-slate-50 to-white">
+      <DialogContent hideClose className="max-w-2xl w-[calc(100vw-24px)] sm:w-full h-[100dvh] md:h-auto md:max-h-[92dvh] p-0 gap-0 overflow-hidden flex flex-col rounded-none sm:rounded-2xl border-0 sm:border shadow-none sm:shadow-xl bg-white">
 
-        {/* Header Fixo */}
-        <div className="pt-8 pb-5 px-5 sm:pt-6 sm:pb-4 sm:px-6 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm z-10 flex-shrink-0 shadow-sm">
+        {/* Header Fixo — mobile first */}
+        <div className="pt-6 pb-5 px-5 sm:pt-6 sm:pb-4 sm:px-6 border-b border-slate-200/80 bg-white z-10 flex-shrink-0">
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-gradient-to-br from-orange-100 to-orange-50 flex items-center justify-center flex-shrink-0 shadow-sm ring-2 ring-orange-100/50">
               <PizzaIcon className="h-6 w-6 sm:h-7 sm:w-7 text-orange-600" />
@@ -135,15 +135,14 @@ export default function PizzaModal({
               <DialogTitle className="text-lg sm:text-xl font-bold text-slate-900 truncate leading-tight">{product.name}</DialogTitle>
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{t('pizzaModal.stepsTitle')}</p>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
+            <button
+              type="button"
               onClick={onClose}
-              className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 touch-manipulation active:scale-95 flex-shrink-0"
+              className="h-11 w-11 sm:h-10 sm:w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-200 touch-manipulation active:scale-95 flex-shrink-0"
               aria-label={t('pizzaModal.close')}
             >
-              <X className="h-5 w-5 sm:h-6 sm:w-6" />
-            </Button>
+              <X className="h-5 w-5 sm:h-5 sm:w-5" />
+            </button>
           </div>
         </div>
 
@@ -370,8 +369,8 @@ export default function PizzaModal({
           )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="pt-5 pb-8 px-5 sm:pt-6 sm:pb-6 sm:px-6 bg-white/95 backdrop-blur-sm border-t border-slate-200/80 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.08)] z-20 flex-shrink-0">
+        {/* Footer Actions — sticky, safe area */}
+        <div className="pt-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] px-5 sm:pt-6 sm:pb-6 sm:px-6 bg-white border-t border-slate-200/80 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.06)] z-20 flex-shrink-0">
           {/* Sabores selecionados (resumo) */}
           {selectedFlavors.length > 0 && (
             <div className="mb-3 flex flex-wrap gap-1.5">
