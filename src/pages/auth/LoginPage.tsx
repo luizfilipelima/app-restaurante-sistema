@@ -73,6 +73,7 @@ export default function LoginPage() {
               </Label>
               <Input
                 id="loginOrEmail"
+                data-testid="login-email"
                 type="text"
                 placeholder="seu@email.com"
                 value={loginOrEmail}
@@ -89,6 +90,7 @@ export default function LoginPage() {
               </Label>
               <Input
                 id="password"
+                data-testid="login-password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
@@ -110,6 +112,7 @@ export default function LoginPage() {
             )}
             <Button
               type="submit"
+              data-testid="login-submit"
               className="w-full h-12 rounded-xl text-base font-semibold bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-600/25 hover:shadow-orange-600/30 transition-all"
               disabled={loading}
             >

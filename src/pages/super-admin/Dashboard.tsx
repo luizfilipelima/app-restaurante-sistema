@@ -82,16 +82,18 @@ const DAYS: { key: DayKey; label: string }[] = [
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 
 function KpiCard({
-  label, value, sub, icon: Icon, accent,
+  label, value, sub, icon: Icon, accent, 'data-testid': testId,
 }: {
   label: string;
   value: string;
   sub: string;
   icon: React.ElementType;
   accent: string;
+  'data-testid'?: string;
 }) {
   return (
     <motion.div
+      data-testid={testId}
       variants={fadeUp}
       className="relative overflow-hidden rounded-2xl bg-white border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all duration-200 group"
     >
@@ -493,6 +495,7 @@ export default function SuperAdminDashboard() {
           accent="bg-gradient-to-r from-orange-400 to-orange-500"
         />
         <KpiCard
+          data-testid="gmv-by-currency"
           label="GMV por moeda"
           value={
             (metrics.revenueByCurrency && Object.keys(metrics.revenueByCurrency).length > 0)

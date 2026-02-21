@@ -47,6 +47,7 @@ export default function MapAddressPicker({
 
       {/* Map container with fixed pin overlay */}
       <div
+        data-testid="map-address-picker"
         className="relative overflow-hidden rounded-xl border border-slate-200 isolate cursor-grab active:cursor-grabbing"
         style={{ height }}
       >

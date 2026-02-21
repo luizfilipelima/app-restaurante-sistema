@@ -274,6 +274,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                 </div>
                 <button
                   onClick={handleCheckout}
+                  data-testid="cart-checkout"
                   className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-bold text-base flex items-center justify-between px-5 shadow-lg shadow-slate-900/20 transition-all touch-manipulation"
                 >
                   <span>{t('cart.finalize')}</span>

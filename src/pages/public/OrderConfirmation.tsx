@@ -50,7 +50,7 @@ export default function OrderConfirmation({ tenantSlug: tenantSlugProp }: OrderC
   }
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-b from-emerald-50/80 via-white to-slate-50 flex flex-col safe-area-inset">
+    <div data-testid="order-confirmation-page" className="min-h-[100dvh] bg-gradient-to-b from-emerald-50/80 via-white to-slate-50 flex flex-col safe-area-inset">
       {/* Content — centered, mobile-first */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 sm:py-12 max-w-md mx-auto w-full">
         {/* Success icon with animation */}

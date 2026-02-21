@@ -28,6 +28,11 @@ dist-ssr
 .env.local
 .env.production
 .env.script
+.env.e2e
 
 # Supabase CLI
 supabase/.temp/
+
+# Playwright
+playwright-report/
+test-results/

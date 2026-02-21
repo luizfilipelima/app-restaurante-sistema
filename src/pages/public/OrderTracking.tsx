@@ -376,7 +376,7 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-slate-50">
+    <div data-testid="order-tracking-page" className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-slate-50">
 
       {/* ── Topo ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 py-3 flex items-center gap-3 shadow-sm">

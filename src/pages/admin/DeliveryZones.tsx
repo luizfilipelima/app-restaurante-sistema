@@ -143,7 +143,7 @@ export default function AdminDeliveryZones() {
               Configure os bairros e taxas de entrega
             </p>
           </div>
-          <Button onClick={() => setShowForm(!showForm)}>
+          <Button onClick={() => setShowForm(!showForm)} data-testid="delivery-zone-new">
             <Plus className="h-4 w-4 mr-2" />
             Nova Zona
           </Button>
@@ -269,6 +269,7 @@ export default function AdminDeliveryZones() {
                       variant="outline"
                       size="sm"
                       className="flex-1"
+                      data-testid={`zone-toggle-${zone.id}`}
                       onClick={() => toggleZoneStatus(zone.id, zone.is_active)}
                     >
                       {zone.is_active ? 'Desativar' : 'Ativar'}

@@ -1535,6 +1535,7 @@ export default function AdminMenu() {
                       </Label>
                       <Input
                         id="p-price"
+                        data-testid="product-price-input"
                         type="text"
                         inputMode="decimal"
                         value={form.price}
@@ -1871,7 +1872,7 @@ export default function AdminMenu() {
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)} disabled={saving}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={saving} className="min-w-[160px]">
+              <Button type="submit" disabled={saving} className="min-w-[160px]" data-testid="menu-save-product">
                 {saving
                   ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando…</>
                   : editingProduct ? 'Salvar Alterações' : 'Adicionar ao Cardápio'

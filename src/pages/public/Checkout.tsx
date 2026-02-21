@@ -701,6 +701,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 </Label>
                 <Input
                   id="name"
+                  data-testid="checkout-name"
                   value={customerName}
                   onChange={(e) => { setCustomerName(e.target.value); setFormError(null); }}
                   placeholder={t('checkout.namePlaceholder')}
@@ -727,6 +728,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     id="phone"
                     value={customerPhone}
                     onChange={(e) => { setCustomerPhone(e.target.value); setFormError(null); }}
+                    data-testid="checkout-phone"
                     placeholder={phonePlaceholder}
                     className="flex-1 h-12 text-base bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
                     type="tel"
@@ -1124,6 +1126,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
           <Button
             size="lg"
+            data-testid="checkout-submit"
             className={`w-full font-bold h-14 rounded-2xl shadow-lg flex items-center justify-center gap-2.5 text-base touch-manipulation active:scale-[0.98] transition-all ${
               isTableOrder
                 ? 'bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white'

@@ -116,6 +116,7 @@ function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', com
               </span>
               <button
                 type="button"
+                data-testid={`product-add-${product.id}`}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();

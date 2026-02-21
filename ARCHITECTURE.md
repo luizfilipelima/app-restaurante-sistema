@@ -21,6 +21,7 @@
 11. [Estratégia de Performance](#11-estratégia-de-performance)
 12. [Estado Global (State Management)](#12-estado-global-state-management)
 13. [Segurança (RLS e Autenticação)](#13-segurança-rls-e-autenticação)
+14. [Testes E2E e Monitoramento Sintético](#14-testes-e2e-e-monitoramento-sintético)
 
 ---
 
@@ -147,15 +148,16 @@ src/
 │
 ├── lib/
 │   ├── supabase.ts          # Cliente Supabase configurado
-│   ├── i18n.ts              # Configuração i18next (pt/es, sessionStorage)
+│   ├── i18n.ts              # Configuração i18next (pt/es, sessionStorage, hasStoredMenuLanguage)
 │   ├── subdomain.ts         # Detecção de subdomínio para multi-tenant
+│   ├── invalidatePublicCache.ts  # Invalidação TanStack Query (Admin → Cardápio)
 │   ├── queryClient.ts       # TanStack Query client (staleTime, retry)
 │   ├── offline-db.ts        # Schema IndexedDB (Dexie) para buffet offline
-│   ├── whatsappTemplates.ts # Templates de mensagens WhatsApp
+│   ├── whatsappTemplates.ts # Templates de mensagens WhatsApp (pt/es)
 │   ├── priceHelper.ts       # Formatação de preços por moeda
 │   ├── imageUpload.ts       # Upload e conversão para WebP
 │   ├── lazyWithRetry.ts     # Code splitting com retry automático
-│   └── utils.ts             # formatCurrency, generateSlug, etc.
+│   └── utils.ts             # formatCurrency, generateSlug, getCardapioPublicUrl, etc.
 │
 ├── types/
 │   └── index.ts             # Interfaces principais: User, Restaurant, Product,
@@ -173,7 +175,7 @@ src/
 
 supabase/
 ├── db/
-│   └── migrations/          # 91 arquivos SQL de migração (histórico completo)
+│   └── migrations/          # Migrações SQL (histórico completo)
 └── functions/
     ├── create-restaurant-user/   # Criar usuário com cargo específico (admin)
     └── get-or-create-my-profile/ # Bootstrap do perfil pós-login
@@ -197,6 +199,15 @@ admin.quiero.food           → Painel Administrativo (alias)
 kds.quiero.food             → Display de Cozinha (KDS)
 {qualquer-outro}.quiero.food → Cardápio do restaurante (slug = subdomínio)
 localhost                   → Desenvolvimento (path-based routing)
+app.localhost / admin.localhost → Admin em dev; preview do cardápio abre em localhost/{slug}
+```
+
+### URL Pública do Cardápio (`getCardapioPublicUrl`)
+
+```
+Produção:    https://{slug}.quiero.food
+Dev path-based: origin/{slug}
+Dev com subdomínio admin (app.localhost): localhost/{slug} — layout path-based correto
 ```
 
 ### Isolamento de Dados (Multi-tenant)
@@ -229,6 +240,8 @@ Visitante anônimo (cardápio público)
 
 2. Cliente monta o carrinho
    └─ cartStore (Zustand) persiste em localStorage
+   └─ Ao carregar o cardápio: removeInactiveProducts() remove itens cujos produtos
+      foram desativados/deletados pelo Admin (evita erro em place_order)
    └─ Suporta: produtos simples, pizza (tamanho/sabores/massa/borda),
       marmita (tamanho/proteínas/acompanhamentos), combos, adicionais
 
@@ -236,6 +249,7 @@ Visitante anônimo (cardápio público)
    └─ Cliente informa: nome, endereço, zona de entrega, forma de pagamento
    └─ MapAddressPicker (Leaflet) captura coordenadas Lat/Lng opcionalmente
    └─ RPC place_order() é chamada com todos os dados, incluindo geo_lat/geo_lng
+      e customer_language (idioma da jornada para templates WhatsApp)
    └─ Pedido criado no banco com status 'pending'
 
 4. Despacho para o restaurante (Checkout.tsx)
@@ -243,7 +257,7 @@ Visitante anônimo (cardápio público)
       da gesture do usuário) — necessário porque Safari iOS e Chrome Android bloqueiam
       window.open chamado em contextos assíncronos
    └─ Após place_order() retornar: janela pré-aberta recebe location.href com link
-      gerado via whatsappTemplates.ts → wa.me/{whatsapp_do_restaurante}?text={pedido}
+      gerado via whatsappTemplates.ts (idioma = getStoredMenuLanguage()) → wa.me/...
    └─ Navegação na aba atual para /{slug}/order-confirmed (tela "Pedido Recebido")
       via React Router (client-side, sem hard-reload)
    └─ Em caso de erro: janela em branco é fechada automaticamente
@@ -258,7 +272,21 @@ Visitante anônimo (cardápio público)
 6. Restaurante gerencia pelo Kanban (Orders.tsx)
    └─ Colunas: Pendente → Em Preparo → Pronto → Em Entrega → Concluído
    └─ Ao mover para "Em Entrega": atribuir entregador (Couriers)
+   └─ WhatsApp "saiu para entrega" e "pedido pronto para retirada" usam
+      order.customer_language ?? restaurant.language (templates pt/es)
    └─ Supabase Realtime publica a mudança → KDS e OrderTracking atualizam
+```
+
+### 5.1.1 Invalidação de Cache (Admin → Cardápio)
+
+Quando o Admin altera Produto, Categoria, Zona de Entrega ou Configuração do restaurante,
+o sistema invalida os caches do TanStack Query do cardápio público via `invalidatePublicMenuCache()`:
+
+```
+Admin altera: Menu (produto), Settings, DeliveryZones, Offers
+  └─ invalidatePublicMenuCache(queryClient, restaurantSlug)
+  └─ Queries invalidadas: restaurant-menu, active-offers, deliveryZones, bio-restaurant
+  └─ RPC get_restaurant_menu(slug) reflete alterações imediatamente no cardápio
 ```
 
 #### Mesa (Table Mode)
@@ -355,6 +383,16 @@ No Checkout e cardápio:
   └─ priceHelper.ts formata o preço na moeda do restaurante
   └─ Conversão em tempo real se o cliente selecionar outra moeda
   └─ Moedas suportadas: BRL, PYG, ARS, USD
+```
+
+### 5.6 Super-Admin: GMV por Moeda
+
+```
+Dashboard do Super-Admin (useSuperAdminRestaurants):
+  └─ revenueByCurrency: Record<string, number> — GMV agrupado por moeda
+  └─ ordersByCurrency: Record<string, number> — pedidos por moeda
+  └─ Evita somar BRL + PYG + ARS misturados (distorção financeira)
+  └─ Ticket médio calculado por moeda: revenueByCurrency[curr] / ordersByCurrency[curr]
 ```
 
 ---
@@ -564,6 +602,7 @@ orders (
   geo_lng NUMERIC,
   courier_id UUID FK,
   loyalty_redeemed BOOLEAN,
+  customer_language TEXT,     -- 'pt' | 'es' — idioma da jornada (templates WhatsApp)
   table_number TEXT,
   ...
 )
@@ -665,7 +704,7 @@ restaurant_user_roles (
 | RPC | Propósito |
 |---|---|
 | `get_restaurant_menu(slug)` | Retorna todo o cardápio em 1 chamada (elimina 11+ queries) |
-| `place_order(...)` | Cria pedido, atualiza fidelidade, valida estoque |
+| `place_order(...)` | Cria pedido, atualiza fidelidade, valida estoque, grava customer_language |
 | `get_order_tracking(order_id)` | Rastreamento público sem autenticação (SECURITY DEFINER) |
 | `get_dashboard_kpis(...)` | KPIs do dashboard com filtros de período e canal |
 | `get_advanced_dashboard_stats(...)` | Analytics avançados (retenção, churn, BCG) |
@@ -681,6 +720,7 @@ restaurant_user_roles (
 - **Arquivo de configuração:** `src/lib/i18n.ts`
 - **Idiomas suportados:** Português (`pt`) — padrão, Espanhol (`es`)
 - **Persistência:** `sessionStorage` com chave `menu_lang` (por aba, não global)
+- **Helpers:** `hasStoredMenuLanguage()`, `getStoredMenuLanguage()`, `setStoredMenuLanguage()`
 - **Traduções públicas:** `src/locales/pt.json` e `src/locales/es.json`
 - **Traduções admin:** `src/i18n/adminTranslations.ts` (objeto TypeScript)
 
@@ -702,10 +742,26 @@ Painel administrativo (app.quiero.food):
 
 ```
 1. Cliente abre o cardápio
-2. i18n.ts verifica sessionStorage['menu_lang']
+2. hasStoredMenuLanguage() verifica se sessionStorage['menu_lang'] já foi definido
 3. Se não existir: usa idioma padrão do restaurante (restaurant.language)
 4. Cliente pode trocar manualmente via botão no cardápio
-5. A troca persiste na sessão atual da aba (não afeta outras abas)
+5. O idioma é preservado em toda a jornada: Menu → Checkout → OrderConfirmation → OrderTracking
+6. StoreLayout, Menu, Checkout e OrderTracking respeitam a escolha (não sobrescrevem)
+```
+
+### WhatsApp e Idioma do Cliente
+
+```
+Templates (whatsappTemplates.ts):
+  └─ DEFAULT_TEMPLATES (pt) e DEFAULT_TEMPLATES_ES (es)
+  └─ getTemplate(key, templates, lang) retorna template no idioma correto
+
+Checkout (new_order):
+  └─ Usa getStoredMenuLanguage() ao gerar mensagem
+
+Admin Orders (delivery_notification, courier_dispatch, pronto para retirada):
+  └─ Usa order.customer_language ?? restaurant.language
+  └─ customer_language gravado no pedido via place_order (migration 20260289)
 ```
 
 ---
@@ -761,7 +817,7 @@ CREATE INDEX ON restaurant_user_roles(user_id);
 | Store | Conteúdo | Persistência |
 |---|---|---|
 | `authStore` | `user`, `session`, `loading`, `initialized`, `signIn/Out`, `hasRole()` | Memória |
-| `cartStore` | `items[]`, `restaurantId`, `addItem/remove/update/clear` | `localStorage` |
+| `cartStore` | `items[]`, `restaurantId`, `addItem/remove/update/clear`, `removeInactiveProducts(activeIds)` | `localStorage` |
 | `restaurantStore` | Dados do restaurante em cache | Memória |
 | `adminLanguageStore` | Idioma selecionado no admin | Memória |
 | `tableOrderStore` | Pedidos de mesa em aberto | Memória |
@@ -870,6 +926,73 @@ useSessionManager.ts
 
 ---
 
+## 14. Testes E2E e Monitoramento Sintético
+
+### Playwright
+
+| Item | Descrição |
+|---|---|
+| **Config** | `playwright.config.ts` — projetos admin e public-menu |
+| **webServer** | `npm run dev` (desativado quando CHECKLY=1) |
+| **baseURL** | `PLAYWRIGHT_BASE_URL` ou `http://localhost:5173` |
+
+### Scripts e variáveis
+
+| Script | Descrição |
+|---|---|
+| `npm run test:e2e` | Todos os testes (usa `dotenv -e .env.e2e`) |
+| `npm run test:e2e:smoke` | Apenas smoke @checkly |
+| `npm run test:e2e:ui` | Playwright UI |
+
+Crie `.env.e2e` a partir de `.env.e2e.example` e preencha credenciais reais para rodar os testes completos. O `.env` principal (com `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) deve existir para o webServer iniciar o app em dev. Com valores placeholder em `.env.e2e`, order-flow, i18n e super-admin são automaticamente ignorados (skip condicional).
+
+| Variável | Uso |
+|---|---|
+| `PLAYWRIGHT_BASE_URL` | URL base (local ou prod) |
+| `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD` | Order-flow, i18n |
+| `E2E_SUPER_ADMIN_EMAIL`, `E2E_SUPER_ADMIN_PASSWORD` | Super-admin (conta com role super_admin) |
+| `E2E_RESTAURANT_SLUG` | Slug de restaurante de teste |
+
+### Testes
+
+| Arquivo | Cenário | Requisitos |
+|---|---|---|
+| `tests/e2e/smoke.spec.ts` | Smoke @checkly — login e landing (não altera DB) | Nenhum |
+| `tests/e2e/order-flow.spec.ts` | Admin → altera preço, ativa zona → Cardápio → Checkout → OrderConfirmation | Admin, slug, restaurante com zonas e produtos |
+| `tests/e2e/super-admin-metrics.spec.ts` | GMV segregado por moeda (BRL, PYG, ARS) | Conta super_admin |
+| `tests/e2e/i18n.spec.ts` | Labels PT/ES no cardápio; toggle de idioma (skip se inexistente) | Slug de restaurante real |
+
+**Comportamento dos testes:**
+- **i18n**: Idioma padrão depende de `restaurant.language`; aceita PT ou ES. Segundo teste (troca de idioma) só roda se houver seletor PT/ES visível (ex.: LinkBio; Menu padrão não tem).
+- **order-flow**: Multi-moeda (BRL, PYG); aguarda `cart-checkout` visível antes de clicar.
+- **super-admin**: Assertion GMV flexível (aceita qualquer moeda ou "—" quando vazio).
+
+### Checkly (Monitoramento Sintético)
+
+```
+checkly.config.ts
+  └─ Smoke @checkly a cada 10 min
+  └─ PLAYWRIGHT_BASE_URL e E2E_RESTAURANT_SLUG no dashboard
+  └─ Use restaurante de teste para não sujar o banco de produção
+```
+
+### data-testid (Design System)
+
+| Componente | testid |
+|---|---|
+| LoginPage | login-email, login-password, login-submit |
+| ProductCard | product-add-{id} |
+| Menu (header) | menu-view-cart |
+| CartDrawer | cart-checkout |
+| Checkout | checkout-name, checkout-phone, checkout-submit, map-address-picker |
+| OrderTracking | order-tracking-page |
+| OrderConfirmation | order-confirmation-page |
+| Admin Menu | product-price-input, menu-save-product |
+| DeliveryZones | zone-toggle-{id}, delivery-zone-new |
+| Super-Admin Dashboard | gmv-by-currency |
+
+---
+
 ## Apêndice: Referências Rápidas
 
 ### Arquivos Mais Importantes
@@ -882,10 +1005,14 @@ useSessionManager.ts
 | `src/store/authStore.ts` | Estado de autenticação global |
 | `src/store/cartStore.ts` | Estado do carrinho |
 | `src/hooks/queries/useRestaurantMenuData.ts` | Hook do cardápio público |
-| `src/lib/whatsappTemplates.ts` | Templates de mensagens para pedidos |
+| `src/lib/whatsappTemplates.ts` | Templates de mensagens para pedidos (pt/es) |
+| `src/lib/invalidatePublicCache.ts` | Invalidação de cache Admin → Cardápio |
+| `playwright.config.ts` | Config E2E (Admin + Cardápio) |
+| `checkly.config.ts` | Monitoramento sintético (smoke a cada 10 min) |
 | `src/lib/offline-db.ts` | Schema do IndexedDB para buffet |
 | `supabase/db/migrations/20260219_init_access_control.sql` | RBAC + Feature Flags |
 | `supabase/db/migrations/20260288_fix_get_restaurant_menu_n1_queries.sql` | RPC do cardápio otimizada |
+| `supabase/db/migrations/20260289_orders_customer_language.sql` | orders.customer_language + place_order |
 
 ### Documentação Complementar
 
