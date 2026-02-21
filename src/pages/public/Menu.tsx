@@ -613,8 +613,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       </main>
     </div>
 
-      {/* Cart FAB (Mobile) - fixo na viewport, fora do wrapper com transform para acompanhar a rolagem */}
-      {getItemsCount() > 0 && (
+      {/* Cart FAB (Mobile) — só aparece após o splash inicial terminar */}
+      {getItemsCount() > 0 && !splashOverlay && (
         <div 
           className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
           style={{ 

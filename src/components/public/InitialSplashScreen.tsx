@@ -28,22 +28,22 @@ export default function InitialSplashScreen({ exiting = false, className }: Init
       )}
     >
       <div className="relative flex flex-col items-center justify-center">
-        {/* Glow suave quando o ícone está completo */}
+        {/* Glow sutil — menor e mais elegante */}
         <div
-          className="absolute inset-0 w-[140px] h-[140px] -m-[30px] rounded-full bg-orange-400/10 blur-2xl animate-icon-glow"
+          className="absolute inset-0 w-[88px] h-[88px] -m-[20px] rounded-full bg-orange-400/8 blur-xl animate-icon-glow"
           aria-hidden
         />
-        {/* Ícone com animação de trace/construção — o path é "desenhado" progressivamente */}
+        {/* Ícone menor com animação de trace refinada */}
         <svg
           viewBox="0 0 71.67 71.67"
-          className="w-24 h-24 sm:w-28 sm:h-28 select-none drop-shadow-xl relative z-10"
+          className="w-16 h-16 sm:w-20 sm:h-20 select-none drop-shadow-lg relative z-10"
           aria-hidden
         >
           <path
             d={LOGO_PATH}
             fill="none"
             stroke="#f77b28"
-            strokeWidth="3"
+            strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeMiterlimit="10"

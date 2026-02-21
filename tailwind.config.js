@@ -90,8 +90,8 @@ export default {
           to: { strokeDashoffset: "0" },
         },
         "icon-glow": {
-          "0%, 100%": { opacity: "0.4", transform: "scale(0.95)" },
-          "50%": { opacity: "0.7", transform: "scale(1)" },
+          "0%, 100%": { opacity: "0.35", transform: "scale(0.97)" },
+          "50%": { opacity: "0.55", transform: "scale(1.02)" },
         },
         "text-fade": {
           from: { opacity: "0", transform: "translateY(8px)" },
@@ -103,8 +103,8 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "splash-breathe": "splash-breathe 2.2s ease-in-out infinite",
         "splash-dot": "splash-dot 0.8s ease-in-out infinite",
-        "icon-draw": "icon-draw 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards",
-        "icon-glow": "icon-glow 2.5s ease-in-out infinite",
+        "icon-draw": "icon-draw 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+        "icon-glow": "icon-glow 3s ease-in-out infinite",
         "text-fade": "text-fade 0.8s ease-out 0.6s both",
       },
     },
