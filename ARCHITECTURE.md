@@ -99,7 +99,8 @@ src/
 │   ├── public/              # Componentes do cardápio público:
 │   │                        # ProductCard, ProductCardBeverage (layout horizontal),
 │   │                        # ProductCardViewOnly (suporta grid/beverage), CartDrawer,
-│   │                        # PizzaModal, MarmitaModal, ProductAddonModal,
+│   │                        # SimpleProductModal, ProductAddonModal (produtos com addons),
+│   │                        # PizzaModal, MarmitaModal,
 │   │                        # MapAddressPicker, LoyaltyCard, InitialSplashScreen
 │   ├── auth/                # RoleProtectedRoute, FeatureGuard, UpgradeBanner
 │   ├── kitchen/             # (lógica interna nas páginas kitchen/)
@@ -249,7 +250,7 @@ Visitante anônimo (cardápio público)
    └─ cartStore (Zustand) persiste em localStorage (items, orderNotes)
    └─ Ao carregar o cardápio: removeInactiveProducts() remove itens cujos produtos
       foram desativados/deletados pelo Admin (evita erro em place_order)
-   └─ Suporta: produtos simples, pizza (tamanho/sabores/massa/borda),
+   └─ Suporta: produtos simples (SimpleProductModal), pizza (tamanho/sabores/massa/borda),
       marmita (tamanho/proteínas/acompanhamentos), combos, adicionais (ProductAddonModal)
    └─ CartDrawer: observações do pedido (orderNotes) opcional, sincronizado com Checkout
 
@@ -431,6 +432,28 @@ Cardápio público (Menu.tsx, MenuViewOnly.tsx)
 
 **Arquivos:** `src/lib/productCardLayout.ts`, `src/components/public/ProductCardBeverage.tsx`, `src/components/public/ProductCardViewOnly.tsx` (prop `layout`), Admin Menu form.
 
+### 5.8 Modal de Detalhes do Produto (SimpleProductModal / ProductAddonModal)
+
+Ao clicar em um produto do cardápio, o cliente vê um modal com detalhes, quantidade e adicionais:
+
+```
+Produto sem addons  → SimpleProductModal
+Produto com addons  → ProductAddonModal
+```
+
+**Design (clean e minimalista):**
+
+| Elemento | Especificação |
+|---|---|
+| **Imagem** | Proporção 4:3 (`aspect-[4/3]`), `object-cover object-center`, centralizada no card com `rounded-xl` |
+| **Botão CTA** | Único botão "Adicionar ao Carrinho" em largura total, sem ícones auxiliares |
+| **Header** | Compacto: apenas botão voltar (seta), sem título central |
+| **Quantidade** | Seletor compacto em linha com o total; preço unitário e total integrados |
+| **Addons** (ProductAddonModal) | Chips selecionáveis com preço; total atualiza em tempo real |
+| **Observações** | Textarea opcional, estilo leve (rounded-lg, focus ring sutil) |
+
+**Arquivos:** `src/components/public/SimpleProductModal.tsx`, `src/components/public/ProductAddonModal.tsx`.
+
 ---
 
 ## 6. Estratégia de SaaS Tiers (Planos)
@@ -567,6 +590,7 @@ src/components/public/   → Moléculas/Organismos públicos: ProductCard, CartD
 | Tela | Princípio |
 |---|---|
 | **Cardápio público** | Mobile-first, splash screen inicial (CSS puro), prefetch de dados, exibição configurável por produto (card vertical ou horizontal), sem login necessário |
+| **Modal de produto** | UI clean e minimalista; imagem 4:3 centralizada; botão único "Adicionar ao Carrinho"; seletor de quantidade compacto; addons como chips selecionáveis |
 | **Checkout** | Mapa de zonas (Leaflet + CartoDB), flyTo ao trocar zona, geolocalização opcional, suporte a WhatsApp, PIX e transferência bancária (PYG/ARS) |
 | **Kanban de Pedidos** | Atualização em tempo real (Realtime), cores por status, ação em 1 clique |
 | **KDS (Cozinha)** | Interface dark otimizada para cozinha, timers visuais, sem distrações |
@@ -1080,6 +1104,8 @@ checkly.config.ts
 | `supabase/db/migrations/20260294_order_tracking_currency.sql` | get_order_tracking retorna restaurant.currency |
 | `supabase/db/migrations/20260295_products_card_layout.sql` | products.card_layout ('grid' | 'beverage') — exibição no cardápio |
 | `src/lib/productCardLayout.ts` | shouldUseBeverageCard() — escolha ProductCard vs ProductCardBeverage por produto |
+| `src/components/public/SimpleProductModal.tsx` | Modal de produto sem addons — design clean, imagem 4:3, botão único "Adicionar ao Carrinho" |
+| `src/components/public/ProductAddonModal.tsx` | Modal de produto com addons — mesma consistência visual, chips de adicionais |
 
 ### Documentação Complementar
 
