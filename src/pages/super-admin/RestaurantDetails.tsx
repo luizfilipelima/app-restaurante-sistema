@@ -135,8 +135,11 @@ export default function RestaurantDetails() {
   // Map de override por feature_id
   const overrideMap = new Map(overrides.map((o) => [o.feature_id, o]));
 
+  // Apenas features vitrine (comerciais); motor permanece em plan_features para FeatureGuard
+  const visibleFeatures = features.filter((f) => f.is_visible_on_pricing !== false);
+
   // Agrupar features por categoria (para tabs)
-  const featuresByCategory = features.reduce<Record<string, Feature[]>>((acc, f) => {
+  const featuresByCategory = visibleFeatures.reduce<Record<string, Feature[]>>((acc, f) => {
     const cat = f.category ?? 'Geral';
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(f);
@@ -399,7 +402,7 @@ export default function RestaurantDetails() {
             </div>
 
             {/* Features agrupadas por categoria em Tabs */}
-            {features.length === 0 ? (
+            {visibleFeatures.length === 0 ? (
               <div className="text-center py-8 text-sm text-slate-400">
                 <Info className="h-8 w-8 mx-auto mb-2 opacity-40" />
                 Nenhuma feature cadastrada. Execute a migração <code>20260219_init_access_control.sql</code> no Supabase.

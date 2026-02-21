@@ -392,10 +392,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         )}
       </header>
 
-      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-6xl space-y-4 sm:space-y-6">
+      <main className="container mx-auto px-3 sm:px-4 py-3 sm:py-5 max-w-6xl space-y-4 sm:space-y-5">
         {/* Busca e categorias — layout referência: busca em destaque + pills horizontais */}
         <div className={`sticky z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-white/95 backdrop-blur-sm rounded-b-xl ${tableNumber != null && onCallWaiter ? 'top-[115px] sm:top-[125px] md:top-[135px]' : 'top-[65px] sm:top-[73px] md:top-[81px]'}`}>
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <div className="relative">
               <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none z-10" />
               <Input
@@ -444,14 +444,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
         {/* ── Seção Ofertas no topo ── */}
         {activeOffers.length > 0 && selectedCategory === 'all' && (
-          <section className="space-y-3 sm:space-y-5">
+          <section className="space-y-2 sm:space-y-3">
             <h2 className="text-sm-mobile-block sm:text-base font-semibold text-orange-700 uppercase tracking-wider px-1 flex items-center gap-2">
               {t('menu.offers')}
               <span className="text-xs font-semibold text-orange-600 bg-orange-200/60 px-2 py-0.5 rounded-full">
                 {activeOffers.length}
               </span>
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5">
               {activeOffers.map((offer) => {
                 const OfferCard = shouldUseBeverageCard(offer.product) ? ProductCardBeverage : ProductCard;
                 return (
@@ -469,12 +469,12 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           </section>
         )}
 
-        {/* Lista de produtos - Mobile First, categorias com espaçamento generoso */}
-        <section className="space-y-6 sm:space-y-8 pb-2">
+        {/* Lista de produtos — layout compacto e denso */}
+        <section className="space-y-4 sm:space-y-6 pb-2">
           {selectedCategory === 'all' ? (
             // Estrutura pré-computada via useMemo — sem filtros inline a cada render
             groupedByCategory.map(({ categoryName, categoryProducts, subcatsForCategory, productsWithSub, productsWithoutSub, hasSubs }) => (
-              <div key={categoryName} className="space-y-3 sm:space-y-5">
+              <div key={categoryName} className="space-y-2 sm:space-y-3">
                 <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
                   {categoryName}
                 </h2>
@@ -484,7 +484,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       const subProducts = productsWithSub.filter((p) => p.subcategory_id === sub.id);
                       if (subProducts.length === 0) return null;
                       const allBeverage = subProducts.every((p) => shouldUseBeverageCard(p));
-                      const containerClass = allBeverage ? 'flex flex-col gap-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3';
+                      const containerClass = allBeverage ? 'flex flex-col gap-1.5' : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5';
                       return (
                         <div key={sub.id} className="space-y-2">
                           <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
@@ -509,7 +509,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                     })}
                     {productsWithoutSub.length > 0 && (() => {
                       const allBeverage = productsWithoutSub.every((p) => shouldUseBeverageCard(p));
-                      const containerClass = allBeverage ? 'flex flex-col gap-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3';
+                      const containerClass = allBeverage ? 'flex flex-col gap-1.5' : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5';
                       return (
                         <div className={containerClass}>
                           {productsWithoutSub.map((product) => {
@@ -532,7 +532,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                   </>
                 ) : (() => {
                   const allBeverage = categoryProducts.every((p) => shouldUseBeverageCard(p));
-                  const containerClass = allBeverage ? 'flex flex-col gap-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3';
+                  const containerClass = allBeverage ? 'flex flex-col gap-1.5' : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5';
                   return (
                     <div className={containerClass}>
                       {categoryProducts.map((product) => {
@@ -558,7 +558,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             // Exibir apenas produtos da categoria selecionada
             (() => {
               const allBeverage = filteredProducts.every((p) => shouldUseBeverageCard(p));
-              const containerClass = allBeverage ? 'flex flex-col gap-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3';
+              const containerClass = allBeverage ? 'flex flex-col gap-1.5' : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5';
               return (
                 <>
                   <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">

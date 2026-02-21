@@ -87,7 +87,7 @@ export function useFeaturesCatalog() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('features')
-        .select('id, flag, label, description, module, min_plan, category')
+        .select('id, flag, label, description, module, min_plan, category, is_visible_on_pricing')
         .eq('is_active', true)
         .order('category')
         .order('label');

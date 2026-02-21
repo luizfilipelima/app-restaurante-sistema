@@ -694,4 +694,6 @@ export interface Feature {
   min_plan: string;
   /** Categoria para agrupamento na UI (Delivery & Logística, Salão & PDV, Gestão & BI, etc.) */
   category: string;
+  /** Se false, não exibe na UI de Planos/Preços (features Motor); permanece em plan_features para FeatureGuard */
+  is_visible_on_pricing?: boolean;
 }

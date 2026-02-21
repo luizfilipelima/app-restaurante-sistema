@@ -277,7 +277,10 @@ export default function Plans() {
   const toggleStandard = useTogglePlanFeature(standardPlan?.id ?? '');
   const toggleEnterprise = useTogglePlanFeature(enterprisePlan?.id ?? '');
 
-  const featuresByCategory = features.reduce<Record<string, Feature[]>>((acc, f) => {
+  // Apenas features vitrine (comerciais); motor permanece em plan_features para FeatureGuard
+  const visibleFeatures = features.filter((f) => f.is_visible_on_pricing !== false);
+
+  const featuresByCategory = visibleFeatures.reduce<Record<string, Feature[]>>((acc, f) => {
     const cat = f.category ?? 'Geral';
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(f);
@@ -384,7 +387,7 @@ export default function Plans() {
             <div className="py-8 flex justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
             </div>
-          ) : features.length === 0 ? (
+          ) : visibleFeatures.length === 0 ? (
             <p className="text-sm text-slate-400 py-4">
               Nenhuma feature cadastrada. Execute as migrations de acesso no Supabase.
             </p>
