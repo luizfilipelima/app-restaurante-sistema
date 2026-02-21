@@ -100,43 +100,36 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
 
           {/* Bottom Sheet */}
           <motion.div
-            className="fixed bottom-0 left-0 right-0 z-50 flex flex-col bg-white rounded-t-3xl shadow-2xl overflow-hidden max-h-[92dvh]"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            className="fixed bottom-0 left-0 right-0 z-50 flex flex-col bg-white rounded-t-[28px] shadow-2xl overflow-hidden"
+            style={{ maxHeight: '92svh', paddingBottom: 'env(safe-area-inset-bottom)' }}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 32, stiffness: 380, mass: 0.8 }}
           >
-            {/* Drag handle — área de toque ampla */}
-            <div
-              className="flex justify-center pt-4 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing touch-manipulation"
-              onClick={onClose}
-              onTouchStart={() => {}}
-            >
-              <div className="w-12 h-1.5 rounded-full bg-slate-300" />
+            {/* Drag indicator */}
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-grab active:cursor-grabbing" onClick={onClose}>
+              <div className="w-10 h-1 rounded-full bg-slate-200" />
             </div>
 
-            {/* Header compacto */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-slate-900 flex items-center justify-center">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-sm shadow-orange-500/20">
                   <ShoppingBag className="h-4 w-4 text-white" />
                 </div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-slate-900">{t('cart.title')}</h2>
-                  {items.length > 0 && (
-                    <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
-                      {items.length}
-                    </span>
-                  )}
-                </div>
+                <h2 className="text-lg font-bold text-slate-900">{t('cart.title')}</h2>
+                {items.length > 0 && (
+                  <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    {items.length}
+                  </span>
+                )}
               </div>
               <button
                 onClick={onClose}
-                className="h-11 w-11 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 active:scale-95 transition-all touch-manipulation"
-                aria-label="Fechar"
+                className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 active:scale-95 transition-all"
               >
-                <span className="text-lg leading-none">×</span>
+                <span className="text-sm font-bold">✕</span>
               </button>
             </div>
 
@@ -234,23 +227,20 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                           </button>
                         </div>
 
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center bg-slate-100 rounded-xl overflow-hidden">
                             <button
-                              type="button"
-                              className="h-10 w-10 sm:h-11 sm:w-11 flex items-center justify-center text-slate-700 hover:bg-slate-200 active:bg-slate-300 touch-manipulation transition-colors disabled:opacity-40"
+                              className="h-9 w-9 flex items-center justify-center text-slate-700 hover:bg-slate-200 active:scale-95 touch-manipulation transition-all"
                               onClick={() => updateQuantity(index, item.quantity - 1)}
-                              disabled={item.quantity <= 1}
                             >
-                              <Minus className="h-4 w-4" />
+                              <Minus className="h-3.5 w-3.5" />
                             </button>
-                            <span className="w-10 text-center text-sm font-bold text-slate-900 tabular-nums">{item.quantity}</span>
+                            <span className="w-8 text-center text-sm font-bold text-slate-900">{item.quantity}</span>
                             <button
-                              type="button"
-                              className="h-10 w-10 sm:h-11 sm:w-11 flex items-center justify-center text-slate-700 hover:bg-slate-200 active:bg-slate-300 touch-manipulation transition-colors"
+                              className="h-9 w-9 flex items-center justify-center text-slate-700 hover:bg-slate-200 active:scale-95 touch-manipulation transition-all"
                               onClick={() => updateQuantity(index, item.quantity + 1)}
                             >
-                              <Plus className="h-4 w-4" />
+                              <Plus className="h-3.5 w-3.5" />
                             </button>
                           </div>
                           <span className="font-bold text-slate-900 text-sm">
@@ -264,21 +254,21 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
               )}
             </div>
 
-            {/* Footer fixo — safe area */}
+            {/* Footer */}
             {items.length > 0 && (
-              <div className="flex-shrink-0 border-t border-slate-200 bg-white px-4 pt-4 pb-4">
-                <div className="flex items-center justify-between mb-3">
+              <div className="flex-shrink-0 border-t border-slate-100 bg-white px-4 pt-3 pb-4 space-y-3">
+                {/* Subtotal + CTA */}
+                <div className="flex items-center justify-between mb-1">
                   <span className="text-sm text-slate-500 font-medium">{t('cart.subtotal')}</span>
-                  <span className="text-xl font-bold text-slate-900 tabular-nums">{formatCurrency(getSubtotal(), currency)}</span>
+                  <span className="text-xl font-bold text-slate-900">{formatCurrency(getSubtotal(), currency)}</span>
                 </div>
                 <button
-                  type="button"
                   onClick={handleCheckout}
                   data-testid="cart-checkout"
-                  className="w-full h-14 rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white font-bold text-base flex items-center justify-between px-5 transition-all touch-manipulation"
+                  className="w-full h-14 rounded-2xl bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 active:scale-[0.98] text-white font-bold text-base flex items-center justify-between px-5 shadow-lg shadow-orange-500/25 transition-all touch-manipulation"
                 >
                   <span>{t('cart.finalize')}</span>
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="h-5 w-5 opacity-90" />
                 </button>
               </div>
             )}
