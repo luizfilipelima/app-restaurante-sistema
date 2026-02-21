@@ -65,47 +65,53 @@ export default function SimpleProductModal({
         hideClose
         className="max-w-md w-[calc(100vw-32px)] sm:w-full max-h-[calc(100dvh-32px)] sm:max-h-[90dvh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-slate-200/80 shadow-xl bg-white"
       >
-        {/* Foto compacta */}
-        <div className="relative w-full h-[140px] sm:h-[160px] bg-slate-100 flex-shrink-0 rounded-t-2xl overflow-hidden">
-          {product.image_url ? (
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className="w-full h-full object-cover object-center"
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-slate-100">
-              <span className="text-4xl opacity-40">🍽</span>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute top-3 right-3 z-10 h-9 w-9 rounded-full bg-white/95 shadow-md flex items-center justify-center text-slate-600 hover:bg-white active:scale-95 transition-all touch-manipulation"
-            aria-label="Fechar"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
         {/* Conteúdo scrollável */}
-        <div className="flex-1 overflow-y-auto overscroll-contain min-h-0">
-          <div className="p-4 sm:p-5 space-y-4">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 leading-tight">
-                {product.name}
-              </h2>
-              {product.description && (
-                <p className="text-sm text-slate-500 mt-1 leading-snug">
-                  {product.description}
-                </p>
-              )}
-              <p className="text-lg font-bold text-orange-600 mt-2 tabular-nums">
-                {formatCurrency(basePrice, currency)}
-              </p>
+        <div className="flex-1 overflow-y-auto overscroll-contain min-h-0 relative">
+          <div className="p-4 sm:p-5 pt-14 sm:pt-5 space-y-4 pb-[env(safe-area-inset-bottom)] sm:pb-6">
+            {/* Cabeçalho: imagem à esquerda, nome e preço à direita */}
+            <div className="flex gap-4">
+              <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 rounded-xl overflow-hidden bg-slate-100 ring-1 ring-slate-200/60">
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="text-3xl opacity-40">🍽</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0 flex flex-col justify-between pr-10">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 leading-tight">
+                    {product.name}
+                  </h2>
+                  <p className="text-base font-bold text-orange-600 mt-1 tabular-nums">
+                    {formatCurrency(basePrice, currency)}
+                  </p>
+                </div>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="absolute top-4 right-4 z-10 h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 active:scale-95 transition-all touch-manipulation"
+              aria-label="Fechar"
+            >
+              <X className="h-4 w-4" />
+            </button>
 
+            {/* Descrição */}
+            {product.description && (
+              <p className="text-sm text-slate-500 leading-relaxed">
+                {product.description}
+              </p>
+            )}
+
+            {/* Observações */}
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-slate-600">
                 {t('productCard.observations')}{' '}
@@ -120,7 +126,8 @@ export default function SimpleProductModal({
               />
             </div>
 
-            <div className="flex items-center justify-between py-2 border-t border-slate-100">
+            {/* Quantidade */}
+            <div className="flex items-center justify-between py-3 border-t border-slate-100">
               <span className="text-sm font-medium text-slate-600">Quantidade</span>
               <div className="flex items-center rounded-lg border border-slate-200 overflow-hidden">
                 <button
@@ -143,17 +150,23 @@ export default function SimpleProductModal({
                 </button>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Footer — botão: "Adicionar" + preço */}
-        <div className="flex-shrink-0 p-4 sm:p-5 bg-white border-t border-slate-100 pb-[env(safe-area-inset-bottom)] sm:pb-5">
-          <Button
-            onClick={handleAddToCart}
-            className="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-base active:scale-[0.98] transition-all touch-manipulation"
-          >
-            {t('productCard.add')} {formatCurrency(total, currency)}
-          </Button>
+            {/* Total e botão — com espaço, não grudado */}
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-sm text-slate-500">{t('menu.total')}</span>
+              <span className="text-lg font-bold text-slate-900 tabular-nums">
+                {formatCurrency(total, currency)}
+              </span>
+            </div>
+            <div className="pt-4 pb-2">
+              <Button
+                onClick={handleAddToCart}
+                className="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-base active:scale-[0.98] transition-all touch-manipulation shadow-md shadow-orange-500/20"
+              >
+                {t('productCard.addToCart')}
+              </Button>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -900,14 +900,63 @@ export default function AdminMenu() {
           name: `${product.name} (Cópia)`, description: product.description ?? null, price: product.price,
           price_sale: product.price_sale ?? null, price_cost: product.price_cost ?? null, cost_currency: product.cost_currency ?? null, image_url: product.image_url ?? null,
           is_pizza: product.is_pizza, is_marmita: product.is_marmita ?? false, is_active: product.is_active, order_index: nextOrder ?? 0,
+          print_destination: product.print_destination ?? null,
         })
         .select('*').single();
       if (error) throw error;
+
+      // Duplicar adicionais (grupos e itens)
+      const { data: addonGroups } = await supabase
+        .from('product_addon_groups')
+        .select('*')
+        .eq('product_id', product.id)
+        .order('order_index', { ascending: true });
+      if (addonGroups?.length) {
+        const groupIds = addonGroups.map((g) => g.id);
+        const { data: addonItems } = await supabase
+          .from('product_addon_items')
+          .select('*')
+          .in('addon_group_id', groupIds)
+          .order('order_index', { ascending: true });
+        const itemsByGroup: Record<string, typeof addonItems> = {};
+        (addonItems ?? []).forEach((i) => {
+          const gid = i.addon_group_id;
+          if (!itemsByGroup[gid]) itemsByGroup[gid] = [];
+          itemsByGroup[gid].push(i);
+        });
+        for (let gi = 0; gi < addonGroups.length; gi++) {
+          const g = addonGroups[gi];
+          const { data: newGroup, error: groupErr } = await supabase
+            .from('product_addon_groups')
+            .insert({ product_id: newProduct.id, name: g.name, order_index: g.order_index })
+            .select('id')
+            .single();
+          if (groupErr) throw groupErr;
+          const items = itemsByGroup[g.id] ?? [];
+          for (let ii = 0; ii < items.length; ii++) {
+            const it = items[ii];
+            const { error: itemErr } = await supabase.from('product_addon_items').insert({
+              addon_group_id: newGroup.id,
+              name: it.name,
+              price: it.price,
+              cost: it.cost ?? 0,
+              cost_currency: it.cost_currency ?? 'BRL',
+              in_stock: it.in_stock,
+              ingredient_id: it.ingredient_id ?? null,
+              order_index: it.order_index ?? ii,
+            });
+            if (itemErr) throw itemErr;
+          }
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['product-addons', newProduct.id] });
+      invalidatePublicMenuCache(queryClient, slug || restaurant?.slug || ctxRestaurant?.slug);
       setProducts((prev) => [...prev, { ...newProduct, order_index: nextOrder ?? 0 }].sort((a, b) => {
         if (a.category !== b.category) return a.category.localeCompare(b.category);
         return (a.order_index ?? 0) - (b.order_index ?? 0);
       }));
-      toast({ title: 'Produto duplicado!', description: `${newProduct.name} adicionado.` });
+      toast({ title: 'Produto duplicado!', description: `${newProduct.name} adicionado${addonGroups?.length ? ' com adicionais.' : '.'}` });
       openEdit(newProduct);
     } catch (err) {
       toast({ title: 'Erro ao duplicar produto', description: err instanceof Error ? err.message : 'Tente novamente.', variant: 'destructive' });

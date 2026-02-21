@@ -104,6 +104,7 @@
   },
   "productCard": {
     "add": "Adicionar",
+    "addToCart": "Adicionar ao Carrinho",
     "customize": "Personalizar",
     "from": "a partir",
     "badgePizza": "Pizza",
