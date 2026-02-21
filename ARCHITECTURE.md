@@ -238,10 +238,17 @@ Visitante anônimo (cardápio público)
    └─ RPC place_order() é chamada com todos os dados, incluindo geo_lat/geo_lng
    └─ Pedido criado no banco com status 'pending'
 
-4. Despacho para o restaurante
-   └─ Link WhatsApp gerado via whatsappTemplates.ts
-      → redireciona para wa.me/{whatsapp_do_restaurante}?text={pedido_formatado}
-   └─ Cliente recebe URL de rastreamento: /{slug}/tracking/{order_id}
+4. Despacho para o restaurante (Checkout.tsx)
+   └─ Janela aberta sincronamente antes do await (window.open vazio na mesma call stack
+      da gesture do usuário) — necessário porque Safari iOS e Chrome Android bloqueiam
+      window.open chamado em contextos assíncronos
+   └─ Após place_order() retornar: janela pré-aberta recebe location.href com link
+      gerado via whatsappTemplates.ts → wa.me/{whatsapp_do_restaurante}?text={pedido}
+   └─ Navegação na aba atual para /{slug}/order-confirmed (tela "Pedido Recebido")
+      via React Router (client-side, sem hard-reload)
+   └─ Em caso de erro: janela em branco é fechada automaticamente
+   └─ Rastreamento: /{slug}/track/:orderId (OrderTracking.tsx) — acessível quando
+      o cliente receber o link por WhatsApp ou navegar manualmente
 
 5. Rastreamento em tempo real (OrderTracking.tsx)
    └─ RPC get_order_tracking(order_id) carrega estado inicial
