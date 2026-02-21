@@ -265,7 +265,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                 <button
                   onClick={handleCheckout}
                   data-testid="cart-checkout"
-                  className="w-full h-14 rounded-2xl bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 active:scale-[0.98] text-white font-bold text-base flex items-center justify-between px-5 shadow-lg shadow-orange-500/25 transition-all touch-manipulation"
+                  className="w-full h-14 rounded-2xl bg-[#F26812] hover:bg-[#E05D10] active:scale-[0.98] text-white font-bold text-base flex items-center justify-between px-5 shadow-lg shadow-orange-500/25 transition-all touch-manipulation"
                 >
                   <span>{t('cart.finalize')}</span>
                   <ChevronRight className="h-5 w-5 opacity-90" />

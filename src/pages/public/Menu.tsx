@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, lazy, Suspense, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { getSubdomain } from '@/lib/subdomain';
-import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide, Category, Subcategory } from '@/types';
+import { Restaurant, Product, Category, Subcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { useRestaurantMenuData, useActiveOffersByRestaurantId } from '@/hooks/queries';
@@ -21,8 +21,6 @@ const CartDrawer = lazy(() => import('@/components/public/CartDrawer'));
 // Lazy: modais só carregam quando o produto for clicado
 const ProductAddonModal = lazy(() => import('@/components/public/ProductAddonModal'));
 const SimpleProductModal = lazy(() => import('@/components/public/SimpleProductModal'));
-const PizzaModal = lazy(() => import('@/components/public/PizzaModal'));
-const MarmitaModal = lazy(() => import('@/components/public/MarmitaModal'));
 
 // MOCK DATA PARA VISUALIZAÇÃO DE DESIGN (Caso banco vazio)
 const MOCK_PRODUCTS: Product[] = [
@@ -90,9 +88,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [pizzaModalOpen, setPizzaModalOpen] = useState(false);
-  const [marmitaModalOpen, setMarmitaModalOpen] = useState(false);
   const [addonModalProduct, setAddonModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
   const [simpleModalProduct, setSimpleModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
 
@@ -105,7 +100,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     return m;
   }, [activeOffers]);
 
-  const { restaurant, products, categories, categoriesFromDb, subcategories, pizzaSizes, pizzaFlavors, pizzaDoughs, pizzaEdges, marmitaSizes, marmitaProteins, marmitaSides, productComboItemsMap, productAddonsMap } = useMemo(() => {
+  const { restaurant, products, categories, categoriesFromDb, subcategories, productComboItemsMap, productAddonsMap } = useMemo(() => {
     if (!menuData) {
       return {
         restaurant: null as Restaurant | null,
@@ -113,13 +108,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         categories: [] as string[],
         categoriesFromDb: [] as Category[],
         subcategories: [] as Subcategory[],
-        pizzaSizes: [] as PizzaSize[],
-        pizzaFlavors: [] as PizzaFlavor[],
-        pizzaDoughs: [] as PizzaDough[],
-        pizzaEdges: [] as PizzaEdge[],
-        marmitaSizes: [] as MarmitaSize[],
-        marmitaProteins: [] as MarmitaProtein[],
-        marmitaSides: [] as MarmitaSide[],
         productComboItemsMap: {} as Record<string, Array<{ product: Product; quantity: number }>>,
         productAddonsMap: {} as Record<string, Array<{ id: string; name: string; items: Array<{ id: string; name: string; price: number }> }>>,
       };
@@ -132,13 +120,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       categories: c,
       categoriesFromDb: menuData.categoriesFromDb,
       subcategories: menuData.subcategories,
-      pizzaSizes: menuData.pizzaSizes,
-      pizzaFlavors: menuData.pizzaFlavors,
-      pizzaDoughs: menuData.pizzaDoughs,
-      pizzaEdges: menuData.pizzaEdges,
-      marmitaSizes: menuData.marmitaSizes,
-      marmitaProteins: menuData.marmitaProteins,
-      marmitaSides: menuData.marmitaSides,
       productComboItemsMap: menuData.productComboItemsMap ?? {},
       productAddonsMap: menuData.productAddonsMap ?? {},
     };
@@ -213,15 +194,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const handleOfferProductClick = (offer: { product: Product; offer_price: number; original_price: number; label?: string | null }) => {
     const p = offer.product;
     const addons = productAddonsMap[p.id];
-    const isPizza = p.is_pizza || p.category?.toLowerCase() === 'pizza';
-    const isMarmita = p.is_marmita;
-    if (isPizza) {
-      setSelectedProduct({ ...p, price: offer.offer_price });
-      setPizzaModalOpen(true);
-    } else if (isMarmita) {
-      setSelectedProduct({ ...p, price: offer.offer_price });
-      setMarmitaModalOpen(true);
-    } else if (addons && addons.length > 0) {
+    if (addons && addons.length > 0) {
       setAddonModalProduct({ product: p, basePrice: offer.offer_price });
     } else {
       setSimpleModalProduct({ product: p, basePrice: offer.offer_price });
@@ -230,15 +203,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
   const handleProductClick = (product: Product) => {
     const addons = productAddonsMap[product.id];
-    const isPizzaProduct = product.is_pizza || product.category?.toLowerCase() === 'pizza';
-    const isMarmitaProduct = product.is_marmita;
-    if (isPizzaProduct) {
-      setSelectedProduct(product);
-      setPizzaModalOpen(true);
-    } else if (isMarmitaProduct) {
-      setSelectedProduct(product);
-      setMarmitaModalOpen(true);
-    } else if (addons && addons.length > 0) {
+    if (addons && addons.length > 0) {
       setAddonModalProduct({ product, basePrice: Number(product.price_sale || product.price) });
     } else {
       setSimpleModalProduct({ product, basePrice: Number(product.price_sale || product.price) });
@@ -644,8 +609,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               {/* Divider */}
               <div className="w-[1px] bg-white/10 my-3"></div>
 
-              {/* Right Side: CTA — gradiente laranja para destaque e incentivo à ação */}
-              <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] bg-gradient-to-br from-[#F56E13] to-[#EB5A0C] text-white shadow-lg shadow-orange-600/25 hover:brightness-110 transition-all duration-200">
+              {/* Right Side: CTA — cor sólida alinhada ao botão Finalizar Pedido */}
+              <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] bg-[#F26812] hover:bg-[#E05D10] text-white shadow-lg shadow-orange-500/25 transition-all duration-200">
                 <span className="text-sm font-bold drop-shadow-sm">{t('menu.viewBag')}</span>
                 <ChevronRight className="h-4 w-4 drop-shadow-sm" aria-hidden />
               </div>
@@ -664,37 +629,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           restaurantId={cartRestaurantId}
           customerPhone={savedPhone}
         />
-
-        {selectedProduct && (selectedProduct.is_pizza || selectedProduct.category?.toLowerCase() === 'pizza') && (
-          <PizzaModal
-            open={pizzaModalOpen}
-            onClose={() => {
-              setPizzaModalOpen(false);
-              setSelectedProduct(null);
-            }}
-            product={selectedProduct}
-            sizes={pizzaSizes}
-            flavors={pizzaFlavors}
-            doughs={pizzaDoughs}
-            edges={pizzaEdges}
-            currency={currency}
-          />
-        )}
-
-        {selectedProduct && selectedProduct.is_marmita && (
-          <MarmitaModal
-            open={marmitaModalOpen}
-            onClose={() => {
-              setMarmitaModalOpen(false);
-              setSelectedProduct(null);
-            }}
-            product={selectedProduct}
-            sizes={marmitaSizes}
-            proteins={marmitaProteins}
-            sides={marmitaSides}
-            currency={currency}
-          />
-        )}
 
         {simpleModalProduct && (
           <SimpleProductModal

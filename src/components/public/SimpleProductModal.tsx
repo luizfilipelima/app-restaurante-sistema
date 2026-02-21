@@ -161,7 +161,7 @@ export default function SimpleProductModal({
             <div className="pt-4 pb-2">
               <Button
                 onClick={handleAddToCart}
-                className="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-base active:scale-[0.98] transition-all touch-manipulation shadow-md shadow-orange-500/20"
+                className="w-full h-12 rounded-xl bg-[#F26812] hover:bg-[#E05D10] text-white font-semibold text-base active:scale-[0.98] transition-all touch-manipulation shadow-md shadow-orange-500/25"
               >
                 {t('productCard.addToCart')}
               </Button>
