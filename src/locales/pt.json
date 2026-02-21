@@ -107,7 +107,9 @@
     "customize": "Personalizar",
     "from": "a partir",
     "badgePizza": "Pizza",
-    "badgeMarmita": "Marmita"
+    "badgeMarmita": "Marmita",
+    "observations": "Observação",
+    "observationsPlaceholder": "Ex: Sem cebola, ponto da carne, etc."
   },
   "pizzaModal": {
     "stepsTitle": "Monte sua pizza em 3 passos",

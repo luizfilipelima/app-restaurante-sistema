@@ -96,6 +96,7 @@ export default function AdminOffers() {
     if (!productIdFromUrl || products.length === 0) return;
     const p = products.find((x) => x.id === productIdFromUrl);
     if (p) {
+      setEditingOffer(null);
       const now = new Date();
       const today = format(now, 'yyyy-MM-dd');
       const tomorrow = format(new Date(now.getTime() + 86400000), 'yyyy-MM-dd');
@@ -203,6 +204,7 @@ export default function AdminOffers() {
           ends_at: endsAt.toISOString(),
           label: form.label.trim() || null,
           repeat_days: form.repeat_days.length > 0 ? form.repeat_days : null,
+          updated_at: new Date().toISOString(),
         });
         toast({ title: t('offers.updateOk') });
       } else {
@@ -218,6 +220,7 @@ export default function AdminOffers() {
         toast({ title: t('offers.createOk') });
       }
       setModalOpen(false);
+      setEditingOffer(null);
       refetch();
     } catch (err: unknown) {
       toast({ title: 'Erro ao salvar oferta', description: err instanceof Error ? err.message : undefined, variant: 'destructive' });
@@ -472,7 +475,13 @@ export default function AdminOffers() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+      <Dialog
+        open={modalOpen}
+        onOpenChange={(open) => {
+          setModalOpen(open);
+          if (!open) setEditingOffer(null);
+        }}
+      >
         <DialogContent className="sm:max-w-2xl lg:max-w-3xl max-h-[92vh] overflow-y-auto p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
             <DialogTitle className="flex items-center gap-2.5 text-xl">

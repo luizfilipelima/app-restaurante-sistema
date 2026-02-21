@@ -3,7 +3,7 @@ import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
-import { Plus, Minus, Trash2, Sparkles, ShoppingBag, ChevronRight, StickyNote } from 'lucide-react';
+import { Plus, Minus, Trash2, Sparkles, ShoppingBag, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchUpsellsForProducts, type UpsellRow, useLoyaltyStatus } from '@/hooks/queries';
 import type { CartItem } from '@/types';
@@ -20,7 +20,7 @@ interface CartDrawerProps {
 
 export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL', restaurantId, customerPhone }: CartDrawerProps) {
   const { t } = useTranslation();
-  const { items, addItem, updateQuantity, removeItem, getSubtotal, orderNotes, setOrderNotes } = useCartStore();
+  const { items, addItem, updateQuantity, removeItem, getSubtotal } = useCartStore();
   const [upsellRows, setUpsellRows] = useState<UpsellRow[]>([]);
 
   const { data: loyaltyStatus } = useLoyaltyStatus(
@@ -115,7 +115,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 flex-shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-xl bg-slate-900 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-sm shadow-orange-500/20">
                   <ShoppingBag className="h-4 w-4 text-white" />
                 </div>
                 <h2 className="text-lg font-bold text-slate-900">{t('cart.title')}</h2>
@@ -250,23 +250,6 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                       </div>
                     );
                   })}
-
-                  {/* Observações gerais do pedido (opcional) */}
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-3">
-                    <label htmlFor="cart-notes" className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-2">
-                      <StickyNote className="h-3.5 w-3.5" />
-                      {t('cart.notesLabel')}
-                      <span className="text-slate-400 font-normal">{t('cart.optional')}</span>
-                    </label>
-                    <textarea
-                      id="cart-notes"
-                      value={orderNotes ?? ''}
-                      onChange={(e) => setOrderNotes(e.target.value)}
-                      placeholder={t('cart.notesPlaceholder')}
-                      rows={2}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 resize-none transition-colors"
-                    />
-                  </div>
                 </>
               )}
             </div>
@@ -282,10 +265,10 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                 <button
                   onClick={handleCheckout}
                   data-testid="cart-checkout"
-                  className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-bold text-base flex items-center justify-between px-5 shadow-lg shadow-slate-900/20 transition-all touch-manipulation"
+                  className="w-full h-14 rounded-2xl bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 active:scale-[0.98] text-white font-bold text-base flex items-center justify-between px-5 shadow-lg shadow-orange-500/25 transition-all touch-manipulation"
                 >
                   <span>{t('cart.finalize')}</span>
-                  <ChevronRight className="h-5 w-5 opacity-60" />
+                  <ChevronRight className="h-5 w-5 opacity-90" />
                 </button>
               </div>
             )}

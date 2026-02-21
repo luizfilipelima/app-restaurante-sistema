@@ -20,6 +20,7 @@ import InitialSplashScreen from '@/components/public/InitialSplashScreen';
 const CartDrawer = lazy(() => import('@/components/public/CartDrawer'));
 // Lazy: modais só carregam quando o produto for clicado
 const ProductAddonModal = lazy(() => import('@/components/public/ProductAddonModal'));
+const SimpleProductModal = lazy(() => import('@/components/public/SimpleProductModal'));
 const PizzaModal = lazy(() => import('@/components/public/PizzaModal'));
 const MarmitaModal = lazy(() => import('@/components/public/MarmitaModal'));
 
@@ -93,6 +94,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const [pizzaModalOpen, setPizzaModalOpen] = useState(false);
   const [marmitaModalOpen, setMarmitaModalOpen] = useState(false);
   const [addonModalProduct, setAddonModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
+  const [simpleModalProduct, setSimpleModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
 
   const { data: menuData, isLoading: loading, isError, isFetching, isPlaceholderData } = useRestaurantMenuData(restaurantSlug);
   // Usa restaurant_id diretamente do menuData para evitar requisição extra (slug→id)
@@ -222,13 +224,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     } else if (addons && addons.length > 0) {
       setAddonModalProduct({ product: p, basePrice: offer.offer_price });
     } else {
-      useCartStore.getState().addItem({
-        productId: p.id,
-        productName: p.name,
-        quantity: 1,
-        unitPrice: offer.offer_price,
-      });
-      toast({ title: '✅ Adicionado ao carrinho!', description: `${p.name} foi adicionado`, className: 'bg-green-50 border-green-200' });
+      setSimpleModalProduct({ product: p, basePrice: offer.offer_price });
     }
   };
 
@@ -245,17 +241,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     } else if (addons && addons.length > 0) {
       setAddonModalProduct({ product, basePrice: Number(product.price_sale || product.price) });
     } else {
-      useCartStore.getState().addItem({
-        productId: product.id,
-        productName: product.name,
-        quantity: 1,
-        unitPrice: product.price,
-      });
-      toast({
-        title: "✅ Adicionado ao carrinho!",
-        description: `${product.name} foi adicionado`,
-        className: "bg-green-50 border-green-200",
-      });
+      setSimpleModalProduct({ product, basePrice: Number(product.price_sale || product.price) });
     }
   };
 
@@ -296,26 +282,47 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
   const isRefreshing = isFetching && isPlaceholderData;
 
-  // Fade-out suave ao terminar o carregamento (CSS puro, sem Framer)
+  // Splash com tempo mínimo e transição fluida para o cardápio
   const [splashOverlay, setSplashOverlay] = useState(false);
   const [splashFadeOut, setSplashFadeOut] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const prevLoading = useRef(true);
+  const splashMountTime = useRef<number | null>(null);
+  const hasSetMountTime = useRef(false);
 
   useEffect(() => {
-    if (prevLoading.current && !loading) {
-      prevLoading.current = false;
-      setSplashOverlay(true);
-      const raf = requestAnimationFrame(() => setSplashFadeOut(true));
-      const t = setTimeout(() => {
+    if (!hasSetMountTime.current) {
+      hasSetMountTime.current = true;
+      splashMountTime.current = Date.now();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!prevLoading.current || loading) {
+      if (loading) prevLoading.current = true;
+      return;
+    }
+    prevLoading.current = false;
+
+    const MIN_SPLASH_MS = 1400;   // Tempo mínimo para ver a animação da marca
+    const FADE_OUT_MS = 550;      // Duração do fade-out do splash
+
+    const elapsed = splashMountTime.current ? Date.now() - splashMountTime.current : 0;
+    const remain = Math.max(0, MIN_SPLASH_MS - elapsed);
+
+    setSplashOverlay(true);
+
+    const t1 = setTimeout(() => {
+      setSplashFadeOut(true);
+      setMenuVisible(true); // Inicia fade-in do cardápio junto com fade-out do splash
+      const t2 = setTimeout(() => {
         setSplashOverlay(false);
         setSplashFadeOut(false);
-      }, 350);
-      return () => {
-        cancelAnimationFrame(raf);
-        clearTimeout(t);
-      };
-    }
-    if (loading) prevLoading.current = true;
+      }, FADE_OUT_MS);
+      return () => clearTimeout(t2);
+    }, remain);
+
+    return () => clearTimeout(t1);
   }, [loading]);
 
   if (loading) {
@@ -339,7 +346,11 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
   return (
     <>
-      <div className={`min-h-screen bg-slate-100/80 font-sans antialiased animate-in fade-in duration-300 ${getItemsCount() > 0 ? 'pb-24 md:pb-28' : 'pb-8 md:pb-8'} safe-area-inset-bottom`}>
+      <div
+        className={`min-h-screen bg-slate-100/80 font-sans antialiased transition-all duration-500 ease-out ${
+          menuVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+        } ${getItemsCount() > 0 ? 'pb-24 md:pb-28' : 'pb-8 md:pb-8'} safe-area-inset-bottom`}
+      >
       {/* Barra sutil de refresh quando dados em background (keepPreviousData) */}
       {isRefreshing && (
         <div className="fixed top-0 left-0 right-0 h-0.5 bg-orange-200/80 z-[100] overflow-hidden">
@@ -634,10 +645,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               {/* Divider */}
               <div className="w-[1px] bg-white/10 my-3"></div>
 
-              {/* Right Side: CTA — destaque visual para indicar ação */}
-              <div className="px-6 flex items-center justify-center gap-2 bg-orange-500/25 hover:bg-orange-500/35 active:bg-orange-500/40 transition-colors h-full min-w-[120px]">
-                <span className="text-sm font-bold">{t('menu.viewBag')}</span>
-                <ChevronRight className="h-4 w-4 opacity-90" />
+              {/* Right Side: CTA — gradiente laranja para destaque e incentivo à ação */}
+              <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] bg-gradient-to-br from-[#F56E13] to-[#EB5A0C] text-white shadow-lg shadow-orange-600/25 hover:brightness-110 transition-all duration-200">
+                <span className="text-sm font-bold drop-shadow-sm">{t('menu.viewBag')}</span>
+                <ChevronRight className="h-4 w-4 drop-shadow-sm" aria-hidden />
               </div>
             </Button>
           </div>
@@ -686,6 +697,16 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           />
         )}
 
+        {simpleModalProduct && (
+          <SimpleProductModal
+            open={!!simpleModalProduct}
+            onClose={() => setSimpleModalProduct(null)}
+            product={simpleModalProduct.product}
+            basePrice={simpleModalProduct.basePrice}
+            currency={currency}
+          />
+        )}
+
         {addonModalProduct && (
           <ProductAddonModal
             open={!!addonModalProduct}
@@ -694,13 +715,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             addonGroups={productAddonsMap[addonModalProduct.product.id] ?? []}
             currency={currency}
             basePrice={addonModalProduct.basePrice}
-            onAddToCart={({ quantity: qty, unitPrice, addons }) => {
+            onAddToCart={({ quantity: qty, unitPrice, addons, observations }) => {
               useCartStore.getState().addItem({
                 productId: addonModalProduct.product.id,
                 productName: addonModalProduct.product.name,
                 quantity: qty,
                 unitPrice,
                 addons: addons.length > 0 ? addons : undefined,
+                observations: observations?.trim() || undefined,
               });
               toast({ title: '✅ Adicionado ao carrinho!', description: `${addonModalProduct.product.name} foi adicionado`, className: 'bg-green-50 border-green-200' });
             }}

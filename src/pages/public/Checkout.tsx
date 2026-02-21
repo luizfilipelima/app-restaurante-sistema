@@ -809,9 +809,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     setLongitude(lng);
                   }}
                   height="240px"
-                  zoneCenterLat={selectedZone ? (selectedZone.center_lat ?? undefined) : undefined}
-                  zoneCenterLng={selectedZone ? (selectedZone.center_lng ?? undefined) : undefined}
-                  zoneRadiusMeters={selectedZone ? (selectedZone.radius_meters ?? undefined) : undefined}
+                  zoneCenterLat={selectedZone && selectedZone.center_lat != null ? Number(selectedZone.center_lat) : undefined}
+                  zoneCenterLng={selectedZone && selectedZone.center_lng != null ? Number(selectedZone.center_lng) : undefined}
+                  zoneRadiusMeters={selectedZone && selectedZone.radius_meters != null ? Number(selectedZone.radius_meters) : undefined}
                 />
               </Suspense>
 

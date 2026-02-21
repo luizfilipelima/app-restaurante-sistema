@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Product } from '@/types';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Plus, Minus } from 'lucide-react';
 
 interface AddonItem {
@@ -25,7 +27,7 @@ interface ProductAddonModalProps {
   addonGroups: AddonGroup[];
   currency: CurrencyCode;
   basePrice: number;
-  onAddToCart: (params: { quantity: number; unitPrice: number; addons: Array<{ addonItemId: string; name: string; price: number }> }) => void;
+  onAddToCart: (params: { quantity: number; unitPrice: number; addons: Array<{ addonItemId: string; name: string; price: number }>; observations?: string }) => void;
 }
 
 export default function ProductAddonModal({
@@ -40,6 +42,13 @@ export default function ProductAddonModal({
   const { t } = useTranslation();
   const [quantity, setQuantity] = useState(1);
   const [selectedAddons, setSelectedAddons] = useState<Array<{ addonItemId: string; name: string; price: number }>>([]);
+  const [observations, setObservations] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setObservations('');
+    }
+  }, [open]);
 
   const toggleAddon = (item: AddonItem) => {
     setSelectedAddons((prev) => {
@@ -54,33 +63,42 @@ export default function ProductAddonModal({
   const total = unitPrice * quantity;
 
   const handleAdd = () => {
-    onAddToCart({ quantity, unitPrice, addons: selectedAddons });
+    onAddToCart({ quantity, unitPrice, addons: selectedAddons, observations: observations.trim() || undefined });
     setSelectedAddons([]);
     setQuantity(1);
+    setObservations('');
     onClose();
   };
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-start gap-3">
-            {product.image_url ? (
-              <img src={product.image_url} alt="" width={64} height={64} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" />
-            ) : (
-              <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center flex-shrink-0" />
-            )}
-            <div>
-              <h2 className="text-lg font-bold">{product.name}</h2>
-              {product.description && (
-                <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">{product.description}</p>
-              )}
-              <p className="text-sm font-semibold text-orange-600 mt-2">{formatCurrency(basePrice, currency)}</p>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0 gap-0">
+        {/* Imagem ampliada — mesma experiência do SimpleProductModal */}
+        <div className="relative w-full aspect-[4/3] sm:aspect-[3/2] bg-slate-100">
+          {product.image_url ? (
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className="w-full h-full object-cover object-center"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+              <span className="text-5xl opacity-60">🍽</span>
             </div>
-          </DialogTitle>
-        </DialogHeader>
+          )}
+        </div>
 
-        <div className="space-y-4 mt-4">
+        <div className="p-4 sm:p-5 space-y-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 leading-tight">{product.name}</h2>
+            {product.description && (
+              <p className="text-sm text-slate-500 mt-1 line-clamp-2">{product.description}</p>
+            )}
+            <p className="text-lg font-bold text-orange-600 mt-2">{formatCurrency(basePrice, currency)}</p>
+          </div>
+
+        <div className="space-y-4">
           {addonGroups.map((group) => (
             <div key={group.id} className="space-y-2">
               <h3 className="text-sm font-semibold text-foreground">{group.name}</h3>
@@ -106,6 +124,20 @@ export default function ProductAddonModal({
               </div>
             </div>
           ))}
+
+          {/* Observação — reflete no KDS/cozinha */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-slate-700">
+              {t('productCard.observations')} <span className="text-slate-400 font-normal">({t('cart.optional')})</span>
+            </Label>
+            <Textarea
+              placeholder={t('productCard.observationsPlaceholder')}
+              value={observations}
+              onChange={(e) => setObservations(e.target.value)}
+              rows={2}
+              className="rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white resize-none"
+            />
+          </div>
 
           <div className="flex items-center justify-between pt-4 border-t">
             <div className="flex items-center gap-2">
@@ -135,10 +167,11 @@ export default function ProductAddonModal({
             </div>
           </div>
 
-          <Button className="w-full h-12" onClick={handleAdd}>
+          <Button className="w-full h-14 rounded-2xl bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white font-bold text-base shadow-lg shadow-orange-500/30 active:scale-[0.98] transition-all" onClick={handleAdd}>
             <Plus className="h-5 w-5 mr-2" />
             {t('productCard.add')} {quantity}x — {formatCurrency(total, currency)}
           </Button>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -1,7 +1,18 @@
-import { useState } from 'react';
-import { MapContainer, TileLayer, Circle, useMapEvents } from 'react-leaflet';
+import { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Circle, useMapEvents, useMap } from 'react-leaflet';
 import { useTranslation } from 'react-i18next';
 import 'leaflet/dist/leaflet.css';
+
+/** Corrige tiles não carregando quando o mapa é exibido em containers dinâmicos (ex: seção que aparece após seleção de zona) */
+function MapInvalidateSize() {
+  const map = useMap();
+  useEffect(() => {
+    map.invalidateSize();
+    const t = setTimeout(() => map.invalidateSize(), 100);
+    return () => clearTimeout(t);
+  }, [map]);
+  return null;
+}
 
 interface MapAddressPickerProps {
   lat: number;
@@ -45,8 +56,11 @@ export default function MapAddressPicker({
 }: MapAddressPickerProps) {
   const [isDragging, setIsDragging] = useState(false);
   const { t } = useTranslation();
-  const hasZoneBounds = zoneCenterLat != null && zoneCenterLng != null && (zoneRadiusMeters ?? 0) > 0;
-  const mapCenter: [number, number] = hasZoneBounds ? [zoneCenterLat, zoneCenterLng] : [lat, lng];
+  const hasZoneBounds =
+    Number.isFinite(zoneCenterLat) && Number.isFinite(zoneCenterLng) && (zoneRadiusMeters ?? 0) > 0;
+  const mapCenter: [number, number] = hasZoneBounds && zoneCenterLat != null && zoneCenterLng != null
+    ? [zoneCenterLat, zoneCenterLng]
+    : [lat, lng];
   const mapZoom = hasZoneBounds ? 15 : 17;
 
   const instruction = hasZoneBounds
@@ -77,6 +91,7 @@ export default function MapAddressPicker({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          <MapInvalidateSize />
           {hasZoneBounds && (
             <Circle
               center={[zoneCenterLat!, zoneCenterLng!]}

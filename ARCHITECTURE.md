@@ -1,7 +1,7 @@
 # ARCHITECTURE.md — Fonte da Verdade Técnica
 ### Sistema `app.quiero.food` — SaaS de Gestão Gastronômica
 
-> **Última atualização:** 20/02/2026  
+> **Última atualização:** 21/02/2026  
 > **Propósito:** Este documento descreve toda a arquitetura do sistema. Ao lê-lo, qualquer desenvolvedor deve entender como o sistema funciona sem precisar ler todo o código-fonte.
 
 ---
@@ -98,7 +98,8 @@ src/
 │   │                        # WhatsAppTemplatesModal, DashboardPrintReport
 │   ├── public/              # Componentes do cardápio público:
 │   │                        # ProductCard, CartDrawer, PizzaModal, MarmitaModal,
-│   │                        # ProductAddonModal, MapAddressPicker, LoyaltyCard
+│   │                        # ProductAddonModal, MapAddressPicker, LoyaltyCard,
+│   │                        # InitialSplashScreen (tela de carregamento inicial)
 │   ├── auth/                # RoleProtectedRoute, FeatureGuard, UpgradeBanner
 │   ├── kitchen/             # (lógica interna nas páginas kitchen/)
 │   ├── orders/              # CompletedOrdersView
@@ -121,11 +122,13 @@ src/
 ├── hooks/
 │   ├── queries/             # Hooks TanStack Query (dados do servidor):
 │   │                        # useRestaurantMenuData → RPC get_restaurant_menu
+│   │                        #   prefetchRestaurantMenu(), keepPreviousData
 │   │                        # useOrders, useCompletedOrders
 │   │                        # useDashboardStats, useDashboardKPIs, useDashboardAnalytics
 │   │                        # useProductAddons, useProductOffers, useProductUpsells
 │   │                        # useCouriers, useLoyaltyProgram, useTables
 │   │                        # useDeliveryZones, usePrintSettings
+│   │                        # useSuperAdminExchangeRates (câmbio para métricas em BRL)
 │   │                        # useFeatureAccess, useSubscriptionManager
 │   ├── useOfflineSync.ts    # Sincronização offline (buffet via IndexedDB)
 │   ├── usePrinter.ts        # Impressão térmica (58mm / 80mm)
@@ -136,7 +139,7 @@ src/
 │
 ├── store/                   # Estado global (Zustand):
 │   ├── authStore.ts         # user, session, signIn/Out, hasRole()
-│   ├── cartStore.ts         # items, restaurantId, persistido em localStorage
+│   ├── cartStore.ts         # items, restaurantId, orderNotes, persistido em localStorage
 │   ├── restaurantStore.ts   # Dados do restaurante em cache
 │   ├── adminLanguageStore.ts
 │   └── tableOrderStore.ts
@@ -171,7 +174,7 @@ src/
 │   └── adminTranslations.ts # Traduções específicas do painel admin
 │
 └── layouts/
-    └── StoreLayout.tsx      # Layout para cardápio público (subdomínios)
+    └── StoreLayout.tsx      # Layout cardápio público: prefetch menu, InitialSplashScreen
 
 supabase/
 ├── db/
@@ -235,19 +238,22 @@ Visitante anônimo (cardápio público)
 
 ```
 1. Cliente visita {slug}.quiero.food
-   └─ StoreLayout detecta subdomínio, busca restaurant por slug
+   └─ InitialSplashScreen exibido imediatamente (CSS puro, sem Framer)
+   └─ StoreLayout detecta subdomínio, busca restaurant por slug + prefetch do menu em paralelo
    └─ RPC get_restaurant_menu(slug) → 1 única chamada ao banco
 
 2. Cliente monta o carrinho
-   └─ cartStore (Zustand) persiste em localStorage
+   └─ cartStore (Zustand) persiste em localStorage (items, orderNotes)
    └─ Ao carregar o cardápio: removeInactiveProducts() remove itens cujos produtos
       foram desativados/deletados pelo Admin (evita erro em place_order)
    └─ Suporta: produtos simples, pizza (tamanho/sabores/massa/borda),
       marmita (tamanho/proteínas/acompanhamentos), combos, adicionais
+   └─ CartDrawer: observações do pedido (orderNotes) opcional, sincronizado com Checkout
 
 3. Checkout (src/pages/public/Checkout.tsx)
-   └─ Cliente informa: nome, endereço, zona de entrega, forma de pagamento
-   └─ MapAddressPicker (Leaflet) captura coordenadas Lat/Lng opcionalmente
+   └─ Cliente informa: nome, endereço (complemento/referência obrigatório), zona de entrega, forma de pagamento
+   └─ Zonas de entrega: modelo por raio (center_lat, center_lng, radius_meters)
+   └─ MapAddressPicker (Leaflet) — fluxo "zona primeiro, mapa depois"; atualiza ao trocar zona
    └─ RPC place_order() é chamada com todos os dados, incluindo geo_lat/geo_lng
       e customer_language (idioma da jornada para templates WhatsApp)
    └─ Pedido criado no banco com status 'pending'
@@ -385,14 +391,16 @@ No Checkout e cardápio:
   └─ Moedas suportadas: BRL, PYG, ARS, USD
 ```
 
-### 5.6 Super-Admin: GMV por Moeda
+### 5.6 Super-Admin: GMV e Configuração de Câmbio
 
 ```
 Dashboard do Super-Admin (useSuperAdminRestaurants):
   └─ revenueByCurrency: Record<string, number> — GMV agrupado por moeda
   └─ ordersByCurrency: Record<string, number> — pedidos por moeda
-  └─ Evita somar BRL + PYG + ARS misturados (distorção financeira)
-  └─ Ticket médio calculado por moeda: revenueByCurrency[curr] / ordersByCurrency[curr]
+  └─ useSuperAdminExchangeRates: cotações (pyg_per_brl, ars_per_brl) para conversão em BRL
+  └─ KPIs GMV e Ticket médio: exibidos em Real (BRL) após conversão com câmbio configurado
+  └─ Cards de restaurantes: faturamento na moeda nativa de cada restaurante (BRL, PYG, ARS)
+  └─ Tabela super_admin_settings (migration 20260291): armazena exchange_rates
 ```
 
 ---
@@ -530,7 +538,7 @@ src/components/public/   → Moléculas/Organismos públicos: ProductCard, CartD
 
 | Tela | Princípio |
 |---|---|
-| **Cardápio público** | Mobile-first, carregamento rápido (<200 KB inicial), sem login necessário |
+| **Cardápio público** | Mobile-first, splash screen inicial (CSS puro), prefetch de dados, carregamento fluido (<200 KB inicial), sem login necessário |
 | **Checkout** | Geolocalização opcional, mínimo de campos obrigatórios, suporte a WhatsApp |
 | **Kanban de Pedidos** | Atualização em tempo real (Realtime), cores por status, ação em 1 clique |
 | **KDS (Cozinha)** | Interface dark otimizada para cozinha, timers visuais, sem distrações |
@@ -539,7 +547,8 @@ src/components/public/   → Moléculas/Organismos públicos: ProductCard, CartD
 
 ### Feedback Visual
 
-- **Skeletons** para estados de carregamento
+- **InitialSplashScreen** no cardápio público — tela de carregamento com ícone Quiero.food e animação CSS (splash-breathe); fade-out suave ao carregar dados
+- **Skeletons** para estados de carregamento (admin, checkout)
 - **Toast** (Sonner) para confirmações e erros
 - **Status Badge** com cores semânticas (verde = ativo, vermelho = cancelado, etc.)
 - **PageTransition** com Framer Motion entre navegações
@@ -653,7 +662,8 @@ product_addon_items (id, addon_group_id, name, price, order_index)
 ```sql
 categories (id, restaurant_id, name, order_index, print_destination)
 subcategories (id, restaurant_id, category_id, name, order_index)
-delivery_zones (id, restaurant_id, name, fee, is_active)
+delivery_zones (id, restaurant_id, name, fee, is_active,
+  center_lat, center_lng, radius_meters)   -- modelo por raio (migration 20260290)
 couriers (id, restaurant_id, name, phone, vehicle_plate, status, phone_country)
 tables (id, restaurant_id, table_number)
 waiter_calls (id, restaurant_id, table_number, status, created_at)
@@ -684,6 +694,7 @@ ingredient_movements (id, ingredient_id, quantity_delta, reason, order_id)
 ### Tabelas SaaS (Multi-tenant Control)
 
 ```sql
+super_admin_settings (key TEXT PK, value JSONB, updated_at)  -- câmbio para métricas BRL (20260291)
 subscription_plans (id, name, label, price_brl)
 features (id, flag, label, min_plan)          -- catálogo global de features
 plan_features (plan_id, feature_id)           -- quais features cada plano inclui
@@ -784,6 +795,16 @@ Chunks separados (Vite manualChunks):
   └── vendor-framer       → Animações (carrega só ao abrir modais)
 ```
 
+### Carregamento do Cardápio Público
+
+| Técnica | Detalhe |
+|---|---|
+| **InitialSplashScreen** | Tela de carregamento imediata (CSS puro, sem Framer Motion) |
+| **Prefetch no StoreLayout** | `prefetchRestaurantMenu(tenantSlug)` em paralelo com logo/idioma |
+| **keepPreviousData** | Dados em cache exibidos durante refetch — sem skeleton ao recarregar |
+| **Barra de refresh** | Indicador sutil no topo quando refetch em background |
+| **Fade-in** | Transição suave ao exibir conteúdo (animate-in fade-in) |
+
 ### Otimizações de Queries
 
 | Problema | Solução |
@@ -817,7 +838,7 @@ CREATE INDEX ON restaurant_user_roles(user_id);
 | Store | Conteúdo | Persistência |
 |---|---|---|
 | `authStore` | `user`, `session`, `loading`, `initialized`, `signIn/Out`, `hasRole()` | Memória |
-| `cartStore` | `items[]`, `restaurantId`, `addItem/remove/update/clear`, `removeInactiveProducts(activeIds)` | `localStorage` |
+| `cartStore` | `items[]`, `restaurantId`, `orderNotes`, `addItem/remove/update/clear`, `removeInactiveProducts(activeIds)` | `localStorage` |
 | `restaurantStore` | Dados do restaurante em cache | Memória |
 | `adminLanguageStore` | Idioma selecionado no admin | Memória |
 | `tableOrderStore` | Pedidos de mesa em aberto | Memória |
@@ -965,7 +986,7 @@ Crie `.env.e2e` a partir de `.env.e2e.example` e preencha credenciais reais para
 **Comportamento dos testes:**
 - **i18n**: Idioma padrão depende de `restaurant.language`; aceita PT ou ES. Segundo teste (troca de idioma) só roda se houver seletor PT/ES visível (ex.: LinkBio; Menu padrão não tem).
 - **order-flow**: Multi-moeda (BRL, PYG); aguarda `cart-checkout` visível antes de clicar.
-- **super-admin**: Assertion GMV flexível (aceita qualquer moeda ou "—" quando vazio).
+- **super-admin**: GMV total em BRL (conversão via câmbio configurado); assertion flexível.
 
 ### Checkly (Monitoramento Sintético)
 
@@ -987,9 +1008,10 @@ checkly.config.ts
 | Checkout | checkout-name, checkout-phone, checkout-submit, map-address-picker |
 | OrderTracking | order-tracking-page |
 | OrderConfirmation | order-confirmation-page |
+| InitialSplashScreen | (tela de carregamento — role="status") |
 | Admin Menu | product-price-input, menu-save-product |
 | DeliveryZones | zone-toggle-{id}, delivery-zone-new |
-| Super-Admin Dashboard | gmv-by-currency |
+| Super-Admin Dashboard | gmv-by-currency (GMV total em BRL) |
 
 ---
 
@@ -1007,12 +1029,16 @@ checkly.config.ts
 | `src/hooks/queries/useRestaurantMenuData.ts` | Hook do cardápio público |
 | `src/lib/whatsappTemplates.ts` | Templates de mensagens para pedidos (pt/es) |
 | `src/lib/invalidatePublicCache.ts` | Invalidação de cache Admin → Cardápio |
+| `src/components/public/InitialSplashScreen.tsx` | Splash de carregamento do cardápio (CSS puro) |
+| `src/hooks/queries/useSuperAdminExchangeRates.ts` | Câmbio para métricas do super admin |
 | `playwright.config.ts` | Config E2E (Admin + Cardápio) |
 | `checkly.config.ts` | Monitoramento sintético (smoke a cada 10 min) |
 | `src/lib/offline-db.ts` | Schema do IndexedDB para buffet |
 | `supabase/db/migrations/20260219_init_access_control.sql` | RBAC + Feature Flags |
 | `supabase/db/migrations/20260288_fix_get_restaurant_menu_n1_queries.sql` | RPC do cardápio otimizada |
 | `supabase/db/migrations/20260289_orders_customer_language.sql` | orders.customer_language + place_order |
+| `supabase/db/migrations/20260290_delivery_zones_radius_model.sql` | Zonas por raio (center_lat, center_lng, radius_meters) |
+| `supabase/db/migrations/20260291_super_admin_exchange_rates.sql` | super_admin_settings (câmbio para métricas BRL) |
 
 ### Documentação Complementar
 

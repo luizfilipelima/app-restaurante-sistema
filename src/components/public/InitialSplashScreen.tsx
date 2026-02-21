@@ -19,20 +19,25 @@ export default function InitialSplashScreen({ exiting = false, className }: Init
       className={cn(
         'h-screen w-screen fixed inset-0 z-50 flex items-center justify-center',
         'bg-slate-50 dark:bg-slate-950',
-        'transition-opacity duration-300',
+        'transition-opacity duration-500 ease-out',
         exiting ? 'opacity-0' : 'opacity-100',
         className
       )}
     >
-      <div className="animate-splash-breathe flex items-center justify-center">
+      <div className="animate-splash-breathe flex flex-col items-center justify-center gap-4">
         <img
           src="/icone-quierofood.svg"
           alt="Quiero.food"
-          width={80}
-          height={80}
-          className="w-16 h-16 sm:w-20 sm:h-20 select-none"
+          width={88}
+          height={88}
+          className="w-20 h-20 sm:w-24 sm:h-24 select-none drop-shadow-lg"
           fetchPriority="high"
         />
+        <div className="flex gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-orange-400 animate-splash-dot" style={{ animationDelay: '0ms' }} />
+          <span className="w-2 h-2 rounded-full bg-orange-500 animate-splash-dot" style={{ animationDelay: '150ms' }} />
+          <span className="w-2 h-2 rounded-full bg-orange-600 animate-splash-dot" style={{ animationDelay: '300ms' }} />
+        </div>
       </div>
     </div>
   );

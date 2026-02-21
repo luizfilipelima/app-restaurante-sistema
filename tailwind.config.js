@@ -80,13 +80,18 @@ export default {
         },
         "splash-breathe": {
           "0%, 100%": { transform: "scale(1)" },
-          "50%": { transform: "scale(1.04)" },
+          "50%": { transform: "scale(1.06)" },
+        },
+        "splash-dot": {
+          "0%, 80%, 100%": { transform: "scale(0.8)", opacity: "0.5" },
+          "40%": { transform: "scale(1.2)", opacity: "1" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "splash-breathe": "splash-breathe 2s ease-in-out infinite",
+        "splash-breathe": "splash-breathe 2.2s ease-in-out infinite",
+        "splash-dot": "splash-dot 0.8s ease-in-out infinite",
       },
     },
   },
