@@ -72,6 +72,7 @@ import {
   Check,
   Search,
   LayoutGrid,
+  LayoutList,
   QrCode,
   GripVertical,
   Edit,
@@ -137,6 +138,8 @@ const formDefaults = {
   invMinQuantity: '5',
   invUnit: 'un',
   invExpiry: '',
+  // Exibição no cardápio público
+  cardLayout: 'grid' as 'grid' | 'beverage',
 };
 
 // ─── SortableCategoryItem ──────────────────────────────────────────────────────
@@ -607,6 +610,7 @@ export default function AdminMenu() {
       subcategoryId: null,
       printDest: (cat?.print_destination ?? 'kitchen') as 'kitchen' | 'bar',
       costCurrency: currency as CostCurrencyCode,
+      cardLayout: 'grid',
     });
     setModalOpen(true);
   };
@@ -667,6 +671,7 @@ export default function AdminMenu() {
       categoryDetail: categoryDetail?.trim() || '',
       subcategoryId: product.subcategory_id ?? null,
       printDest: (product.print_destination ?? cat?.print_destination ?? 'kitchen') as 'kitchen' | 'bar',
+      cardLayout: (product.card_layout === 'beverage' ? 'beverage' : 'grid') as 'grid' | 'beverage',
       hasInventory,
       invQuantity,
       invMinQuantity,
@@ -747,6 +752,7 @@ export default function AdminMenu() {
         is_active: true,
         subcategory_id: form.subcategoryId || null,
         print_destination: form.printDest,
+        card_layout: form.cardLayout,
       };
       let savedProductId = editingProduct?.id ?? '';
 
@@ -901,6 +907,7 @@ export default function AdminMenu() {
           price_sale: product.price_sale ?? null, price_cost: product.price_cost ?? null, cost_currency: product.cost_currency ?? null, image_url: product.image_url ?? null,
           is_pizza: product.is_pizza, is_marmita: product.is_marmita ?? false, is_active: product.is_active, order_index: nextOrder ?? 0,
           print_destination: product.print_destination ?? null,
+          card_layout: product.card_layout ?? 'grid',
         })
         .select('*').single();
       if (error) throw error;
@@ -1439,6 +1446,58 @@ export default function AdminMenu() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Exibição no cardápio público */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Exibição no cardápio
+              </Label>
+              <p className="text-xs text-muted-foreground -mt-1">
+                Como o cliente verá este produto no cardápio público
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, cardLayout: 'grid' }))}
+                  className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                    form.cardLayout === 'grid'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/40 hover:bg-muted/30'
+                  }`}
+                >
+                  <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-0.5 ${
+                    form.cardLayout === 'grid' ? 'bg-primary/15' : 'bg-muted/60'
+                  }`}>
+                    <LayoutGrid className="h-5 w-5 text-slate-600" />
+                    <span className="text-[8px] font-medium text-slate-500 uppercase">Grid</span>
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold block">Card vertical</span>
+                    <span className="text-xs text-muted-foreground">Foto em destaque, ideal para pratos</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, cardLayout: 'beverage' }))}
+                  className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                    form.cardLayout === 'beverage'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/40 hover:bg-muted/30'
+                  }`}
+                >
+                  <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-0.5 ${
+                    form.cardLayout === 'beverage' ? 'bg-primary/15' : 'bg-muted/60'
+                  }`}>
+                    <LayoutList className="h-5 w-5 text-slate-600" />
+                    <span className="text-[8px] font-medium text-slate-500 uppercase">Lista</span>
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold block">Card horizontal</span>
+                    <span className="text-xs text-muted-foreground">Layout compacto, ideal para bebidas</span>
+                  </div>
+                </button>
               </div>
             </div>
 

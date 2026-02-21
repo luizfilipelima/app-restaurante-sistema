@@ -178,6 +178,8 @@ export interface Product {
   print_destination?: 'kitchen' | 'bar' | null;
   /** Se true, produto é um combo; composição em product_combo_items */
   is_combo?: boolean;
+  /** Como exibir no cardápio: 'grid' = card vertical padrão, 'beverage' = card horizontal (bebidas) */
+  card_layout?: 'grid' | 'beverage';
   created_at: string;
   updated_at: string;
 }

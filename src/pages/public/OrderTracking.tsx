@@ -52,6 +52,7 @@ interface TrackingRestaurant {
   name: string;
   slug: string;
   logo?: string | null;
+  currency?: string | null;
   whatsapp?: string | null;
   phone?: string | null;
   phone_country?: string | null;
@@ -362,7 +363,10 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
   const currentIndex = getStepIndex(order.status, isDelivery);
   const isCancelled = order.status === OrderStatus.CANCELLED;
   const isCompleted = order.status === OrderStatus.COMPLETED;
-  const currency: 'BRL' | 'PYG' = 'BRL'; // fallback; restaurante pode ter PYG mas não temos essa info aqui
+  const validCurrencies = ['BRL', 'PYG', 'ARS', 'USD'] as const;
+  const currency = validCurrencies.includes(restaurant.currency as typeof validCurrencies[number])
+    ? (restaurant.currency as typeof validCurrencies[number])
+    : 'BRL';
   const shortId = order.id.slice(0, 8).toUpperCase();
   const whatsAppLink = buildWhatsAppLink(restaurant, order.id);
 

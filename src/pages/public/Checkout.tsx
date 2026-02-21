@@ -757,7 +757,13 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             </div>
             <div className="p-4">
               {zones.length > 0 ? (
-                <Select value={selectedZoneId} onValueChange={(v) => { setSelectedZoneId(v); setFormError(null); }}>
+                <Select
+                  value={selectedZoneId || undefined}
+                  onValueChange={(v) => {
+                    setSelectedZoneId(v);
+                    setFormError(null);
+                  }}
+                >
                   <SelectTrigger className="h-12 bg-slate-50 border-slate-200 rounded-xl text-sm focus:bg-white">
                     <SelectValue placeholder={t('checkout.zonePlaceholder')} />
                   </SelectTrigger>
@@ -767,7 +773,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                         <div className="flex items-center justify-between gap-6 w-full">
                           <span>{zone.location_name}</span>
                           <span className="text-muted-foreground text-xs font-semibold">
-                            {zone.fee === 0 ? 'Grátis' : formatCurrency(convertForDisplay(zone.fee), displayCurrency)}
+                            {zone.fee === 0 ? t('checkout.free') : formatCurrency(convertForDisplay(zone.fee), displayCurrency)}
                           </span>
                         </div>
                       </SelectItem>
@@ -795,22 +801,30 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             </div>
 
             <div className="p-4 space-y-3">
-              <Suspense fallback={<Skeleton className="h-[240px] w-full rounded-xl" />}>
-                <MapAddressPicker
-                  key={`${mapKey}-${selectedZoneId}`}
-                  lat={latitude}
-                  lng={longitude}
-                  onLocationChange={(lat, lng) => {
-                    locationFromStorage.current = true;
-                    setLatitude(lat);
-                    setLongitude(lng);
-                  }}
-                  height="240px"
-                  zoneCenterLat={selectedZone && selectedZone.center_lat != null ? Number(selectedZone.center_lat) : undefined}
-                  zoneCenterLng={selectedZone && selectedZone.center_lng != null ? Number(selectedZone.center_lng) : undefined}
-                  zoneRadiusMeters={selectedZone && selectedZone.radius_meters != null ? Number(selectedZone.radius_meters) : undefined}
-                />
-              </Suspense>
+              {(() => {
+                const centerLat = selectedZone?.center_lat != null ? Number(selectedZone.center_lat) : latitude;
+                const centerLng = selectedZone?.center_lng != null ? Number(selectedZone.center_lng) : longitude;
+                const hasValidCoords = Number.isFinite(centerLat) && Number.isFinite(centerLng);
+                if (!hasValidCoords) return <Skeleton className="h-64 w-full rounded-xl" />;
+                return (
+                  <Suspense fallback={<Skeleton className="h-64 w-full rounded-xl" />}>
+                    <MapAddressPicker
+                      key={mapKey}
+                      lat={latitude}
+                      lng={longitude}
+                      onLocationChange={(lat, lng) => {
+                        locationFromStorage.current = true;
+                        setLatitude(lat);
+                        setLongitude(lng);
+                      }}
+                      height="256px"
+                      zoneCenterLat={selectedZone?.center_lat != null ? Number(selectedZone.center_lat) : undefined}
+                      zoneCenterLng={selectedZone?.center_lng != null ? Number(selectedZone.center_lng) : undefined}
+                      zoneRadiusMeters={selectedZone?.radius_meters != null ? Number(selectedZone.radius_meters) : undefined}
+                    />
+                  </Suspense>
+                );
+              })()}
 
               {/* Complemento / Referência */}
               <div>
@@ -1072,7 +1086,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   <span className="text-slate-500">{t('checkout.deliveryFee')}</span>
                   {deliveryFee === 0 ? (
                     <span className="font-semibold text-emerald-600">
-                      {selectedZoneId ? 'Grátis 🎉' : '—'}
+                      {selectedZoneId ? `${t('checkout.free')} 🎉` : '—'}
                     </span>
                   ) : (
                     <span className="font-semibold text-slate-700 tabular-nums">

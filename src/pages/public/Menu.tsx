@@ -14,7 +14,10 @@ import { isWithinOpeningHours, formatCurrency, normalizePhoneWithCountryCode } f
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import ProductCard from '@/components/public/ProductCard';
+import ProductCardBeverage from '@/components/public/ProductCardBeverage';
 import InitialSplashScreen from '@/components/public/InitialSplashScreen';
+
+import { shouldUseBeverageCard } from '@/lib/productCardLayout';
 
 // Lazy: CartDrawer importa framer-motion — só carrega quando o carrinho for aberto
 const CartDrawer = lazy(() => import('@/components/public/CartDrawer'));
@@ -297,7 +300,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   if (!loading && (!menuData || isError || !restaurant)) return <div className="min-h-screen flex items-center justify-center p-4">{t('menu.restaurantNotFound')}</div>;
   if (!restaurant) return null;
 
-  const currency = restaurant.currency === 'PYG' ? 'PYG' : 'BRL';
+  const validCurrencies = ['BRL', 'PYG', 'ARS', 'USD'] as const;
+  const currency = validCurrencies.includes(restaurant.currency as typeof validCurrencies[number])
+    ? (restaurant.currency as typeof validCurrencies[number])
+    : 'BRL';
 
   const hasHours = restaurant.opening_hours && Object.keys(restaurant.opening_hours).length > 0;
   const alwaysOpen = !!restaurant.always_open;
@@ -436,7 +442,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           </div>
         </div>
 
-        {/* ── Seção Ofertas no topo (mesmo padrão de grid e ProductCard das categorias) ── */}
+        {/* ── Seção Ofertas no topo ── */}
         {activeOffers.length > 0 && selectedCategory === 'all' && (
           <section className="space-y-3 sm:space-y-5">
             <h2 className="text-sm-mobile-block sm:text-base font-semibold text-orange-700 uppercase tracking-wider px-1 flex items-center gap-2">
@@ -446,22 +452,25 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               </span>
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {activeOffers.map((offer) => (
-                <ProductCard
-                  key={offer.id}
-                  product={offer.product}
-                  onClick={() => handleOfferProductClick(offer)}
-                  currency={currency}
-                  comboItems={productComboItemsMap?.[offer.product.id]}
-                  offer={{ price: offer.offer_price, originalPrice: offer.original_price, label: offer.label }}
-                />
-              ))}
+              {activeOffers.map((offer) => {
+                const OfferCard = shouldUseBeverageCard(offer.product) ? ProductCardBeverage : ProductCard;
+                return (
+                  <OfferCard
+                    key={offer.id}
+                    product={offer.product}
+                    onClick={() => handleOfferProductClick(offer)}
+                    currency={currency}
+                    comboItems={productComboItemsMap?.[offer.product.id]}
+                    offer={{ price: offer.offer_price, originalPrice: offer.original_price, label: offer.label }}
+                  />
+                );
+              })}
             </div>
           </section>
         )}
 
-        {/* Lista de produtos - Mobile First */}
-        <section className="space-y-6 sm:space-y-8">
+        {/* Lista de produtos - Mobile First, categorias com espaçamento generoso */}
+        <section className="space-y-6 sm:space-y-8 pb-2">
           {selectedCategory === 'all' ? (
             // Estrutura pré-computada via useMemo — sem filtros inline a cada render
             groupedByCategory.map(({ categoryName, categoryProducts, subcatsForCategory, productsWithSub, productsWithoutSub, hasSubs }) => (
@@ -474,14 +483,17 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                     {subcatsForCategory.map((sub) => {
                       const subProducts = productsWithSub.filter((p) => p.subcategory_id === sub.id);
                       if (subProducts.length === 0) return null;
+                      const allBeverage = subProducts.every((p) => shouldUseBeverageCard(p));
+                      const containerClass = allBeverage ? 'flex flex-col gap-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3';
                       return (
                         <div key={sub.id} className="space-y-2">
                           <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <div className={containerClass}>
                             {subProducts.map((product) => {
                               const offer = productIdToOffer.get(product.id);
+                              const Card = shouldUseBeverageCard(product) ? ProductCardBeverage : ProductCard;
                               return (
-                                <ProductCard
+                                <Card
                                   key={product.id}
                                   product={product}
                                   onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
@@ -495,30 +507,69 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                         </div>
                       );
                     })}
-                    {productsWithoutSub.length > 0 && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {productsWithoutSub.map((product) => {
-                          const offer = productIdToOffer.get(product.id);
-                          return (
-                            <ProductCard
-                              key={product.id}
-                              product={product}
-                              onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
-                              currency={currency}
-                              comboItems={productComboItemsMap?.[product.id]}
-                              offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
-                            />
-                          );
-                        })}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {categoryProducts.map((product) => {
-                      const offer = productIdToOffer.get(product.id);
+                    {productsWithoutSub.length > 0 && (() => {
+                      const allBeverage = productsWithoutSub.every((p) => shouldUseBeverageCard(p));
+                      const containerClass = allBeverage ? 'flex flex-col gap-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3';
                       return (
-                        <ProductCard
+                        <div className={containerClass}>
+                          {productsWithoutSub.map((product) => {
+                            const offer = productIdToOffer.get(product.id);
+                            const Card = shouldUseBeverageCard(product) ? ProductCardBeverage : ProductCard;
+                            return (
+                              <Card
+                                key={product.id}
+                                product={product}
+                                onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
+                                currency={currency}
+                                comboItems={productComboItemsMap?.[product.id]}
+                                offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
+                              />
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </>
+                ) : (() => {
+                  const allBeverage = categoryProducts.every((p) => shouldUseBeverageCard(p));
+                  const containerClass = allBeverage ? 'flex flex-col gap-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3';
+                  return (
+                    <div className={containerClass}>
+                      {categoryProducts.map((product) => {
+                        const offer = productIdToOffer.get(product.id);
+                        const Card = shouldUseBeverageCard(product) ? ProductCardBeverage : ProductCard;
+                        return (
+                          <Card
+                            key={product.id}
+                            product={product}
+                            onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
+                            currency={currency}
+                            comboItems={productComboItemsMap?.[product.id]}
+                            offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
+                          />
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            ))
+          ) : (
+            // Exibir apenas produtos da categoria selecionada
+            (() => {
+              const allBeverage = filteredProducts.every((p) => shouldUseBeverageCard(p));
+              const containerClass = allBeverage ? 'flex flex-col gap-2' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3';
+              return (
+                <>
+                  <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
+                    {selectedCategory}
+                  </h2>
+                  <div className={containerClass}>
+                    {filteredProducts.map((product) => {
+                      const offer = productIdToOffer.get(product.id);
+                      const Card = shouldUseBeverageCard(product) ? ProductCardBeverage : ProductCard;
+                      return (
+                        <Card
                           key={product.id}
                           product={product}
                           onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
@@ -529,31 +580,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       );
                     })}
                   </div>
-                )}
-              </div>
-            ))
-          ) : (
-            // Exibir apenas produtos da categoria selecionada
-            <>
-              <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
-                {selectedCategory}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredProducts.map((product) => {
-                  const offer = productIdToOffer.get(product.id);
-                  return (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
-                      currency={currency}
-                      comboItems={productComboItemsMap?.[product.id]}
-                      offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
-                    />
-                  );
-                })}
-              </div>
-            </>
+                </>
+              );
+            })()
           )}
 
           {filteredProducts.length === 0 && (

@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Leaflet CSS — carregado globalmente para evitar tiles "laranja" quando MapAddressPicker é lazy-loaded */
+@import 'leaflet/dist/leaflet.css';
+
 @layer base {
   :root {
     --background: 210 40% 98%; /* Slate-50 */

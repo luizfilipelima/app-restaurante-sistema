@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react';
+import L from 'leaflet';
 import { MapContainer, TileLayer, Circle, useMapEvents, useMap } from 'react-leaflet';
 import { useTranslation } from 'react-i18next';
-import 'leaflet/dist/leaflet.css';
 
-/** Corrige tiles não carregando quando o mapa é exibido em containers dinâmicos (ex: seção que aparece após seleção de zona) */
+/** Corrige ícones do Leaflet que quebram com bundlers (webpack/vite) */
+delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
+
+/** Corrige tiles não carregando quando o mapa é exibido em containers dinâmicos */
 function MapInvalidateSize() {
   const map = useMap();
   useEffect(() => {
@@ -11,6 +19,15 @@ function MapInvalidateSize() {
     const t = setTimeout(() => map.invalidateSize(), 100);
     return () => clearTimeout(t);
   }, [map]);
+  return null;
+}
+
+/** Atualiza o centro do mapa quando as coordenadas mudam (ex: nova zona selecionada) */
+function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo(center, zoom, { duration: 0.6 });
+  }, [map, center[0], center[1], zoom]);
   return null;
 }
 
@@ -45,11 +62,14 @@ function MapMoveHandler({
   return null;
 }
 
+const TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
 export default function MapAddressPicker({
   lat,
   lng,
   onLocationChange,
-  height = '240px',
+  height = '256px',
   zoneCenterLat,
   zoneCenterLng,
   zoneRadiusMeters,
@@ -59,7 +79,7 @@ export default function MapAddressPicker({
   const hasZoneBounds =
     Number.isFinite(zoneCenterLat) && Number.isFinite(zoneCenterLng) && (zoneRadiusMeters ?? 0) > 0;
   const mapCenter: [number, number] = hasZoneBounds && zoneCenterLat != null && zoneCenterLng != null
-    ? [zoneCenterLat, zoneCenterLng]
+    ? [Number(zoneCenterLat), Number(zoneCenterLng)]
     : [lat, lng];
   const mapZoom = hasZoneBounds ? 15 : 17;
 
@@ -69,29 +89,26 @@ export default function MapAddressPicker({
 
   return (
     <div className="space-y-2">
-      {/* Instruction */}
       <p className="flex items-center gap-1.5 text-xs text-slate-500 select-none">
         <span className="text-sm leading-none">✋</span>
         {instruction}
       </p>
 
-      {/* Map container with fixed pin overlay */}
       <div
         data-testid="map-address-picker"
-        className="relative overflow-hidden rounded-xl border border-slate-200 isolate cursor-grab active:cursor-grabbing"
+        className="map-address-picker relative overflow-hidden rounded-xl border border-slate-200 isolate cursor-grab active:cursor-grabbing bg-slate-100"
         style={{ height }}
       >
         <MapContainer
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          style={{ height } as React.CSSProperties}
+          style={{ height: '100%', minHeight: height }}
+          scrollWheelZoom={true}
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+          <TileLayer attribution={TILE_ATTRIBUTION} url={TILE_URL} />
           <MapInvalidateSize />
+          <MapUpdater center={mapCenter} zoom={mapZoom} />
           {hasZoneBounds && (
             <Circle
               center={[zoneCenterLat!, zoneCenterLng!]}
@@ -111,7 +128,7 @@ export default function MapAddressPicker({
           />
         </MapContainer>
 
-        {/* Pin anchored at map center — pointer-events-none keeps map draggable */}
+        {/* Pin anchored at map center */}
         <div
           className="absolute pointer-events-none"
           style={{
@@ -138,7 +155,6 @@ export default function MapAddressPicker({
           </svg>
         </div>
 
-        {/* Shadow beneath pin tip — expands when lifting */}
         <div
           className="absolute pointer-events-none"
           style={{

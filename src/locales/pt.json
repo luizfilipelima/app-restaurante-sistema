@@ -64,6 +64,7 @@
     "zoneLabel": "Bairro / Região de Entrega",
     "zonePlaceholder": "Selecione seu bairro",
     "zoneNoZones": "Entrega para toda a área",
+    "free": "Grátis",
     "mapInstructionZone": "Arraste o pino para a sua localização exata dentro da área marcada",
     "addressLabel": "Endereço completo (opcional)",
     "addressPlaceholder": "Rua, número, complemento — ou envie a localização no WhatsApp",
@@ -105,6 +106,7 @@
   "productCard": {
     "add": "Adicionar",
     "addToCart": "Adicionar ao Carrinho",
+    "details": "Detalhes",
     "customize": "Personalizar",
     "from": "a partir",
     "badgePizza": "Pizza",

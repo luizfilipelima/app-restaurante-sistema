@@ -93,13 +93,14 @@ src/
 │   │                        # select, tabs, toast, skeleton, status-badge, etc.
 │   │                        # (base Shadcn/UI + Radix UI)
 │   ├── admin/               # Componentes do painel admin:
-│   │                        # AdminLayout, CategoryManager, ProductRow,
+│   │                        # AdminLayout, CategoryManager, ProductRow, ProductAddonsSection,
 │   │                        # DashboardHeatmapWidget, MenuMatrixBCG, ChurnRecoveryList,
 │   │                        # WhatsAppTemplatesModal, DashboardPrintReport
 │   ├── public/              # Componentes do cardápio público:
-│   │                        # ProductCard, CartDrawer, PizzaModal, MarmitaModal,
-│   │                        # ProductAddonModal, MapAddressPicker, LoyaltyCard,
-│   │                        # InitialSplashScreen (tela de carregamento inicial)
+│   │                        # ProductCard, ProductCardBeverage (layout horizontal),
+│   │                        # ProductCardViewOnly (suporta grid/beverage), CartDrawer,
+│   │                        # PizzaModal, MarmitaModal, ProductAddonModal,
+│   │                        # MapAddressPicker, LoyaltyCard, InitialSplashScreen
 │   ├── auth/                # RoleProtectedRoute, FeatureGuard, UpgradeBanner
 │   ├── kitchen/             # (lógica interna nas páginas kitchen/)
 │   ├── orders/              # CompletedOrdersView
@@ -125,7 +126,8 @@ src/
 │   │                        #   prefetchRestaurantMenu(), keepPreviousData
 │   │                        # useOrders, useCompletedOrders
 │   │                        # useDashboardStats, useDashboardKPIs, useDashboardAnalytics
-│   │                        # useProductAddons, useProductOffers, useProductUpsells
+│   │                        # useProductAddons, useProductAddonsMap, useSaveProductAddons,
+│   │                        # useProductOffers, useProductUpsells
 │   │                        # useCouriers, useLoyaltyProgram, useTables
 │   │                        # useDeliveryZones, usePrintSettings
 │   │                        # useSuperAdminExchangeRates (câmbio para métricas em BRL)
@@ -159,11 +161,12 @@ src/
 │   ├── whatsappTemplates.ts # Templates de mensagens WhatsApp (pt/es)
 │   ├── priceHelper.ts       # Formatação de preços por moeda
 │   ├── imageUpload.ts       # Upload e conversão para WebP
+│   ├── productCardLayout.ts # shouldUseBeverageCard(product) — layout por produto no cardápio
 │   ├── lazyWithRetry.ts     # Code splitting com retry automático
 │   └── utils.ts             # formatCurrency, generateSlug, getCardapioPublicUrl, etc.
 │
 ├── types/
-│   └── index.ts             # Interfaces principais: User, Restaurant, Product,
+│   └── index.ts             # Interfaces principais: User, Restaurant, Product (card_layout),
 │                            # Order, Category, Courier, LoyaltyProgram, etc.
 │
 ├── locales/
@@ -247,13 +250,17 @@ Visitante anônimo (cardápio público)
    └─ Ao carregar o cardápio: removeInactiveProducts() remove itens cujos produtos
       foram desativados/deletados pelo Admin (evita erro em place_order)
    └─ Suporta: produtos simples, pizza (tamanho/sabores/massa/borda),
-      marmita (tamanho/proteínas/acompanhamentos), combos, adicionais
+      marmita (tamanho/proteínas/acompanhamentos), combos, adicionais (ProductAddonModal)
    └─ CartDrawer: observações do pedido (orderNotes) opcional, sincronizado com Checkout
 
 3. Checkout (src/pages/public/Checkout.tsx)
    └─ Cliente informa: nome, endereço (complemento/referência obrigatório), zona de entrega, forma de pagamento
+   └─ Formas de pagamento: dinheiro, cartão, PIX, transferência bancária (PYG/ARS — exibe dados da conta)
+   └─ Para transferência PYG/ARS: snapshot bank_account gravado em payment_bank_account no pedido
    └─ Zonas de entrega: modelo por raio (center_lat, center_lng, radius_meters)
-   └─ MapAddressPicker (Leaflet) — fluxo "zona primeiro, mapa depois"; atualiza ao trocar zona
+   └─ MapAddressPicker (Leaflet, lazy loaded): TileLayer CartoDB Light; MapUpdater (useMap + flyTo)
+      recentraliza ao trocar zona; Leaflet CSS em index.css (evita tiles "laranja"); ícones via
+      L.Icon.Default.mergeOptions; Select com value correta evita travamento
    └─ RPC place_order() é chamada com todos os dados, incluindo geo_lat/geo_lng
       e customer_language (idioma da jornada para templates WhatsApp)
    └─ Pedido criado no banco com status 'pending'
@@ -271,7 +278,9 @@ Visitante anônimo (cardápio público)
       o cliente receber o link por WhatsApp ou navegar manualmente
 
 5. Rastreamento em tempo real (OrderTracking.tsx)
-   └─ RPC get_order_tracking(order_id) carrega estado inicial
+   └─ RPC get_order_tracking(order_id) carrega estado inicial (pedido, restaurante, entregador)
+   └─ Retorna payment_bank_account (snapshot do pedido) e restaurant.bank_account — exibidos quando
+      pagamento for transferência bancária (PYG/ARS), para o cliente ver os dados ao confirmar
    └─ Supabase Realtime subscription em orders WHERE id = order_id
    └─ A tela atualiza automaticamente quando o restaurante muda o status
 
@@ -397,11 +406,30 @@ No Checkout e cardápio:
 Dashboard do Super-Admin (useSuperAdminRestaurants):
   └─ revenueByCurrency: Record<string, number> — GMV agrupado por moeda
   └─ ordersByCurrency: Record<string, number> — pedidos por moeda
-  └─ useSuperAdminExchangeRates: cotações (pyg_per_brl, ars_per_brl) para conversão em BRL
+  └─ useSuperAdminExchangeRates, useUpdateSuperAdminExchangeRates: cotações (pyg_per_brl, ars_per_brl) para conversão em BRL
   └─ KPIs GMV e Ticket médio: exibidos em Real (BRL) após conversão com câmbio configurado
   └─ Cards de restaurantes: faturamento na moeda nativa de cada restaurante (BRL, PYG, ARS)
   └─ Tabela super_admin_settings (migration 20260291): armazena exchange_rates
 ```
+
+### 5.7 Exibição de Produtos no Cardápio (card_layout)
+
+Cada produto pode definir como aparece no cardápio público:
+
+```
+Admin (Central do Cardápio) cria/edita produto
+  └─ Campo "Exibição no cardápio": Card vertical (grid) ou Card horizontal (beverage)
+  └─ products.card_layout = 'grid' | 'beverage' (migration 20260295)
+
+Cardápio público (Menu.tsx, MenuViewOnly.tsx)
+  └─ productCardLayout.ts: shouldUseBeverageCard(product)
+  └─ Prioridade: product.card_layout → fallback por categoria (Bebidas, Drinks)
+  └─ grid: ProductCard / ProductCardViewOnly (layout vertical, foto em destaque)
+  └─ beverage: ProductCardBeverage / ProductCardViewOnly horizontal (lista compacta)
+  └─ Container: flex col quando todos beverage; grid caso contrário
+```
+
+**Arquivos:** `src/lib/productCardLayout.ts`, `src/components/public/ProductCardBeverage.tsx`, `src/components/public/ProductCardViewOnly.tsx` (prop `layout`), Admin Menu form.
 
 ---
 
@@ -538,8 +566,8 @@ src/components/public/   → Moléculas/Organismos públicos: ProductCard, CartD
 
 | Tela | Princípio |
 |---|---|
-| **Cardápio público** | Mobile-first, splash screen inicial (CSS puro), prefetch de dados, carregamento fluido (<200 KB inicial), sem login necessário |
-| **Checkout** | Geolocalização opcional, mínimo de campos obrigatórios, suporte a WhatsApp |
+| **Cardápio público** | Mobile-first, splash screen inicial (CSS puro), prefetch de dados, exibição configurável por produto (card vertical ou horizontal), sem login necessário |
+| **Checkout** | Mapa de zonas (Leaflet + CartoDB), flyTo ao trocar zona, geolocalização opcional, suporte a WhatsApp, PIX e transferência bancária (PYG/ARS) |
 | **Kanban de Pedidos** | Atualização em tempo real (Realtime), cores por status, ação em 1 clique |
 | **KDS (Cozinha)** | Interface dark otimizada para cozinha, timers visuais, sem distrações |
 | **Buffet** | Atalhos de teclado (F2/F8/ESC), funciona offline, scanner de código de barras |
@@ -573,6 +601,7 @@ restaurants (
   is_active BOOLEAN,
   pix_key TEXT,
   pix_key_type TEXT,
+  bank_account JSONB,        -- dados bancários PYG/ARS: {pyg: {bank_name, holder, alias}, ars: {...}}
   ...
 )
 
@@ -589,6 +618,7 @@ products (
   is_combo BOOLEAN,
   product_type TEXT,         -- 'simple' | 'pizza' | 'marmita' | 'combo'
   print_destination TEXT,    -- 'kitchen' | 'bar' | 'both'
+  card_layout TEXT,          -- 'grid' | 'beverage' — exibição no cardápio (migration 20260295)
   sku TEXT,
   cost_price NUMERIC,        -- para CMV
   ...
@@ -612,6 +642,7 @@ orders (
   courier_id UUID FK,
   loyalty_redeemed BOOLEAN,
   customer_language TEXT,     -- 'pt' | 'es' — idioma da jornada (templates WhatsApp)
+  payment_bank_account JSONB, -- snapshot da conta bancária para transferência PYG/ARS
   table_number TEXT,
   ...
 )
@@ -668,6 +699,11 @@ couriers (id, restaurant_id, name, phone, vehicle_plate, status, phone_country)
 tables (id, restaurant_id, table_number)
 waiter_calls (id, restaurant_id, table_number, status, created_at)
 print_settings (id, restaurant_id, paper_width, auto_print, kitchen_printer, bar_printer)
+
+-- Ofertas (migration 20260274, 20260292)
+product_offers (id, restaurant_id, product_id, offer_price, original_price,
+  starts_at, ends_at, label, is_active, always_active, sort_order)
+  -- always_active=true: oferta visível no cardápio independente de período
 ```
 
 ### Tabelas de Analytics e Fidelidade
@@ -714,9 +750,9 @@ restaurant_user_roles (
 
 | RPC | Propósito |
 |---|---|
-| `get_restaurant_menu(slug)` | Retorna todo o cardápio em 1 chamada (elimina 11+ queries) |
-| `place_order(...)` | Cria pedido, atualiza fidelidade, valida estoque, grava customer_language |
-| `get_order_tracking(order_id)` | Rastreamento público sem autenticação (SECURITY DEFINER) |
+| `get_restaurant_menu(slug)` | Retorna todo o cardápio em 1 chamada (restaurante, produtos, categorias, pizza, marmita, combos, productAddonsMap) |
+| `place_order(...)` | Cria pedido, atualiza fidelidade, valida estoque, grava customer_language, payment_bank_account |
+| `get_order_tracking(order_id)` | Rastreamento público sem autenticação. Retorna pedido (incl. payment_bank_account), restaurante (pix_key, bank_account), entregador |
 | `get_dashboard_kpis(...)` | KPIs do dashboard com filtros de período e canal |
 | `get_advanced_dashboard_stats(...)` | Analytics avançados (retenção, churn, BCG) |
 | `setup_new_tenant(...)` | Cria restaurante, usuário admin e dados iniciais |
@@ -814,7 +850,7 @@ Chunks separados (Vite manualChunks):
 | Supabase reconnect em multi-tab | `useSessionManager.ts` deduplica eventos |
 | Re-render de ProductCard a cada mudança de carrinho | `React.memo()` |
 | `filteredProducts` calculado em todo render | `useMemo([products, category, query])` |
-| Leaflet CSS carregado globalmente | Import movido para `MapAddressPicker.tsx` |
+| Leaflet CSS carregado globalmente | `@import 'leaflet/dist/leaflet.css'` em `index.css` (evita tiles "laranja" com lazy load) |
 | Sem preconnect ao Supabase | `<link rel="preconnect">` no `index.html` |
 
 ### Indexação no PostgreSQL
@@ -1039,6 +1075,11 @@ checkly.config.ts
 | `supabase/db/migrations/20260289_orders_customer_language.sql` | orders.customer_language + place_order |
 | `supabase/db/migrations/20260290_delivery_zones_radius_model.sql` | Zonas por raio (center_lat, center_lng, radius_meters) |
 | `supabase/db/migrations/20260291_super_admin_exchange_rates.sql` | super_admin_settings (câmbio para métricas BRL) |
+| `supabase/db/migrations/20260292_product_offers_always_active.sql` | product_offers.always_active — oferta sempre visível |
+| `supabase/db/migrations/20260293_order_tracking_payment_bank_account.sql` | get_order_tracking retorna payment_bank_account e bank_account |
+| `supabase/db/migrations/20260294_order_tracking_currency.sql` | get_order_tracking retorna restaurant.currency |
+| `supabase/db/migrations/20260295_products_card_layout.sql` | products.card_layout ('grid' | 'beverage') — exibição no cardápio |
+| `src/lib/productCardLayout.ts` | shouldUseBeverageCard() — escolha ProductCard vs ProductCardBeverage por produto |
 
 ### Documentação Complementar
 
