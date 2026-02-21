@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import { useEffect, useState, useMemo, lazy, Suspense, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { getSubdomain } from '@/lib/subdomain';
 import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, MarmitaSize, MarmitaProtein, MarmitaSide, Category, Subcategory } from '@/types';
@@ -8,13 +8,13 @@ import { useRestaurantMenuData, useActiveOffersByRestaurantId } from '@/hooks/qu
 import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { isWithinOpeningHours, formatCurrency, normalizePhoneWithCountryCode } from '@/lib/utils';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import ProductCard from '@/components/public/ProductCard';
+import InitialSplashScreen from '@/components/public/InitialSplashScreen';
 
 // Lazy: CartDrawer importa framer-motion — só carrega quando o carrinho for aberto
 const CartDrawer = lazy(() => import('@/components/public/CartDrawer'));
@@ -94,7 +94,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const [marmitaModalOpen, setMarmitaModalOpen] = useState(false);
   const [addonModalProduct, setAddonModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
 
-  const { data: menuData, isLoading: loading, isError } = useRestaurantMenuData(restaurantSlug);
+  const { data: menuData, isLoading: loading, isError, isFetching, isPlaceholderData } = useRestaurantMenuData(restaurantSlug);
   // Usa restaurant_id diretamente do menuData para evitar requisição extra (slug→id)
   const { data: activeOffers = [] } = useActiveOffersByRestaurantId(menuData?.restaurant?.id);
   const productIdToOffer = useMemo(() => {
@@ -294,41 +294,32 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     return result;
   }, [products, selectedCategory, searchQuery]);
 
+  const isRefreshing = isFetching && isPlaceholderData;
+
+  // Fade-out suave ao terminar o carregamento (CSS puro, sem Framer)
+  const [splashOverlay, setSplashOverlay] = useState(false);
+  const [splashFadeOut, setSplashFadeOut] = useState(false);
+  const prevLoading = useRef(true);
+
+  useEffect(() => {
+    if (prevLoading.current && !loading) {
+      prevLoading.current = false;
+      setSplashOverlay(true);
+      const raf = requestAnimationFrame(() => setSplashFadeOut(true));
+      const t = setTimeout(() => {
+        setSplashOverlay(false);
+        setSplashFadeOut(false);
+      }, 350);
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(t);
+      };
+    }
+    if (loading) prevLoading.current = true;
+  }, [loading]);
+
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-100/80">
-        <div className="bg-white/95 border-b border-slate-200/80">
-          <div className="container mx-auto px-4 py-4 max-w-6xl flex items-center gap-4">
-            <Skeleton className="h-12 w-12 md:h-14 md:w-14 rounded-2xl" />
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-4 w-28" />
-            </div>
-          </div>
-        </div>
-        <div className="container mx-auto px-4 py-6 max-w-6xl space-y-6">
-          <Skeleton className="h-12 w-full rounded-2xl" />
-          <div className="flex gap-2">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-[74px] w-[70px] rounded-2xl flex-shrink-0" />
-            ))}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
-                <Skeleton className="aspect-[4/3] w-full" />
-                <div className="p-4 space-y-3">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-1/2" />
-                  <Skeleton className="h-9 w-full rounded-xl mt-2" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <InitialSplashScreen />;
   }
 
   if (!loading && (!menuData || isError || !restaurant)) return <div className="min-h-screen flex items-center justify-center p-4">{t('menu.restaurantNotFound')}</div>;
@@ -347,7 +338,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         : restaurant.is_active;
 
   return (
-    <div className={`min-h-screen bg-slate-100/80 font-sans antialiased ${getItemsCount() > 0 ? 'pb-24 md:pb-28' : 'pb-8 md:pb-8'} safe-area-inset-bottom`}>
+    <>
+      <div className={`min-h-screen bg-slate-100/80 font-sans antialiased animate-in fade-in duration-300 ${getItemsCount() > 0 ? 'pb-24 md:pb-28' : 'pb-8 md:pb-8'} safe-area-inset-bottom`}>
+      {/* Barra sutil de refresh quando dados em background (keepPreviousData) */}
+      {isRefreshing && (
+        <div className="fixed top-0 left-0 right-0 h-0.5 bg-orange-200/80 z-[100] overflow-hidden">
+          <div className="h-full w-1/3 bg-orange-500 rounded-r-full animate-[progress-slide_1.5s_ease-in-out_infinite]" />
+        </div>
+      )}
       {/* Header - Mobile First */}
       <header className="bg-white/95 backdrop-blur-sm border-b border-slate-200/80 sticky top-0 z-20 safe-area-inset-top">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-6xl">
@@ -617,14 +615,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         >
           <div className="px-3 pb-3">
             <Button
-              className="w-full h-16 rounded-2xl bg-slate-900 text-white shadow-xl shadow-slate-900/30 hover:bg-slate-800 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch"
+              className="w-full h-16 rounded-3xl bg-slate-900 text-white shadow-xl shadow-slate-900/30 hover:bg-slate-800 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch"
               onClick={() => setCartOpen(true)}
             >
               {/* Left Side: Info */}
               <div className="flex-1 flex items-center justify-start px-4 gap-3.5">
                 <div className="relative">
-                   <div className="bg-white/20 h-9 w-9 rounded-full flex items-center justify-center border border-white/10 shadow-inner">
-                      <span className="text-sm font-bold">{getItemsCount()}</span>
+                   <div className="bg-orange-500 h-9 w-9 rounded-full flex items-center justify-center border border-orange-400/50 shadow-md shadow-orange-500/30">
+                      <span className="text-sm font-bold text-white">{getItemsCount()}</span>
                    </div>
                 </div>
                 <div className="flex flex-col items-start justify-center">
@@ -636,10 +634,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               {/* Divider */}
               <div className="w-[1px] bg-white/10 my-3"></div>
 
-              {/* Right Side: Action */}
-              <div className="px-5 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 transition-colors h-full">
+              {/* Right Side: CTA — destaque visual para indicar ação */}
+              <div className="px-6 flex items-center justify-center gap-2 bg-orange-500/25 hover:bg-orange-500/35 active:bg-orange-500/40 transition-colors h-full min-w-[120px]">
                 <span className="text-sm font-bold">{t('menu.viewBag')}</span>
-                <ChevronRight className="h-4 w-4 opacity-70" />
+                <ChevronRight className="h-4 w-4 opacity-90" />
               </div>
             </Button>
           </div>
@@ -710,5 +708,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         )}
       </Suspense>
     </div>
+      {splashOverlay && <InitialSplashScreen exiting={splashFadeOut} />}
+    </>
   );
 }

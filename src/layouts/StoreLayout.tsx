@@ -2,8 +2,10 @@ import { useEffect, useState, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
+import { prefetchRestaurantMenu } from '@/hooks/queries/useRestaurantMenuData';
 import { supabase } from '@/lib/supabase';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
+import InitialSplashScreen from '@/components/public/InitialSplashScreen';
 
 // Rotas públicas — lazy para reduzir bundle inicial (cardápio carrega só o necessário)
 const PublicMenu = lazyWithRetry(() => import('@/pages/public/Menu'));
@@ -14,15 +16,6 @@ const VirtualComanda = lazyWithRetry(() => import('@/pages/public/VirtualComanda
 const OrderTracking = lazyWithRetry(() => import('@/pages/public/OrderTracking'));
 const OrderConfirmation = lazyWithRetry(() => import('@/pages/public/OrderConfirmation'));
 const LinkBio = lazyWithRetry(() => import('@/pages/public/LinkBio'));
-
-function StoreLoadingFallback() {
-  return (
-    <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
-      <div className="h-9 w-9 rounded-full border-2 border-orange-100 border-t-orange-500 animate-spin" />
-      <p className="text-xs text-slate-400">Carregando...</p>
-    </div>
-  );
-}
 
 interface StoreLayoutProps {
   /** Slug do tenant (subdomínio), usado para buscar restaurante no Supabase */
@@ -41,12 +34,16 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
     if (!tenantSlug) return;
     (async () => {
       try {
-        const { data } = await supabase
-          .from('restaurants')
-          .select('logo, language')
-          .eq('slug', tenantSlug)
-          .eq('is_active', true)
-          .single();
+        const [restaurantRes, _] = await Promise.all([
+          supabase
+            .from('restaurants')
+            .select('logo, language')
+            .eq('slug', tenantSlug)
+            .eq('is_active', true)
+            .single(),
+          prefetchRestaurantMenu(tenantSlug),
+        ]);
+        const data = restaurantRes.data;
         setLogoUrl(data?.logo ?? null);
         const userHasChosen = hasStoredMenuLanguage();
         const lang = (userHasChosen ? getStoredMenuLanguage() : (data?.language === 'es' ? 'es' : 'pt')) as MenuLanguage;
@@ -64,7 +61,7 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
 
   return (
     <BrowserRouter>
-      <Suspense fallback={<StoreLoadingFallback />}>
+      <Suspense fallback={<InitialSplashScreen />}>
         <Routes>
           <Route path="/" element={<PublicMenu tenantSlug={tenantSlug} />} />
         <Route path="/menu" element={<MenuViewOnly tenantSlug={tenantSlug} />} />

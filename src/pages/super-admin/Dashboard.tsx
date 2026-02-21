@@ -5,6 +5,11 @@ import {
   useSuperAdminRestaurants,
   useInvalidateSuperAdminRestaurants,
 } from '@/hooks/queries/useSuperAdminRestaurants';
+import {
+  useSuperAdminExchangeRates,
+  useUpdateSuperAdminExchangeRates,
+} from '@/hooks/queries/useSuperAdminExchangeRates';
+import { convertBetweenCurrencies, type CurrencyCode } from '@/lib/priceHelper';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -52,6 +57,7 @@ import {
   CheckCircle2,
   XCircle,
   ReceiptText,
+  Settings2,
 } from 'lucide-react';
 import { Restaurant, DayKey, PrintPaperWidth } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -206,7 +212,7 @@ function RestaurantCard({
             <div className="w-px h-3 bg-slate-200" />
             <div className="flex items-center gap-1 text-xs text-slate-500">
               <ReceiptText className="h-3 w-3 text-slate-400" />
-              <span className="font-medium text-slate-700">{formatCurrency(revenue)}</span>
+              <span className="font-medium text-slate-700">{formatCurrency(revenue, (restaurant.currency as 'BRL' | 'PYG' | 'ARS') || 'BRL')}</span>
             </div>
           </div>
         </div>
@@ -278,6 +284,8 @@ export default function SuperAdminDashboard() {
   const navigate  = useNavigate();
   const { data, isLoading } = useSuperAdminRestaurants();
   const invalidate = useInvalidateSuperAdminRestaurants();
+  const { data: exchangeRates = { pyg_per_brl: 3600, ars_per_brl: 1150 } } = useSuperAdminExchangeRates();
+  const updateRates = useUpdateSuperAdminExchangeRates();
 
   const restaurants        = data?.restaurants         ?? [];
   const ordersByRestaurant = data?.ordersByRestaurant   ?? {};
@@ -285,6 +293,8 @@ export default function SuperAdminDashboard() {
   const metrics            = data?.metrics ?? { totalRestaurants: 0, activeRestaurants: 0, totalRevenue: 0, totalOrders: 0, revenueByCurrency: {}, ordersByCurrency: {} };
 
   const [search,  setSearch]  = useState('');
+  const [showExchangeModal, setShowExchangeModal] = useState(false);
+  const [exchangeForm, setExchangeForm] = useState({ pyg_per_brl: 3600, ars_per_brl: 1150 });
   const [showNew, setShowNew] = useState(false);
   const [saving,  setSaving]  = useState(false);
   const [toDelete, setToDelete]       = useState<Restaurant | null>(null);
@@ -305,7 +315,31 @@ export default function SuperAdminDashboard() {
     );
   }, [restaurants, search]);
 
+  // GMV e ticket médio convertidos para BRL (para exibição nos KPIs)
+  const { gmvInBRL, ticketMedioBRL } = useMemo(() => {
+    const rev = metrics.revenueByCurrency ?? {};
+    const ord = metrics.ordersByCurrency ?? {};
+    let totalBRL = 0;
+    let totalOrders = 0;
+    for (const [cur, val] of Object.entries(rev)) {
+      const count = ord[cur] ?? 1;
+      totalOrders += count;
+      const inBRL = convertBetweenCurrencies(val, cur as CurrencyCode, 'BRL', exchangeRates);
+      totalBRL += inBRL;
+    }
+    const ticket = totalOrders > 0 ? totalBRL / totalOrders : 0;
+    return { gmvInBRL: totalBRL, ticketMedioBRL: ticket };
+  }, [metrics.revenueByCurrency, metrics.ordersByCurrency, exchangeRates]);
+
   // ── Handlers ────────────────────────────────────────────────────────────────
+
+  const openExchangeModal = () => {
+    setExchangeForm({
+      pyg_per_brl: exchangeRates.pyg_per_brl ?? 3600,
+      ars_per_brl: exchangeRates.ars_per_brl ?? 1150,
+    });
+    setShowExchangeModal(true);
+  };
 
   const handleCloseNew = () => {
     setShowNew(false);
@@ -473,13 +507,24 @@ export default function SuperAdminDashboard() {
             {metrics.totalRestaurants} cadastrados · {metrics.activeRestaurants} ativos
           </p>
         </div>
-        <Button
-          onClick={() => setShowNew(true)}
-          className="gap-2 bg-[#F87116] hover:bg-[#e56910] text-white shadow-sm shadow-orange-200 self-start sm:self-auto"
-        >
-          <Plus className="h-4 w-4" />
-          Novo restaurante
-        </Button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openExchangeModal}
+            className="gap-2"
+          >
+            <Settings2 className="h-4 w-4" />
+            Câmbio
+          </Button>
+          <Button
+            onClick={() => setShowNew(true)}
+            className="gap-2 bg-[#F87116] hover:bg-[#e56910] text-white shadow-sm shadow-orange-200"
+          >
+            <Plus className="h-4 w-4" />
+            Novo restaurante
+          </Button>
+        </div>
       </div>
 
       {/* ── KPI Cards ────────────────────────────────────────────────────── */}
@@ -496,15 +541,13 @@ export default function SuperAdminDashboard() {
         />
         <KpiCard
           data-testid="gmv-by-currency"
-          label="GMV por moeda"
+          label="GMV total (BRL)"
           value={
             (metrics.revenueByCurrency && Object.keys(metrics.revenueByCurrency).length > 0)
-              ? Object.entries(metrics.revenueByCurrency)
-                  .map(([cur, val]) => `${cur}: ${formatCurrency(val, cur as 'BRL' | 'PYG' | 'ARS')}`)
-                  .join('  |  ')
+              ? formatCurrency(gmvInBRL, 'BRL')
               : '—'
           }
-          sub="BRL, PYG e ARS separados (evita distorção)"
+          sub="Convertido com câmbio configurado"
           icon={DollarSign}
           accent="bg-gradient-to-r from-emerald-400 to-emerald-500"
         />
@@ -516,20 +559,14 @@ export default function SuperAdminDashboard() {
           accent="bg-gradient-to-r from-sky-400 to-sky-500"
         />
         <KpiCard
-          label="Ticket médio"
+          label="Ticket médio (BRL)"
           value={
-            (metrics.ordersByCurrency &&
-              Object.keys(metrics.ordersByCurrency).length > 0) ||
+            (metrics.ordersByCurrency && Object.keys(metrics.ordersByCurrency).length > 0) ||
             (metrics.revenueByCurrency && Object.keys(metrics.revenueByCurrency ?? {}).length > 0)
-              ? Object.entries(metrics.revenueByCurrency ?? {})
-                  .map(([curr, rev]) => {
-                    const count = metrics.ordersByCurrency?.[curr] ?? 1;
-                    return `${curr}: ${formatCurrency(count > 0 ? rev / count : 0, curr as 'BRL' | 'PYG' | 'ARS')}`;
-                  })
-                  .join(' · ')
+              ? formatCurrency(ticketMedioBRL, 'BRL')
               : formatCurrency(0)
           }
-          sub="por pedido (por moeda)"
+          sub="por pedido, convertido para Real"
           icon={TrendingUp}
           accent="bg-gradient-to-r from-violet-400 to-violet-500"
         />
@@ -605,6 +642,61 @@ export default function SuperAdminDashboard() {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* ── Modal: Configurar câmbio ──────────────────────────────────────── */}
+      <Dialog open={showExchangeModal} onOpenChange={setShowExchangeModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              Configurar câmbio para BRL
+            </DialogTitle>
+            <DialogDescription>
+              Defina as cotações usadas para converter GMV e ticket médio em Real. Os cards de cada restaurante continuam na moeda nativa.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="pyg_per_brl">1 BRL = quantos Gs. (PYG)?</Label>
+              <Input
+                id="pyg_per_brl"
+                type="number"
+                min={1}
+                value={exchangeForm.pyg_per_brl}
+                onChange={(e) => setExchangeForm((f) => ({ ...f, pyg_per_brl: Number(e.target.value) || 0 }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ars_per_brl">1 BRL = quantos ARS?</Label>
+              <Input
+                id="ars_per_brl"
+                type="number"
+                min={1}
+                value={exchangeForm.ars_per_brl}
+                onChange={(e) => setExchangeForm((f) => ({ ...f, ars_per_brl: Number(e.target.value) || 0 }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExchangeModal(false)}>Cancelar</Button>
+            <Button
+              onClick={async () => {
+                try {
+                  await updateRates.mutateAsync(exchangeForm);
+                  toast({ title: 'Câmbio atualizado' });
+                  setShowExchangeModal(false);
+                } catch {
+                  toast({ title: 'Erro ao salvar', variant: 'destructive' });
+                }
+              }}
+              disabled={updateRates.isPending || exchangeForm.pyg_per_brl < 1 || exchangeForm.ars_per_brl < 1}
+            >
+              {updateRates.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Modal: Confirmar exclusão ─────────────────────────────────────── */}
       <Dialog open={!!toDelete} onOpenChange={(v) => { if (!v) { setToDelete(null); setDeleteConfirm(''); } }}>

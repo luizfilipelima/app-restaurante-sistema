@@ -5,6 +5,8 @@ import { CartItem } from '@/types';
 interface CartState {
   items: CartItem[];
   restaurantId: string | null;
+  /** Observações gerais do pedido (campo opcional no carrinho) */
+  orderNotes: string;
   addItem: (item: CartItem) => void;
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
@@ -12,6 +14,7 @@ interface CartState {
   getSubtotal: () => number;
   getItemsCount: () => number;
   setRestaurant: (restaurantId: string) => void;
+  setOrderNotes: (notes: string) => void;
   /** Remove itens cujo productId não está em activeProductIds (produto desativado/excluído no Admin). */
   removeInactiveProducts: (activeProductIds: Set<string>) => void;
 }
@@ -21,6 +24,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       restaurantId: null,
+      orderNotes: '',
 
       setRestaurant: (restaurantId: string) => {
         const currentRestaurantId = get().restaurantId;
@@ -92,7 +96,11 @@ export const useCartStore = create<CartState>()(
       },
 
       clearCart: () => {
-        set({ items: [], restaurantId: null });
+        set({ items: [], restaurantId: null, orderNotes: '' });
+      },
+
+      setOrderNotes: (notes: string) => {
+        set({ orderNotes: notes });
       },
 
       getSubtotal: () => {
@@ -122,6 +130,16 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'cart-storage',
+      version: 1,
+      migrate: (persistedState: unknown) => {
+        const s = persistedState as { items?: CartItem[]; restaurantId?: string | null; orderNotes?: string };
+        return {
+          ...s,
+          items: s?.items ?? [],
+          restaurantId: s?.restaurantId ?? null,
+          orderNotes: s?.orderNotes ?? '',
+        };
+      },
     }
   )
 );

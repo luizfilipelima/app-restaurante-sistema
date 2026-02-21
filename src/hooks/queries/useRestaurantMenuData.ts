@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { queryClient } from '@/lib/queryClient';
 import { supabase } from '@/lib/supabase';
 import type {
   Restaurant,
@@ -232,13 +233,25 @@ async function fetchRestaurantMenuDataFallback(restaurantSlug: string): Promise<
 const FIVE_MIN = 5 * 60 * 1000;
 const TEN_MIN = 10 * 60 * 1000;
 
+const restaurantMenuQueryKey = (slug: string | null) => ['restaurant-menu', slug] as const;
+
 export function useRestaurantMenuData(restaurantSlug: string | null) {
   return useQuery({
-    queryKey: ['restaurant-menu', restaurantSlug],
+    queryKey: restaurantMenuQueryKey(restaurantSlug),
     queryFn: () => fetchRestaurantMenuData(restaurantSlug!),
     enabled: !!restaurantSlug,
     staleTime: FIVE_MIN,
     gcTime: TEN_MIN,
     refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Prefetch do cardápio — chamado no StoreLayout para dados prontos ao abrir o Menu */
+export function prefetchRestaurantMenu(restaurantSlug: string) {
+  return queryClient.prefetchQuery({
+    queryKey: restaurantMenuQueryKey(restaurantSlug),
+    queryFn: () => fetchRestaurantMenuData(restaurantSlug),
+    staleTime: FIVE_MIN,
   });
 }

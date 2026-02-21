@@ -19,6 +19,9 @@
   "cart": {
     "title": "Tu Carrito",
     "empty": "Tu carrito está vacío",
+    "notesLabel": "Observaciones del pedido",
+    "notesPlaceholder": "Ej: Sin cebolla, timbre roto, dejar en portería...",
+    "optional": "· opcional",
     "size": "Tamaño",
     "flavors": "Sabores",
     "dough": "Masa",
@@ -83,6 +86,7 @@
     "sendWhatsAppShort": "Enviar por WhatsApp",
     "errorFillNamePhone": "Completa nombre y teléfono",
     "errorSelectZone": "Selecciona el barrio/zona de entrega",
+    "errorFillAddressDetails": "Completa el complemento/referencia de la dirección",
     "errorGeneric": "Error al enviar el pedido. Intenta de nuevo.",
     "errorInvalidCart": "Carrito inválido",
     "errorInvalidCartDesc": "Vuelve a la carta y agrega los items de nuevo.",

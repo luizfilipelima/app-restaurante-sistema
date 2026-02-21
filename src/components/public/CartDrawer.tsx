@@ -3,7 +3,7 @@ import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
-import { Plus, Minus, Trash2, MessageCircle, Sparkles, ShoppingBag, ChevronRight } from 'lucide-react';
+import { Plus, Minus, Trash2, Sparkles, ShoppingBag, ChevronRight, StickyNote } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchUpsellsForProducts, type UpsellRow, useLoyaltyStatus } from '@/hooks/queries';
 import type { CartItem } from '@/types';
@@ -20,7 +20,7 @@ interface CartDrawerProps {
 
 export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL', restaurantId, customerPhone }: CartDrawerProps) {
   const { t } = useTranslation();
-  const { items, addItem, updateQuantity, removeItem, getSubtotal } = useCartStore();
+  const { items, addItem, updateQuantity, removeItem, getSubtotal, orderNotes, setOrderNotes } = useCartStore();
   const [upsellRows, setUpsellRows] = useState<UpsellRow[]>([]);
 
   const { data: loyaltyStatus } = useLoyaltyStatus(
@@ -250,6 +250,23 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                       </div>
                     );
                   })}
+
+                  {/* Observações gerais do pedido (opcional) */}
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-3">
+                    <label htmlFor="cart-notes" className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-2">
+                      <StickyNote className="h-3.5 w-3.5" />
+                      {t('cart.notesLabel')}
+                      <span className="text-slate-400 font-normal">{t('cart.optional')}</span>
+                    </label>
+                    <textarea
+                      id="cart-notes"
+                      value={orderNotes ?? ''}
+                      onChange={(e) => setOrderNotes(e.target.value)}
+                      placeholder={t('cart.notesPlaceholder')}
+                      rows={2}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 resize-none transition-colors"
+                    />
+                  </div>
                 </>
               )}
             </div>
@@ -257,16 +274,6 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
             {/* Footer */}
             {items.length > 0 && (
               <div className="flex-shrink-0 border-t border-slate-100 bg-white px-4 pt-3 pb-4 space-y-3">
-                {/* WhatsApp hint */}
-                <div className="flex items-start gap-2.5 rounded-2xl bg-sky-50 border border-sky-200 px-3.5 py-3">
-                  <MessageCircle className="h-4 w-4 text-sky-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-xs text-sky-800 leading-relaxed">
-                    <span className="font-semibold">{t('cart.sendLocationTitle')}</span>
-                    {' · '}
-                    <span className="text-sky-700">{t('cart.sendLocationDesc')}</span>
-                  </div>
-                </div>
-
                 {/* Subtotal + CTA */}
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm text-slate-500 font-medium">{t('cart.subtotal')}</span>

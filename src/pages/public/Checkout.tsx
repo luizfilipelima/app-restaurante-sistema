@@ -65,7 +65,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
 
   const navigate = useNavigate();
-  const { items, restaurantId, updateQuantity, getSubtotal, clearCart } = useCartStore();
+  const { items, restaurantId, updateQuantity, getSubtotal, clearCart, orderNotes, setOrderNotes } = useCartStore();
   const { t } = useTranslation();
   const { currentRestaurant } = useRestaurantStore();
 
@@ -116,7 +116,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   // ── Pagamento ──
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.PIX);
   const [changeFor, setChangeFor] = useState('');
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(() => orderNotes ?? '');
   const [loading, setLoading] = useState(false);
 
   const [pixCopied, setPixCopied] = useState(false);
@@ -161,9 +161,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseCurrency]);
 
-  // Quando o cliente seleciona uma zona, centraliza o mapa no centro da zona
+  // Quando o cliente seleciona ou troca de zona, centraliza o mapa no centro da nova zona
   useEffect(() => {
-    if (!selectedZoneId || locationFromStorage.current) return;
+    if (!selectedZoneId) return;
     const zone = zones.find((z) => z.id === selectedZoneId);
     if (zone?.center_lat != null && zone?.center_lng != null) {
       setLatitude(zone.center_lat);
@@ -264,6 +264,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       return;
     }
 
+    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && !addressDetails.trim()) {
+      setFormError(t('checkout.errorFillAddressDetails'));
+      return;
+    }
 
     if (!restaurantId) {
       setFormError(t('checkout.errorInvalidCart'));
@@ -285,16 +289,97 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       }
     }
 
-    // Abre a janela em branco SINCRONAMENTE — precisa estar na mesma call stack
-    // da gesture do usuário. Mobile browsers (Safari iOS, Chrome Android) bloqueiam
-    // window.open chamado após qualquer await.
-    const whatsappWin = !isTableOrder ? window.open('', '_blank', 'noopener,noreferrer') : null;
-
-    setLoading(true);
-
+    // Constrói o link do WhatsApp ANTES do await para poder abrir a aba de forma síncrona.
+    // Browsers bloqueiam window.open chamado após await; abrir wa.me diretamente na gesture
+    // do usuário tem mais chance de sucesso do que abrir janela em branco.
     const finalDeliveryType = isTableOrder ? DeliveryType.PICKUP : deliveryType;
     const finalDeliveryFee = isTableOrder ? 0 : deliveryFee;
     const finalTotal = subtotal + finalDeliveryFee;
+
+    let whatsappWin: Window | null = null;
+    if (!isTableOrder && currentRestaurant) {
+      const itemsText = items.map((i) => {
+        const itemTotal =
+          i.unitPrice * i.quantity +
+          (i.pizzaEdgePrice ?? 0) * i.quantity +
+          (i.pizzaDoughPrice ?? 0) * i.quantity;
+        const addonsStr = i.addons && i.addons.length > 0
+          ? ' + ' + i.addons.map((a) => a.name + (a.price > 0 ? ` (+${formatCurrency(a.price, baseCurrency)})` : '')).join(', ')
+          : '';
+        return `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''}${addonsStr} — ${formatCurrency(itemTotal, baseCurrency)}`;
+      }).join('\n');
+      const bairro = deliveryType === DeliveryType.DELIVERY && selectedZoneId
+        ? (zones.find((z) => z.id === selectedZoneId)?.location_name ?? '')
+        : '';
+      const endereco = deliveryType === DeliveryType.DELIVERY
+        ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+        : '';
+      const trocoRaw = paymentMethod === PaymentMethod.CASH && changeFor ? changeFor.replace(/\D/g, '') : '';
+      const trocoFormatted = trocoRaw ? formatCurrency(parseInt(trocoRaw, 10), baseCurrency) : '';
+      const paymentLabels: Record<string, string> = {
+        pix: 'PIX',
+        card: 'Cartão na entrega',
+        cash: 'Dinheiro',
+        qrcode: 'QR Code na entrega',
+        bank_transfer: 'Transferência Bancária',
+      };
+      const paymentLabel = paymentLabels[paymentMethod] ?? paymentMethod;
+      let pagamentoDetalhes = '';
+      if (paymentMethod === PaymentMethod.PIX || paymentMethod === PaymentMethod.QRCODE) {
+        if (paymentMethod === PaymentMethod.PIX) pagamentoDetalhes = '📤 Cliente deve enviar o comprovante de pagamento PIX após confirmar o pedido.';
+      }
+      if (paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS')) {
+        const ba = currentRestaurant?.bank_account;
+        if (ba && (ba.bank_name || ba.agency || ba.account || ba.holder)) {
+          pagamentoDetalhes = ['Banco: ' + (ba.bank_name ?? ''), 'Agência: ' + (ba.agency ?? ''), 'Conta: ' + (ba.account ?? ''), 'Titular: ' + (ba.holder ?? '')].filter((s) => !s.endsWith(': ')).join(' | ');
+        }
+      }
+      const taxaLine = deliveryFee > 0 ? `Taxa entrega: ${formatCurrency(deliveryFee, baseCurrency)}` : '';
+      const baRest = currentRestaurant?.bank_account;
+      const contaRest = baRest && (baRest.bank_name || baRest.agency || baRest.account || baRest.holder)
+        ? ['Banco: ' + (baRest.bank_name ?? ''), 'Agência: ' + (baRest.agency ?? ''), 'Conta: ' + (baRest.account ?? ''), 'Titular: ' + (baRest.holder ?? '')].filter((s) => !s.endsWith(': ')).join(' | ')
+        : '';
+      const restaurantTemplates = (currentRestaurant as { whatsapp_templates?: Record<string, string> | null })?.whatsapp_templates;
+      const menuLang = getStoredMenuLanguage();
+      const message = processTemplate(getTemplate('new_order', restaurantTemplates, menuLang), {
+        cliente_nome:      customerName,
+        cliente_telefone:  '+' + normalizePhoneWithCountryCode(customerPhone, phoneCountry),
+        tipo_entrega:      deliveryType === DeliveryType.DELIVERY ? 'Entrega' : 'Retirada',
+        bairro,
+        endereco,
+        detalhes_endereco: deliveryType === DeliveryType.DELIVERY ? (addressDetails?.trim() ?? '') : '',
+        pagamento:         paymentLabel,
+        pagamento_detalhes: pagamentoDetalhes,
+        pix_restaurante:   (currentRestaurant?.pix_key || '').trim() || undefined,
+        conta_restaurante: contaRest || undefined,
+        troco:             trocoFormatted,
+        subtotal:          formatCurrency(subtotal, baseCurrency),
+        taxa_entrega:      taxaLine,
+        total:             formatCurrency(total, baseCurrency),
+        itens:             itemsText,
+        observacoes:       notes?.trim() ?? '',
+      });
+      const restaurantWhatsApp = (currentRestaurant?.whatsapp || '').replace(/\D/g, '');
+      const country = (currentRestaurant as { phone_country?: 'BR' | 'PY' })?.phone_country || 'BR';
+      const prefix = country === 'PY' ? '595' : '55';
+      let whatsappNumber: string;
+      if (!restaurantWhatsApp || restaurantWhatsApp.length < 9) {
+        const restaurantPhone = (currentRestaurant?.phone || '').replace(/\D/g, '');
+        if (restaurantPhone && restaurantPhone.length >= 9) {
+          const hasPhonePrefix = restaurantPhone.startsWith('55') || restaurantPhone.startsWith('595');
+          whatsappNumber = hasPhonePrefix ? restaurantPhone : prefix + restaurantPhone;
+        } else {
+          throw new Error('WhatsApp do restaurante não configurado. Entre em contato com o estabelecimento.');
+        }
+      } else {
+        const hasPrefix = restaurantWhatsApp.startsWith('55') || restaurantWhatsApp.startsWith('595');
+        whatsappNumber = hasPrefix ? restaurantWhatsApp : prefix + restaurantWhatsApp;
+      }
+      const waLink = generateWhatsAppLink(whatsappNumber, message);
+      whatsappWin = window.open(waLink, '_blank', 'noopener,noreferrer');
+    }
+
+    setLoading(true);
 
     try {
       const orderPayload = {
@@ -363,102 +448,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       if (isTableOrder) clearTable();
 
       if (!isTableOrder) {
-        const itemsText = items.map((i) => {
-          const itemTotal =
-            i.unitPrice * i.quantity +
-            (i.pizzaEdgePrice ?? 0) * i.quantity +
-            (i.pizzaDoughPrice ?? 0) * i.quantity;
-          const addonsStr = i.addons && i.addons.length > 0
-            ? ' + ' + i.addons.map((a) => a.name + (a.price > 0 ? ` (+${formatCurrency(a.price, baseCurrency)})` : '')).join(', ')
-            : '';
-          return `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''}${addonsStr} — ${formatCurrency(itemTotal, baseCurrency)}`;
-        }).join('\n');
-
-        const bairro = deliveryType === DeliveryType.DELIVERY && selectedZoneId
-          ? (zones.find((z) => z.id === selectedZoneId)?.location_name ?? '')
-          : '';
-        const endereco = deliveryType === DeliveryType.DELIVERY
-          ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-          : '';
-        const trocoRaw = paymentMethod === PaymentMethod.CASH && changeFor ? changeFor.replace(/\D/g, '') : '';
-        const trocoFormatted = trocoRaw ? formatCurrency(parseInt(trocoRaw, 10), baseCurrency) : '';
-        const paymentLabels: Record<string, string> = {
-          pix: 'PIX',
-          card: 'Cartão na entrega',
-          cash: 'Dinheiro',
-          qrcode: 'QR Code na entrega',
-          bank_transfer: 'Transferência Bancária',
-        };
-        const paymentLabel = paymentLabels[paymentMethod] ?? paymentMethod;
-
-        let pagamentoDetalhes = '';
-        if (paymentMethod === PaymentMethod.PIX || paymentMethod === PaymentMethod.QRCODE) {
-          if (paymentMethod === PaymentMethod.PIX) pagamentoDetalhes = '📤 Cliente deve enviar o comprovante de pagamento PIX após confirmar o pedido.';
-        }
-        if (paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS')) {
-          const ba = currentRestaurant?.bank_account;
-          if (ba && (ba.bank_name || ba.agency || ba.account || ba.holder)) {
-            pagamentoDetalhes = ['Banco: ' + (ba.bank_name ?? ''), 'Agência: ' + (ba.agency ?? ''), 'Conta: ' + (ba.account ?? ''), 'Titular: ' + (ba.holder ?? '')].filter((s) => !s.endsWith(': ')).join(' | ');
-          }
-        }
-
-        const taxaLine = deliveryFee > 0 ? `Taxa entrega: ${formatCurrency(deliveryFee, baseCurrency)}` : '';
-
-        const baRest = currentRestaurant?.bank_account;
-        const contaRest = baRest && (baRest.bank_name || baRest.agency || baRest.account || baRest.holder)
-          ? ['Banco: ' + (baRest.bank_name ?? ''), 'Agência: ' + (baRest.agency ?? ''), 'Conta: ' + (baRest.account ?? ''), 'Titular: ' + (baRest.holder ?? '')].filter((s) => !s.endsWith(': ')).join(' | ')
-          : '';
-
-        const restaurantTemplates = (currentRestaurant as { whatsapp_templates?: Record<string, string> | null })?.whatsapp_templates;
-        const menuLang = getStoredMenuLanguage();
-        const message = processTemplate(getTemplate('new_order', restaurantTemplates, menuLang), {
-          cliente_nome:      customerName,
-          cliente_telefone:  '+' + normalizePhoneWithCountryCode(customerPhone, phoneCountry),
-          tipo_entrega:      deliveryType === DeliveryType.DELIVERY ? 'Entrega' : 'Retirada',
-          bairro,
-          endereco,
-          detalhes_endereco: deliveryType === DeliveryType.DELIVERY ? (addressDetails?.trim() ?? '') : '',
-          pagamento:         paymentLabel,
-          pagamento_detalhes: pagamentoDetalhes,
-          pix_restaurante:   (currentRestaurant?.pix_key || '').trim() || undefined,
-          conta_restaurante: contaRest || undefined,
-          troco:             trocoFormatted,
-          subtotal:          formatCurrency(subtotal, baseCurrency),
-          taxa_entrega:      taxaLine,
-          total:             formatCurrency(total, baseCurrency),
-          itens:             itemsText,
-          observacoes:       notes?.trim() ?? '',
-        });
-
-        const restaurantWhatsApp = (currentRestaurant?.whatsapp || '').replace(/\D/g, '');
-        const country = (currentRestaurant as { phone_country?: 'BR' | 'PY' })?.phone_country || 'BR';
-        const prefix = country === 'PY' ? '595' : '55';
-        let whatsappNumber: string;
-        if (!restaurantWhatsApp || restaurantWhatsApp.length < 9) {
-          const restaurantPhone = (currentRestaurant?.phone || '').replace(/\D/g, '');
-          if (restaurantPhone && restaurantPhone.length >= 9) {
-            const hasPhonePrefix = restaurantPhone.startsWith('55') || restaurantPhone.startsWith('595');
-            whatsappNumber = hasPhonePrefix ? restaurantPhone : prefix + restaurantPhone;
-          } else {
-            throw new Error('WhatsApp do restaurante não configurado. Entre em contato com o estabelecimento.');
-          }
-        } else {
-          const hasPrefix = restaurantWhatsApp.startsWith('55') || restaurantWhatsApp.startsWith('595');
-          whatsappNumber = hasPrefix ? restaurantWhatsApp : prefix + restaurantWhatsApp;
-        }
-
         clearCart();
         const newOrderId = (rpcResult as { order_id?: string })?.order_id;
         const orderType = finalDeliveryType === DeliveryType.DELIVERY ? 'delivery' : 'pickup';
-
-        // Direciona a janela pré-aberta para o WhatsApp
-        const waLink = generateWhatsAppLink(whatsappNumber, message);
-        if (whatsappWin) {
-          whatsappWin.location.href = waLink;
-        } else {
-          // Fallback: janela foi bloqueada pelo browser, tenta abrir de novo
-          window.open(waLink, '_blank', 'noopener,noreferrer');
-        }
 
         if (newOrderId) {
           sessionStorage.setItem(`order_just_placed_${newOrderId}`, '1');
@@ -808,7 +800,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             <div className="p-4 space-y-3">
               <Suspense fallback={<Skeleton className="h-[240px] w-full rounded-xl" />}>
                 <MapAddressPicker
-                  key={mapKey}
+                  key={`${mapKey}-${selectedZoneId}`}
                   lat={latitude}
                   lng={longitude}
                   onLocationChange={(lat, lng) => {
@@ -826,8 +818,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               {/* Complemento / Referência */}
               <div>
                 <Label htmlFor="addressDetails" className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
-                  Complemento / Referência
-                  <span className="text-slate-300 font-normal ml-1">• opcional</span>
+                  Complemento / Referência <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="addressDetails"
@@ -835,6 +826,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   onChange={(e) => { setAddressDetails(e.target.value); setFormError(null); }}
                   placeholder="Apto, Bloco, Casa, Ponto de referência..."
                   className="h-12 bg-slate-50 border-slate-200 rounded-xl text-base focus:bg-white"
+                  required
                 />
               </div>
             </div>
@@ -1040,7 +1032,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             <div className="p-4">
               <textarea
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => { const v = e.target.value; setNotes(v); setOrderNotes(v); }}
                 placeholder={t('checkout.notesPlaceholder')}
                 rows={3}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 resize-none transition-colors"

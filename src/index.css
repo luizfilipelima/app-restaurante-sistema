@@ -287,6 +287,18 @@
   }
 }
 
+@keyframes progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(200%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
 .animate-slide-in-bottom {
   animation: slide-in-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
