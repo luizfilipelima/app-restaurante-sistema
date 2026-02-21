@@ -23,7 +23,7 @@ import AdminRedirect from './components/admin/AdminRedirect';
 // ─── Páginas — carregadas sob demanda (lazy) ─────────────────────────────────
 // Cada página gera um chunk JS separado no build, reduzindo o bundle inicial.
 
-// Landing page premium (rota /landing-page)
+// Landing page premium (rota /pagina-ptbr)
 const QuieroFoodLanding     = lazyWithRetry(() => import('./pages/landing/QuieroFoodLanding'));
 
 // Auth
@@ -440,8 +440,8 @@ function App() {
       <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        {/* Landing page premium — deve vir ANTES de /:restaurantSlug para não ser capturada como slug */}
-        <Route path="/landing-page" element={<QuieroFoodLanding />} />
+        {/* Landing page premium PT-BR — deve vir ANTES de /:restaurantSlug para não ser capturada como slug */}
+        <Route path="/pagina-ptbr" element={<QuieroFoodLanding />} />
         <Route path="/:restaurantSlug" element={<PublicMenu />} />
         <Route path="/:restaurantSlug/menu" element={<MenuViewOnly />} />
         <Route path="/:restaurantSlug/cardapio/:tableNumber" element={<MenuTable />} />
