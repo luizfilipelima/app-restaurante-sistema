@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -47,21 +48,16 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
-// ─── Mapeamento de módulos para labels amigáveis ──────────────────────────────
+// ─── Ordem das categorias nas tabs (primeira = padrão) ────────────────────────
 
-const MODULE_LABELS: Record<string, string> = {
-  menu_publico:     'Cardápio Público',
-  pedidos:          'Pedidos',
-  cardapio_admin:   'Cardápio (Admin)',
-  buffet:           'Buffet & Comandas',
-  mesas:            'Mesas & Salão',
-  entregadores:     'Entregadores',
-  delivery:         'Delivery & Zonas',
-  inventario:       'Inventário & Financeiro',
-  dashboard:        'BI & Analytics',
-  cozinha:          'Cozinha (KDS)',
-  configuracoes:    'Configurações',
-};
+const CATEGORY_ORDER = [
+  'Operação & Cozinha',
+  'Salão & PDV',
+  'Delivery & Logística',
+  'Gestão & BI',
+  'Marketing',
+  'Geral',
+] as const;
 
 const PLAN_COLORS: Record<string, { badge: string; bg: string; text: string; border: string }> = {
   core:       { badge: 'bg-slate-100 text-slate-700 border-slate-200',   bg: 'bg-slate-50',  text: 'text-slate-700', border: 'border-slate-200' },
@@ -139,13 +135,20 @@ export default function RestaurantDetails() {
   // Map de override por feature_id
   const overrideMap = new Map(overrides.map((o) => [o.feature_id, o]));
 
-  // Agrupar features por módulo
-  const featuresByModule = features.reduce<Record<string, Feature[]>>((acc, f) => {
-    const mod = f.module || 'outros';
-    if (!acc[mod]) acc[mod] = [];
-    acc[mod].push(f);
+  // Agrupar features por categoria (para tabs)
+  const featuresByCategory = features.reduce<Record<string, Feature[]>>((acc, f) => {
+    const cat = f.category ?? 'Geral';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(f);
     return acc;
   }, {});
+
+  // Categorias existentes: ordem definida primeiro, depois as demais
+  const knownCategories = CATEGORY_ORDER.filter((c) => (featuresByCategory[c]?.length ?? 0) > 0);
+  const otherCategories = Object.keys(featuresByCategory).filter(
+    (k) => !(CATEGORY_ORDER as readonly string[]).includes(k),
+  );
+  const categories = [...knownCategories, ...otherCategories];
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -395,43 +398,49 @@ export default function RestaurantDetails() {
               </span>
             </div>
 
-            {/* Features agrupadas por módulo */}
-            {Object.entries(featuresByModule).map(([module, moduleFeatures]) => (
-              <div key={module}>
-                <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3 px-1">
-                  {MODULE_LABELS[module] ?? module}
-                </h3>
-                <div className="space-y-1">
-                  {moduleFeatures.map((feature) => {
-                    const isInPlan  = planFeatureIds.has(feature.id);
-                    const override  = overrideMap.get(feature.id);
-                    const isEnabled = isInPlan || (override?.is_enabled ?? false);
-                    const isTogglingThis = toggleOverride.isPending &&
-                      toggleOverride.variables?.featureId === feature.id;
-
-                    const planColor = PLAN_COLORS[feature.min_plan] ?? PLAN_COLORS.core;
-
-                    return (
-                      <FeatureRow
-                        key={feature.id}
-                        feature={feature}
-                        isInPlan={isInPlan}
-                        isEnabled={isEnabled}
-                        isLoading={isTogglingThis}
-                        planColor={planColor}
-                        onToggle={(val) => handleToggleOverride(feature.id, val)}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-
-            {features.length === 0 && (
+            {/* Features agrupadas por categoria em Tabs */}
+            {features.length === 0 ? (
               <div className="text-center py-8 text-sm text-slate-400">
                 <Info className="h-8 w-8 mx-auto mb-2 opacity-40" />
                 Nenhuma feature cadastrada. Execute a migração <code>20260219_init_access_control.sql</code> no Supabase.
               </div>
+            ) : (
+              <Tabs defaultValue={categories[0] ?? 'Geral'} className="w-full">
+                <TabsList className="flex flex-wrap h-auto gap-1 p-1 bg-slate-100/80 w-full">
+                  {categories.map((cat) => (
+                    <TabsTrigger
+                      key={cat}
+                      value={cat}
+                      className="text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                    >
+                      {cat}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                {categories.map((cat) => (
+                  <TabsContent key={cat} value={cat} className="mt-4 space-y-2">
+                    {(featuresByCategory[cat] ?? []).map((feature) => {
+                      const isInPlan  = planFeatureIds.has(feature.id);
+                      const override  = overrideMap.get(feature.id);
+                      const isEnabled = isInPlan || (override?.is_enabled ?? false);
+                      const isTogglingThis = toggleOverride.isPending &&
+                        toggleOverride.variables?.featureId === feature.id;
+                      const planColor = PLAN_COLORS[feature.min_plan] ?? PLAN_COLORS.core;
+                      return (
+                        <FeatureRow
+                          key={feature.id}
+                          feature={feature}
+                          isInPlan={isInPlan}
+                          isEnabled={isEnabled}
+                          isLoading={isTogglingThis}
+                          planColor={planColor}
+                          onToggle={(val) => handleToggleOverride(feature.id, val)}
+                        />
+                      );
+                    })}
+                  </TabsContent>
+                ))}
+              </Tabs>
             )}
           </CardContent>
         </Card>

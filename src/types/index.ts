@@ -681,3 +681,17 @@ export interface ComandaItem {
 export interface ComandaWithItems extends Comanda {
   items?: ComandaItem[];
 }
+
+// ==================== SAAS / FEATURE FLAGS ====================
+
+/** Feature do catálogo de flags (subscription_plans, plan_features, restaurant_feature_overrides) */
+export interface Feature {
+  id: string;
+  flag: string;
+  label: string;
+  description: string | null;
+  module: string;
+  min_plan: string;
+  /** Categoria para agrupamento na UI (Delivery & Logística, Salão & PDV, Gestão & BI, etc.) */
+  category: string;
+}

@@ -1,13 +1,28 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { useSubscriptionPlans, subscriptionKeys } from '@/hooks/queries/useSubscriptionManager';
-import type { SubscriptionPlan } from '@/hooks/queries/useSubscriptionManager';
+import {
+  useSubscriptionPlans,
+  useFeaturesCatalog,
+  usePlanFeatures,
+  useTogglePlanFeature,
+  subscriptionKeys,
+} from '@/hooks/queries/useSubscriptionManager';
+import type { SubscriptionPlan, Feature } from '@/hooks/queries/useSubscriptionManager';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import {
   Check,
@@ -15,6 +30,7 @@ import {
   CreditCard,
   AlertCircle,
   Info,
+  Puzzle,
 } from 'lucide-react';
 
 // ─── Visual por plano ─────────────────────────────────────────────────────────
@@ -227,15 +243,74 @@ function PlanCard({ plan, onSaved }: PlanCardProps) {
   );
 }
 
+// ─── Ordem das categorias nas tabs ────────────────────────────────────────────
+
+const CATEGORY_ORDER = [
+  'Operação & Cozinha',
+  'Salão & PDV',
+  'Delivery & Logística',
+  'Gestão & BI',
+  'Marketing',
+  'Geral',
+] as const;
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function Plans() {
   const qc = useQueryClient();
   const { data: plans = [], isLoading, isError } = useSubscriptionPlans();
+  const { data: features = [], isLoading: loadingFeatures } = useFeaturesCatalog();
+
+  const corePlan = plans.find((p) => p.name === 'core');
+  const standardPlan = plans.find((p) => p.name === 'standard');
+  const enterprisePlan = plans.find((p) => p.name === 'enterprise');
+
+  const { data: coreFeatures = [] } = usePlanFeatures(corePlan?.id);
+  const { data: standardFeatures = [] } = usePlanFeatures(standardPlan?.id);
+  const { data: enterpriseFeatures = [] } = usePlanFeatures(enterprisePlan?.id);
+
+  const coreFeatureIds = new Set(coreFeatures.map((pf) => pf.feature_id));
+  const standardFeatureIds = new Set(standardFeatures.map((pf) => pf.feature_id));
+  const enterpriseFeatureIds = new Set(enterpriseFeatures.map((pf) => pf.feature_id));
+
+  const toggleCore = useTogglePlanFeature(corePlan?.id ?? '');
+  const toggleStandard = useTogglePlanFeature(standardPlan?.id ?? '');
+  const toggleEnterprise = useTogglePlanFeature(enterprisePlan?.id ?? '');
+
+  const featuresByCategory = features.reduce<Record<string, Feature[]>>((acc, f) => {
+    const cat = f.category ?? 'Geral';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(f);
+    return acc;
+  }, {});
+
+  const knownCategories = CATEGORY_ORDER.filter((c) => (featuresByCategory[c]?.length ?? 0) > 0);
+  const otherCategories = Object.keys(featuresByCategory).filter(
+    (k) => !(CATEGORY_ORDER as readonly string[]).includes(k),
+  );
+  const categories = [...knownCategories, ...otherCategories];
 
   const handlePlanSaved = () => {
-    // Invalida o cache de planos para refletir os novos valores em todo o app
     qc.invalidateQueries({ queryKey: subscriptionKeys.plans() });
+  };
+
+  const handleToggleFeature = async (
+    planName: 'core' | 'standard' | 'enterprise',
+    featureId: string,
+    included: boolean,
+  ) => {
+    const plan = planName === 'core' ? corePlan : planName === 'standard' ? standardPlan : enterprisePlan;
+    const mutation = planName === 'core' ? toggleCore : planName === 'standard' ? toggleStandard : toggleEnterprise;
+    if (!plan?.id) return;
+    try {
+      await mutation.mutateAsync({ featureId, included });
+      toast({
+        title: included ? 'Feature adicionada' : 'Feature removida',
+        description: `Plano ${plan.label} atualizado.`,
+      });
+    } catch (err) {
+      toast({ title: 'Erro ao atualizar plano', description: String(err), variant: 'destructive' });
+    }
   };
 
   if (isLoading) {
@@ -268,7 +343,7 @@ export default function Plans() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Planos & Preços</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Edite o nome de exibição, descrição e preços de cada plano de assinatura.
+          Edite o nome de exibição, descrição, preços e features de cada plano de assinatura.
         </p>
       </div>
 
@@ -289,6 +364,76 @@ export default function Plans() {
         ))}
       </div>
 
+      {/* Card: Features por Plano */}
+      <Card className="border-slate-200 shadow-sm">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-purple-50 flex items-center justify-center">
+              <Puzzle className="h-4 w-4 text-purple-500" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Features por Plano</CardTitle>
+              <CardDescription>
+                Marque quais features cada plano inclui. Agrupadas por categoria.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingFeatures ? (
+            <div className="py-8 flex justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+            </div>
+          ) : features.length === 0 ? (
+            <p className="text-sm text-slate-400 py-4">
+              Nenhuma feature cadastrada. Execute as migrations de acesso no Supabase.
+            </p>
+          ) : (
+            <Tabs defaultValue={categories[0] ?? 'Geral'} className="w-full">
+              <TabsList className="flex flex-wrap h-auto gap-1 p-1 bg-slate-100/80 w-full mb-4">
+                {categories.map((cat) => (
+                  <TabsTrigger
+                    key={cat}
+                    value={cat}
+                    className="text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                  >
+                    {cat}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              <div className="rounded-lg border border-slate-200 overflow-hidden">
+                {/* Header da tabela */}
+                <div className="grid grid-cols-[1fr_80px_80px_80px] gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600">
+                  <span>Feature</span>
+                  <span className="text-center">Core</span>
+                  <span className="text-center">Standard</span>
+                  <span className="text-center">Enterprise</span>
+                </div>
+                {categories.map((cat) => (
+                  <TabsContent key={cat} value={cat} className="mt-0">
+                    {(featuresByCategory[cat] ?? []).map((feature) => (
+                      <PlanFeatureRow
+                        key={feature.id}
+                        feature={feature}
+                        coreIncluded={coreFeatureIds.has(feature.id)}
+                        standardIncluded={standardFeatureIds.has(feature.id)}
+                        enterpriseIncluded={enterpriseFeatureIds.has(feature.id)}
+                        onToggle={handleToggleFeature}
+                        isLoading={{
+                          core: toggleCore.isPending && toggleCore.variables?.featureId === feature.id,
+                          standard: toggleStandard.isPending && toggleStandard.variables?.featureId === feature.id,
+                          enterprise: toggleEnterprise.isPending && toggleEnterprise.variables?.featureId === feature.id,
+                        }}
+                      />
+                    ))}
+                  </TabsContent>
+                ))}
+              </div>
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Legenda de slug */}
       <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">
@@ -305,6 +450,83 @@ export default function Plans() {
           Os slugs técnicos são usados internamente pelas feature flags e não podem ser alterados
           sem impactar a lógica do sistema.
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Linha de feature na tabela de planos ─────────────────────────────────────
+
+interface PlanFeatureRowProps {
+  feature: Feature;
+  coreIncluded: boolean;
+  standardIncluded: boolean;
+  enterpriseIncluded: boolean;
+  onToggle: (plan: 'core' | 'standard' | 'enterprise', featureId: string, included: boolean) => void;
+  isLoading: { core: boolean; standard: boolean; enterprise: boolean };
+}
+
+function PlanFeatureRow({
+  feature,
+  coreIncluded,
+  standardIncluded,
+  enterpriseIncluded,
+  onToggle,
+  isLoading,
+}: PlanFeatureRowProps) {
+  const planStyle = (plan: string) =>
+    PLAN_STYLE[plan] ?? PLAN_STYLE.core;
+
+  return (
+    <div
+      className="grid grid-cols-[1fr_80px_80px_80px] gap-2 px-4 py-3 items-center border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors"
+    >
+      <div className="min-w-0">
+        <span className="text-sm font-medium text-slate-800">{feature.label}</span>
+        <span
+          className={`ml-2 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ${planStyle(feature.min_plan).badge}`}
+        >
+          {feature.min_plan}
+        </span>
+      </div>
+      <div className="flex justify-center">
+        {isLoading.core ? (
+          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+        ) : (
+          <Checkbox
+            checked={coreIncluded}
+            onCheckedChange={(checked) =>
+              onToggle('core', feature.id, checked === true)
+            }
+            aria-label={`${feature.label} no Core`}
+          />
+        )}
+      </div>
+      <div className="flex justify-center">
+        {isLoading.standard ? (
+          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+        ) : (
+          <Checkbox
+            checked={standardIncluded}
+            onCheckedChange={(checked) =>
+              onToggle('standard', feature.id, checked === true)
+            }
+            aria-label={`${feature.label} no Standard`}
+          />
+        )}
+      </div>
+      <div className="flex justify-center">
+        {isLoading.enterprise ? (
+          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+        ) : (
+          <Checkbox
+            checked={enterpriseIncluded}
+            onCheckedChange={(checked) =>
+              onToggle('enterprise', feature.id, checked === true)
+            }
+            aria-label={`${feature.label} no Enterprise`}
+          />
+        )}
       </div>
     </div>
   );

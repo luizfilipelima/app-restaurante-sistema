@@ -11,8 +11,11 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import type { Feature } from '@/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export type { Feature };
 
 export interface SubscriptionPlan {
   id: string;
@@ -21,15 +24,6 @@ export interface SubscriptionPlan {
   description: string | null;
   price_brl: number;
   sort_order: number;
-}
-
-export interface Feature {
-  id: string;
-  flag: string;
-  label: string;
-  description: string | null;
-  module: string;
-  min_plan: string;
 }
 
 export interface PlanFeature {
@@ -93,9 +87,9 @@ export function useFeaturesCatalog() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('features')
-        .select('id, flag, label, description, module, min_plan')
+        .select('id, flag, label, description, module, min_plan, category')
         .eq('is_active', true)
-        .order('module')
+        .order('category')
         .order('label');
       if (error) throw error;
       return data ?? [];
@@ -187,6 +181,44 @@ export function useUpdateSubscription(restaurantId: string) {
       // Invalida a subscription E o cache de feature-access (plano mudou)
       qc.invalidateQueries({ queryKey: subscriptionKeys.subscription(restaurantId) });
       qc.invalidateQueries({ queryKey: ['feature-access', restaurantId] });
+    },
+  });
+}
+
+/** Adiciona ou remove uma feature de um plano (plan_features). */
+export function useTogglePlanFeature(planId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      featureId,
+      included,
+    }: {
+      featureId: string;
+      included: boolean;
+    }) => {
+      if (included) {
+        const { error } = await supabase.from('plan_features').upsert(
+          { plan_id: planId, feature_id: featureId },
+          { onConflict: 'plan_id,feature_id' },
+        );
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('plan_features')
+          .delete()
+          .eq('plan_id', planId)
+          .eq('feature_id', featureId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: subscriptionKeys.planFeatures(planId) });
+      qc.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) &&
+          q.queryKey[0] === 'feature-access',
+      });
     },
   });
 }
