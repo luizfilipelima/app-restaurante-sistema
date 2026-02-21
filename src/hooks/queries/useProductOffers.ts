@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
 import type { ProductOffer, Product } from '@/types';
 
 /** Ofertas ativas/agendadas do restaurante (admin) */
@@ -78,7 +79,10 @@ export function useProductOffers(restaurantId: string | null) {
   });
 
   const queryClient = useQueryClient();
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['product-offers', restaurantId] });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['product-offers', restaurantId] });
+    invalidatePublicMenuCache(queryClient);
+  };
 
   const createOffer = useMutation({
     mutationFn: async (payload: {

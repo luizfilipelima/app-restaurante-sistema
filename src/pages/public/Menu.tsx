@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { isWithinOpeningHours, formatCurrency, normalizePhoneWithCountryCode } from '@/lib/utils';
-import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
+import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import ProductCard from '@/components/public/ProductCard';
 
@@ -155,7 +155,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     navigate(query ? `${base}?${query}` : base);
   };
 
-  const { getItemsCount, getSubtotal, setRestaurant: setCartRestaurant, restaurantId: cartRestaurantId } = useCartStore();
+  const { getItemsCount, getSubtotal, setRestaurant: setCartRestaurant, restaurantId: cartRestaurantId, removeInactiveProducts } = useCartStore();
   const { setCurrentRestaurant } = useRestaurantStore();
 
   // Ler telefone salvo no localStorage para exibir progresso de fidelidade no carrinho
@@ -188,10 +188,18 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     const r = menuData.restaurant;
     setCurrentRestaurant(r);
     setCartRestaurant(r.id);
-    const lang: MenuLanguage = r.language === 'es' ? 'es' : 'pt';
+    const userHasChosen = hasStoredMenuLanguage();
+    const lang: MenuLanguage = userHasChosen ? getStoredMenuLanguage() : (r.language === 'es' ? 'es' : 'pt');
+    if (!userHasChosen) setStoredMenuLanguage(lang);
     i18n.changeLanguage(lang);
-    setStoredMenuLanguage(lang);
   }, [menuData?.restaurant, setCurrentRestaurant, setCartRestaurant]);
+
+  // Remove do carrinho itens de produtos desativados/excluídos pelo Admin
+  useEffect(() => {
+    if (!products.length || !restaurant?.id || cartRestaurantId !== restaurant.id) return;
+    const activeIds = new Set(products.map((p) => p.id));
+    removeInactiveProducts(activeIds);
+  }, [products, restaurant?.id, cartRestaurantId, removeInactiveProducts]);
 
   // Atualizar título e meta tags de compartilhamento (logo do restaurante como imagem destacada)
   useEffect(() => {

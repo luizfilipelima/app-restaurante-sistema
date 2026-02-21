@@ -22,6 +22,13 @@ export function getStoredMenuLanguage(): MenuLanguage {
   return getStoredLanguage();
 }
 
+/** Verifica se o usuário/jornada já definiu um idioma (evita sobrescrever escolha do cliente). */
+export function hasStoredMenuLanguage(): boolean {
+  if (typeof window === 'undefined') return false;
+  const s = sessionStorage.getItem(STORAGE_KEY);
+  return s === 'pt' || s === 'es';
+}
+
 i18n.use(initReactI18next).init({
   resources: {
     pt: { translation: pt },

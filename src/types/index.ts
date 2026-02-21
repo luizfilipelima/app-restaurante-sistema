@@ -358,6 +358,8 @@ export interface Order {
   loyalty_redeemed?: boolean;
   /** Ponto de fidelidade já creditado para este pedido */
   loyalty_points_credited?: boolean;
+  /** Idioma em que o cliente navegou no cardápio (pt/es). Usado para templates WhatsApp. */
+  customer_language?: 'pt' | 'es' | null;
   created_at: string;
   updated_at: string;
 }

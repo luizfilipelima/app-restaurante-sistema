@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
 import { supabase } from '@/lib/supabase';
-import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
+import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 
 // Rotas públicas — lazy para reduzir bundle inicial (cardápio carrega só o necessário)
 const PublicMenu = lazyWithRetry(() => import('@/pages/public/Menu'));
@@ -48,9 +48,10 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
           .eq('is_active', true)
           .single();
         setLogoUrl(data?.logo ?? null);
-        const lang = (data?.language === 'es' ? 'es' : 'pt') as MenuLanguage;
+        const userHasChosen = hasStoredMenuLanguage();
+        const lang = (userHasChosen ? getStoredMenuLanguage() : (data?.language === 'es' ? 'es' : 'pt')) as MenuLanguage;
+        if (!userHasChosen) setStoredMenuLanguage(lang);
         i18n.changeLanguage(lang);
-        setStoredMenuLanguage(lang);
       } catch {
         setLogoUrl(null);
         i18n.changeLanguage('pt');

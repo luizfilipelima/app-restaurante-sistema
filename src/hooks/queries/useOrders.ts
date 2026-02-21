@@ -10,7 +10,8 @@ import type { DatabaseOrder } from '@/types';
 const ORDERS_SELECT = `
   id, restaurant_id, customer_name, customer_phone, delivery_type, delivery_zone_id,
   delivery_address, latitude, longitude, address_details, delivery_fee, subtotal, total, payment_method, payment_change_for,
-  status, notes, is_paid, courier_id, order_source, table_id, virtual_comanda_id, created_at, updated_at, accepted_at, ready_at, delivered_at,
+  status, notes, is_paid, courier_id, order_source, table_id, virtual_comanda_id, customer_language,
+  created_at, updated_at, accepted_at, ready_at, delivered_at,
   delivery_zone:delivery_zones(id, location_name, fee),
   virtual_comandas(short_code),
   order_items(id, order_id, product_name, quantity, unit_price, total_price, observations, pizza_size, pizza_flavors, pizza_dough, pizza_edge, addons),

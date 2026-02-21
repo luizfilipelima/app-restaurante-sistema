@@ -45,13 +45,24 @@ export function generateSlug(text: string): string {
     .trim();
 }
 
-/** URL pública do cardápio: em produção (quiero.food) usa subdomínio (slug.quiero.food), senão usa path (origin/slug). */
+/**
+ * URL pública do cardápio.
+ * - Produção (quiero.food): subdomínio slug.quiero.food
+ * - Dev com subdomínio admin (app.localhost): abre localhost/slug para usar o layout path-based,
+ *   pois o app subdomain não tem rota para o cardápio público
+ * - Dev path-based (localhost): origin/slug
+ */
 export function getCardapioPublicUrl(slug: string): string {
   if (!slug) return '';
   if (typeof window === 'undefined') return `https://${slug}.quiero.food`;
   const hostname = window.location.hostname;
   const origin = window.location.origin;
+  const port = window.location.port ? `:${window.location.port}` : '';
   if (hostname.endsWith('quiero.food')) return `https://${slug}.quiero.food`;
+  // Em dev com app/admin subdomain: abrir em localhost/slug para layout path-based correto
+  if ((hostname.includes('localhost') || hostname.includes('127.0.0.1')) && ['app', 'admin', 'www'].some((s) => hostname.startsWith(s + '.'))) {
+    return `${window.location.protocol}//localhost${port}/${slug}`;
+  }
   return `${origin}/${slug}`;
 }
 

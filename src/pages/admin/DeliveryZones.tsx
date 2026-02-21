@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
+import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
 import { useDeliveryZones } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +28,7 @@ const FEE_CURRENCIES: { value: CurrencyCode; label: string }[] = [
 ];
 
 export default function AdminDeliveryZones() {
+  const queryClient = useQueryClient();
   const restaurantId = useAdminRestaurantId();
   const restaurant = useAdminRestaurant()?.restaurant ?? null;
   const baseCurrency = useAdminCurrency();
@@ -80,6 +83,7 @@ export default function AdminDeliveryZones() {
 
       if (error) throw error;
 
+      invalidatePublicMenuCache(queryClient, restaurant?.slug);
       setFormData({ location_name: '', feeInput: '0' });
       setFeeCurrency(baseCurrency);
       setShowForm(false);
@@ -98,6 +102,7 @@ export default function AdminDeliveryZones() {
         .eq('id', zoneId);
 
       if (error) throw error;
+      invalidatePublicMenuCache(queryClient, restaurant?.slug);
       refetch();
     } catch (error) {
       console.error('Erro ao atualizar zona:', error);
@@ -114,6 +119,7 @@ export default function AdminDeliveryZones() {
         .eq('id', zoneId);
 
       if (error) throw error;
+      invalidatePublicMenuCache(queryClient, restaurant?.slug);
       refetch();
     } catch (error) {
       console.error('Erro ao excluir zona:', error);

@@ -40,8 +40,10 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
+import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
 import { uploadProductImage } from '@/lib/imageUpload';
 import {
   DndContext,
@@ -333,6 +335,7 @@ function CentralProductRow({ product, currency, exchangeRates, showInventory, on
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function AdminMenu() {
+  const queryClient = useQueryClient();
   const restaurantId = useAdminRestaurantId();
   const basePath = useAdminBasePath();
   const { restaurant: ctxRestaurant } = useAdminRestaurant();
@@ -857,6 +860,7 @@ export default function AdminMenu() {
       }
 
       setModalOpen(false);
+      invalidatePublicMenuCache(queryClient, slug || restaurant?.slug || ctxRestaurant?.slug);
       loadProducts();
       loadCategoriesAndSubcategories();
     } catch (error) {
@@ -870,6 +874,7 @@ export default function AdminMenu() {
     try {
       const { error } = await supabase.from('products').update({ is_active: !isActive }).eq('id', productId);
       if (error) throw error;
+      invalidatePublicMenuCache(queryClient, slug || restaurant?.slug || ctxRestaurant?.slug);
       setProducts((prev) => prev.map((p) => p.id === productId ? { ...p, is_active: !isActive } : p));
     } catch (e) { console.error(e); }
   };
@@ -879,6 +884,7 @@ export default function AdminMenu() {
     try {
       const { error } = await supabase.from('products').delete().eq('id', productId);
       if (error) throw error;
+      invalidatePublicMenuCache(queryClient, slug || restaurant?.slug || ctxRestaurant?.slug);
       setProducts((prev) => prev.filter((p) => p.id !== productId));
     } catch (e) { console.error(e); }
   };

@@ -28,7 +28,7 @@ import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours } from '@/lib/utils';
 import { convertBetweenCurrencies, type CurrencyCode } from '@/lib/priceHelper';
 import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
-import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
+import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote,
@@ -189,9 +189,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       const { data } = await supabase.from('restaurants').select('*').eq('id', restaurantId).single();
       if (data) {
         useRestaurantStore.getState().setCurrentRestaurant(data);
-        const lang: MenuLanguage = data.language === 'es' ? 'es' : 'pt';
+        const userHasChosen = hasStoredMenuLanguage();
+        const lang: MenuLanguage = userHasChosen ? getStoredMenuLanguage() : (data.language === 'es' ? 'es' : 'pt');
+        if (!userHasChosen) setStoredMenuLanguage(lang);
         i18n.changeLanguage(lang);
-        setStoredMenuLanguage(lang);
       }
     };
     load();
@@ -309,6 +310,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         notes: notes || null,
         is_paid: isTableOrder ? false : true,
         loyalty_redeemed: loyaltyRedeemed,
+        customer_language: getStoredMenuLanguage(),
       };
 
       const orderItemsPayload = items.map((item) => {
@@ -395,7 +397,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           : '';
 
         const restaurantTemplates = (currentRestaurant as { whatsapp_templates?: Record<string, string> | null })?.whatsapp_templates;
-        const message = processTemplate(getTemplate('new_order', restaurantTemplates), {
+        const menuLang = getStoredMenuLanguage();
+        const message = processTemplate(getTemplate('new_order', restaurantTemplates, menuLang), {
           cliente_nome:      customerName,
           cliente_telefone:  '+' + normalizePhoneWithCountryCode(customerPhone, phoneCountry),
           tipo_entrega:      deliveryType === DeliveryType.DELIVERY ? 'Entrega' : 'Retirada',

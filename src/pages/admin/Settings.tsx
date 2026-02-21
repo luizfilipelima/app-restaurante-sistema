@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
+import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
 import { useAdminLanguageStore } from '@/store/adminLanguageStore';
 import { DayKey, PrintPaperWidth, type PrintSettingsBySector, type SectorPrintSettings } from '@/types';
@@ -225,6 +227,7 @@ function SaveButton({ saving, onClick, label, savingLabel }: {
 const ROLES_USERS_MANAGEMENT = ['owner', 'restaurant_admin', 'super_admin'] as const;
 
 export default function AdminSettings() {
+  const queryClient = useQueryClient();
   const location = useLocation();
   const restaurantId = useAdminRestaurantId();
   const { t }        = useAdminTranslation();
@@ -398,6 +401,7 @@ export default function AdminSettings() {
       };
       const { error } = await supabase.from('restaurants').update(updatePayload).eq('id', restaurantId);
       if (error) throw error;
+      invalidatePublicMenuCache(queryClient, formData.slug || undefined);
       // Persiste o idioma do painel via store (localStorage + Zustand → reatividade imediata)
       setStoreLang(panelLangLocal);
       toast({ title: '✅ ' + t('settings.title') + ' — ' + t('common.success') });

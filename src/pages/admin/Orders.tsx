@@ -305,8 +305,9 @@ export default function AdminOrders() {
         .map((item: any) => `  • ${item.quantity}x ${item.product_name}`)
         .join('\n');
 
+      const orderLang = ((dispatchOrder as { customer_language?: string })?.customer_language === 'es' || (restaurant as { language?: string })?.language === 'es') ? 'es' as const : 'pt' as const;
       const dispatchMessage = processTemplate(
-        getTemplate('courier_dispatch', localWaTemplates),
+        getTemplate('courier_dispatch', localWaTemplates, orderLang),
         {
           codigo_pedido:     `#${dispatchOrder.id.slice(0, 8).toUpperCase()}`,
           cliente_nome:      dispatchOrder.customer_name,
@@ -616,12 +617,13 @@ export default function AdminOrders() {
                       const NextIconComponent = goToCompleted ? completedConfig.icon : config.nextIcon;
                       const gradientClass = goToCompleted ? completedConfig.gradient : config.gradient;
 
-                      // WhatsApp "saiu para entrega"
+                      // WhatsApp "saiu para entrega" — idioma do cliente (order.customer_language)
                       const buildWhatsAppDeliveryUrl = () => {
                         const phone = order.customer_phone.replace(/\D/g, '');
                         const firstName = order.customer_name.split(' ')[0];
+                        const orderLang = ((order as { customer_language?: string })?.customer_language === 'es' || (restaurant as { language?: string })?.language === 'es') ? 'es' as const : 'pt' as const;
                         const msg = processTemplate(
-                          getTemplate('delivery_notification', localWaTemplates),
+                          getTemplate('delivery_notification', localWaTemplates, orderLang),
                           {
                             cliente_nome:     firstName,
                             restaurante_nome: restaurant?.name ?? '',
@@ -630,11 +632,14 @@ export default function AdminOrders() {
                         return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
                       };
 
-                      // WhatsApp "pedido pronto para retirada"
+                      // WhatsApp "pedido pronto para retirada" — idioma do cliente
                       const buildWhatsAppPickupReadyUrl = () => {
                         const phone = order.customer_phone.replace(/\D/g, '');
                         const firstName = order.customer_name.split(' ')[0];
-                        const msg = `Olá ${firstName}! Seu pedido está pronto para retirada${restaurant?.name ? ` no ${restaurant.name}` : ''}. Pode vir buscar! 😊`;
+                        const isEs = (order as { customer_language?: string })?.customer_language === 'es' || (restaurant as { language?: string })?.language === 'es';
+                        const msg = isEs
+                          ? `¡Hola ${firstName}! Tu pedido está listo para retirar${restaurant?.name ? ` en ${restaurant.name}` : ''}. ¡Puedes venir a buscarlo! 😊`
+                          : `Olá ${firstName}! Seu pedido está pronto para retirada${restaurant?.name ? ` no ${restaurant.name}` : ''}. Pode vir buscar! 😊`;
                         return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
                       };
 

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '@/lib/utils';
-import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
+import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import {
   CheckCircle2,
   Circle,
@@ -162,19 +162,24 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
   const [statusTimestamps, setStatusTimestamps] = useState<Partial<Record<OrderStatus, string>>>({});
   const initialLoaded = useRef(false);
 
-  // ── Carrega idioma do restaurante ─────────────────────────────────────────
+  // ── Carrega idioma: prefere escolha do cliente (sessionStorage), senão restaurante ─
   useEffect(() => {
     if (!restaurantSlug) return;
     (async () => {
       try {
+        const userHasChosen = hasStoredMenuLanguage();
+        if (userHasChosen) {
+          i18n.changeLanguage(getStoredMenuLanguage());
+          return;
+        }
         const { data: rest } = await supabase
           .from('restaurants')
           .select('language')
           .eq('slug', restaurantSlug)
           .single();
         const lang = (rest?.language === 'es' ? 'es' : 'pt') as MenuLanguage;
-        await i18n.changeLanguage(lang);
         setStoredMenuLanguage(lang);
+        await i18n.changeLanguage(lang);
       } catch {
         // silencioso
       }

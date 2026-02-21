@@ -12,6 +12,8 @@ interface CartState {
   getSubtotal: () => number;
   getItemsCount: () => number;
   setRestaurant: (restaurantId: string) => void;
+  /** Remove itens cujo productId não está em activeProductIds (produto desativado/excluído no Admin). */
+  removeInactiveProducts: (activeProductIds: Set<string>) => void;
 }
 
 export const useCartStore = create<CartState>()(
@@ -106,6 +108,16 @@ export const useCartStore = create<CartState>()(
       getItemsCount: () => {
         const items = get().items;
         return items.reduce((count, item) => count + item.quantity, 0);
+      },
+
+      removeInactiveProducts: (activeProductIds: Set<string>) => {
+        const { items, restaurantId } = get();
+        if (restaurantId && items.length > 0) {
+          const valid = items.filter((i) => i.productId && activeProductIds.has(i.productId));
+          if (valid.length !== items.length) {
+            set({ items: valid });
+          }
+        }
       },
     }),
     {

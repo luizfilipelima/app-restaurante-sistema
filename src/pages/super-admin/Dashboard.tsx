@@ -280,7 +280,7 @@ export default function SuperAdminDashboard() {
   const restaurants        = data?.restaurants         ?? [];
   const ordersByRestaurant = data?.ordersByRestaurant   ?? {};
   const revenueByRestaurant = data?.revenueByRestaurant ?? {};
-  const metrics            = data?.metrics ?? { totalRestaurants: 0, activeRestaurants: 0, totalRevenue: 0, totalOrders: 0 };
+  const metrics            = data?.metrics ?? { totalRestaurants: 0, activeRestaurants: 0, totalRevenue: 0, totalOrders: 0, revenueByCurrency: {}, ordersByCurrency: {} };
 
   const [search,  setSearch]  = useState('');
   const [showNew, setShowNew] = useState(false);
@@ -493,9 +493,15 @@ export default function SuperAdminDashboard() {
           accent="bg-gradient-to-r from-orange-400 to-orange-500"
         />
         <KpiCard
-          label="Faturamento total"
-          value={formatCurrency(metrics.totalRevenue)}
-          sub="histórico geral"
+          label="GMV por moeda"
+          value={
+            (metrics.revenueByCurrency && Object.keys(metrics.revenueByCurrency).length > 0)
+              ? Object.entries(metrics.revenueByCurrency)
+                  .map(([cur, val]) => `${cur}: ${formatCurrency(val, cur as 'BRL' | 'PYG' | 'ARS')}`)
+                  .join('  |  ')
+              : '—'
+          }
+          sub="BRL, PYG e ARS separados (evita distorção)"
           icon={DollarSign}
           accent="bg-gradient-to-r from-emerald-400 to-emerald-500"
         />
@@ -508,8 +514,19 @@ export default function SuperAdminDashboard() {
         />
         <KpiCard
           label="Ticket médio"
-          value={formatCurrency(metrics.totalOrders > 0 ? metrics.totalRevenue / metrics.totalOrders : 0)}
-          sub="por pedido"
+          value={
+            (metrics.ordersByCurrency &&
+              Object.keys(metrics.ordersByCurrency).length > 0) ||
+            (metrics.revenueByCurrency && Object.keys(metrics.revenueByCurrency ?? {}).length > 0)
+              ? Object.entries(metrics.revenueByCurrency ?? {})
+                  .map(([curr, rev]) => {
+                    const count = metrics.ordersByCurrency?.[curr] ?? 1;
+                    return `${curr}: ${formatCurrency(count > 0 ? rev / count : 0, curr as 'BRL' | 'PYG' | 'ARS')}`;
+                  })
+                  .join(' · ')
+              : formatCurrency(0)
+          }
+          sub="por pedido (por moeda)"
           icon={TrendingUp}
           accent="bg-gradient-to-r from-violet-400 to-violet-500"
         />

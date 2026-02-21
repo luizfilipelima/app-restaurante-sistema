@@ -93,6 +93,47 @@ export const DEFAULT_TEMPLATES = {
 
 export type TemplateKey = keyof typeof DEFAULT_TEMPLATES;
 
+/** Templates padrão em espanhol (para clientes que navegaram em ES). */
+export const DEFAULT_TEMPLATES_ES = {
+  new_order:
+`🆕 *NUEVO PEDIDO*
+
+👤 *Cliente:* {{cliente_nome}}
+📱 *Tel/WhatsApp:* {{cliente_telefone}}
+🚚 *Entrega:* {{tipo_entrega}}
+🏘️ *Barrio/Región:* {{bairro}}
+📍 *Dirección:* {{endereco}}
+📋 *Detalles:* {{detalhes_endereco}}
+
+💳 *Pago:* {{pagamento}}
+{{pagamento_detalhes}}
+🔄 *Cambio para:* {{troco}}
+
+📋 *Resumen:*
+  Subtotal: {{subtotal}}
+  {{taxa_entrega}}
+  *Total: {{total}}*
+
+🍽️ *Items:*
+{{itens}}
+📝 *Obs:* {{observacoes}}`,
+
+  delivery_notification:
+`¡Hola {{cliente_nome}}! 🛵 Tu pedido acaba de salir para entrega. ¡En breve estará en tu puerta! 😊`,
+
+  courier_dispatch:
+`🛵 *Nuevo pedido para entrega*
+
+*Pedido:* {{codigo_pedido}}
+*Cliente:* {{cliente_nome}}
+*Detalles de Entrega:* {{detalhes_endereco}}
+*Google Maps:* {{mapa}}
+*Items:*
+{{itens}}`,
+} as const;
+
+export type MenuLanguage = 'pt' | 'es';
+
 // ─── Processador de template ──────────────────────────────────────────────────
 
 /**
@@ -125,11 +166,16 @@ export function processTemplate(
 
 /**
  * Retorna o template para a chave especificada:
- * usa o template salvo no restaurante se disponível, caso contrário o padrão.
+ * usa o template salvo no restaurante se disponível,
+ * caso contrário o padrão no idioma informado (pt | es).
+ *
+ * @param lang - Idioma do cliente/contexto ('pt' | 'es'). Usado quando não há template customizado.
  */
 export function getTemplate(
   key: TemplateKey,
   templates?: { new_order?: string | null; delivery_notification?: string | null; courier_dispatch?: string | null } | null,
+  lang: MenuLanguage = 'pt',
 ): string {
-  return (templates && templates[key]) ? templates[key]! : DEFAULT_TEMPLATES[key];
+  if (templates && templates[key]) return templates[key]!;
+  return lang === 'es' ? DEFAULT_TEMPLATES_ES[key] : DEFAULT_TEMPLATES[key];
 }

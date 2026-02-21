@@ -17,6 +17,10 @@ export interface SuperAdminRestaurantsData {
     activeRestaurants: number;
     totalRevenue: number;
     totalOrders: number;
+    /** GMV agrupado por moeda — evita somar BRL+PYG+ARS misturados */
+    revenueByCurrency: Record<string, number>;
+    /** Pedidos por moeda (para ticket médio correto) */
+    ordersByCurrency: Record<string, number>;
   };
 }
 
@@ -40,17 +44,30 @@ export async function fetchSuperAdminRestaurants(): Promise<SuperAdminRestaurant
   const list = (restaurantsRes.data || []) as Restaurant[];
   const orders = ordersRes.data || [];
 
+  const restaurantCurrency = new Map<string, string>();
+  for (const r of list) {
+    restaurantCurrency.set(r.id, (r.currency as string) || 'BRL');
+  }
+
   const countByRestaurant: Record<string, number> = {};
   const revenueByRestaurant: Record<string, number> = {};
-  let totalRevenue = 0;
+  const revenueByCurrency: Record<string, number> = {};
+  const ordersByCurrency: Record<string, number> = {};
   let totalOrders = 0;
 
   for (const o of orders as { restaurant_id: string; total?: number }[]) {
+    const tot = o.total ?? 0;
+    const currency = restaurantCurrency.get(o.restaurant_id) || 'BRL';
+
     countByRestaurant[o.restaurant_id]  = (countByRestaurant[o.restaurant_id]  || 0) + 1;
-    revenueByRestaurant[o.restaurant_id] = (revenueByRestaurant[o.restaurant_id] || 0) + (o.total ?? 0);
+    revenueByRestaurant[o.restaurant_id] = (revenueByRestaurant[o.restaurant_id] || 0) + tot;
+    revenueByCurrency[currency] = (revenueByCurrency[currency] || 0) + tot;
+    ordersByCurrency[currency] = (ordersByCurrency[currency] || 0) + 1;
     totalOrders += 1;
-    totalRevenue += o.total ?? 0;
   }
+
+  // totalRevenue = soma apenas BRL (evita distorção ao misturar moedas)
+  const totalRevenue = revenueByCurrency['BRL'] ?? 0;
 
   return {
     restaurants: list,
@@ -61,6 +78,8 @@ export async function fetchSuperAdminRestaurants(): Promise<SuperAdminRestaurant
       activeRestaurants: list.filter((r) => r.is_active).length,
       totalRevenue,
       totalOrders,
+      revenueByCurrency,
+      ordersByCurrency,
     },
   };
 }
