@@ -239,7 +239,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                         const subProducts = categoryProducts.filter((p) => p.subcategory_id === sub.id);
                         if (subProducts.length === 0) return null;
                         const allBeverage = subProducts.every((p) => shouldUseBeverageCard(p));
-                        const containerClass = allBeverage ? 'flex flex-col gap-2' : 'grid grid-cols-2 lg:grid-cols-4 gap-4';
+                        const containerClass = allBeverage ? 'flex flex-col gap-2 sm:gap-2.5' : 'grid grid-cols-2 lg:grid-cols-4 gap-4';
                         return (
                           <div key={sub.id} className="space-y-2">
                             <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
@@ -253,7 +253,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                       })}
                       {productsWithoutSub.length > 0 && (() => {
                         const allBeverage = productsWithoutSub.every((p) => shouldUseBeverageCard(p));
-                        const containerClass = allBeverage ? 'flex flex-col gap-2' : 'grid grid-cols-2 lg:grid-cols-4 gap-4';
+                        const containerClass = allBeverage ? 'flex flex-col gap-2 sm:gap-2.5' : 'grid grid-cols-2 lg:grid-cols-4 gap-4';
                         return (
                           <div className={containerClass}>
                             {productsWithoutSub.map((product) => (
@@ -266,7 +266,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                   ) : (
                     (() => {
                       const allBeverage = categoryProducts.every((p) => shouldUseBeverageCard(p));
-                      const containerClass = allBeverage ? 'flex flex-col gap-2' : 'grid grid-cols-2 lg:grid-cols-4 gap-4';
+                      const containerClass = allBeverage ? 'flex flex-col gap-2 sm:gap-2.5' : 'grid grid-cols-2 lg:grid-cols-4 gap-4';
                       return (
                         <div className={containerClass}>
                           {categoryProducts.map((product) => (
@@ -283,7 +283,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
             // Exibir apenas produtos da categoria selecionada
             (() => {
               const allBeverage = filteredProducts.every((p) => shouldUseBeverageCard(p));
-              const containerClass = allBeverage ? 'flex flex-col gap-2' : 'grid grid-cols-2 lg:grid-cols-4 gap-4';
+              const containerClass = allBeverage ? 'flex flex-col gap-2 sm:gap-2.5' : 'grid grid-cols-2 lg:grid-cols-4 gap-4';
               return (
                 <>
                   <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">

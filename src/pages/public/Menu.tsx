@@ -451,7 +451,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 {activeOffers.length}
               </span>
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5">
+            <div className={activeOffers.every((o) => shouldUseBeverageCard(o.product)) ? 'flex flex-col gap-2 sm:gap-2.5' : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5'}>
               {activeOffers.map((offer) => {
                 const OfferCard = shouldUseBeverageCard(offer.product) ? ProductCardBeverage : ProductCard;
                 return (
@@ -484,7 +484,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       const subProducts = productsWithSub.filter((p) => p.subcategory_id === sub.id);
                       if (subProducts.length === 0) return null;
                       const allBeverage = subProducts.every((p) => shouldUseBeverageCard(p));
-                      const containerClass = allBeverage ? 'flex flex-col gap-1.5' : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5';
+                      const containerClass = allBeverage ? 'flex flex-col gap-2 sm:gap-2.5' : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5';
                       return (
                         <div key={sub.id} className="space-y-2">
                           <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
@@ -509,7 +509,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                     })}
                     {productsWithoutSub.length > 0 && (() => {
                       const allBeverage = productsWithoutSub.every((p) => shouldUseBeverageCard(p));
-                      const containerClass = allBeverage ? 'flex flex-col gap-1.5' : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5';
+                      const containerClass = allBeverage ? 'flex flex-col gap-2 sm:gap-2.5' : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5';
                       return (
                         <div className={containerClass}>
                           {productsWithoutSub.map((product) => {
@@ -532,7 +532,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                   </>
                 ) : (() => {
                   const allBeverage = categoryProducts.every((p) => shouldUseBeverageCard(p));
-                  const containerClass = allBeverage ? 'flex flex-col gap-1.5' : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5';
+                  const containerClass = allBeverage ? 'flex flex-col gap-2 sm:gap-2.5' : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5';
                   return (
                     <div className={containerClass}>
                       {categoryProducts.map((product) => {
@@ -558,7 +558,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             // Exibir apenas produtos da categoria selecionada
             (() => {
               const allBeverage = filteredProducts.every((p) => shouldUseBeverageCard(p));
-              const containerClass = allBeverage ? 'flex flex-col gap-1.5' : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5';
+              const containerClass = allBeverage ? 'flex flex-col gap-2 sm:gap-2.5' : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5';
               return (
                 <>
                   <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">

@@ -16,7 +16,7 @@ interface ProductCardViewOnlyProps {
   product: Product;
   currency: CurrencyCode;
   comboItems?: Array<{ product: { name: string }; quantity: number }>;
-  /** Layout do card: 'grid' = vertical padrão, 'beverage' = horizontal (sobrescreve product.card_layout) */
+  /** Sobrescreve a detecção automática: 'grid' = vertical, 'beverage' = horizontal */
   layout?: 'grid' | 'beverage';
 }
 
@@ -24,38 +24,44 @@ export default function ProductCardViewOnly({ product, currency, comboItems, lay
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const isBeverage = layout ? layout === 'beverage' : shouldUseBeverageCard(product);
+  const subtitle = product.description ?? (comboItems?.length ? comboItems.map((ci) => (ci.quantity > 1 ? `${ci.quantity}x ` : '') + ci.product.name).join(', ') : null);
 
   const cardButton = isBeverage ? (
     <button
       type="button"
       onClick={() => setOpen(true)}
-      className="w-full text-left flex items-stretch gap-3 sm:gap-4 rounded-2xl overflow-hidden bg-white border border-slate-200/80 shadow-sm transition-all duration-200 active:scale-[0.99] hover:shadow-md touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2"
+      className="group w-full text-left flex items-stretch gap-3 sm:gap-4 rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm transition-all duration-200 active:scale-[0.99] hover:shadow-lg hover:border-slate-200/80 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2"
     >
-      <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 overflow-hidden bg-slate-100 rounded-xl">
+      <div className="relative w-20 sm:w-24 flex-shrink-0 aspect-[3/4] overflow-hidden rounded-xl bg-slate-100">
         {product.image_url ? (
           <img
             src={product.image_url}
             alt={product.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
             loading="lazy"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <span className="text-2xl opacity-30">🍹</span>
+            <span className="text-2xl opacity-20">🍽</span>
           </div>
         )}
       </div>
-      <div className="flex-1 min-w-0 flex flex-col justify-center py-2 pr-3">
-        <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-snug line-clamp-1">
+      <div className="flex-1 min-w-0 flex flex-col justify-center py-3 pr-3 sm:py-4 sm:pr-4">
+        <h3 className="font-semibold text-slate-900 text-sm sm:text-base leading-snug line-clamp-2">
           {product.name}
         </h3>
-        <p className="mt-0.5 text-slate-700 font-semibold text-sm sm:text-base tabular-nums">
-          {formatPrice(Number(product.price), currency)}
-        </p>
-      </div>
-      <div className="flex items-center pr-3">
-        <div className="p-1.5 rounded-lg bg-slate-100">
-          <Plus className="h-4 w-4 text-slate-600" aria-hidden />
+        {subtitle && (
+          <p className="mt-0.5 text-xs text-slate-500 leading-snug line-clamp-2">
+            {subtitle}
+          </p>
+        )}
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <span className="text-sm sm:text-base font-bold text-slate-900 tabular-nums">
+            {formatPrice(Number(product.price), currency)}
+          </span>
+          <div className="flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center transition-all duration-200 group-hover:bg-orange-500 group-hover:text-white">
+            <Plus className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.5} aria-hidden />
+          </div>
         </div>
       </div>
     </button>
@@ -63,32 +69,35 @@ export default function ProductCardViewOnly({ product, currency, comboItems, lay
     <button
       type="button"
       onClick={() => setOpen(true)}
-      className="w-full text-left bg-white rounded-2xl sm:rounded-3xl shadow-sm overflow-hidden border border-slate-200/80 transition-all duration-200 active:scale-[0.98] hover:shadow-md touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2"
+      className="group w-full text-left bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100 transition-all duration-200 active:scale-[0.99] hover:shadow-lg hover:border-slate-200/80 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2"
     >
-      <div className="relative w-full aspect-square overflow-hidden bg-slate-100">
+      <div className="relative w-full aspect-[3/4] overflow-hidden rounded-t-2xl bg-slate-100">
         {product.image_url ? (
           <img
             src={product.image_url}
             alt={product.name}
-            width={400}
-            height={400}
-            className="w-full h-full object-cover object-center"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-            <span className="text-4xl opacity-60">🍽</span>
+          <div className="w-full h-full flex items-center justify-center">
+            <span className="text-4xl opacity-20">🍽</span>
           </div>
         )}
-        <div className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/90 backdrop-blur-sm shadow-sm">
-          <Plus className="h-4 w-4 text-slate-600" aria-hidden />
+        <div className="absolute bottom-2 right-2 h-9 w-9 rounded-xl bg-white/95 backdrop-blur-sm shadow-sm flex items-center justify-center text-slate-600 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+          <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
         </div>
       </div>
       <div className="p-3 sm:p-4">
-        <h3 className="font-medium text-slate-900 text-sm sm:text-base leading-tight line-clamp-2">
+        <h3 className="font-semibold text-slate-900 text-sm leading-snug line-clamp-2">
           {product.name}
         </h3>
-        <p className="mt-1 text-slate-700 font-semibold text-sm sm:text-base tabular-nums">
+        {subtitle && (
+          <p className="mt-0.5 text-xs text-slate-500 leading-tight line-clamp-1">
+            {subtitle}
+          </p>
+        )}
+        <p className="mt-2 text-sm font-bold text-slate-900 tabular-nums">
           {formatPrice(Number(product.price), currency)}
         </p>
       </div>
@@ -101,19 +110,17 @@ export default function ProductCardViewOnly({ product, currency, comboItems, lay
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md w-[calc(100%-2rem)] max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 rounded-2xl border-slate-200/80">
-          <div className="relative w-full aspect-square max-h-[50vh] overflow-hidden bg-slate-100 flex-shrink-0">
+          <div className="relative w-full aspect-[3/4] max-h-[50vh] overflow-hidden rounded-t-2xl bg-slate-100 flex-shrink-0">
             {product.image_url ? (
               <img
                 src={product.image_url}
                 alt={product.name}
-                width={400}
-                height={400}
                 className="w-full h-full object-cover object-center"
                 loading="lazy"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-                <span className="text-6xl opacity-60">🍽</span>
+              <div className="w-full h-full flex items-center justify-center">
+                <span className="text-6xl opacity-30">🍽</span>
               </div>
             )}
           </div>

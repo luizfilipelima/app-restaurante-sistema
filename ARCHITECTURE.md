@@ -1,7 +1,7 @@
 # ARCHITECTURE.md — Fonte da Verdade Técnica
 ### Sistema `app.quiero.food` — SaaS de Gestão Gastronômica
 
-> **Última atualização:** 21/02/2026  
+> **Última atualização:** 21/02/2026 (Landing Premium Z-Pattern, rota /pagina-ptbr)  
 > **Propósito:** Este documento descreve toda a arquitetura do sistema. Ao lê-lo, qualquer desenvolvedor deve entender como o sistema funciona sem precisar ler todo o código-fonte.
 
 ---
@@ -42,7 +42,8 @@ O **app.quiero.food** é um SaaS de gestão gastronômica focado na **Tríplice 
 ### Contextos de Uso
 
 ```
-quiero.food              → Landing page pública do SaaS
+quiero.food              → Landing page pública do SaaS (rota /)
+quiero.food/pagina-ptbr  → Página de vendas principal PT-BR (PaginaPtBr — Hyper Professional Enterprise, tema claro)
 app.quiero.food          → Painel administrativo (todos os restaurantes)
 {slug}.quiero.food       → Cardápio público do restaurante (ex: pizzaria.quiero.food)
 kds.quiero.food          → Display de Cozinha (KDS) em tempo real
@@ -106,7 +107,7 @@ src/
 │   ├── kitchen/             # (lógica interna nas páginas kitchen/)
 │   ├── orders/              # CompletedOrdersView
 │   ├── receipt/             # OrderReceipt (impressão térmica)
-│   ├── landing-page/        # Hero, Features, Pricing, FAQ, Testimonials
+│   ├── landing-page/        # Hero, Features, Pricing, FAQ, Testimonials (LandingPage legada)
 │   └── super-admin/         # SuperAdminLayout
 │
 ├── pages/
@@ -119,7 +120,7 @@ src/
 │   ├── super-admin/         # Dashboard, Restaurants, Plans, SaasMetrics,
 │   │                        # LandingPageEditor, RestaurantDetails
 │   ├── auth/                # LoginPage, Register, UnauthorizedPage
-│   └── landing/             # LandingPage, QuieroFoodLanding
+│   └── landing/             # LandingPage (rota /), PaginaPtBr (rota /pagina-ptbr)
 │
 ├── hooks/
 │   ├── queries/             # Hooks TanStack Query (dados do servidor):
@@ -132,7 +133,7 @@ src/
 │   │                        # useCouriers, useLoyaltyProgram, useTables
 │   │                        # useDeliveryZones, usePrintSettings
 │   │                        # useSuperAdminExchangeRates (câmbio para métricas em BRL)
-│   │                        # useFeatureAccess, useSubscriptionManager
+│   │                        # useFeatureAccess, useSubscriptionManager, useLandingPageContent
 │   ├── useOfflineSync.ts    # Sincronização offline (buffet via IndexedDB)
 │   ├── usePrinter.ts        # Impressão térmica (58mm / 80mm)
 │   ├── useSessionManager.ts # Sessões multi-tab (Supabase Auth)
@@ -208,6 +209,16 @@ kds.quiero.food             → Display de Cozinha (KDS)
 localhost                   → Desenvolvimento (path-based routing)
 app.localhost / admin.localhost → Admin em dev; preview do cardápio abre em localhost/{slug}
 ```
+
+### Rotas Públicas (Domínio Principal quiero.food / localhost)
+
+```
+/                 → LandingPage (estrutura legada, tema claro)
+/pagina-ptbr      → QuieroFoodLanding (landing premium, tema dark, Z-Pattern)
+/{slug}           → Cardápio público do restaurante (evitar slug = pagina-ptbr)
+```
+
+A rota `/pagina-ptbr` deve vir **antes** de `/:restaurantSlug` para não ser capturada como slug de restaurante.
 
 ### URL Pública do Cardápio (`getCardapioPublicUrl`)
 
@@ -584,6 +595,17 @@ src/components/ui/       → Átomos: Button, Input, Card, Badge, Dialog, etc.
 src/components/admin/    → Moléculas/Organismos admin: AdminLayout, ProductRow, etc.
 src/components/public/   → Moléculas/Organismos públicos: ProductCard, CartDrawer, etc.
 ```
+
+### Página de Vendas Principal (PaginaPtBr — /pagina-ptbr)
+
+Página de vendas focada em conversão, com copy estratégica para a Tríplice Fronteira:
+
+| Elemento | Descrição |
+|---|---|
+| **PaginaPtBr** | Tema claro (bg-white/slate-50), acentos laranja. Hero, Grid de Audiências (Delivery, Salão, Buffet), Bento Inteligência/Controle, Pricing (Core/Standard/Enterprise). Shadcn Card, Button, Badge. PageTransition + Framer Motion whileInView. |
+| **QuieroFoodLanding** | Tema dark, Z-Pattern. Hero, FeatureZigZag (4 blocos), Pricing, Testimonials. useLandingPageContent. |
+
+**Arquivos:** `src/pages/landing/PaginaPtBr.tsx` (principal em /pagina-ptbr), `src/pages/landing/QuieroFoodLanding.tsx`
 
 ### Experiências Chave
 
@@ -1081,12 +1103,14 @@ checkly.config.ts
 
 | Arquivo | Função |
 |---|---|
-| `src/App.tsx` | Definição completa de todas as rotas |
+| `src/App.tsx` | Definição completa de todas as rotas (incl. /pagina-ptbr) |
+| `src/pages/landing/PaginaPtBr.tsx` | Página de vendas principal PT-BR — Hero, Grid Audiências, Bento Inteligência, Pricing |
 | `src/lib/subdomain.ts` | Detecção de contexto por subdomínio |
 | `src/contexts/AdminRestaurantContext.tsx` | Contexto central do painel admin |
 | `src/store/authStore.ts` | Estado de autenticação global |
 | `src/store/cartStore.ts` | Estado do carrinho |
 | `src/hooks/queries/useRestaurantMenuData.ts` | Hook do cardápio público |
+| `src/hooks/queries/useLandingPageContent.ts` | Conteúdo editável da landing (Hero, CTAs, etc.) — usado por QuieroFoodLanding e LandingPageEditor |
 | `src/lib/whatsappTemplates.ts` | Templates de mensagens para pedidos (pt/es) |
 | `src/lib/invalidatePublicCache.ts` | Invalidação de cache Admin → Cardápio |
 | `src/components/public/InitialSplashScreen.tsx` | Splash de carregamento do cardápio (CSS puro) |

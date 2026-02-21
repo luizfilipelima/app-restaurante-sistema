@@ -1,6 +1,7 @@
 /**
- * Card horizontal para produtos da categoria Bebidas.
- * Layout: imagem à esquerda, informações à direita, preço e botão "Adicionar" no rodapé.
+ * Card horizontal padrão para produtos no cardápio.
+ * Layout: imagem 3:4 à esquerda, nome, descrição, preço e ícone + à direita.
+ * Design minimalista e elegante com bordas arredondadas.
  */
 import { memo } from 'react';
 import { Product } from '@/types';
@@ -13,9 +14,7 @@ interface ProductCardBeverageProps {
   onClick?: () => void;
   readOnly?: boolean;
   currency?: CurrencyCode;
-  /** Itens incluídos no combo (quando product.is_combo) */
   comboItems?: Array<{ product: { name: string }; quantity: number }>;
-  /** Quando o produto está em oferta */
   offer?: { price: number; originalPrice: number; label?: string | null };
 }
 
@@ -32,9 +31,11 @@ function ProductCardBeverage({
   const isCombo = product.is_combo || (comboItems && comboItems.length > 0);
   const isOffer = !!offer;
   const displayPrice = offer ? offer.price : Number(product.price_sale || product.price);
-  const subtitle = product.description ?? (isCombo && comboItems?.length
-    ? comboItems.map((ci) => (ci.quantity > 1 ? `${ci.quantity}x ` : '') + ci.product.name).join(', ')
-    : null);
+  const subtitle =
+    product.description ??
+    (isCombo && comboItems?.length
+      ? comboItems.map((ci) => (ci.quantity > 1 ? `${ci.quantity}x ` : '') + ci.product.name).join(', ')
+      : null);
 
   const handleClick = () => {
     if (!readOnly) onClick?.();
@@ -51,35 +52,35 @@ function ProductCardBeverage({
           onClick?.();
         }
       }}
-      className={`group flex items-center gap-2.5 sm:gap-3 rounded-xl overflow-hidden transition-all duration-200 w-full min-w-0 py-2 px-2.5 sm:px-3 ${
+      className={`group flex items-stretch gap-3 sm:gap-4 rounded-2xl overflow-hidden transition-all duration-200 w-full min-w-0 ${
         isOffer
-          ? 'bg-white border-2 border-orange-200 shadow-sm shadow-orange-100/80'
-          : 'bg-white border border-slate-100/80 shadow-sm'
-      } ${!readOnly ? 'cursor-pointer active:scale-[0.99] hover:shadow-md touch-manipulation' : ''}`}
+          ? 'bg-white border border-orange-200/80 shadow-md shadow-orange-50'
+          : 'bg-white border border-slate-100 shadow-sm'
+      } ${!readOnly ? 'cursor-pointer active:scale-[0.99] hover:shadow-lg hover:border-slate-200/80 touch-manipulation' : ''}`}
     >
-      {/* Thumbnail compacto à esquerda */}
-      <div className="relative w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 overflow-hidden bg-slate-100 rounded-lg">
+      {/* Imagem 3:4 à esquerda — bordas arredondadas */}
+      <div className="relative w-20 sm:w-24 flex-shrink-0 aspect-[3/4] overflow-hidden rounded-xl bg-slate-100">
         {hasImage ? (
           <img
             src={product.image_url!}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
             loading="lazy"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <span className="text-xl opacity-25">🍹</span>
+            <span className="text-2xl opacity-20">🍽</span>
           </div>
         )}
         {(isOffer || isCombo) && (
-          <div className="absolute top-0.5 left-0.5 flex gap-0.5">
+          <div className="absolute top-1.5 left-1.5 flex gap-1">
             {isOffer && (
-              <span className="text-[8px] font-bold uppercase bg-[#F26812] text-white px-1 py-0.5 rounded">
+              <span className="text-[9px] font-bold uppercase tracking-wide bg-orange-500 text-white px-2 py-0.5 rounded-md shadow-sm">
                 Oferta
               </span>
             )}
             {isCombo && !isOffer && (
-              <span className="text-[8px] font-bold uppercase bg-white/95 text-slate-700 px-1 py-0.5 rounded border border-slate-200/60">
+              <span className="text-[9px] font-bold uppercase tracking-wide bg-white/95 backdrop-blur-sm text-slate-600 px-2 py-0.5 rounded-md shadow-sm border border-slate-200/60">
                 Combo
               </span>
             )}
@@ -87,24 +88,24 @@ function ProductCardBeverage({
         )}
       </div>
 
-      {/* Conteúdo compacto */}
-      <div className="flex-1 min-w-0 flex flex-col justify-center py-0.5">
-        <h3 className="font-semibold text-slate-900 text-sm leading-snug line-clamp-1">
+      {/* Conteúdo */}
+      <div className="flex-1 min-w-0 flex flex-col justify-center py-3 pr-3 sm:py-4 sm:pr-4">
+        <h3 className="font-semibold text-slate-900 text-sm sm:text-base leading-snug line-clamp-2">
           {product.name}
         </h3>
         {subtitle && (
-          <p className="mt-0.5 text-[11px] text-slate-500 leading-tight line-clamp-1">
-            {subtitle.length > 35 ? `${subtitle.slice(0, 35)}…` : subtitle}
+          <p className="mt-0.5 text-xs text-slate-500 leading-snug line-clamp-2">
+            {subtitle}
           </p>
         )}
-        <div className="flex items-center justify-between gap-2 mt-1.5">
+        <div className="mt-2 flex items-center justify-between gap-3">
           <div className="min-w-0">
             {isOffer && (
-              <span className="text-[10px] text-slate-400 line-through mr-1">
+              <span className="text-[11px] text-slate-400 line-through mr-1.5">
                 {formatCurrency(offer.originalPrice, currency)}
               </span>
             )}
-            <span className="text-sm font-bold text-slate-900 tabular-nums">
+            <span className="text-sm sm:text-base font-bold text-slate-900 tabular-nums">
               {formatCurrency(displayPrice, currency)}
             </span>
           </div>
@@ -118,10 +119,10 @@ function ProductCardBeverage({
                 e.stopPropagation();
                 onClick?.();
               }}
-              className="flex-shrink-0 h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-slate-800 flex items-center justify-center text-white group-hover:bg-[#F26812] transition-colors touch-manipulation"
+              className="flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center transition-all duration-200 group-hover:bg-orange-500 group-hover:text-white hover:scale-105 active:scale-95 touch-manipulation"
               aria-label={t('productCard.add')}
             >
-              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.5} aria-hidden />
             </button>
           )}
         </div>
