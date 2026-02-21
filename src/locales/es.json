@@ -63,6 +63,7 @@
     "zoneLabel": "Barrio / Zona de Entrega",
     "zonePlaceholder": "Selecciona tu barrio",
     "zoneNoZones": "Entrega a toda el área",
+    "mapInstructionZone": "Arrastra el pin a tu ubicación exacta dentro del área marcada",
     "addressLabel": "Dirección completa (opcional)",
     "addressPlaceholder": "Calle, número, complemento — o envía la ubicación por WhatsApp",
     "payment": "Pago",

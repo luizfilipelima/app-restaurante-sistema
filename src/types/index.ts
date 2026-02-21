@@ -318,6 +318,12 @@ export interface DeliveryZone {
   location_name: string;
   fee: number; // 0 para entrega grátis
   is_active: boolean;
+  /** Latitude do centro da zona no mapa */
+  center_lat?: number | null;
+  /** Longitude do centro da zona no mapa */
+  center_lng?: number | null;
+  /** Raio de alcance em metros (ex: 2000 = 2 km) */
+  radius_meters?: number | null;
   created_at: string;
 }
 

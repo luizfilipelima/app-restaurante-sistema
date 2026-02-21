@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Suspense, lazy, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -16,9 +18,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
-import { convertPriceToStorage, convertBetweenCurrencies, getCurrencySymbol, formatPriceInputPyG } from '@/lib/priceHelper';
+import { convertPriceToStorage, convertPriceFromStorage, convertBetweenCurrencies, getCurrencySymbol, formatPriceInputPyG } from '@/lib/priceHelper';
 import type { CurrencyCode } from '@/lib/priceHelper';
+import type { DeliveryZone } from '@/types';
 import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
+const ZoneRadiusMapEditor = lazy(() => import('@/components/admin/ZoneRadiusMapEditor'));
+
+const RADIUS_MIN = 500;
+const RADIUS_MAX = 10000;
 
 const FEE_CURRENCIES: { value: CurrencyCode; label: string }[] = [
   { value: 'BRL', label: 'R$ Real' },
@@ -26,6 +33,24 @@ const FEE_CURRENCIES: { value: CurrencyCode; label: string }[] = [
   { value: 'ARS', label: '$ Peso' },
   { value: 'USD', label: 'US$ Dólar' },
 ];
+
+const GEO_DEFAULTS: Record<string, [number, number]> = {
+  PYG: [-25.5097, -54.6111],
+  ARS: [-25.5991, -54.5735],
+  BRL: [-25.5278, -54.5828],
+};
+
+function getDefaultCenter(currency: string): [number, number] {
+  return GEO_DEFAULTS[currency] ?? GEO_DEFAULTS.BRL;
+}
+
+const emptyForm = (baseCurrency: CurrencyCode) => ({
+  location_name: '',
+  feeInput: '0',
+  centerLat: getDefaultCenter(baseCurrency)[0],
+  centerLng: getDefaultCenter(baseCurrency)[1],
+  radiusMeters: 2000,
+});
 
 export default function AdminDeliveryZones() {
   const queryClient = useQueryClient();
@@ -58,11 +83,30 @@ export default function AdminDeliveryZones() {
   const exchangeRates = (restaurant as { exchange_rates?: { pyg_per_brl?: number; ars_per_brl?: number } })?.exchange_rates ?? { pyg_per_brl: 3600, ars_per_brl: 1150 };
 
   const [showForm, setShowForm] = useState(false);
+  const [editingZone, setEditingZone] = useState<DeliveryZone | null>(null);
   const [feeCurrency, setFeeCurrency] = useState<CurrencyCode>(baseCurrency);
-  const [formData, setFormData] = useState({
-    location_name: '',
-    feeInput: '0',
-  });
+  const [formData, setFormData] = useState(() => emptyForm(baseCurrency));
+
+  const resetForm = useCallback(() => {
+    setEditingZone(null);
+    setFormData(emptyForm(baseCurrency));
+    setFeeCurrency(baseCurrency);
+    setShowForm(false);
+  }, [baseCurrency]);
+
+  const openEdit = useCallback((zone: DeliveryZone) => {
+    const [lat, lng] = getDefaultCenter(baseCurrency);
+    setEditingZone(zone);
+    setFormData({
+      location_name: zone.location_name,
+      feeInput: convertPriceFromStorage(zone.fee, baseCurrency),
+      centerLat: zone.center_lat ?? lat,
+      centerLng: zone.center_lng ?? lng,
+      radiusMeters: zone.radius_meters ?? 2000,
+    });
+    setFeeCurrency(baseCurrency);
+    setShowForm(true);
+  }, [baseCurrency]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,23 +118,35 @@ export default function AdminDeliveryZones() {
       : convertBetweenCurrencies(valueInFeeCurrency, feeCurrency, baseCurrency, exchangeRates);
 
     try {
-      const { error } = await supabase.from('delivery_zones').insert({
-        restaurant_id: restaurantId,
+      const payload = {
         location_name: formData.location_name,
         fee: feeInBase,
-        is_active: true,
-      });
+        center_lat: formData.centerLat,
+        center_lng: formData.centerLng,
+        radius_meters: formData.radiusMeters,
+      };
 
-      if (error) throw error;
+      if (editingZone) {
+        const { error } = await supabase
+          .from('delivery_zones')
+          .update(payload)
+          .eq('id', editingZone.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('delivery_zones').insert({
+          restaurant_id: restaurantId,
+          ...payload,
+          is_active: true,
+        });
+        if (error) throw error;
+      }
 
       invalidatePublicMenuCache(queryClient, restaurant?.slug);
-      setFormData({ location_name: '', feeInput: '0' });
-      setFeeCurrency(baseCurrency);
-      setShowForm(false);
+      resetForm();
       refetch();
     } catch (error) {
-      console.error('Erro ao criar zona:', error);
-      alert('Erro ao criar zona de entrega');
+      console.error('Erro ao salvar zona:', error);
+      alert('Erro ao salvar zona de entrega');
     }
   };
 
@@ -140,10 +196,10 @@ export default function AdminDeliveryZones() {
           <div>
             <h1 className="text-3xl font-bold">Zonas de Entrega</h1>
             <p className="text-muted-foreground">
-              Configure os bairros e taxas de entrega
+              Configure os bairros e taxas de entrega com raio no mapa
             </p>
           </div>
-          <Button onClick={() => setShowForm(!showForm)} data-testid="delivery-zone-new">
+          <Button onClick={() => { resetForm(); setShowForm(true); setFormData(emptyForm(baseCurrency)); }} data-testid="delivery-zone-new">
             <Plus className="h-4 w-4 mr-2" />
             Nova Zona
           </Button>
@@ -152,7 +208,7 @@ export default function AdminDeliveryZones() {
         {showForm && (
           <Card>
             <CardHeader>
-              <CardTitle>Nova Zona de Entrega</CardTitle>
+              <CardTitle>{editingZone ? 'Editar Zona de Entrega' : 'Nova Zona de Entrega'}</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -204,17 +260,39 @@ export default function AdminDeliveryZones() {
                     Use 0 para entrega grátis
                   </p>
                 </div>
+
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <Label>Raio de alcance</Label>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {formData.radiusMeters >= 1000
+                        ? `${(formData.radiusMeters / 1000).toFixed(1)} km`
+                        : `${formData.radiusMeters} m`}
+                    </span>
+                  </div>
+                  <Slider
+                    value={[formData.radiusMeters]}
+                    onValueChange={([v]) => setFormData({ ...formData, radiusMeters: v })}
+                    min={RADIUS_MIN}
+                    max={RADIUS_MAX}
+                    step={100}
+                    className="w-full"
+                  />
+                </div>
+
+                <Suspense fallback={<Skeleton className="h-[280px] w-full rounded-xl" />}>
+                  <ZoneRadiusMapEditor
+                    centerLat={formData.centerLat}
+                    centerLng={formData.centerLng}
+                    radiusMeters={formData.radiusMeters}
+                    onCenterChange={(lat, lng) => setFormData({ ...formData, centerLat: lat, centerLng: lng })}
+                    height="280px"
+                  />
+                </Suspense>
+
                 <div className="flex gap-2">
                   <Button type="submit">Salvar</Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setShowForm(false);
-                      setFormData({ location_name: '', feeInput: '0' });
-                      setFeeCurrency(baseCurrency);
-                    }}
-                  >
+                  <Button type="button" variant="outline" onClick={resetForm}>
                     Cancelar
                   </Button>
                 </div>
@@ -230,7 +308,7 @@ export default function AdminDeliveryZones() {
               <p className="text-muted-foreground mb-4">
                 Você ainda não tem zonas de entrega cadastradas
               </p>
-              <Button onClick={() => setShowForm(true)}>
+              <Button onClick={() => { resetForm(); setShowForm(true); }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Primeira Zona
               </Button>
@@ -261,7 +339,9 @@ export default function AdminDeliveryZones() {
                         : formatCurrency(zone.fee, baseCurrency)}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Taxa de entrega
+                      Taxa de entrega · Raio {(zone.radius_meters ?? 2000) >= 1000
+                        ? `${((zone.radius_meters ?? 2000) / 1000).toFixed(1)} km`
+                        : `${zone.radius_meters ?? 2000} m`}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -274,7 +354,11 @@ export default function AdminDeliveryZones() {
                     >
                       {zone.is_active ? 'Desativar' : 'Ativar'}
                     </Button>
-                    <Button variant="outline" size="icon">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => openEdit(zone)}
+                    >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button

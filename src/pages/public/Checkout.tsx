@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCartStore } from '@/store/cartStore';
 import { supabase } from '@/lib/supabase';
@@ -36,8 +36,10 @@ import {
   User, StickyNote, Check, X as XIcon, ShoppingBag,
   QrCode, Landmark, Info, Copy, AlertCircle,
 } from 'lucide-react';
-import MapAddressPicker from '@/components/public/MapAddressPicker';
+import { Skeleton } from '@/components/ui/skeleton';
 import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones } from '@/hooks/queries';
+
+const MapAddressPicker = lazy(() => import('@/components/public/MapAddressPicker'));
 import LoyaltyCard from '@/components/public/LoyaltyCard';
 
 // Coordenadas padrão por moeda — Tríplice Fronteira
@@ -158,6 +160,17 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     setMapKey((k) => k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseCurrency]);
+
+  // Quando o cliente seleciona uma zona, centraliza o mapa no centro da zona
+  useEffect(() => {
+    if (!selectedZoneId || locationFromStorage.current) return;
+    const zone = zones.find((z) => z.id === selectedZoneId);
+    if (zone?.center_lat != null && zone?.center_lng != null) {
+      setLatitude(zone.center_lat);
+      setLongitude(zone.center_lng);
+      setMapKey((k) => k + 1);
+    }
+  }, [selectedZoneId, zones]);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -779,8 +792,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
         )}
 
-        {/* ── 5. Endereço de entrega com mapa (apenas delivery, não-mesa) ── */}
-        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
+        {/* ── 5. Endereço de entrega com mapa — só aparece após selecionar zona (ou se não há zonas) ── */}
+        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (zones.length === 0 || selectedZoneId) && (
           <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
               <div className="h-6 w-6 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
@@ -793,18 +806,22 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             </div>
 
             <div className="p-4 space-y-3">
-              {/* Mapa sempre visível — usuário arrasta para sua localização */}
-              <MapAddressPicker
-                key={mapKey}
-                lat={latitude}
-                lng={longitude}
-                onLocationChange={(lat, lng) => {
-                  locationFromStorage.current = true;
-                  setLatitude(lat);
-                  setLongitude(lng);
-                }}
-                height="240px"
-              />
+              <Suspense fallback={<Skeleton className="h-[240px] w-full rounded-xl" />}>
+                <MapAddressPicker
+                  key={mapKey}
+                  lat={latitude}
+                  lng={longitude}
+                  onLocationChange={(lat, lng) => {
+                    locationFromStorage.current = true;
+                    setLatitude(lat);
+                    setLongitude(lng);
+                  }}
+                  height="240px"
+                  zoneCenterLat={selectedZone ? (selectedZone.center_lat ?? undefined) : undefined}
+                  zoneCenterLng={selectedZone ? (selectedZone.center_lng ?? undefined) : undefined}
+                  zoneRadiusMeters={selectedZone ? (selectedZone.radius_meters ?? undefined) : undefined}
+                />
+              </Suspense>
 
               {/* Complemento / Referência */}
               <div>

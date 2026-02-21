@@ -7,7 +7,7 @@ async function fetchDeliveryZones(restaurantId: string | null): Promise<Delivery
   if (!restaurantId) return [];
   const { data, error } = await supabase
     .from('delivery_zones')
-    .select('id, restaurant_id, location_name, fee, is_active, created_at')
+    .select('id, restaurant_id, location_name, fee, is_active, center_lat, center_lng, radius_meters, created_at')
     .eq('restaurant_id', restaurantId)
     .order('location_name', { ascending: true });
   if (error) throw error;

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Circle, useMapEvents } from 'react-leaflet';
+import { useTranslation } from 'react-i18next';
 import 'leaflet/dist/leaflet.css';
 
 interface MapAddressPickerProps {
@@ -7,6 +8,10 @@ interface MapAddressPickerProps {
   lng: number;
   onLocationChange: (lat: number, lng: number) => void;
   height?: string;
+  /** Centro da zona de entrega — quando definido, o mapa exibe o círculo de limite */
+  zoneCenterLat?: number;
+  zoneCenterLng?: number;
+  zoneRadiusMeters?: number;
 }
 
 function MapMoveHandler({
@@ -34,15 +39,26 @@ export default function MapAddressPicker({
   lng,
   onLocationChange,
   height = '240px',
+  zoneCenterLat,
+  zoneCenterLng,
+  zoneRadiusMeters,
 }: MapAddressPickerProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const { t } = useTranslation();
+  const hasZoneBounds = zoneCenterLat != null && zoneCenterLng != null && (zoneRadiusMeters ?? 0) > 0;
+  const mapCenter: [number, number] = hasZoneBounds ? [zoneCenterLat, zoneCenterLng] : [lat, lng];
+  const mapZoom = hasZoneBounds ? 15 : 17;
+
+  const instruction = hasZoneBounds
+    ? t('checkout.mapInstructionZone')
+    : 'Arraste o mapa para posicionar o pino exatamente na sua localização';
 
   return (
     <div className="space-y-2">
       {/* Instruction */}
       <p className="flex items-center gap-1.5 text-xs text-slate-500 select-none">
         <span className="text-sm leading-none">✋</span>
-        Arraste o mapa para posicionar o pino exatamente na sua localização
+        {instruction}
       </p>
 
       {/* Map container with fixed pin overlay */}
@@ -52,8 +68,8 @@ export default function MapAddressPicker({
         style={{ height }}
       >
         <MapContainer
-          center={[lat, lng]}
-          zoom={17}
+          center={mapCenter}
+          zoom={mapZoom}
           className="h-full w-full"
           style={{ height } as React.CSSProperties}
         >
@@ -61,6 +77,18 @@ export default function MapAddressPicker({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          {hasZoneBounds && (
+            <Circle
+              center={[zoneCenterLat!, zoneCenterLng!]}
+              radius={zoneRadiusMeters!}
+              pathOptions={{
+                color: 'rgb(234, 88, 12)',
+                fillColor: 'rgb(234, 88, 12)',
+                fillOpacity: 0.15,
+                weight: 2,
+              }}
+            />
+          )}
           <MapMoveHandler
             onLocationChange={onLocationChange}
             onMoveStart={() => setIsDragging(true)}
