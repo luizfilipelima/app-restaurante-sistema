@@ -5,7 +5,7 @@ import { Restaurant, Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, Mar
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { useRestaurantMenuData, useActiveOffersByRestaurantId } from '@/hooks/queries';
-import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2 } from 'lucide-react';
+import { ShoppingCart, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
@@ -357,42 +357,43 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           <div className="h-full w-1/3 bg-orange-500 rounded-r-full animate-[progress-slide_1.5s_ease-in-out_infinite]" />
         </div>
       )}
-      {/* Header - Mobile First */}
-      <header className="bg-white/95 backdrop-blur-sm border-b border-slate-200/80 sticky top-0 z-20 safe-area-inset-top">
+      {/* Header - Layout referência: logo + nome/status à esquerda, carrinho à direita */}
+      <header className="bg-white/95 backdrop-blur-sm border-b border-slate-200/60 sticky top-0 z-20 safe-area-inset-top">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-6xl">
-          <div className="flex items-center justify-between gap-2 sm:gap-4">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-              <div className="h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-xl sm:rounded-2xl overflow-hidden ring-2 ring-slate-100 flex-shrink-0 bg-white shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl overflow-hidden ring-1 ring-slate-200/80 flex-shrink-0 bg-white shadow-sm">
                 {restaurant.logo ? (
                   <img src={restaurant.logo} alt={restaurant.name} width={56} height={56} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-base sm:text-lg">
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-lg">
                     {restaurant.name.charAt(0)}
                   </div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 truncate tracking-tight leading-tight">{restaurant.name}</h1>
-                <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1 flex-wrap">
-                  <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full ${isOpen ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
-                    <span className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-red-500'} ${isOpen ? 'animate-pulse' : ''}`} />
-                    {isOpen ? t('menu.open') : t('menu.closed')}
-                  </span>
-                  <span className="text-slate-400 text-[10px] sm:text-xs flex items-center gap-1">
-                    <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {t('menu.estimateTime')}
-                  </span>
-                </div>
+                <h1 className="text-base sm:text-lg font-bold text-slate-900 truncate tracking-tight leading-tight">{restaurant.name}</h1>
+                <span className={`inline-flex items-center gap-1.5 text-xs font-medium mt-0.5 ${isOpen ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-red-500'} ${isOpen ? 'animate-pulse' : ''}`} />
+                  {isOpen ? t('menu.open') : t('menu.closed')}
+                </span>
               </div>
             </div>
-            <Button
-              size="lg"
+            {/* Ícone de carrinho — quadrado escuro com badge laranja */}
+            <button
+              type="button"
               data-testid="menu-view-cart"
-              className="rounded-xl sm:rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 active:scale-95 !text-white border-0 px-3 sm:px-5 py-3 sm:py-6 h-auto gap-1.5 sm:gap-2 font-semibold text-base sm:text-sm shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-200 min-w-[44px] sm:min-w-[130px] flex-shrink-0 touch-manipulation text-sm-mobile-inline [&_svg]:text-white"
               onClick={() => setCartOpen(true)}
+              className="relative h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 flex items-center justify-center text-white transition-all touch-manipulation flex-shrink-0"
+              aria-label={t('menu.viewCart')}
             >
-              <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden sm:inline">{t('menu.viewCart')}</span>
-            </Button>
+              <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6" />
+              {getItemsCount() > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm">
+                  {getItemsCount()}
+                </span>
+              )}
+            </button>
           </div>
         </div>
         {/* Barra Mesa + Chamar Garçom - modo mesa */}
@@ -421,33 +422,32 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       </header>
 
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-6xl space-y-4 sm:space-y-6">
-        {/* Busca e categorias - Mobile First */}
-        <div className={`sticky z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-slate-100/80 backdrop-blur-md rounded-xl sm:rounded-2xl ${tableNumber != null && onCallWaiter ? 'top-[115px] sm:top-[125px] md:top-[135px]' : 'top-[65px] sm:top-[73px] md:top-[81px]'}`}>
-          <div className="space-y-3 sm:space-y-4">
+        {/* Busca e categorias — layout referência: busca em destaque + pills horizontais */}
+        <div className={`sticky z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-white/95 backdrop-blur-sm rounded-b-xl ${tableNumber != null && onCallWaiter ? 'top-[115px] sm:top-[125px] md:top-[135px]' : 'top-[65px] sm:top-[73px] md:top-[81px]'}`}>
+          <div className="space-y-3">
             <div className="relative">
               <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none z-10" />
               <Input
                 placeholder={t('menu.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-3 sm:pr-4 bg-white border-slate-200/80 rounded-xl sm:rounded-2xl border shadow-sm focus-visible:border-orange-400 focus-visible:ring-2 focus-visible:ring-orange-400/20 text-base sm:text-base text-slate-900 placeholder:text-slate-400 transition-shadow touch-manipulation"
+                className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-3 sm:pr-4 bg-white border border-slate-200 rounded-xl border-slate-200/80 focus-visible:border-slate-300 focus-visible:ring-2 focus-visible:ring-slate-200/50 text-base text-slate-900 placeholder:text-slate-400 transition-colors touch-manipulation"
               />
             </div>
 
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory scroll-smooth -mx-1 px-1">
+            {/* Categorias em formato pill — ícone + texto inline */}
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory scroll-smooth">
               <button
                 type="button"
                 onClick={() => setSelectedCategory('all')}
-                className={`flex flex-col items-center justify-center gap-1 min-w-[64px] sm:min-w-[70px] h-[68px] sm:h-[74px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
                   selectedCategory === 'all'
-                    ? 'bg-slate-900 text-white shadow-md'
-                    : 'bg-white text-slate-600 border border-slate-200/80 active:border-slate-300 active:bg-slate-50'
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                 }`}
               >
-                <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${selectedCategory === 'all' ? 'bg-white/15' : 'bg-slate-100'}`}>
-                  <Utensils className="h-4 w-4 sm:h-5 sm:w-5" />
-                </div>
-                <span className="text-[10px] sm:text-xs font-semibold leading-tight">{t('menu.all')}</span>
+                <Utensils className="h-4 w-4 flex-shrink-0" />
+                <span>{t('menu.all')}</span>
               </button>
               {categories.map((category) => {
                 const Icon = CATEGORY_ICONS[category] || CATEGORY_ICONS['default'];
@@ -456,16 +456,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                     type="button"
                     key={category}
                     onClick={() => setSelectedCategory(category)}
-                    className={`flex flex-col items-center justify-center gap-1 min-w-[64px] sm:min-w-[70px] h-[68px] sm:h-[74px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
                       selectedCategory === category
-                        ? 'bg-slate-900 text-white shadow-md'
-                        : 'bg-white text-slate-600 border border-slate-200/80 active:border-slate-300 active:bg-slate-50'
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                     }`}
                   >
-                    <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${selectedCategory === category ? 'bg-white/15' : 'bg-slate-100'}`}>
-                      <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </div>
-                    <span className="text-[10px] sm:text-xs font-semibold whitespace-nowrap leading-tight">{category}</span>
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="whitespace-nowrap">{category}</span>
                   </button>
                 );
               })}
@@ -613,8 +611,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           </a>
         </footer>
       </main>
+    </div>
 
-      {/* Cart FAB (Mobile) - Mobile First */}
+      {/* Cart FAB (Mobile) - fixo na viewport, fora do wrapper com transform para acompanhar a rolagem */}
       {getItemsCount() > 0 && (
         <div 
           className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
@@ -729,7 +728,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           />
         )}
       </Suspense>
-    </div>
       {splashOverlay && <InitialSplashScreen exiting={splashFadeOut} />}
     </>
   );
