@@ -10,7 +10,6 @@ import { isWithinOpeningHours } from '@/lib/utils';
 import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import ProductCardViewOnly from '@/components/public/ProductCardViewOnly';
-import { shouldUseBeverageCard } from '@/lib/productCardLayout';
 
 const CATEGORY_ICONS: Record<string, any> = {
   Marmitas: UtensilsCrossed,
@@ -238,12 +237,10 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                       {subcatsForCategory.map((sub) => {
                         const subProducts = categoryProducts.filter((p) => p.subcategory_id === sub.id);
                         if (subProducts.length === 0) return null;
-                        const allBeverage = subProducts.every((p) => shouldUseBeverageCard(p));
-                        const containerClass = allBeverage ? 'flex flex-col gap-2 sm:gap-2.5' : 'grid grid-cols-2 lg:grid-cols-4 gap-4';
                         return (
                           <div key={sub.id} className="space-y-2">
                             <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
-                            <div className={containerClass}>
+                            <div className="flex flex-col gap-3 sm:gap-4">
                               {subProducts.map((product) => (
                                 <ProductCardViewOnly key={product.id} product={product} currency={currency} comboItems={productComboItemsMap?.[product.id]} />
                               ))}
@@ -251,45 +248,30 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                           </div>
                         );
                       })}
-                      {productsWithoutSub.length > 0 && (() => {
-                        const allBeverage = productsWithoutSub.every((p) => shouldUseBeverageCard(p));
-                        const containerClass = allBeverage ? 'flex flex-col gap-2 sm:gap-2.5' : 'grid grid-cols-2 lg:grid-cols-4 gap-4';
-                        return (
-                          <div className={containerClass}>
+                      {productsWithoutSub.length > 0 && (
+                          <div className="flex flex-col gap-3 sm:gap-4">
                             {productsWithoutSub.map((product) => (
                               <ProductCardViewOnly key={product.id} product={product} currency={currency} comboItems={productComboItemsMap?.[product.id]} />
                             ))}
                           </div>
-                        );
-                      })()}
+                      )}
                     </>
                   ) : (
-                    (() => {
-                      const allBeverage = categoryProducts.every((p) => shouldUseBeverageCard(p));
-                      const containerClass = allBeverage ? 'flex flex-col gap-2 sm:gap-2.5' : 'grid grid-cols-2 lg:grid-cols-4 gap-4';
-                      return (
-                        <div className={containerClass}>
+                        <div className="flex flex-col gap-3 sm:gap-4">
                           {categoryProducts.map((product) => (
                             <ProductCardViewOnly key={product.id} product={product} currency={currency} comboItems={productComboItemsMap?.[product.id]} />
                           ))}
                         </div>
-                      );
-                    })()
                   )}
                 </div>
               );
             })
           ) : (
-            // Exibir apenas produtos da categoria selecionada
-            (() => {
-              const allBeverage = filteredProducts.every((p) => shouldUseBeverageCard(p));
-              const containerClass = allBeverage ? 'flex flex-col gap-2 sm:gap-2.5' : 'grid grid-cols-2 lg:grid-cols-4 gap-4';
-              return (
                 <>
                   <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
                     {selectedCategory}
                   </h2>
-                  <div className={containerClass}>
+                  <div className="flex flex-col gap-3 sm:gap-4">
                     {filteredProducts.map((product) => (
                       <ProductCardViewOnly
                         key={product.id}
@@ -300,8 +282,6 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                     ))}
                   </div>
                 </>
-              );
-            })()
           )}
 
           {filteredProducts.length === 0 && (

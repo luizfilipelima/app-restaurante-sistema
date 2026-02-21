@@ -1,10 +1,9 @@
 import type { Product } from '@/types';
 
 /**
- * Define se o produto deve usar layout horizontal no cardápio.
- * Padrão: horizontal para todos. Apenas retorna false quando card_layout === 'grid'.
+ * Define se o produto usa card horizontal (padrão).
+ * Todos os produtos usam layout horizontal minimalista; 'grid' é ignorado para consistência.
  */
-export function shouldUseBeverageCard(product: Product): boolean {
-  if (product.card_layout === 'grid') return false;
-  return true; // Padrão: card horizontal para todos os produtos
+export function shouldUseBeverageCard(_product: Product): boolean {
+  return true; // Sempre horizontal para UX consistente e elegante
 }
