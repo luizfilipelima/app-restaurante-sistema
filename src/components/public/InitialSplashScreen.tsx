@@ -53,13 +53,6 @@ export default function InitialSplashScreen({ exiting = false, className }: Init
             style={{ strokeDashoffset: 1 }}
           />
         </svg>
-        {/* Texto sutil da marca — entra após o ícone começar a ser desenhado */}
-        <p
-          className="mt-6 text-sm font-semibold tracking-[0.2em] uppercase text-orange-500/80 animate-text-fade"
-          aria-hidden
-        >
-          Quiero.food
-        </p>
       </div>
     </div>
   );

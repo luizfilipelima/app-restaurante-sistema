@@ -7,7 +7,6 @@ import { useRestaurantStore } from '@/store/restaurantStore';
 import { useRestaurantMenuData, useActiveOffersByRestaurantId } from '@/hooks/queries';
 import { ShoppingCart, Clock, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { isWithinOpeningHours, formatCurrency, normalizePhoneWithCountryCode } from '@/lib/utils';
@@ -347,72 +346,84 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   return (
     <>
       <div
-        className={`min-h-screen bg-slate-100/80 font-sans antialiased transition-all duration-500 ease-out ${
+        className={`min-h-screen min-h-[100dvh] bg-slate-50 font-sans antialiased transition-all duration-500 ease-out ${
           menuVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
-        } ${getItemsCount() > 0 ? 'pb-24 md:pb-28' : 'pb-8 md:pb-8'} safe-area-inset-bottom`}
+        } ${getItemsCount() > 0 ? 'pb-28 md:pb-32' : 'pb-6 md:pb-8'}`}
+        style={{ paddingBottom: getItemsCount() > 0 ? `max(5rem, calc(5rem + env(safe-area-inset-bottom)))` : undefined }}
       >
-      {/* Barra sutil de refresh quando dados em background (keepPreviousData) */}
+      {/* Barra sutil de refresh quando dados em background */}
       {isRefreshing && (
         <div className="fixed top-0 left-0 right-0 h-0.5 bg-orange-200/80 z-[100] overflow-hidden">
           <div className="h-full w-1/3 bg-orange-500 rounded-r-full animate-[progress-slide_1.5s_ease-in-out_infinite]" />
         </div>
       )}
-      {/* Header - Mobile First */}
-      <header className="bg-white/95 backdrop-blur-sm border-b border-slate-200/80 sticky top-0 z-20 safe-area-inset-top">
-        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-6xl">
-          <div className="flex items-center justify-between gap-2 sm:gap-4">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-              <div className="h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-xl sm:rounded-2xl overflow-hidden ring-2 ring-slate-100 flex-shrink-0 bg-white shadow-sm">
+
+      {/* Header compacto — mobile-first */}
+      <header
+        className="sticky top-0 z-30 bg-white/98 backdrop-blur-md border-b border-slate-200/60"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
+        <div className="px-4 py-3 sm:px-5 sm:py-3.5 max-w-4xl mx-auto">
+          <div className="flex items-center gap-3 min-h-[44px]">
+            {/* Logo + Nome */}
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 ring-1 ring-slate-200/60">
                 {restaurant.logo ? (
-                  <img src={restaurant.logo} alt={restaurant.name} width={56} height={56} className="w-full h-full object-cover" />
+                  <img src={restaurant.logo} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-base sm:text-lg">
+                  <div className="w-full h-full flex items-center justify-center bg-orange-500 text-white font-bold text-sm">
                     {restaurant.name.charAt(0)}
                   </div>
                 )}
               </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 truncate tracking-tight leading-tight">{restaurant.name}</h1>
-                <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1 flex-wrap">
-                  <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full ${isOpen ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
-                    <span className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-red-500'} ${isOpen ? 'animate-pulse' : ''}`} />
+              <div className="min-w-0">
+                <h1 className="text-[15px] sm:text-base font-bold text-slate-900 truncate leading-tight">
+                  {restaurant.name}
+                </h1>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span
+                    className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${isOpen ? 'text-emerald-600' : 'text-red-600'}`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
                     {isOpen ? t('menu.open') : t('menu.closed')}
                   </span>
-                  <span className="text-slate-400 text-[10px] sm:text-xs flex items-center gap-1">
-                    <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {t('menu.estimateTime')}
+                  <span className="text-slate-400 text-[11px] hidden sm:inline flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> {t('menu.estimateTime')}
                   </span>
                 </div>
               </div>
             </div>
-            <Button
-              size="lg"
+
+            {/* Carrinho — sempre visível, badge quando há itens */}
+            <button
+              type="button"
               data-testid="menu-view-cart"
-              className="rounded-xl sm:rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 active:scale-95 !text-white border-0 px-3 sm:px-5 py-3 sm:py-6 h-auto gap-1.5 sm:gap-2 font-semibold text-base sm:text-sm shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-200 min-w-[44px] sm:min-w-[130px] flex-shrink-0 touch-manipulation text-sm-mobile-inline [&_svg]:text-white"
               onClick={() => setCartOpen(true)}
+              className="relative flex items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-slate-900 text-white active:scale-95 transition-transform touch-manipulation flex-shrink-0"
+              aria-label={t('menu.viewCart')}
             >
-              <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden sm:inline">{t('menu.viewCart')}</span>
-            </Button>
+              <ShoppingCart className="h-5 w-5 sm:h-5 sm:w-5" />
+              {getItemsCount() > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 rounded-full bg-orange-500 text-[11px] font-bold flex items-center justify-center text-white shadow-sm">
+                  {getItemsCount()}
+                </span>
+              )}
+            </button>
           </div>
         </div>
-        {/* Barra Mesa + Chamar Garçom - modo mesa */}
+
+        {/* Modo mesa */}
         {tableNumber != null && onCallWaiter && (
-          <div className="border-t border-amber-200/60 bg-amber-50/90">
-            <div className="container mx-auto max-w-6xl flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5">
-              <span className="text-sm font-semibold text-amber-900">
-                {t('menu.tableLabel')} {tableNumber}
-              </span>
+          <div className="border-t border-amber-200/60 bg-amber-50/80">
+            <div className="px-4 py-2.5 sm:px-5 flex items-center justify-between max-w-4xl mx-auto">
+              <span className="text-sm font-semibold text-amber-900">{t('menu.tableLabel')} {tableNumber}</span>
               <Button
                 onClick={onCallWaiter}
                 disabled={callingWaiter}
                 size="sm"
-                className="flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold shadow-sm"
+                className="h-9 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold gap-2"
               >
-                {callingWaiter ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Bell className="h-4 w-4" />
-                )}
+                {callingWaiter ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
                 {t('menu.callWaiter')}
               </Button>
             </div>
@@ -420,34 +431,38 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         )}
       </header>
 
-      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-6xl space-y-4 sm:space-y-6">
-        {/* Busca e categorias - Mobile First */}
-        <div className={`sticky z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-slate-100/80 backdrop-blur-md rounded-xl sm:rounded-2xl ${tableNumber != null && onCallWaiter ? 'top-[115px] sm:top-[125px] md:top-[135px]' : 'top-[65px] sm:top-[73px] md:top-[81px]'}`}>
-          <div className="space-y-3 sm:space-y-4">
+      <main className="max-w-4xl mx-auto px-4 py-4 sm:px-5 sm:py-5 space-y-5">
+        {/* Busca + Categorias em pills — sticky abaixo do header */}
+        <div
+          className={`sticky z-20 -mx-4 sm:-mx-5 px-4 sm:px-5 py-4 bg-slate-50/98 backdrop-blur-md ${tableNumber != null && onCallWaiter ? 'top-[7rem]' : 'top-[4.25rem]'}`}
+        >
+          <div className="space-y-3">
+            {/* Busca */}
             <div className="relative">
-              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none z-10" />
-              <Input
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+              <input
+                type="search"
                 placeholder={t('menu.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-3 sm:pr-4 bg-white border-slate-200/80 rounded-xl sm:rounded-2xl border shadow-sm focus-visible:border-orange-400 focus-visible:ring-2 focus-visible:ring-orange-400/20 text-base sm:text-base text-slate-900 placeholder:text-slate-400 transition-shadow touch-manipulation"
+                className="w-full h-12 pl-11 pr-4 bg-white border border-slate-200 rounded-xl text-[16px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-400 transition-shadow"
+                autoComplete="off"
               />
             </div>
 
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory scroll-smooth -mx-1 px-1">
+            {/* Categorias — pills horizontais, scroll suave */}
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1 scroll-smooth">
               <button
                 type="button"
                 onClick={() => setSelectedCategory('all')}
-                className={`flex flex-col items-center justify-center gap-1 min-w-[64px] sm:min-w-[70px] h-[68px] sm:h-[74px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
+                className={`flex items-center gap-2 h-10 px-4 rounded-full font-medium text-sm whitespace-nowrap flex-shrink-0 transition-all touch-manipulation active:scale-[0.98] ${
                   selectedCategory === 'all'
-                    ? 'bg-slate-900 text-white shadow-md'
-                    : 'bg-white text-slate-600 border border-slate-200/80 active:border-slate-300 active:bg-slate-50'
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
                 }`}
               >
-                <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${selectedCategory === 'all' ? 'bg-white/15' : 'bg-slate-100'}`}>
-                  <Utensils className="h-4 w-4 sm:h-5 sm:w-5" />
-                </div>
-                <span className="text-[10px] sm:text-xs font-semibold leading-tight">{t('menu.all')}</span>
+                <Utensils className="h-4 w-4" />
+                {t('menu.all')}
               </button>
               {categories.map((category) => {
                 const Icon = CATEGORY_ICONS[category] || CATEGORY_ICONS['default'];
@@ -456,16 +471,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                     type="button"
                     key={category}
                     onClick={() => setSelectedCategory(category)}
-                    className={`flex flex-col items-center justify-center gap-1 min-w-[64px] sm:min-w-[70px] h-[68px] sm:h-[74px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
+                    className={`flex items-center gap-2 h-10 px-4 rounded-full font-medium text-sm whitespace-nowrap flex-shrink-0 transition-all touch-manipulation active:scale-[0.98] ${
                       selectedCategory === category
-                        ? 'bg-slate-900 text-white shadow-md'
-                        : 'bg-white text-slate-600 border border-slate-200/80 active:border-slate-300 active:bg-slate-50'
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${selectedCategory === category ? 'bg-white/15' : 'bg-slate-100'}`}>
-                      <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </div>
-                    <span className="text-[10px] sm:text-xs font-semibold whitespace-nowrap leading-tight">{category}</span>
+                    <Icon className="h-4 w-4" />
+                    {category}
                   </button>
                 );
               })}
@@ -473,16 +486,16 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           </div>
         </div>
 
-        {/* ── Seção Ofertas no topo (mesmo padrão de grid e ProductCard das categorias) ── */}
+        {/* Ofertas — destaque visual */}
         {activeOffers.length > 0 && selectedCategory === 'all' && (
-          <section className="space-y-3 sm:space-y-5">
-            <h2 className="text-sm-mobile-block sm:text-base font-semibold text-orange-700 uppercase tracking-wider px-1 flex items-center gap-2">
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-orange-700 flex items-center gap-2">
               {t('menu.offers')}
-              <span className="text-xs font-semibold text-orange-600 bg-orange-200/60 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">
                 {activeOffers.length}
               </span>
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {activeOffers.map((offer) => (
                 <ProductCard
                   key={offer.id}
@@ -503,9 +516,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             // Estrutura pré-computada via useMemo — sem filtros inline a cada render
             groupedByCategory.map(({ categoryName, categoryProducts, subcatsForCategory, productsWithSub, productsWithoutSub, hasSubs }) => (
               <div key={categoryName} className="space-y-3 sm:space-y-5">
-                <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
-                  {categoryName}
-                </h2>
+              <h2 className="text-sm font-semibold text-slate-600">
+                {categoryName}
+              </h2>
                 {hasSubs ? (
                   <>
                     {subcatsForCategory.map((sub) => {
@@ -513,8 +526,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       if (subProducts.length === 0) return null;
                       return (
                         <div key={sub.id} className="space-y-2">
-                          <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <h3 className="text-xs font-medium text-slate-400">{sub.name}</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             {subProducts.map((product) => {
                               const offer = productIdToOffer.get(product.id);
                               return (
@@ -533,7 +546,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       );
                     })}
                     {productsWithoutSub.length > 0 && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         {productsWithoutSub.map((product) => {
                           const offer = productIdToOffer.get(product.id);
                           return (
@@ -551,7 +564,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                     )}
                   </>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     {categoryProducts.map((product) => {
                       const offer = productIdToOffer.get(product.id);
                       return (
@@ -572,10 +585,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           ) : (
             // Exibir apenas produtos da categoria selecionada
             <>
-              <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
+              <h2 className="text-sm font-semibold text-slate-600">
                 {selectedCategory}
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {filteredProducts.map((product) => {
                   const offer = productIdToOffer.get(product.id);
                   return (
@@ -594,64 +607,51 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           )}
 
           {filteredProducts.length === 0 && (
-            <div className="text-center py-12 sm:py-16 bg-white/60 rounded-xl sm:rounded-2xl border border-dashed border-slate-200 mx-1">
-              <p className="text-slate-500 text-base sm:text-sm text-sm-mobile-block">{t('menu.noProductsInCategory')}</p>
+            <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
+              <p className="text-slate-500 text-base">{t('menu.noProductsInCategory')}</p>
             </div>
           )}
         </section>
 
-        {/* Rodapé */}
-        <footer className="pt-8 pb-6 text-center border-t border-slate-200/60">
+        {/* Rodapé mínimo */}
+        <footer className="pt-6 pb-4 text-center">
           <a
             href="https://quiero.food"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex flex-col items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors"
+            className="inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-500 text-xs transition-colors"
           >
-            <img src="/quierofood-logo-f.svg" alt="Quiero.food" width={80} height={28} loading="lazy" className="h-7 w-auto object-contain opacity-80 hover:opacity-100" />
-            <span className="text-xs">{t('menu.developedBy')}</span>
+            <img src="/quierofood-logo-f.svg" alt="" width={64} height={22} loading="lazy" className="h-5 w-auto opacity-70" />
+            <span>{t('menu.developedBy')}</span>
           </a>
         </footer>
       </main>
 
-      {/* Cart FAB (Mobile) - Mobile First */}
+      {/* Cart FAB — mobile, sempre visível quando há itens */}
       {getItemsCount() > 0 && (
-        <div 
-          className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
-          style={{ 
-            paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
-            paddingLeft: 'max(12px, env(safe-area-inset-left))',
-            paddingRight: 'max(12px, env(safe-area-inset-right))'
-          }}
+        <div
+          className="fixed bottom-0 left-0 right-0 z-50 md:hidden px-4 pb-4"
+          style={{ paddingBottom: 'max(1rem, calc(1rem + env(safe-area-inset-bottom)))' }}
         >
-          <div className="px-3 pb-3">
-            <Button
-              className="w-full h-16 rounded-3xl bg-slate-900 text-white shadow-xl shadow-slate-900/30 hover:bg-slate-800 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch"
-              onClick={() => setCartOpen(true)}
-            >
-              {/* Left Side: Info */}
-              <div className="flex-1 flex items-center justify-start px-4 gap-3.5">
-                <div className="relative">
-                   <div className="bg-orange-500 h-9 w-9 rounded-full flex items-center justify-center border border-orange-400/50 shadow-md shadow-orange-500/30">
-                      <span className="text-sm font-bold text-white">{getItemsCount()}</span>
-                   </div>
-                </div>
-                <div className="flex flex-col items-start justify-center">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold leading-tight">{t('menu.total')}</span>
-                  <span className="text-base font-bold text-white leading-tight">{formatCurrency(getSubtotal(), currency)}</span>
-                </div>
+          <button
+            type="button"
+            onClick={() => setCartOpen(true)}
+            className="w-full h-14 rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/25 active:scale-[0.98] transition-transform flex items-center justify-between px-5 touch-manipulation"
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500 text-sm font-bold">
+                {getItemsCount()}
+              </span>
+              <div className="text-left">
+                <span className="block text-[10px] uppercase tracking-wider text-slate-400 font-medium">{t('menu.total')}</span>
+                <span className="block text-base font-bold leading-tight">{formatCurrency(getSubtotal(), currency)}</span>
               </div>
-
-              {/* Divider */}
-              <div className="w-[1px] bg-white/10 my-3"></div>
-
-              {/* Right Side: CTA — gradiente laranja para destaque e incentivo à ação */}
-              <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] bg-gradient-to-br from-[#F56E13] to-[#EB5A0C] text-white shadow-lg shadow-orange-600/25 hover:brightness-110 transition-all duration-200">
-                <span className="text-sm font-bold drop-shadow-sm">{t('menu.viewBag')}</span>
-                <ChevronRight className="h-4 w-4 drop-shadow-sm" aria-hidden />
-              </div>
-            </Button>
-          </div>
+            </div>
+            <span className="flex items-center gap-1.5 text-sm font-semibold text-orange-400">
+              {t('menu.viewBag')}
+              <ChevronRight className="h-4 w-4" />
+            </span>
+          </button>
         </div>
       )}
 
