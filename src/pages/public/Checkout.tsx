@@ -34,10 +34,10 @@ import {
   ArrowLeft, Bike, Store, Smartphone, CreditCard, Banknote,
   Send, Trash2, MapPin, Map, Gift, Minus, Plus,
   User, StickyNote, Check, X as XIcon, ShoppingBag,
-  QrCode, Landmark, Info, Copy, AlertCircle,
+  QrCode, Landmark, Info, Copy, AlertCircle, Ticket, Loader2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones } from '@/hooks/queries';
+import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones, validateCoupon } from '@/hooks/queries';
 
 const MapAddressPicker = lazy(() => import('@/components/public/MapAddressPicker'));
 import LoyaltyCard from '@/components/public/LoyaltyCard';
@@ -123,6 +123,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
   const [pixCopied, setPixCopied] = useState(false);
   const [bankCopied, setBankCopied] = useState(false);
+
+  // ── Cupom de desconto ──
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ id: string; code: string; discountAmount: number } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
 
   // ── Feedback inline (substitui toasts) ──
   const [formError, setFormError] = useState<string | null>(null);
@@ -235,6 +241,31 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     setLongitude(lng);
   }, []);
 
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim();
+    if (!code || !restaurantId) return;
+    setCouponError(null);
+    setValidatingCoupon(true);
+    try {
+      const result = await validateCoupon(restaurantId, code, subtotal);
+      if (result.valid && result.coupon && result.discountAmount != null) {
+        setAppliedCoupon({ id: result.coupon.id, code: result.coupon.code, discountAmount: result.discountAmount });
+        setCouponCode('');
+      } else {
+        setCouponError(result.error ?? 'Cupom inválido');
+      }
+    } catch {
+      setCouponError('Erro ao validar cupom');
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError(null);
+  };
+
   const handleBackToMenu = () => {
     if (isTableOrder && isSubdomain) navigate(`/cardapio/${tableNumber}`);
     else if (isTableOrder && restaurantSlug) navigate(`/${restaurantSlug}/cardapio/${tableNumber}`);
@@ -246,7 +277,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
   const deliveryFee = deliveryType === DeliveryType.DELIVERY ? (selectedZone?.fee || 0) : 0;
   const subtotal = getSubtotal();
-  const total = subtotal + deliveryFee;
+  const discountAmount = appliedCoupon?.discountAmount ?? 0;
+  const total = Math.max(0, subtotal + deliveryFee - discountAmount);
   const totalItemCount = items.reduce((acc, i) => acc + i.quantity, 0);
 
   const handleCheckout = async () => {
@@ -312,7 +344,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     // do usuário tem mais chance de sucesso do que abrir janela em branco.
     const finalDeliveryType = isTableOrder ? DeliveryType.PICKUP : deliveryType;
     const finalDeliveryFee = isTableOrder ? 0 : deliveryFee;
-    const finalTotal = subtotal + finalDeliveryFee;
+    const finalDiscount = appliedCoupon?.discountAmount ?? 0;
+    const finalTotal = Math.max(0, subtotal + finalDeliveryFee - finalDiscount);
 
     let whatsappWin: Window | null = null;
     if (!isTableOrder && currentRestaurant) {
@@ -412,6 +445,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         delivery_fee: finalDeliveryFee,
         subtotal,
         total: finalTotal,
+        discount_coupon_id: appliedCoupon?.id ?? null,
+        discount_amount: finalDiscount,
         payment_method: isTableOrder ? PaymentMethod.TABLE : paymentMethod,
         payment_change_for: isTableOrder ? null : (paymentMethod === PaymentMethod.CASH && changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null),
         payment_pix_key: null,
@@ -1071,7 +1106,69 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
         )}
 
-        {/* ── 7. Fidelidade ── */}
+        {/* ── 7. Cupom de desconto ── */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
+              <div className="h-6 w-6 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+                <Ticket className="h-3.5 w-3.5 text-orange-600" />
+              </div>
+              <span className="text-sm font-semibold text-slate-800">{t('checkout.couponLabel')}</span>
+              <span className="text-xs text-slate-300 ml-1">• opcional</span>
+            </div>
+            <div className="p-4">
+              {appliedCoupon ? (
+                <div className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
+                      <Check className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                      {t('checkout.couponApplied')} — {appliedCoupon.code}
+                    </p>
+                    <p className="text-xs text-emerald-600 mt-0.5">
+                      {t('checkout.discount')}: {formatCurrency(convertForDisplay(appliedCoupon.discountAmount), displayCurrency)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveCoupon}
+                    className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-100 transition-colors touch-manipulation flex-shrink-0"
+                    aria-label={t('checkout.couponRemove')}
+                  >
+                    <XIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value.toUpperCase());
+                      setCouponError(null);
+                    }}
+                    placeholder={t('checkout.couponPlaceholder')}
+                    className="flex-1 font-mono uppercase placeholder:normal-case"
+                    disabled={validatingCoupon}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleApplyCoupon}
+                    disabled={!couponCode.trim() || validatingCoupon}
+                    className="shrink-0"
+                  >
+                    {validatingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : t('checkout.couponApply')}
+                  </Button>
+                </div>
+              )}
+              {couponError && (
+                <p className="text-xs text-red-600 mt-2 flex items-center gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                  {couponError}
+                </p>
+              )}
+            </div>
+          </div>
+
+        {/* ── 8. Fidelidade ── */}
         {!isTableOrder && loyaltyStatus?.enabled && (
           loyaltyRedeemed ? (
             <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-300">
@@ -1094,7 +1191,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           )
         )}
 
-        {/* ── 8. Resumo ── */}
+        {/* ── 9. Resumo ── */}
         {!isTableOrder && (
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100">
@@ -1120,6 +1217,15 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       {formatCurrency(convertForDisplay(deliveryFee), displayCurrency)}
                     </span>
                   )}
+                </div>
+              )}
+
+              {discountAmount > 0 && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-500">{t('checkout.discount')}</span>
+                  <span className="font-semibold text-emerald-600 tabular-nums">
+                    − {formatCurrency(convertForDisplay(discountAmount), displayCurrency)}
+                  </span>
                 </div>
               )}
 

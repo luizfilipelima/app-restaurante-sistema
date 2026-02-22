@@ -319,7 +319,7 @@ export default function AdminSettings() {
   const set = <K extends keyof typeof formData>(k: K, v: (typeof formData)[K]) =>
     setFormData(f => ({ ...f, [k]: v }));
 
-  const hashTab = location.hash === '#cambio' ? 'cambio' : null;
+  const hashTab = location.hash === '#cambio' ? 'cambio' : location.hash === '#fidelidade' ? 'fidelidade' : null;
   const [activeTab, setActiveTab] = useState<string>(hashTab || 'perfil');
   useEffect(() => {
     if (hashTab) setActiveTab(hashTab);

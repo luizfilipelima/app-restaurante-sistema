@@ -512,6 +512,32 @@ export interface RestaurantWithMetrics extends Restaurant {
 /** Destino do cupom de impressão para a categoria */
 export type PrintDestination = 'kitchen' | 'bar';
 
+// ==================== DISCOUNT COUPONS ====================
+
+export type DiscountCouponType = 'percent' | 'fixed';
+
+export interface DiscountCoupon {
+  id: string;
+  restaurant_id: string;
+  code: string;
+  discount_type: DiscountCouponType;
+  discount_value: number;
+  is_active: boolean;
+  max_uses: number | null;
+  use_count: number;
+  valid_from: string | null;
+  valid_until: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ValidateCouponResult {
+  valid: boolean;
+  coupon?: DiscountCoupon;
+  error?: string;
+  discountAmount?: number;
+}
+
 // ==================== LOYALTY ====================
 
 export interface LoyaltyProgram {

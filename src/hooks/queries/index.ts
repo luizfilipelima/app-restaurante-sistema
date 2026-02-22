@@ -9,6 +9,7 @@ export { useProductUpsells, useSaveProductUpsells, fetchUpsellsForProducts } fro
 export { useProductComboItems, useProductComboItemsMap, useSaveProductComboItems } from './useProductComboItems';
 export { useProductAddons, useProductAddonsMap, useSaveProductAddons } from './useProductAddons';
 export { useProductOffers, useActiveOffers, useActiveOffersByRestaurantId, fetchActiveOffersBySlug } from './useProductOffers';
+export { useDiscountCoupons, validateCoupon } from './useDiscountCoupons';
 export type { UpsellRow } from './useProductUpsells';
 export { useDeliveryZones } from './useDeliveryZones';
 export { useRestaurantMenuData } from './useRestaurantMenuData';

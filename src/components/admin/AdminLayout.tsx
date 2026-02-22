@@ -44,6 +44,8 @@ import {
   ConciergeBell,
   Instagram,
   Tag,
+  Ticket,
+  Gift,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -229,6 +231,20 @@ const buildNavSections = (
         name: t('nav.items.offers'),
         href: `${base}/offers`,
         icon: Tag,
+        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
+      },
+      {
+        kind: 'leaf',
+        name: t('nav.items.coupons'),
+        href: `${base}/coupons`,
+        icon: Ticket,
+        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
+      },
+      {
+        kind: 'leaf',
+        name: t('nav.items.loyalty'),
+        href: `${base}/settings#fidelidade`,
+        icon: Gift,
         roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
       },
     ],
@@ -608,13 +624,16 @@ export default function AdminLayout({
                         {section.label}
                       </p>
                       <div className="space-y-0.5">
-                        {section.items.map((item) => (
-                          <GuardedNavItem
-                            key={item.href}
-                            item={item}
-                            isActive={location.pathname === item.href}
-                          />
-                        ))}
+                        {section.items.map((item) => {
+                          const currentFullPath = location.pathname + (location.hash || '');
+                          return (
+                            <GuardedNavItem
+                              key={item.href}
+                              item={item}
+                              isActive={currentFullPath === item.href}
+                            />
+                          );
+                        })}
                       </div>
                     </motion.div>
                   );
@@ -625,7 +644,7 @@ export default function AdminLayout({
                   <motion.div key={section.key} variants={sidebarSectionVariants}>
                     <CollapsibleSection
                       section={section}
-                      currentPath={location.pathname}
+                      currentPath={location.pathname + (location.hash || '')}
                     />
                   </motion.div>
                 );

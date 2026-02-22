@@ -43,6 +43,7 @@ const LandingPageEditor     = lazyWithRetry(() => import('./pages/super-admin/La
 const AdminDashboard        = lazyWithRetry(() => import('./pages/admin/Dashboard'));
 const AdminMenu             = lazyWithRetry(() => import('./pages/admin/Menu'));
 const AdminOffers           = lazyWithRetry(() => import('./pages/admin/Offers'));
+const AdminCoupons          = lazyWithRetry(() => import('./pages/admin/Coupons'));
 const AdminOrders           = lazyWithRetry(() => import('./pages/admin/Orders'));
 const AdminSettings         = lazyWithRetry(() => import('./pages/admin/Settings'));
 const AdminDeliveryZones    = lazyWithRetry(() => import('./pages/admin/DeliveryZones'));
@@ -115,6 +116,15 @@ const adminRoutes = (
       element={
         <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
           <AdminOffers />
+        </RoleProtectedRoute>
+      }
+    />
+    {/* Cupons de Desconto */}
+    <Route
+      path="coupons"
+      element={
+        <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
+          <AdminCoupons />
         </RoleProtectedRoute>
       }
     />
