@@ -1,6 +1,15 @@
 {
   "menu": {
     "title": "Cardápio",
+    "loyalty": {
+      "title": "Ganhe pontos a cada pedido!",
+      "subtitle": "Informe seu nome e WhatsApp para acumular selos e ganhar recompensas.",
+      "cta": "Vincular e participar",
+      "errorName": "Informe seu nome",
+      "errorPhone": "Informe um WhatsApp válido",
+      "changeNumber": "Trocar número",
+      "greeting": "Olá, {{name}}! 👋"
+    },
     "restaurantNotFound": "Restaurante não encontrado",
     "all": "Todos",
     "viewCart": "Ver Carrinho",

@@ -97,7 +97,7 @@ test.describe('Order Journey (Admin → Cardápio → Checkout)', () => {
     await menuPage.getByTestId('checkout-name').fill('Cliente E2E Test');
     await menuPage.getByTestId('checkout-phone').fill('11999999999');
 
-    const zoneSelect = menuPage.getByRole('combobox').or(menuPage.locator('[role="combobox"]'));
+    const zoneSelect = menuPage.getByTestId('checkout-zone-select');
     if (await zoneSelect.isVisible()) {
       await zoneSelect.click();
       await menuPage.getByRole('option').first().click();

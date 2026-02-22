@@ -4,7 +4,7 @@ import { getSubdomain } from '@/lib/subdomain';
 import { Restaurant, Product, Category, Subcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
-import { useRestaurantMenuData, useActiveOffersByRestaurantId } from '@/hooks/queries';
+import { useRestaurantMenuData, useActiveOffersByRestaurantId, useLoyaltyProgram, useLoyaltyStatus } from '@/hooks/queries';
 import { ShoppingCart, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,8 @@ import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLangua
 import { useTranslation } from 'react-i18next';
 import ProductCard from '@/components/public/ProductCard';
 import InitialSplashScreen from '@/components/public/InitialSplashScreen';
+import LoyaltySignIn from '@/components/public/LoyaltySignIn';
+import LoyaltyCard from '@/components/public/LoyaltyCard';
 
 // Lazy: CartDrawer importa framer-motion — só carrega quando o carrinho for aberto
 const CartDrawer = lazy(() => import('@/components/public/CartDrawer'));
@@ -128,6 +130,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   }, [menuData]);
 
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
+  const isTableOrder = !!(tableId && tableNumber);
 
   const handleCheckoutNavigation = () => {
     const params = new URLSearchParams();
@@ -143,16 +146,20 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const { getItemsCount, getSubtotal, setRestaurant: setCartRestaurant, restaurantId: cartRestaurantId, removeInactiveProducts } = useCartStore();
   const { setCurrentRestaurant } = useRestaurantStore();
 
-  // Ler telefone salvo no localStorage para exibir progresso de fidelidade no carrinho
+  // Dados salvos para fidelidade e checkout (nome, telefone, país)
   const [savedPhone, setSavedPhone] = useState<string>('');
-  useEffect(() => {
+  const [savedName, setSavedName] = useState<string>('');
+  const loadSavedCustomer = () => {
+    const rid = cartRestaurantId;
+    if (!rid) return;
     try {
-      const rid = cartRestaurantId;
-      if (!rid) return;
-      const saved = localStorage.getItem(`checkout_phone_${rid}`);
-      if (saved) setSavedPhone(saved);
+      const phone = localStorage.getItem(`checkout_phone_${rid}`);
+      const name = localStorage.getItem(`checkout_name_${rid}`);
+      if (phone) setSavedPhone(phone);
+      if (name) setSavedName(name);
     } catch { /* ignore */ }
-  }, [cartRestaurantId]);
+  };
+  useEffect(loadSavedCustomer, [cartRestaurantId]);
 
   // Capturar telefone da URL (?phone=, ?wa=, ?tel=) quando usuário vem do WhatsApp — vincula fidelidade
   useEffect(() => {
@@ -161,12 +168,43 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     const raw = searchParams.get('phone') ?? searchParams.get('wa') ?? searchParams.get('tel') ?? '';
     const digits = raw.replace(/\D/g, '');
     if (digits.length < 8) return;
-    const normalized = normalizePhoneWithCountryCode(raw, 'BR');
+    const country = (restaurant.phone_country === 'PY' || restaurant.phone_country === 'AR')
+      ? restaurant.phone_country
+      : 'BR';
+    const normalized = normalizePhoneWithCountryCode(raw, country);
     try {
       localStorage.setItem(`checkout_phone_${rid}`, normalized);
+      localStorage.setItem(`checkout_phone_country_${rid}`, country);
       setSavedPhone(normalized);
     } catch { /* ignore */ }
-  }, [restaurant?.id, searchParams]);
+  }, [restaurant?.id, restaurant?.phone_country, searchParams]);
+
+  const { data: loyaltyProgram } = useLoyaltyProgram(restaurant?.id ?? null);
+  const { data: loyaltyStatus } = useLoyaltyStatus(
+    restaurant?.id ?? null,
+    savedPhone || null
+  );
+  const loyaltyEnabled = !!loyaltyProgram?.enabled;
+  const defaultPhoneCountry = (restaurant?.phone_country === 'PY' || restaurant?.phone_country === 'AR')
+    ? restaurant.phone_country
+    : 'BR';
+
+  const handleLoyaltyLinked = (name: string, phone: string) => {
+    setSavedName(name);
+    setSavedPhone(phone);
+  };
+
+  const handleChangeLoyaltyNumber = () => {
+    const rid = restaurant?.id;
+    if (!rid) return;
+    try {
+      localStorage.removeItem(`checkout_phone_${rid}`);
+      localStorage.removeItem(`checkout_name_${rid}`);
+      localStorage.removeItem(`checkout_phone_country_${rid}`);
+      setSavedPhone('');
+      setSavedName('');
+    } catch { /* ignore */ }
+  };
 
   useEffect(() => {
     if (!menuData?.restaurant) return;
@@ -454,6 +492,35 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             </div>
           </div>
         </div>
+
+        {/* ── Programa de Fidelidade (quando ativo) ── */}
+        {loyaltyEnabled && !isTableOrder && (
+          <section className="animate-in fade-in slide-in-from-top-2 duration-300">
+            {savedPhone ? (
+              <div className="space-y-1">
+                {savedName && (
+                  <p className="text-xs text-slate-600 font-medium">
+                    {t('menu.loyalty.greeting', { name: savedName })}
+                  </p>
+                )}
+                <LoyaltyCard status={loyaltyStatus ?? undefined} compact />
+                <button
+                  type="button"
+                  onClick={handleChangeLoyaltyNumber}
+                  className="text-[10px] text-violet-600 hover:text-violet-700 font-medium"
+                >
+                  {t('menu.loyalty.changeNumber')}
+                </button>
+              </div>
+            ) : (
+              <LoyaltySignIn
+                restaurantId={restaurant.id}
+                defaultCountry={defaultPhoneCountry}
+                onLinked={handleLoyaltyLinked}
+              />
+            )}
+          </section>
+        )}
 
         {/* ── Seção Ofertas no topo ── */}
         {activeOffers.length > 0 && selectedCategory === 'all' && (

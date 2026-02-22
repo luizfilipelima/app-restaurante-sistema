@@ -47,7 +47,7 @@ export default defineConfig({
     : {
         command: 'npm run dev',
         url: baseURL,
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: true, // evita erro "port already in use" em execuções locais
         timeout: 60 * 1000,
       },
 });

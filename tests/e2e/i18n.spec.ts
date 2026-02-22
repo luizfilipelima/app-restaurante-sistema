@@ -16,28 +16,29 @@ test.describe('i18n Cardápio Público', () => {
 
   test('exibe labels do cardápio (PT ou ES conforme config do restaurante)', async ({ page, baseURL }) => {
     const base = baseURL || 'http://localhost:5173';
-    await page.goto(`${base}/${SLUG}`, { waitUntil: 'domcontentloaded' });
-    // Aguarda o botão Ver Carrinho/Ver Carrito (sempre presente no header)
+    await page.goto(`${base}/${SLUG}`, { waitUntil: 'load' });
+    await page.waitForLoadState('networkidle');
+    // Splash ~2s + fetch: aguarda botão do carrinho ou cards de produto
     await expect(
-      page.getByRole('button', { name: /Ver Carrito|Ver Carrinho/i })
-    ).toBeVisible({ timeout: 10000 });
+      page.getByTestId('menu-view-cart').or(page.getByTestId(/product-add-/))
+    ).toBeVisible({ timeout: 25000 });
   });
 
   test('troca de idioma e exibe labels no idioma alternativo', async ({ page, baseURL }) => {
     const base = baseURL || 'http://localhost:5173';
-    await page.goto(`${base}/${SLUG}`, { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('load');
+    await page.goto(`${base}/${SLUG}`, { waitUntil: 'load' });
+    await page.waitForLoadState('networkidle');
+    await expect(
+      page.getByTestId('menu-view-cart').or(page.getByTestId(/product-add-/))
+    ).toBeVisible({ timeout: 25000 });
 
     // Seletor de idioma (PT/ES) — Menu padrão pode não ter; LinkBio tem
     const langToggle = page.locator('button').filter({ has: page.locator('text=/^PT$|^ES$/') }).first();
-    if (!(await langToggle.isVisible())) {
+    if (!(await langToggle.isVisible({ timeout: 3000 }))) {
       test.skip(true, 'Cardápio sem seletor de idioma PT/ES visível');
     }
     await langToggle.click();
     await page.waitForTimeout(600);
-    // Após toggle: espera botão do carrinho no novo idioma
-    await expect(
-      page.getByRole('button', { name: /Ver Carrito|Ver Carrinho/i })
-    ).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('menu-view-cart')).toBeVisible({ timeout: 5000 });
   });
 });

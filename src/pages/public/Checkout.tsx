@@ -185,8 +185,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     try {
       const savedPhone = localStorage.getItem(`checkout_phone_${restaurantId}`);
       const savedName = localStorage.getItem(`checkout_name_${restaurantId}`);
+      const savedCountry = localStorage.getItem(`checkout_phone_country_${restaurantId}`) as 'BR' | 'PY' | 'AR' | null;
       if (savedPhone) setCustomerPhone(savedPhone);
       if (savedName) setCustomerName(savedName);
+      if (savedCountry && ['BR', 'PY', 'AR'].includes(savedCountry)) setPhoneCountry(savedCountry);
     } catch { /* ignore */ }
   }, [restaurantId]);
 
@@ -263,8 +265,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
     if (!isTableOrder && restaurantId) {
       try {
-        localStorage.setItem(`checkout_phone_${restaurantId}`, customerPhone);
+        const normalized = normalizePhoneWithCountryCode(customerPhone, phoneCountry);
+        localStorage.setItem(`checkout_phone_${restaurantId}`, normalized);
         localStorage.setItem(`checkout_name_${restaurantId}`, customerName);
+        localStorage.setItem(`checkout_phone_country_${restaurantId}`, phoneCountry);
       } catch { /* ignore */ }
     }
 
@@ -778,7 +782,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       setFormError(null);
                     }}
                   >
-                    <SelectTrigger className="h-12 bg-slate-50 border-slate-200 rounded-xl text-sm focus:bg-white w-full">
+                    <SelectTrigger data-testid="checkout-zone-select" className="h-12 bg-slate-50 border-slate-200 rounded-xl text-sm focus:bg-white w-full">
                       <SelectValue placeholder={t('checkout.zonePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent position="popper" sideOffset={4} className="z-[100]">

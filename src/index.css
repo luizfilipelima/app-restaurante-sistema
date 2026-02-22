@@ -1,9 +1,9 @@
+/* Leaflet CSS — deve vir primeiro; carregado globalmente para evitar tiles "laranja" */
+@import 'leaflet/dist/leaflet.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Leaflet CSS — carregado globalmente para evitar tiles "laranja" quando MapAddressPicker é lazy-loaded */
-@import 'leaflet/dist/leaflet.css';
 
 @layer base {
   :root {

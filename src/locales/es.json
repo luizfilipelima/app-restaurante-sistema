@@ -1,5 +1,14 @@
 {
   "menu": {
+    "loyalty": {
+      "title": "¡Gana puntos con cada pedido!",
+      "subtitle": "Ingresa tu nombre y WhatsApp para acumular sellos y ganar recompensas.",
+      "cta": "Vincular y participar",
+      "errorName": "Ingresa tu nombre",
+      "errorPhone": "Ingresa un WhatsApp válido",
+      "changeNumber": "Cambiar número",
+      "greeting": "¡Hola, {{name}}! 👋"
+    },
     "title": "Carta",
     "restaurantNotFound": "Restaurante no encontrado",
     "all": "Todos",
