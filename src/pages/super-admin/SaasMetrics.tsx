@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useSaasMetrics, saasMetricsKey } from '@/hooks/queries/useSaasMetrics';
+import { useSubscriptionPlans, subscriptionKeys } from '@/hooks/queries/useSubscriptionManager';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
@@ -89,6 +90,7 @@ function CustomTooltip({ active, payload, label }: any) {
 export default function SaasMetrics() {
   const qc = useQueryClient();
   const { data: metrics, isLoading, isError, dataUpdatedAt } = useSaasMetrics();
+  const { data: plans = [] } = useSubscriptionPlans();
 
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
@@ -96,11 +98,23 @@ export default function SaasMetrics() {
 
   const handleRefresh = () => {
     qc.invalidateQueries({ queryKey: saasMetricsKey() });
+    qc.invalidateQueries({ queryKey: subscriptionKeys.plans() });
   };
 
-  // Usa dados da RPC: preços dos planos + override manual por restaurante
-  const revenueByPlan = metrics?.revenue_by_plan ?? [];
-  const totalMrr = metrics?.total_mrr ?? 0;
+  // Usa preços da página Planos (useSubscriptionPlans) para garantir consistência
+  const planPriceMap = Object.fromEntries(plans.map((p) => [p.name, p.price_brl]));
+  const usePlanPrices = plans.length > 0;
+  const revenueByPlan = (metrics?.revenue_by_plan ?? []).map((item) => {
+    if (usePlanPrices) {
+      const priceBrl = planPriceMap[item.plan_name] ?? 0;
+      const monthlyRevenueBrl = Math.round((item.tenant_count ?? 0) * priceBrl * 100) / 100;
+      return { ...item, monthly_revenue_brl: monthlyRevenueBrl };
+    }
+    return item;
+  });
+  const totalMrr = usePlanPrices
+    ? revenueByPlan.reduce((sum, item) => sum + item.monthly_revenue_brl, 0)
+    : (metrics?.total_mrr ?? 0);
   const arpu = metrics?.total_tenants
     ? totalMrr / metrics.total_tenants
     : 0;
