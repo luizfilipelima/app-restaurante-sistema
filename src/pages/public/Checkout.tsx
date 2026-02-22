@@ -797,7 +797,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 4. Zona de entrega (apenas delivery, não-mesa) ── */}
         {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
-          <div className="relative z-[60] bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100 overflow-hidden rounded-t-2xl">
               <div className="h-6 w-6 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
                 <Map className="h-3.5 w-3.5 text-teal-600" />
