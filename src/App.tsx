@@ -232,7 +232,7 @@ function App() {
 
   // Aguarda definir o hostname (evita flash no primeiro paint)
   if (subdomain === undefined) {
-    return null;
+    return <LoadingScreen />;
   }
 
   const isAdminSubdomain = subdomain !== null && ADMIN_SUBDOMAINS.includes(subdomain);
@@ -274,7 +274,12 @@ function App() {
 
   // 2) Subdomínio de loja (ex.: pizzaria.quiero.food) -> StoreLayout (cardápio)
   if (subdomain !== null && !isAdminSubdomain) {
-    return <StoreLayout tenantSlug={subdomain} />;
+    return (
+      <ErrorBoundary>
+        <StoreLayout tenantSlug={subdomain} />
+        <Toaster />
+      </ErrorBoundary>
+    );
   }
 
   // 3) Subdomínio app/admin -> painel (login, dashboard, cozinha)

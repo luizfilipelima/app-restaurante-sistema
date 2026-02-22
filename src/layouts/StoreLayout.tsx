@@ -6,6 +6,7 @@ import { prefetchRestaurantMenu } from '@/hooks/queries/useRestaurantMenuData';
 import { supabase } from '@/lib/supabase';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import InitialSplashScreen from '@/components/public/InitialSplashScreen';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // Rotas públicas — lazy para reduzir bundle inicial (cardápio carrega só o necessário)
 const PublicMenu = lazyWithRetry(() => import('@/pages/public/Menu'));
@@ -60,9 +61,10 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
   useDynamicFavicon(logoUrl);
 
   return (
-    <BrowserRouter>
-      <Suspense fallback={<InitialSplashScreen />}>
-        <Routes>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Suspense fallback={<InitialSplashScreen />}>
+          <Routes>
           <Route path="/" element={<PublicMenu tenantSlug={tenantSlug} />} />
         <Route path="/menu" element={<MenuViewOnly tenantSlug={tenantSlug} />} />
         <Route path="/cardapio/:tableNumber" element={<MenuTable tenantSlug={tenantSlug} />} />
@@ -72,8 +74,9 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
         <Route path="/track/:orderId" element={<OrderTracking tenantSlug={tenantSlug} />} />
           <Route path="/bio" element={<LinkBio tenantSlug={tenantSlug} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
