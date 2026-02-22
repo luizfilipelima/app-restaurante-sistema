@@ -81,12 +81,13 @@ function defaultSectorSettings(): PrintSettingsBySector {
   return SECTOR_KEYS.reduce((acc, k) => ({ ...acc, [k]: { ...empty } }), {} as PrintSettingsBySector);
 }
 
-function parseExchangeRates(raw: unknown): { pyg_per_brl: number; ars_per_brl: number } {
-  if (!raw || typeof raw !== 'object') return { pyg_per_brl: 3600, ars_per_brl: 1150 };
+function parseExchangeRates(raw: unknown): { pyg_per_brl: number; ars_per_brl: number; usd_per_brl: number } {
+  if (!raw || typeof raw !== 'object') return { pyg_per_brl: 3600, ars_per_brl: 1150, usd_per_brl: 0.18 };
   const o = raw as Record<string, unknown>;
   return {
     pyg_per_brl: Math.max(1, Number(o.pyg_per_brl) || 3600),
     ars_per_brl: Math.max(1, Number(o.ars_per_brl) || 1150),
+    usd_per_brl: Math.max(0.01, Number(o.usd_per_brl) || 0.18),
   };
 }
 
@@ -307,7 +308,7 @@ export default function AdminSettings() {
     print_auto_on_new_order: false,
     print_paper_width:       '80mm' as PrintPaperWidth,
     print_settings_by_sector: defaultSectorSettings(),
-    exchange_rates:          { pyg_per_brl: 3600, ars_per_brl: 1150 },
+    exchange_rates:          { pyg_per_brl: 3600, ars_per_brl: 1150, usd_per_brl: 0.18 },
     payment_currencies:      ['BRL', 'PYG'] as string[],
     pix_key:                 '',
     pix_key_type:            'random' as 'cpf' | 'email' | 'random',
@@ -1433,7 +1434,7 @@ export default function AdminSettings() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <FieldGroup>
                 <Label className="text-xs font-medium">1 BRL = quantos Guaraníes?</Label>
                 <Input
@@ -1466,6 +1467,22 @@ export default function AdminSettings() {
                 />
                 <p className="text-[10px] text-muted-foreground mt-1">ARS $ por 1 Real</p>
               </FieldGroup>
+              <FieldGroup>
+                <Label className="text-xs font-medium">1 BRL = quantos Dólares?</Label>
+                <Input
+                  type="number"
+                  min={0.01}
+                  step={0.01}
+                  value={formData.exchange_rates.usd_per_brl}
+                  onChange={(e) => {
+                    const v = Math.max(0.01, Number(e.target.value) || 0.18);
+                    set('exchange_rates', { ...formData.exchange_rates, usd_per_brl: v });
+                  }}
+                  placeholder="0.18"
+                  className="mt-1"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">US$ por 1 Real</p>
+              </FieldGroup>
             </div>
 
             <FieldGroup>
@@ -1474,7 +1491,7 @@ export default function AdminSettings() {
                 Selecione quais moedas o cliente poderá escolher ao pagar
               </p>
               <div className="flex flex-wrap gap-2">
-                {CURRENCIES.filter(c => c.value !== 'USD').map(c => {
+                {CURRENCIES.map(c => {
                   const checked = formData.payment_currencies.includes(c.value);
                   return (
                     <label
@@ -1500,7 +1517,7 @@ export default function AdminSettings() {
                 })}
               </div>
               <p className="text-[10px] text-muted-foreground mt-2">
-                O cliente verá um alternador no checkout para escolher pagar em Real, Guaraní ou Peso Argentino conforme configurado.
+                O cliente verá um alternador no cardápio e checkout para escolher pagar em Real, Guaraní, Peso Argentino ou Dólar conforme configurado.
               </p>
             </FieldGroup>
           </div>

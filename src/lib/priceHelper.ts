@@ -118,10 +118,11 @@ export function formatPriceInputPyG(displayValue: string): string {
   return decPart ? `${intFormatted},${decPart}` : intFormatted;
 }
 
-/** Cotações por 1 BRL (ex: pyg_per_brl: 3600, ars_per_brl: 1150) */
+/** Cotações por 1 BRL (ex: pyg_per_brl: 3600, ars_per_brl: 1150, usd_per_brl: 0.18) */
 export interface ExchangeRates {
   pyg_per_brl?: number;
   ars_per_brl?: number;
+  usd_per_brl?: number;
 }
 
 /**
@@ -142,18 +143,21 @@ export function convertBetweenCurrencies(
   if (from === to) return value;
   const pyg = rates.pyg_per_brl ?? 3600;
   const ars = rates.ars_per_brl ?? 1150;
+  const usd = rates.usd_per_brl ?? 0.18;
 
   // Converter tudo para BRL (centavos) como intermediário
   let brlCentavos: number;
   if (from === 'BRL') brlCentavos = value;
   else if (from === 'PYG') brlCentavos = Math.round((value / pyg) * 100);
   else if (from === 'ARS') brlCentavos = Math.round((value / ars) * 100);
-  else brlCentavos = value; // USD: sem cotação, mantém
+  else if (from === 'USD') brlCentavos = Math.round((value / 100) / usd * 100); // USD cents -> BRL centavos
+  else brlCentavos = value;
 
   // BRL (centavos) -> destino
   if (to === 'BRL') return brlCentavos;
   if (to === 'PYG') return Math.round((brlCentavos / 100) * pyg);
   if (to === 'ARS') return Math.round((brlCentavos / 100) * ars * 100); // ARS em centavos
+  if (to === 'USD') return Math.round((brlCentavos / 100) * usd * 100); // USD em cents
   return brlCentavos;
 }
 

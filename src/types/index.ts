@@ -117,7 +117,7 @@ export interface Restaurant {
   /** Moeda de exibição dos valores no cardápio */
   currency?: 'BRL' | 'PYG' | 'ARS' | 'USD';
   /** Cotações para conversão: unidades por 1 BRL (ex: pyg_per_brl: 3600) */
-  exchange_rates?: { pyg_per_brl?: number; ars_per_brl?: number } | null;
+  exchange_rates?: { pyg_per_brl?: number; ars_per_brl?: number; usd_per_brl?: number } | null;
   /** Moedas disponíveis no alternador de pagamento no checkout */
   payment_currencies?: string[] | null;
   /** Chave PIX do restaurante — onde o cliente envia o pagamento */

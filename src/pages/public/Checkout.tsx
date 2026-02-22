@@ -77,7 +77,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     if (!Array.isArray(arr) || arr.length === 0) return [baseCurrency];
     return arr.filter((c): c is CurrencyCode => ['BRL', 'PYG', 'ARS', 'USD'].includes(c));
   })();
-  const exchangeRates = (currentRestaurant as { exchange_rates?: { pyg_per_brl?: number; ars_per_brl?: number } })?.exchange_rates ?? { pyg_per_brl: 3600, ars_per_brl: 1150 };
+  const exchangeRates = (currentRestaurant as { exchange_rates?: { pyg_per_brl?: number; ars_per_brl?: number; usd_per_brl?: number } })?.exchange_rates ?? { pyg_per_brl: 3600, ars_per_brl: 1150, usd_per_brl: 0.18 };
   const [paymentCurrency, setPaymentCurrency] = useState<CurrencyCode>(baseCurrency);
   const displayCurrency = paymentCurrencies.includes(paymentCurrency) ? paymentCurrency : baseCurrency;
   const convertForDisplay = (value: number) =>
@@ -554,7 +554,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
   // ── Labels de moeda ──
   const currencyLabel = (c: CurrencyCode) =>
-    c === 'BRL' ? 'R$ Real' : c === 'PYG' ? 'Gs. Guaraní' : c === 'ARS' ? 'ARS Peso' : 'USD';
+    c === 'BRL' ? 'R$ Real' : c === 'PYG' ? 'Gs. Guaraní' : c === 'ARS' ? 'ARS Peso' : 'US$ Dólar';
 
   const phonePlaceholder =
     phoneCountry === 'BR' ? '(11) 99999-9999'

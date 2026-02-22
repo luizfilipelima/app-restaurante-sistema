@@ -34,7 +34,7 @@ function getPaymentCurrencies(restaurant: RestaurantLike | null, baseCurrency: C
 export function useMenuCurrency(restaurant: RestaurantLike | null) {
   const baseCurrency = getBaseCurrency(restaurant);
   const paymentCurrencies = getPaymentCurrencies(restaurant, baseCurrency);
-  const exchangeRates: ExchangeRates = restaurant?.exchange_rates ?? { pyg_per_brl: 3600, ars_per_brl: 1150 };
+  const exchangeRates: ExchangeRates = restaurant?.exchange_rates ?? { pyg_per_brl: 3600, ars_per_brl: 1150, usd_per_brl: 0.18 };
 
   const storageKey = restaurant?.id ? `${STORAGE_KEY_PREFIX}${restaurant.id}` : null;
   const [displayCurrency, setDisplayCurrencyState] = useState<CurrencyCode>(() => {
