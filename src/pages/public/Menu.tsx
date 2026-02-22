@@ -129,6 +129,17 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     };
   }, [menuData]);
 
+  // IMPORTANTE: useMenuCurrency deve ser chamado incondicionalmente (Rules of Hooks)
+  const {
+    displayCurrency: currency,
+    setDisplayCurrency,
+    paymentCurrencies,
+    hasMultipleCurrencies,
+    convertForDisplay,
+    formatForDisplay,
+    baseCurrency,
+  } = useMenuCurrency(restaurant);
+
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
   const isTableOrder = !!(tableId && tableNumber);
 
@@ -336,16 +347,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
   if (!loading && (!menuData || isError || !restaurant)) return <div className="min-h-screen flex items-center justify-center p-4">{t('menu.restaurantNotFound')}</div>;
   if (!restaurant) return null;
-
-  const {
-    displayCurrency: currency,
-    setDisplayCurrency,
-    paymentCurrencies,
-    hasMultipleCurrencies,
-    convertForDisplay,
-    formatForDisplay,
-    baseCurrency,
-  } = useMenuCurrency(restaurant);
 
   const hasHours = restaurant.opening_hours && Object.keys(restaurant.opening_hours).length > 0;
   const alwaysOpen = !!restaurant.always_open;
