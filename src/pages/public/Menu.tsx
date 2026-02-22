@@ -8,7 +8,6 @@ import { useRestaurantMenuData, useActiveOffersByRestaurantId, useLoyaltyProgram
 import { ShoppingCart, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { toast } from '@/hooks/use-toast';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { isWithinOpeningHours, normalizePhoneWithCountryCode } from '@/lib/utils';
 import { useMenuCurrency } from '@/hooks/useMenuCurrency';
@@ -752,7 +751,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 addons: addons.length > 0 ? addons : undefined,
                 observations: observations?.trim() || undefined,
               });
-              toast({ title: '✅ Adicionado ao carrinho!', description: `${addonModalProduct.product.name} foi adicionado`, className: 'bg-green-50 border-green-200' });
             }}
           />
         )}

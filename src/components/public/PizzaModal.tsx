@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
-import { toast } from '@/hooks/use-toast';
 import { Check, Pizza as PizzaIcon, Minus, Plus, X } from 'lucide-react';
 
 interface PizzaModalProps {
@@ -100,15 +99,6 @@ export default function PizzaModal({
       pizzaDoughPrice: selectedDough?.extra_price ?? 0,
       pizzaEdgePrice: selectedEdge?.price ?? 0,
       observations,
-    });
-
-    const flavorNames = selectedFlavors.map((f) => f.name).join(' / ');
-    toast({
-      title: '🍕 ' + t('pizzaModal.addedTitle'),
-      description: flavorNames
-        ? `${product.name} - ${selectedSize.name} · ${flavorNames}`
-        : `${product.name} - ${selectedSize.name}`,
-      className: 'bg-green-50 border-green-200',
     });
 
     onClose();

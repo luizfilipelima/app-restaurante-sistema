@@ -8,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
-import { toast } from '@/hooks/use-toast';
 import { Check, UtensilsCrossed, Minus, Plus, X } from 'lucide-react';
 
 interface MarmitaModalProps {
@@ -132,12 +131,6 @@ export default function MarmitaModal({
       marmitaProteins: selectedProteins.map((sp) => `${sp.protein.name} (${sp.grams}g)`),
       marmitaSides: selectedSides.map((s) => s.name),
       observations,
-    });
-
-    toast({
-      title: "🍱 " + t('marmitaModal.addedTitle'),
-      description: `${product.name} - ${selectedSize.name}`,
-      className: "bg-green-50 border-green-200",
     });
 
     onClose();

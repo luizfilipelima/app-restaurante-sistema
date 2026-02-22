@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
-import { toast } from '@/hooks/use-toast';
 import { Minus, Plus, ArrowLeft } from 'lucide-react';
 
 interface SimpleProductModalProps {
@@ -49,11 +48,6 @@ export default function SimpleProductModal({
       quantity,
       unitPrice: basePrice,
       observations: observations.trim() || undefined,
-    });
-    toast({
-      title: '✅ Adicionado ao carrinho!',
-      description: `${product.name} foi adicionado`,
-      className: 'bg-green-50 border-green-200',
     });
     onClose();
   };
