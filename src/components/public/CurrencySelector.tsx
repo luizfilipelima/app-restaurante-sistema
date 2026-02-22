@@ -6,10 +6,10 @@ import { memo } from 'react';
 import { type CurrencyCode } from '@/lib/priceHelper';
 
 const CURRENCY_LABELS: Record<CurrencyCode, string> = {
-  BRL: 'R$',
-  PYG: 'Gs.',
-  ARS: '$',
-  USD: 'US$',
+  BRL: 'BRL',
+  PYG: 'PYG',
+  ARS: 'ARS',
+  USD: 'USD',
 };
 
 interface CurrencySelectorProps {

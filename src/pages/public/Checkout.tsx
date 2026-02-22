@@ -927,7 +927,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       }`}
                       title={currencyLabel(c)}
                     >
-                      {c === 'BRL' ? 'R$' : c === 'PYG' ? 'Gs.' : 'ARS'}
+                      {c}
                     </button>
                   ))}
                 </div>
