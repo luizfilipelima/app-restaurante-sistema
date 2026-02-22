@@ -21,6 +21,16 @@ export function formatCurrency(value: number, currency: CurrencyCode = 'BRL'): s
   return formatPrice(value, currency);
 }
 
+/** Formata valor em BRL já em reais (ex.: subscription_plans.price_brl). Não divide por 100. */
+export function formatBRLReais(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 export function formatPhone(phone: string): string {
   // Remove tudo que não é número
   const cleaned = phone.replace(/\D/g, '');

@@ -46,7 +46,7 @@ import {
   AlertTriangle,
   Settings,
 } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { formatBRLReais } from '@/lib/utils';
 
 // ─── Ordem das categorias nas tabs (primeira = padrão) ────────────────────────
 
@@ -315,7 +315,7 @@ export default function RestaurantDetails() {
                             </span>
                             <span className="text-sm text-slate-600">
                               {plan.price_brl > 0
-                                ? formatCurrency(plan.price_brl) + '/mês'
+                                ? formatBRLReais(plan.price_brl) + '/mês'
                                 : 'Grátis'}
                             </span>
                           </div>
@@ -361,7 +361,7 @@ export default function RestaurantDetails() {
                   <p className="text-sm text-slate-600">{activePlan.description}</p>
                 )}
                 <p className="text-sm font-semibold text-slate-800 mt-1">
-                  {activePlan.price_brl > 0 ? `${formatCurrency(activePlan.price_brl)}/mês` : 'Grátis'}
+                  {activePlan.price_brl > 0 ? `${formatBRLReais(activePlan.price_brl)}/mês` : 'Grátis'}
                 </p>
               </div>
             )}
