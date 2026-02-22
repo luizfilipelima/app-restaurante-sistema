@@ -98,15 +98,18 @@ export default function SaasMetrics() {
     qc.invalidateQueries({ queryKey: saasMetricsKey() });
   };
 
+  // Usa dados da RPC: preços dos planos + override manual por restaurante
+  const revenueByPlan = metrics?.revenue_by_plan ?? [];
+  const totalMrr = metrics?.total_mrr ?? 0;
   const arpu = metrics?.total_tenants
-    ? (metrics.total_mrr || 0) / metrics.total_tenants
+    ? totalMrr / metrics.total_tenants
     : 0;
 
   const handleExportCSV = () => {
     if (!metrics) return;
     const rows = [
       ['Métrica', 'Valor'],
-      ['MRR Atual', formatCurrency(metrics.total_mrr)],
+      ['MRR Atual', formatCurrency(totalMrr)],
       ['Total Restaurantes', String(metrics.total_tenants)],
       ['Novos (7 dias)', String(metrics.new_tenants_7d)],
       ['ARPU', formatCurrency(arpu)],
@@ -121,8 +124,8 @@ export default function SaasMetrics() {
     URL.revokeObjectURL(url);
   };
 
-  // ── Preparar dados do gráfico ────────────────────────────────────────────
-  const chartData = (metrics?.revenue_by_plan ?? []).map((item) => ({
+  // ── Preparar dados do gráfico (usa receita recalculada com preços da página Planos) ───
+  const chartData = revenueByPlan.map((item) => ({
     ...item,
     fill: PLAN_COLORS[item.plan_name]?.bar ?? '#94a3b8',
   }));
@@ -229,7 +232,7 @@ export default function SaasMetrics() {
             </div>
           </div>
           <p className="text-2xl font-bold text-slate-900 mt-2">
-            {formatCurrency(metrics.total_mrr)}
+            {formatCurrency(totalMrr)}
           </p>
           <p className="text-xs text-slate-400 mt-1">Receita mensal recorrente</p>
         </motion.div>
@@ -289,8 +292,7 @@ export default function SaasMetrics() {
           ) : (
             chartData.map((item) => {
               const palette = PLAN_COLORS[item.plan_name];
-              const totalRevenue = metrics.total_mrr;
-              const pct = totalRevenue > 0 ? Math.round((item.monthly_revenue_brl / totalRevenue) * 100) : 0;
+              const pct = totalMrr > 0 ? Math.round((item.monthly_revenue_brl / totalMrr) * 100) : 0;
               return (
                 <div key={item.plan_name} className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -393,7 +395,7 @@ export default function SaasMetrics() {
             <TrendingUp className="h-4 w-4 text-emerald-600" />
           </div>
         </div>
-        <p className="text-2xl font-bold text-slate-900 mt-2">{formatCurrency(metrics.total_mrr)}</p>
+        <p className="text-2xl font-bold text-slate-900 mt-2">{formatCurrency(totalMrr)}</p>
         <p className="text-xs text-slate-400 mt-1">Receita mensal recorrente consolidada</p>
       </motion.div>
 

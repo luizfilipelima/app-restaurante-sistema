@@ -128,6 +128,8 @@ export interface Restaurant {
   language?: 'pt' | 'es' | 'en';
   /** Templates personalizáveis de mensagens WhatsApp */
   whatsapp_templates?: WhatsAppTemplates | null;
+  /** Override manual da receita mensal em BRL (Super Admin). Se definido, usado no Dashboard BI em vez do preço do plano. */
+  manual_monthly_revenue_brl?: number | null;
   created_at: string;
   updated_at: string;
 }

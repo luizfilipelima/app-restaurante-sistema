@@ -5,6 +5,8 @@ import {
   useSuperAdminRestaurants,
   useInvalidateSuperAdminRestaurants,
 } from '@/hooks/queries/useSuperAdminRestaurants';
+import { saasMetricsKey } from '@/hooks/queries/useSaasMetrics';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useSuperAdminExchangeRates,
   useUpdateSuperAdminExchangeRates,
@@ -58,6 +60,7 @@ import {
   XCircle,
   ReceiptText,
   Settings2,
+  Banknote,
 } from 'lucide-react';
 import { Restaurant, DayKey, PrintPaperWidth } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -122,6 +125,62 @@ function KpiCard({
   );
 }
 
+// ─── Input de receita mensal manual (Dashboard BI) ─────────────────────────────
+
+function ManualRevenueInput({
+  restaurantId,
+  value,
+  onSave,
+  isLoading,
+}: {
+  restaurantId: string;
+  value: number | null;
+  onSave: (id: string, v: number | null) => void;
+  isLoading: boolean;
+}) {
+  const [local, setLocal] = useState(value !== null ? String(value) : '');
+  const [focused, setFocused] = useState(false);
+
+  const handleBlur = () => {
+    setFocused(false);
+    const parsed = local.trim() === '' ? null : parseFloat(local.replace(',', '.'));
+    if (parsed !== null && (isNaN(parsed) || parsed < 0)) return;
+    const newVal = parsed !== null && !isNaN(parsed) ? parsed : null;
+    if (newVal !== value) onSave(restaurantId, newVal);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+  };
+
+  return (
+    <div className="mt-2.5 pt-2.5 border-t border-slate-100">
+      <div className="flex items-center gap-2">
+        <Banknote className="h-3 w-3 text-slate-400 flex-shrink-0" />
+        <span className="text-[11px] font-medium text-slate-500 flex-shrink-0">
+          Receita/mês (BRL):
+        </span>
+        <div className="flex-1 min-w-0 flex items-center gap-1">
+          <span className="text-[10px] text-slate-400">R$</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={focused ? local : (value !== null ? String(value) : '')}
+            onChange={(e) => setLocal(e.target.value)}
+            onFocus={() => { setFocused(true); setLocal(value !== null ? String(value) : ''); }}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            placeholder="Plano padrão"
+            disabled={isLoading}
+            className="flex-1 min-w-0 h-7 px-2 rounded-md border border-slate-200 bg-slate-50/80 text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#F87116]/40 focus:border-[#F87116]/60 disabled:opacity-60"
+          />
+          {isLoading && <Loader2 className="h-3 w-3 animate-spin text-slate-400 flex-shrink-0" />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Restaurant Card ──────────────────────────────────────────────────────────
 
 interface RestaurantCardProps {
@@ -134,11 +193,14 @@ interface RestaurantCardProps {
   onMenu: () => void;
   onToggle: () => void;
   onDelete: () => void;
+  onManualRevenueSave?: (restaurantId: string, value: number | null) => void;
+  savingRevenueId?: string | null;
 }
 
 function RestaurantCard({
   restaurant, orderCount, revenue,
   onAdmin, onSubscription, onKitchen, onMenu, onToggle, onDelete,
+  onManualRevenueSave, savingRevenueId,
 }: RestaurantCardProps) {
   const initials = restaurant.name
     .split(' ')
@@ -215,6 +277,16 @@ function RestaurantCard({
               <span className="font-medium text-slate-700">{formatCurrency(revenue, (restaurant.currency as 'BRL' | 'PYG' | 'ARS') || 'BRL')}</span>
             </div>
           </div>
+
+          {/* Receita mensal (BRL) para Dashboard BI */}
+          {onManualRevenueSave && (
+            <ManualRevenueInput
+              restaurantId={restaurant.id}
+              value={restaurant.manual_monthly_revenue_brl ?? null}
+              onSave={onManualRevenueSave}
+              isLoading={savingRevenueId === restaurant.id}
+            />
+          )}
         </div>
       </div>
 
@@ -282,6 +354,7 @@ const INITIAL_ADMIN = { email: '', login: '', password: '', confirmPassword: '' 
 export default function SuperAdminDashboard() {
   useAuthStore();
   const navigate  = useNavigate();
+  const qc = useQueryClient();
   const { data, isLoading } = useSuperAdminRestaurants();
   const invalidate = useInvalidateSuperAdminRestaurants();
   const { data: exchangeRates = { pyg_per_brl: 3600, ars_per_brl: 1150 } } = useSuperAdminExchangeRates();
@@ -303,6 +376,25 @@ export default function SuperAdminDashboard() {
   const [adminData, setAdminData]   = useState(INITIAL_ADMIN);
   const [showAdminPwd,  setShowAdminPwd]  = useState(false);
   const [showAdminCPwd, setShowAdminCPwd] = useState(false);
+  const [savingRevenueId, setSavingRevenueId] = useState<string | null>(null);
+
+  const handleManualRevenueSave = async (restaurantId: string, value: number | null) => {
+    setSavingRevenueId(restaurantId);
+    try {
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ manual_monthly_revenue_brl: value })
+        .eq('id', restaurantId);
+      if (error) throw error;
+      toast({ title: 'Receita atualizada', description: value != null ? `R$ ${value.toFixed(2)}/mês definido.` : 'Usando valor do plano.' });
+      invalidate();
+      qc.invalidateQueries({ queryKey: saasMetricsKey() });
+    } catch {
+      toast({ title: 'Erro ao salvar', variant: 'destructive' });
+    } finally {
+      setSavingRevenueId(null);
+    }
+  };
 
   // Filtered list
   const filtered = useMemo(() => {
@@ -636,6 +728,8 @@ export default function SuperAdminDashboard() {
                   onMenu={() => window.open(`/${r.slug}`, '_blank')}
                   onToggle={() => toggleStatus(r.id, r.is_active)}
                   onDelete={() => { setToDelete(r); setDeleteConfirm(''); }}
+                  onManualRevenueSave={handleManualRevenueSave}
+                  savingRevenueId={savingRevenueId}
                 />
               );
             })}
