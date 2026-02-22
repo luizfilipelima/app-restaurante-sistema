@@ -14,11 +14,13 @@ interface CartDrawerProps {
   onClose: () => void;
   onCheckout: () => void;
   currency?: CurrencyCode;
+  /** Converte valor da moeda base para moeda de exibição. Se não informado, usa valor direto. */
+  convertForDisplay?: (value: number) => number;
   restaurantId?: string | null;
   customerPhone?: string;
 }
 
-export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL', restaurantId, customerPhone }: CartDrawerProps) {
+export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL', convertForDisplay, restaurantId, customerPhone }: CartDrawerProps) {
   const { t } = useTranslation();
   const { items, addItem, updateQuantity, removeItem, getSubtotal } = useCartStore();
   const [upsellRows, setUpsellRows] = useState<UpsellRow[]>([]);
@@ -83,6 +85,8 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
     onClose();
     onCheckout();
   };
+
+  const fmt = (v: number) => formatCurrency(convertForDisplay ? convertForDisplay(v) : v, currency);
 
   return (
     <AnimatePresence>
@@ -174,7 +178,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                               )}
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-slate-800 truncate">{p.name}</p>
-                                <p className="text-xs text-amber-700 font-semibold mt-0.5">{formatCurrency(price, currency)}</p>
+                                <p className="text-xs text-amber-700 font-semibold mt-0.5">{fmt(price)}</p>
                               </div>
                               <Button
                                 size="sm"
@@ -211,7 +215,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                             {item.addons && item.addons.length > 0 && (
                               <div className="text-xs text-slate-500 mt-1 space-y-0.5">
                                 {item.addons.map((a, i) => (
-                                  <p key={i}>+ {a.name} {a.price > 0 ? `(+${formatCurrency(a.price, currency)})` : ''}</p>
+                                  <p key={i}>+ {a.name} {a.price > 0 ? `(+${fmt(a.price)})` : ''}</p>
                                 ))}
                               </div>
                             )}
@@ -244,7 +248,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                             </button>
                           </div>
                           <span className="font-bold text-slate-900 text-sm">
-                            {formatCurrency(itemTotal, currency)}
+                            {fmt(itemTotal)}
                           </span>
                         </div>
                       </div>
@@ -260,7 +264,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                 {/* Subtotal + CTA */}
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm text-slate-500 font-medium">{t('cart.subtotal')}</span>
-                  <span className="text-xl font-bold text-slate-900">{formatCurrency(getSubtotal(), currency)}</span>
+                  <span className="text-xl font-bold text-slate-900">{fmt(getSubtotal())}</span>
                 </div>
                 <button
                   onClick={handleCheckout}

@@ -63,6 +63,7 @@
     "phoneLabel": "Celular / WhatsApp",
     "zoneLabel": "Bairro / Região de Entrega",
     "zonePlaceholder": "Selecione seu bairro",
+    "changeZone": "Alterar zona",
     "zoneNoZones": "Entrega para toda a área",
     "free": "Grátis",
     "mapInstructionZone": "Arraste o pino para a sua localização exata dentro da área marcada",

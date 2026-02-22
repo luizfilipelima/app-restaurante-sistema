@@ -246,7 +246,7 @@
     overscroll-behavior: contain;
   }
 
-  /* Mapa de endereço no checkout: manter z-index contido para não sobrepor outros elementos */
+  /* Mapa de endereço no checkout: manter z-index contido e reduzir piscadas */
   .map-address-picker.leaflet-container,
   .map-address-picker .leaflet-pane,
   .map-address-picker .leaflet-top,
@@ -255,6 +255,10 @@
   }
   .map-address-picker .leaflet-control {
     z-index: 1 !important;
+  }
+  /* Isola o mapa em camada própria para reduzir repaint e piscadas */
+  .map-address-picker {
+    transform: translateZ(0);
   }
 }
 

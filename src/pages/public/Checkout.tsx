@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import { useState, useEffect, useRef, Suspense, lazy, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCartStore } from '@/store/cartStore';
 import { supabase } from '@/lib/supabase';
@@ -108,6 +108,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const { data: rawZones = [] } = useDeliveryZones(restaurantId ?? null);
   const zones = rawZones.filter((z) => z.is_active);
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
+  const [zoneSelectKey, setZoneSelectKey] = useState(0); // Força remount do Select ao alterar zona (workaround Radix em mobile)
   const [latitude, setLatitude] = useState<number>(-25.5278);
   const [longitude, setLongitude] = useState<number>(-54.5828);
   const [addressDetails, setAddressDetails] = useState('');
@@ -162,16 +163,22 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseCurrency]);
 
-  // Quando o cliente seleciona ou troca de zona, centraliza o mapa no centro da nova zona
+  // Quando o cliente seleciona ou troca de zona, centraliza o mapa (sem remount — MapUpdater faz flyTo)
   useEffect(() => {
     if (!selectedZoneId) return;
     const zone = zones.find((z) => z.id === selectedZoneId);
     if (zone?.center_lat != null && zone?.center_lng != null) {
       setLatitude(zone.center_lat);
       setLongitude(zone.center_lng);
-      setMapKey((k) => k + 1);
     }
   }, [selectedZoneId, zones]);
+
+  // Prefetch do MapAddressPicker quando entrega for selecionada (carrega chunk antes do mapa aparecer)
+  useEffect(() => {
+    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY) {
+      import('@/components/public/MapAddressPicker');
+    }
+  }, [isTableOrder, deliveryType]);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -219,6 +226,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   }, [currentRestaurant?.name, t]);
 
   useSharingMeta(currentRestaurant ? { name: currentRestaurant.name, logo: currentRestaurant.logo } : null);
+
+  const handleMapLocationChange = useCallback((lat: number, lng: number) => {
+    locationFromStorage.current = true;
+    setLatitude(lat);
+    setLongitude(lng);
+  }, []);
 
   const handleBackToMenu = () => {
     if (isTableOrder && isSubdomain) navigate(`/cardapio/${tableNumber}`);
@@ -745,8 +758,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 4. Zona de entrega (apenas delivery, não-mesa) ── */}
         {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
-          <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
+          <div className="relative z-[60] bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100 overflow-hidden rounded-t-2xl">
               <div className="h-6 w-6 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
                 <Map className="h-3.5 w-3.5 text-teal-600" />
               </div>
@@ -757,29 +770,43 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             </div>
             <div className="p-4">
               {zones.length > 0 ? (
-                <Select
-                  value={selectedZoneId || undefined}
-                  onValueChange={(v) => {
-                    setSelectedZoneId(v);
-                    setFormError(null);
-                  }}
-                >
-                  <SelectTrigger className="h-12 bg-slate-50 border-slate-200 rounded-xl text-sm focus:bg-white">
-                    <SelectValue placeholder={t('checkout.zonePlaceholder')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {zones.map((zone) => (
-                      <SelectItem key={zone.id} value={zone.id}>
-                        <div className="flex items-center justify-between gap-6 w-full">
-                          <span>{zone.location_name}</span>
-                          <span className="text-muted-foreground text-xs font-semibold">
-                            {zone.fee === 0 ? t('checkout.free') : formatCurrency(convertForDisplay(zone.fee), displayCurrency)}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div key={zoneSelectKey} className="space-y-2">
+                  <Select
+                    value={selectedZoneId || undefined}
+                    onValueChange={(v) => {
+                      setSelectedZoneId(v);
+                      setFormError(null);
+                    }}
+                  >
+                    <SelectTrigger className="h-12 bg-slate-50 border-slate-200 rounded-xl text-sm focus:bg-white w-full">
+                      <SelectValue placeholder={t('checkout.zonePlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent position="popper" sideOffset={4} className="z-[100]">
+                      {zones.map((zone) => (
+                        <SelectItem key={zone.id} value={zone.id}>
+                          <div className="flex items-center justify-between gap-6 w-full">
+                            <span>{zone.location_name}</span>
+                            <span className="text-muted-foreground text-xs font-semibold">
+                              {zone.fee === 0 ? t('checkout.free') : formatCurrency(convertForDisplay(zone.fee), displayCurrency)}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedZoneId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setZoneSelectKey((k) => k + 1);
+                        setSelectedZoneId('');
+                      }}
+                      className="text-xs text-teal-600 hover:text-teal-700 font-medium touch-manipulation"
+                    >
+                      {t('checkout.changeZone')}
+                    </button>
+                  )}
+                </div>
               ) : (
                 <p className="text-sm text-slate-500">{t('checkout.zoneNoZones')}</p>
               )}
@@ -812,11 +839,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       key={mapKey}
                       lat={latitude}
                       lng={longitude}
-                      onLocationChange={(lat, lng) => {
-                        locationFromStorage.current = true;
-                        setLatitude(lat);
-                        setLongitude(lng);
-                      }}
+                      onLocationChange={handleMapLocationChange}
                       height="256px"
                       zoneCenterLat={selectedZone?.center_lat != null ? Number(selectedZone.center_lat) : undefined}
                       zoneCenterLng={selectedZone?.center_lng != null ? Number(selectedZone.center_lng) : undefined}

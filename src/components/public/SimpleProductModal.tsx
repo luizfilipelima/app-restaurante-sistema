@@ -19,6 +19,7 @@ interface SimpleProductModalProps {
   product: Product;
   basePrice: number;
   currency?: CurrencyCode;
+  convertForDisplay?: (value: number) => number;
 }
 
 export default function SimpleProductModal({
@@ -27,6 +28,7 @@ export default function SimpleProductModal({
   product,
   basePrice,
   currency = 'BRL',
+  convertForDisplay,
 }: SimpleProductModalProps) {
   const { t } = useTranslation();
   const addItem = useCartStore((state) => state.addItem);
@@ -57,6 +59,7 @@ export default function SimpleProductModal({
   };
 
   const total = basePrice * quantity;
+  const fmt = (v: number) => formatCurrency(convertForDisplay ? convertForDisplay(v) : v, currency);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -99,7 +102,7 @@ export default function SimpleProductModal({
                 {product.name}
               </h3>
               <p className="text-base font-semibold text-orange-600 tabular-nums">
-                {formatCurrency(basePrice, currency)}
+                {fmt(basePrice)}
               </p>
               {product.description && (
                 <p className="text-sm text-slate-500 leading-relaxed pt-1">
@@ -111,7 +114,7 @@ export default function SimpleProductModal({
             {/* Seletor de quantidade — compacto */}
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-600">
-                {t('menu.total')}: {formatCurrency(total, currency)}
+                {t('menu.total')}: {fmt(total)}
               </span>
               <div className="flex items-center gap-3">
                 <button

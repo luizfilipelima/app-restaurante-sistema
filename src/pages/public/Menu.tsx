@@ -10,7 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
-import { isWithinOpeningHours, formatCurrency, normalizePhoneWithCountryCode } from '@/lib/utils';
+import { isWithinOpeningHours, normalizePhoneWithCountryCode } from '@/lib/utils';
+import { useMenuCurrency } from '@/hooks/useMenuCurrency';
+import CurrencySelector from '@/components/public/CurrencySelector';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import ProductCard from '@/components/public/ProductCard';
@@ -297,10 +299,15 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   if (!loading && (!menuData || isError || !restaurant)) return <div className="min-h-screen flex items-center justify-center p-4">{t('menu.restaurantNotFound')}</div>;
   if (!restaurant) return null;
 
-  const validCurrencies = ['BRL', 'PYG', 'ARS', 'USD'] as const;
-  const currency = validCurrencies.includes(restaurant.currency as typeof validCurrencies[number])
-    ? (restaurant.currency as typeof validCurrencies[number])
-    : 'BRL';
+  const {
+    displayCurrency: currency,
+    setDisplayCurrency,
+    paymentCurrencies,
+    hasMultipleCurrencies,
+    convertForDisplay,
+    formatForDisplay,
+    baseCurrency,
+  } = useMenuCurrency(restaurant);
 
   const hasHours = restaurant.opening_hours && Object.keys(restaurant.opening_hours).length > 0;
   const alwaysOpen = !!restaurant.always_open;
@@ -346,6 +353,15 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                   {isOpen ? t('menu.open') : t('menu.closed')}
                 </span>
               </div>
+              {hasMultipleCurrencies && (
+                <CurrencySelector
+                  value={currency}
+                  options={paymentCurrencies}
+                  onChange={setDisplayCurrency}
+                  baseCurrency={baseCurrency}
+                  className="flex-shrink-0 ml-auto sm:ml-2"
+                />
+              )}
             </div>
             {/* Ícone de carrinho — quadrado escuro com badge laranja */}
             <button
@@ -455,6 +471,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                     product={offer.product}
                     onClick={() => handleOfferProductClick(offer)}
                     currency={currency}
+                    convertForDisplay={convertForDisplay}
                     comboItems={productComboItemsMap?.[offer.product.id]}
                     offer={{ price: offer.offer_price, originalPrice: offer.original_price, label: offer.label }}
                   />
@@ -489,6 +506,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                                   product={product}
                                   onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
                                   currency={currency}
+                                  convertForDisplay={convertForDisplay}
                                   comboItems={productComboItemsMap?.[product.id]}
                                   offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
                                 />
@@ -508,6 +526,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                                 product={product}
                                 onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
                                 currency={currency}
+                                convertForDisplay={convertForDisplay}
                                 comboItems={productComboItemsMap?.[product.id]}
                                 offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
                               />
@@ -526,6 +545,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                             product={product}
                             onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
                             currency={currency}
+                            convertForDisplay={convertForDisplay}
                             comboItems={productComboItemsMap?.[product.id]}
                             offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
                           />
@@ -550,6 +570,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       product={product}
                       onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
                       currency={currency}
+                      convertForDisplay={convertForDisplay}
                       comboItems={productComboItemsMap?.[product.id]}
                       offer={offer ? { price: offer.offer_price, originalPrice: offer.original_price, label: offer.label } : undefined}
                     />
@@ -605,7 +626,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 </div>
                 <div className="flex flex-col items-start justify-center">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold leading-tight">{t('menu.total')}</span>
-                  <span className="text-base font-bold text-white leading-tight">{formatCurrency(getSubtotal(), currency)}</span>
+                  <span className="text-base font-bold text-white leading-tight">{formatForDisplay(getSubtotal())}</span>
                 </div>
               </div>
 
@@ -629,6 +650,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           onClose={() => setCartOpen(false)}
           onCheckout={handleCheckoutNavigation}
           currency={currency}
+          convertForDisplay={convertForDisplay}
           restaurantId={cartRestaurantId}
           customerPhone={savedPhone}
         />
@@ -640,6 +662,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             product={simpleModalProduct.product}
             basePrice={simpleModalProduct.basePrice}
             currency={currency}
+            convertForDisplay={convertForDisplay}
           />
         )}
 
@@ -651,6 +674,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             addonGroups={productAddonsMap[addonModalProduct.product.id] ?? []}
             currency={currency}
             basePrice={addonModalProduct.basePrice}
+            convertForDisplay={convertForDisplay}
             onAddToCart={({ quantity: qty, unitPrice, addons, observations }) => {
               useCartStore.getState().addItem({
                 productId: addonModalProduct.product.id,

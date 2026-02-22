@@ -13,16 +13,19 @@ interface ProductCardProps {
   onClick?: () => void;
   readOnly?: boolean;
   currency?: CurrencyCode;
+  /** Converte valor da moeda base para moeda de exibição. Se não informado, usa valor direto. */
+  convertForDisplay?: (value: number) => number;
   comboItems?: Array<{ product: { name: string }; quantity: number }>;
   offer?: { price: number; originalPrice: number; label?: string | null };
 }
 
-function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', comboItems, offer }: ProductCardProps) {
+function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', convertForDisplay, comboItems, offer }: ProductCardProps) {
   const { t } = useTranslation();
   const hasImage = !!product.image_url;
   const isCombo = product.is_combo || (comboItems && comboItems.length > 0);
   const isOffer = !!offer;
-  const displayPrice = offer ? offer.price : Number(product.price_sale || product.price);
+  const rawPrice = offer ? offer.price : Number(product.price_sale || product.price);
+  const displayPrice = convertForDisplay ? convertForDisplay(rawPrice) : rawPrice;
   const subtitle =
     product.description ??
     (isCombo && comboItems?.length
@@ -94,7 +97,7 @@ function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', com
           <div className="min-w-0">
             {isOffer && (
               <span className="text-xs text-slate-400 line-through mr-2">
-                {formatCurrency(offer.originalPrice, currency)}
+                {formatCurrency(convertForDisplay ? convertForDisplay(offer.originalPrice) : offer.originalPrice, currency)}
               </span>
             )}
             <span className="text-sm font-semibold text-slate-900 tabular-nums">

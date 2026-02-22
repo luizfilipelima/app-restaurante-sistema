@@ -30,6 +30,7 @@ interface ProductAddonModalProps {
   addonGroups: AddonGroup[];
   currency: CurrencyCode;
   basePrice: number;
+  convertForDisplay?: (value: number) => number;
   onAddToCart: (params: {
     quantity: number;
     unitPrice: number;
@@ -45,6 +46,7 @@ export default function ProductAddonModal({
   addonGroups,
   currency,
   basePrice,
+  convertForDisplay,
   onAddToCart,
 }: ProductAddonModalProps) {
   const { t } = useTranslation();
@@ -71,6 +73,7 @@ export default function ProductAddonModal({
   const addonsTotal = selectedAddons.reduce((s, a) => s + a.price, 0);
   const unitPrice = basePrice + addonsTotal;
   const total = unitPrice * quantity;
+  const fmt = (v: number) => formatCurrency(convertForDisplay ? convertForDisplay(v) : v, currency);
 
   const handleAdd = () => {
     onAddToCart({
@@ -126,7 +129,7 @@ export default function ProductAddonModal({
                 {product.name}
               </h3>
               <p className="text-base font-semibold text-orange-600 tabular-nums">
-                {formatCurrency(basePrice, currency)}
+                {fmt(basePrice)}
               </p>
               {product.description && (
                 <p className="text-sm text-slate-500 leading-relaxed pt-1">
@@ -138,7 +141,7 @@ export default function ProductAddonModal({
             {/* Seletor de quantidade — compacto */}
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-600">
-                {t('menu.total')}: {formatCurrency(total, currency)}
+                {t('menu.total')}: {fmt(total)}
               </span>
               <div className="flex items-center gap-3">
                 <button
@@ -188,7 +191,7 @@ export default function ProductAddonModal({
                         <span>{item.name}</span>
                         {item.price > 0 && (
                           <span className="text-xs opacity-80">
-                            +{formatCurrency(item.price, currency)}
+                            +{fmt(item.price)}
                           </span>
                         )}
                       </button>

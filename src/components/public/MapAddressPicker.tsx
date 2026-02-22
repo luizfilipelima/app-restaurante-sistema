@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Circle, useMapEvents, useMap } from 'react-leaflet';
 import { useTranslation } from 'react-i18next';
@@ -15,9 +15,14 @@ L.Icon.Default.mergeOptions({
 function MapInvalidateSize() {
   const map = useMap();
   useEffect(() => {
-    map.invalidateSize();
-    const t = setTimeout(() => map.invalidateSize(), 100);
-    return () => clearTimeout(t);
+    const raf = requestAnimationFrame(() => {
+      map.invalidateSize();
+    });
+    const t = setTimeout(() => map.invalidateSize(), 200);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
   }, [map]);
   return null;
 }
@@ -25,9 +30,20 @@ function MapInvalidateSize() {
 /** Atualiza o centro do mapa quando as coordenadas mudam (ex: nova zona selecionada) */
 function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
+  const prevCenter = useRef<[number, number]>([0, 0]);
+  const isFirstMount = useRef(true);
   useEffect(() => {
-    map.flyTo(center, zoom, { duration: 0.6 });
-  }, [map, center[0], center[1], zoom]);
+    const lat = center[0];
+    const lng = center[1];
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      prevCenter.current = [lat, lng];
+      map.setView(center, zoom); // setView evita animação no mount — reduz piscada
+    } else if (prevCenter.current[0] !== lat || prevCenter.current[1] !== lng) {
+      prevCenter.current = [lat, lng];
+      map.flyTo(center, zoom, { duration: 0.5 });
+    }
+  }, [map, center, zoom]);
   return null;
 }
 
