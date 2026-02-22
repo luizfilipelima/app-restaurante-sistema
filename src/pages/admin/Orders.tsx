@@ -821,8 +821,7 @@ export default function AdminOrders() {
                             {status === OrderStatus.READY && isDeliveryOrder && couriers.filter((c) => c.active).length > 0 && (
                               <Button
                                 size="sm"
-                                variant="outline"
-                                className="w-full h-8 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                className="w-full h-8 text-xs bg-gradient-to-r from-violet-500 to-indigo-600 text-white border-0 shadow-sm hover:shadow-md hover:brightness-105 transition-all font-semibold"
                                 onClick={() => {
                                   setDispatchOrder(order);
                                   setSelectedCourierForDispatch(order.courier_id ?? (couriers.filter((c) => c.active)[0]?.id ?? ''));
