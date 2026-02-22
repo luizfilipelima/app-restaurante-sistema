@@ -817,7 +817,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       setFormError(null);
                     }}
                   >
-                    <SelectTrigger data-testid="checkout-zone-select" className="h-12 bg-slate-50 border-slate-200 rounded-xl text-sm focus:bg-white w-full">
+                    <SelectTrigger data-testid="checkout-zone-select" className="h-auto min-h-12 py-3 bg-slate-50 border-slate-200 rounded-xl text-base focus:bg-white w-full [&>span]:block [&>span]:whitespace-normal [&>span]:text-left [&>span]:break-words">
                       <SelectValue placeholder={t('checkout.zonePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent position="popper" sideOffset={4} className="z-[100]">
@@ -1145,7 +1145,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       setCouponError(null);
                     }}
                     placeholder={t('checkout.couponPlaceholder')}
-                    className="flex-1 font-mono uppercase placeholder:normal-case"
+                    className="flex-1 h-12 text-base bg-slate-50 border-slate-200 rounded-xl focus:bg-white uppercase placeholder:normal-case"
                     disabled={validatingCoupon}
                   />
                   <Button
