@@ -832,13 +832,13 @@ export default function AdminOrders() {
                               </Button>
                             )}
 
-                            {/* ── WhatsApp "Saiu pra entrega" (delivery, coluna Em Entrega) ── */}
+                            {/* ── WhatsApp "Saiu pra entrega" (delivery, coluna Em Conclusão) ── */}
                             {canNotifyWhatsApp && (
                               <a
                                 href={buildWhatsAppDeliveryUrl()}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center justify-center gap-1.5 w-full rounded-lg bg-[#25D366] hover:bg-[#1ebe5d] transition-colors py-1.5 text-xs font-semibold text-white shadow-sm"
+                                className="inline-flex items-center justify-center gap-1.5 w-full h-8 rounded-md bg-[#25D366] hover:bg-[#1ebe5d] hover:brightness-105 transition-all text-xs font-semibold text-white shadow-sm hover:shadow-md"
                               >
                                 <MessageCircle className="h-3.5 w-3.5" />
                                 Avisar cliente no WhatsApp
@@ -851,7 +851,7 @@ export default function AdminOrders() {
                                 href={buildWhatsAppPickupReadyUrl()}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center justify-center gap-1.5 w-full rounded-lg bg-[#25D366] hover:bg-[#1ebe5d] transition-colors py-1.5 text-xs font-semibold text-white shadow-sm"
+                                className="inline-flex items-center justify-center gap-1.5 w-full h-8 rounded-md bg-[#25D366] hover:bg-[#1ebe5d] hover:brightness-105 transition-all text-xs font-semibold text-white shadow-sm hover:shadow-md"
                               >
                                 <MessageCircle className="h-3.5 w-3.5" />
                                 Avisar cliente no WhatsApp
