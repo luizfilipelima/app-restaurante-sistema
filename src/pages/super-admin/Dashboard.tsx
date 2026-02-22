@@ -5,7 +5,7 @@ import {
   useSuperAdminRestaurants,
   useInvalidateSuperAdminRestaurants,
 } from '@/hooks/queries/useSuperAdminRestaurants';
-import { saasMetricsKey } from '@/hooks/queries/useSaasMetrics';
+import { dashboardBIKey } from '@/hooks/queries/useSuperAdminDashboardBI';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useSuperAdminExchangeRates,
@@ -388,7 +388,7 @@ export default function SuperAdminDashboard() {
       if (error) throw error;
       toast({ title: 'Receita atualizada', description: value != null ? `R$ ${value.toFixed(2)}/mês definido.` : 'Usando valor do plano.' });
       invalidate();
-      qc.invalidateQueries({ queryKey: saasMetricsKey() });
+      qc.invalidateQueries({ queryKey: dashboardBIKey() });
     } catch {
       toast({ title: 'Erro ao salvar', variant: 'destructive' });
     } finally {

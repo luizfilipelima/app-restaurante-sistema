@@ -1,6 +1,7 @@
+import { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSaasMetrics, saasMetricsKey } from '@/hooks/queries/useSaasMetrics';
-import { useSubscriptionPlans, subscriptionKeys } from '@/hooks/queries/useSubscriptionManager';
+import { useSuperAdminDashboardBI, dashboardBIKey, useInvalidateDashboardBI } from '@/hooks/queries/useSuperAdminDashboardBI';
+import type { PlanFilter } from '@/hooks/queries/useSuperAdminDashboardBI';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,8 +31,18 @@ import {
   Download,
   ChevronDown,
   Flame,
+  ShoppingCart,
+  Calendar,
+  Filter,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // ─── Variantes de animação ─────────────────────────────────────────────────────
 
@@ -88,47 +99,45 @@ function CustomTooltip({ active, payload, label }: any) {
 // ─── Componente principal ──────────────────────────────────────────────────────
 
 export default function SaasMetrics() {
-  const qc = useQueryClient();
-  const { data: metrics, isLoading, isError, dataUpdatedAt } = useSaasMetrics();
-  const { data: plans = [] } = useSubscriptionPlans();
+  const [planFilter, setPlanFilter] = useState<PlanFilter>('all');
+  const invalidate = useInvalidateDashboardBI();
+  const { data: metrics, isLoading, isError, dataUpdatedAt } = useSuperAdminDashboardBI();
 
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     : null;
 
-  const handleRefresh = () => {
-    qc.invalidateQueries({ queryKey: saasMetricsKey() });
-    qc.invalidateQueries({ queryKey: subscriptionKeys.plans() });
-  };
+  const handleRefresh = () => invalidate();
 
-  // Usa preços da página Planos (useSubscriptionPlans) para garantir consistência
-  const planPriceMap = Object.fromEntries(plans.map((p) => [p.name, p.price_brl]));
-  const usePlanPrices = plans.length > 0;
-  const revenueByPlan = (metrics?.revenue_by_plan ?? []).map((item) => {
-    if (usePlanPrices) {
-      const priceBrl = planPriceMap[item.plan_name] ?? 0;
-      const monthlyRevenueBrl = Math.round((item.tenant_count ?? 0) * priceBrl * 100) / 100;
-      return { ...item, monthly_revenue_brl: monthlyRevenueBrl };
-    }
-    return item;
-  });
-  const totalMrr = usePlanPrices
-    ? revenueByPlan.reduce((sum, item) => sum + item.monthly_revenue_brl, 0)
-    : (metrics?.total_mrr ?? 0);
-  const arpu = metrics?.total_tenants
-    ? totalMrr / metrics.total_tenants
-    : 0;
+  const filteredRestaurants = useMemo(() => {
+    if (!metrics) return [];
+    if (planFilter === 'all') return metrics.restaurants;
+    return metrics.restaurants.filter((r) => r.plan_name === planFilter);
+  }, [metrics, planFilter]);
+
+  const revenueByPlan = metrics?.revenue_by_plan ?? [];
+  const totalMrr = metrics?.total_mrr ?? 0;
+  const arpu = metrics?.arpu ?? 0;
+  const chartData = revenueByPlan.map((item) => ({
+    ...item,
+    fill: PLAN_COLORS[item.plan_name]?.bar ?? '#94a3b8',
+  }));
 
   const handleExportCSV = () => {
     if (!metrics) return;
     const rows = [
       ['Métrica', 'Valor'],
-      ['MRR Atual', formatCurrency(totalMrr)],
+      ['MRR Atual', formatBRLReais(totalMrr)],
       ['Total Restaurantes', String(metrics.total_tenants)],
       ['Novos (7 dias)', String(metrics.new_tenants_7d)],
-      ['ARPU', formatCurrency(arpu)],
+      ['Novos (30 dias)', String(metrics.new_tenants_30d)],
+      ['GMV Total (BRL)', formatCurrency(metrics.gmv_total_brl)],
+      ['GMV 7 dias', formatCurrency(metrics.gmv_7d_brl)],
+      ['GMV 30 dias', formatCurrency(metrics.gmv_30d_brl)],
+      ['Ticket Médio', formatCurrency(metrics.ticket_medio_brl)],
+      ['ARPU', formatBRLReais(arpu)],
     ];
-    const csv = rows.map((r) => r.join(',')).join('\n');
+    const csv = rows.map((r) => r.join(';')).join('\n');
     const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -194,18 +203,30 @@ export default function SaasMetrics() {
   return (
     <div className="p-6 lg:p-8 space-y-6 min-w-0">
 
-      {/* ── Header (estilo Dashboard BI) ──────────────────────────────────── */}
+      {/* ── Header + Filtros ───────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Dashboard BI</h1>
           <p className="text-slate-500 text-sm mt-0.5">
-            Visão financeira consolidada do SaaS
+            Visão financeira e estratégica do SaaS
             {lastUpdated && (
               <span className="text-slate-400"> · Atualizado às {lastUpdated}</span>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={planFilter} onValueChange={(v) => setPlanFilter(v as PlanFilter)}>
+            <SelectTrigger className="w-[140px] h-9 border-slate-200">
+              <Filter className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
+              <SelectValue placeholder="Plano" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os planos</SelectItem>
+              <SelectItem value="core">Core</SelectItem>
+              <SelectItem value="standard">Standard</SelectItem>
+              <SelectItem value="enterprise">Enterprise</SelectItem>
+            </SelectContent>
+          </Select>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -231,9 +252,9 @@ export default function SaasMetrics() {
         </div>
       </div>
 
-      {/* ── KPI Cards (4 cards brancos como referência) ────────────────────── */}
+      {/* ── KPI Cards ──────────────────────────────────────────────────────── */}
       <motion.div
-        className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 min-w-0"
+        className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 min-w-0"
         variants={kpiContainerVariants}
         initial="hidden"
         animate="visible"
@@ -245,38 +266,85 @@ export default function SaasMetrics() {
               <DollarSign className="h-4 w-4 text-blue-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">
-            {formatCurrency(totalMrr)}
-          </p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{formatBRLReais(totalMrr)}</p>
           <p className="text-xs text-slate-400 mt-1">Receita mensal recorrente</p>
         </motion.div>
 
         <motion.div className="admin-metric-card" variants={kpiCardVariants}>
           <div className="flex items-start justify-between">
-            <p className="text-sm font-medium text-slate-500">Restaurantes</p>
+            <p className="text-sm font-medium text-slate-500">GMV Total</p>
             <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center">
-              <Store className="h-4 w-4 text-emerald-600" />
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.total_tenants}</p>
-          <p className="text-xs text-slate-400 mt-1">
-            {metrics.total_tenants === 1 ? 'restaurante ativo' : 'restaurantes ativos'}
-          </p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{formatCurrency(metrics.gmv_total_brl)}</p>
+          <p className="text-xs text-slate-400 mt-1">Faturamento total (convertido BRL)</p>
         </motion.div>
 
         <motion.div className="admin-metric-card" variants={kpiCardVariants}>
           <div className="flex items-start justify-between">
-            <p className="text-sm font-medium text-slate-500">Novos (7 dias)</p>
-            <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${
-              metrics.new_tenants_7d > 0 ? 'bg-violet-50' : 'bg-slate-100'
-            }`}>
+            <p className="text-sm font-medium text-slate-500">GMV 7 dias</p>
+            <div className="h-9 w-9 rounded-lg bg-sky-50 flex items-center justify-center">
+              <Calendar className="h-4 w-4 text-sky-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{formatCurrency(metrics.gmv_7d_brl)}</p>
+          <p className="text-xs text-slate-400 mt-1">Últimos 7 dias</p>
+        </motion.div>
+
+        <motion.div className="admin-metric-card" variants={kpiCardVariants}>
+          <div className="flex items-start justify-between">
+            <p className="text-sm font-medium text-slate-500">GMV 30 dias</p>
+            <div className="h-9 w-9 rounded-lg bg-violet-50 flex items-center justify-center">
+              <Calendar className="h-4 w-4 text-violet-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{formatCurrency(metrics.gmv_30d_brl)}</p>
+          <p className="text-xs text-slate-400 mt-1">Últimos 30 dias</p>
+        </motion.div>
+
+        <motion.div className="admin-metric-card" variants={kpiCardVariants}>
+          <div className="flex items-start justify-between">
+            <p className="text-sm font-medium text-slate-500">Ticket Médio</p>
+            <div className="h-9 w-9 rounded-lg bg-amber-50 flex items-center justify-center">
+              <ShoppingCart className="h-4 w-4 text-amber-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{formatCurrency(metrics.ticket_medio_brl)}</p>
+          <p className="text-xs text-slate-400 mt-1">Por pedido (BRL)</p>
+        </motion.div>
+
+        <motion.div className="admin-metric-card" variants={kpiCardVariants}>
+          <div className="flex items-start justify-between">
+            <p className="text-sm font-medium text-slate-500">Restaurantes</p>
+            <div className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center">
+              <Store className="h-4 w-4 text-slate-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{filteredRestaurants.length}</p>
+          <p className="text-xs text-slate-400 mt-1">{planFilter === 'all' ? 'ativos' : `plano ${planFilter}`}</p>
+        </motion.div>
+
+        <motion.div className="admin-metric-card" variants={kpiCardVariants}>
+          <div className="flex items-start justify-between">
+            <p className="text-sm font-medium text-slate-500">Novos (7d)</p>
+            <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${metrics.new_tenants_7d > 0 ? 'bg-violet-50' : 'bg-slate-100'}`}>
               <UserPlus className={`h-4 w-4 ${metrics.new_tenants_7d > 0 ? 'text-violet-600' : 'text-slate-400'}`} />
             </div>
           </div>
           <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.new_tenants_7d}</p>
-          <p className="text-xs text-slate-400 mt-1">
-            {metrics.new_tenants_7d > 0 ? 'novos esta semana' : 'nenhum novo'}
-          </p>
+          <p className="text-xs text-slate-400 mt-1">esta semana</p>
+        </motion.div>
+
+        <motion.div className="admin-metric-card" variants={kpiCardVariants}>
+          <div className="flex items-start justify-between">
+            <p className="text-sm font-medium text-slate-500">Novos (30d)</p>
+            <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${metrics.new_tenants_30d > 0 ? 'bg-violet-50' : 'bg-slate-100'}`}>
+              <UserPlus className={`h-4 w-4 ${metrics.new_tenants_30d > 0 ? 'text-violet-600' : 'text-slate-400'}`} />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.new_tenants_30d}</p>
+          <p className="text-xs text-slate-400 mt-1">este mês</p>
         </motion.div>
 
         <motion.div className="admin-metric-card" variants={kpiCardVariants}>
@@ -286,7 +354,7 @@ export default function SaasMetrics() {
               <TrendingUp className="h-4 w-4 text-amber-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{formatCurrency(arpu)}</p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{formatBRLReais(arpu)}</p>
           <p className="text-xs text-slate-400 mt-1">Receita média por restaurante</p>
         </motion.div>
       </motion.div>
@@ -317,7 +385,7 @@ export default function SaasMetrics() {
                         {item.tenant_count}
                       </span>
                     </div>
-                    <span className="text-sm font-semibold text-slate-800">{formatCurrency(item.monthly_revenue_brl)}</span>
+                    <span className="text-sm font-semibold text-slate-800">{formatBRLReais(item.monthly_revenue_brl)}</span>
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-slate-100">
                     <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: palette?.bar }} />
@@ -401,7 +469,60 @@ export default function SaasMetrics() {
         </div>
       </motion.div>
 
-      {/* ── Terceira linha: Lucro/Receita total (estilo Lucro Estimado) ───── */}
+      {/* ── Tabela: Restaurantes por plano (filtrada) ───────────────────────── */}
+      <motion.div
+        className="admin-card p-6 min-w-0 overflow-hidden"
+        variants={sectionVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <h3 className="text-base font-semibold text-slate-700 mb-4">
+          Restaurantes {planFilter !== 'all' ? `· Plano ${planFilter}` : ''}
+        </h3>
+        <p className="text-xs text-slate-400 mb-4">
+          Faturamento e métricas por restaurante (convertido para BRL)
+        </p>
+        <div className="overflow-x-auto -mx-2">
+          <table className="w-full text-sm min-w-[640px]">
+            <thead>
+              <tr className="border-b border-slate-200">
+                <th className="text-left py-3 px-2 font-semibold text-slate-600">Restaurante</th>
+                <th className="text-left py-3 px-2 font-semibold text-slate-600">Plano</th>
+                <th className="text-right py-3 px-2 font-semibold text-slate-600">GMV 7d</th>
+                <th className="text-right py-3 px-2 font-semibold text-slate-600">GMV 30d</th>
+                <th className="text-right py-3 px-2 font-semibold text-slate-600">GMV Total</th>
+                <th className="text-right py-3 px-2 font-semibold text-slate-600">Pedidos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRestaurants.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-slate-400">
+                    Nenhum restaurante
+                  </td>
+                </tr>
+              ) : (
+                filteredRestaurants.map((r) => (
+                  <tr key={r.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                    <td className="py-3 px-2 font-medium text-slate-800">{r.name}</td>
+                    <td className="py-3 px-2">
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${PLAN_COLORS[r.plan_name]?.badge ?? 'bg-slate-100'}`}>
+                        {r.plan_label}
+                      </span>
+                    </td>
+                    <td className="py-3 px-2 text-right font-medium text-slate-700">{formatCurrency(r.gmv_7d_brl)}</td>
+                    <td className="py-3 px-2 text-right font-medium text-slate-700">{formatCurrency(r.gmv_30d_brl)}</td>
+                    <td className="py-3 px-2 text-right font-semibold text-slate-800">{formatCurrency(r.gmv_total_brl)}</td>
+                    <td className="py-3 px-2 text-right text-slate-600">{r.orders_total}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
+
+      {/* ── Total MRR ──────────────────────────────────────────────────────── */}
       <motion.div className="admin-metric-card min-w-0" variants={sectionVariants} initial="hidden" animate="visible">
         <div className="flex items-start justify-between">
           <p className="text-sm font-medium text-slate-500">Total MRR</p>
@@ -409,7 +530,7 @@ export default function SaasMetrics() {
             <TrendingUp className="h-4 w-4 text-emerald-600" />
           </div>
         </div>
-        <p className="text-2xl font-bold text-slate-900 mt-2">{formatCurrency(totalMrr)}</p>
+        <p className="text-2xl font-bold text-slate-900 mt-2">{formatBRLReais(totalMrr)}</p>
         <p className="text-xs text-slate-400 mt-1">Receita mensal recorrente consolidada</p>
       </motion.div>
 
