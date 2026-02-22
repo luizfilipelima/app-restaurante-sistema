@@ -288,6 +288,12 @@ function App() {
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
           {/* Comanda Digital — rota pública para clientes que escaneiam QR (app. ou quiero.) */}
+          {/* Cardápio público — ao clicar "Cardápio" no painel, abre em nova aba */}
+          <Route path="/:restaurantSlug" element={<PublicMenu />} />
+          <Route path="/:restaurantSlug/menu" element={<MenuViewOnly />} />
+          <Route path="/:restaurantSlug/cardapio/:tableNumber" element={<MenuTable />} />
+          <Route path="/:restaurantSlug/checkout" element={<PublicCheckout />} />
+          <Route path="/:restaurantSlug/order-confirmed" element={<OrderConfirmation />} />
           <Route path="/:restaurantSlug/comanda" element={<VirtualComanda />} />
           {/* Rastreamento de Pedido — rota pública para acompanhamento em tempo real */}
           <Route path="/:restaurantSlug/track/:orderId" element={<OrderTracking />} />
