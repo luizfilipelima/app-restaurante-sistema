@@ -306,13 +306,18 @@ export default function AdminOrders() {
         .join('\n');
 
       const orderLang = ((dispatchOrder as { customer_language?: string })?.customer_language === 'es' || (restaurant as { language?: string })?.language === 'es') ? 'es' as const : 'pt' as const;
-      const subtotalFmt = formatCurrency(dispatchOrder.subtotal ?? 0);
+      const subtotalFmt = formatCurrency(dispatchOrder.subtotal ?? 0, currency);
       const taxaFmt = dispatchOrder.delivery_fee != null && dispatchOrder.delivery_fee > 0
-        ? formatCurrency(dispatchOrder.delivery_fee)
+        ? formatCurrency(dispatchOrder.delivery_fee, currency)
         : '';
-      const totalFmt = formatCurrency(dispatchOrder.total ?? 0);
+      const totalFmt = formatCurrency(dispatchOrder.total ?? 0, currency);
+      const customerCountry = (restaurant as { phone_country?: string })?.phone_country === 'PY'
+        ? 'PY'
+        : (restaurant as { phone_country?: string })?.phone_country === 'AR'
+          ? 'AR'
+          : 'BR';
       const clienteTelefone = dispatchOrder.customer_phone
-        ? formatPhone(dispatchOrder.customer_phone)
+        ? '+' + normalizePhoneWithCountryCode(dispatchOrder.customer_phone, customerCountry)
         : '';
       const dispatchMessage = processTemplate(
         getTemplate('courier_dispatch', localWaTemplates, orderLang),

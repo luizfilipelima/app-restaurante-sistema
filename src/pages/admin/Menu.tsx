@@ -99,6 +99,8 @@ import { useProductUpsells, useSaveProductUpsells, useProductComboItems, useProd
 
 const CATEGORY_TYPES = [
   { id: 'default', label: 'Padrão', is_pizza: false, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
+  { id: 'pizza', label: 'Pizza', is_pizza: true, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
+  { id: 'marmita', label: 'Marmita', is_pizza: false, is_marmita: true, extra_field: null, extra_label: null, extra_placeholder: null },
   { id: 'volume', label: 'Bebidas (volume)', is_pizza: false, is_marmita: false, extra_field: 'volume', extra_label: 'Volume ou medida', extra_placeholder: 'Ex: 350ml, 1L, 2L' },
   { id: 'portion', label: 'Sobremesas (porção)', is_pizza: false, is_marmita: false, extra_field: 'portion', extra_label: 'Porção', extra_placeholder: 'Ex: individual, fatia, 500g' },
   { id: 'detail', label: 'Combos (detalhe)', is_pizza: false, is_marmita: false, extra_field: 'detail', extra_label: 'Detalhe do combo', extra_placeholder: 'Ex: Pizza + Refrigerante' },
@@ -149,10 +151,11 @@ interface SortableCategoryItemProps {
   count: number;
   isSelected: boolean;
   onSelect: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 }
 
-function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete }: SortableCategoryItemProps) {
+function SortableCategoryItem({ category, count, isSelected, onSelect, onEdit, onDelete }: SortableCategoryItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: category.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
 
@@ -187,12 +190,27 @@ function SortableCategoryItem({ category, count, isSelected, onSelect, onDelete 
         <span className={`flex-shrink-0 ${isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
           <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isSelected ? 'rotate-90' : ''}`} />
         </span>
+        {category.image_url ? (
+          <img src={category.image_url} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0 border border-border/60" />
+        ) : null}
         <span className={`truncate text-sm font-medium flex-1 ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
           {category.name}
         </span>
         <span className={`text-xs font-semibold tabular-nums flex-shrink-0 ${isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
           {count}
         </span>
+      </button>
+
+      {/* Edit — visible on hover */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+        className={`flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded ${
+          isSelected ? 'text-primary-foreground/40 hover:text-primary-foreground' : 'text-muted-foreground/40 hover:text-foreground'
+        }`}
+        title="Editar categoria"
+      >
+        <Edit className="h-3 w-3" />
       </button>
 
       {/* Delete — only visible on hover */}
@@ -375,8 +393,26 @@ export default function AdminMenu() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categoryFormName, setCategoryFormName] = useState('');
   const [categoryFormType, setCategoryFormType] = useState<string>(CATEGORY_TYPES[0].id);
+  const [categoryFormImageUrl, setCategoryFormImageUrl] = useState('');
   const [categoryFormInventory, setCategoryFormInventory] = useState(false);
   const [categoryFormDest, setCategoryFormDest] = useState<'kitchen' | 'bar'>('kitchen');
+  const [categoryImageUploading, setCategoryImageUploading] = useState(false);
+
+  // Category edit modal
+  const [showEditCategoryModal, setShowEditCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editCategoryForm, setEditCategoryForm] = useState<{
+    name: string;
+    type: string;
+    image_url: string;
+    inventory: boolean;
+    dest: 'kitchen' | 'bar';
+  }>({ name: '', type: CATEGORY_TYPES[0].id, image_url: '', inventory: false, dest: 'kitchen' });
+  const [editCategoryImageUploading, setEditCategoryImageUploading] = useState(false);
+
+  // Menu display mode (exibição do cardápio)
+  const menuDisplayMode = (restaurant?.menu_display_mode ?? 'default') as 'default' | 'categories_first';
+  const [menuDisplayModeSaving, setMenuDisplayModeSaving] = useState(false);
 
   // QR / Online modal
   const [showOnlineModal, setShowOnlineModal] = useState(false);
@@ -986,16 +1022,77 @@ export default function AdminMenu() {
         has_inventory: categoryFormInventory,
         print_destination: categoryFormDest,
         extra_field: preset.extra_field, extra_label: preset.extra_label, extra_placeholder: preset.extra_placeholder,
+        image_url: categoryFormImageUrl.trim() || null,
       });
       if (error) throw error;
       setShowCategoryModal(false);
       setCategoryFormName('');
       setCategoryFormType(CATEGORY_TYPES[0].id);
+      setCategoryFormImageUrl('');
       setCategoryFormInventory(false);
       setCategoryFormDest('kitchen');
       await loadCategoriesAndSubcategories();
       toast({ title: 'Categoria adicionada!' });
     } catch (e) { toast({ title: 'Erro ao adicionar categoria', variant: 'destructive' }); }
+  };
+
+  const handleOpenEditCategory = (cat: Category) => {
+    setEditingCategory(cat);
+    const typeId = cat.is_pizza ? 'pizza' : cat.is_marmita ? 'marmita'
+      : (cat.extra_field && (CATEGORY_TYPES.find((t) => t.extra_field === cat.extra_field)?.id)) ?? 'default';
+    setEditCategoryForm({
+      name: cat.name,
+      type: typeId,
+      image_url: cat.image_url || '',
+      inventory: cat.has_inventory ?? false,
+      dest: (cat.print_destination as 'kitchen' | 'bar') || 'kitchen',
+    });
+    setShowEditCategoryModal(true);
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!editingCategory) return;
+    const name = editCategoryForm.name.trim();
+    if (!name) { toast({ title: 'Nome obrigatório', variant: 'destructive' }); return; }
+    const exists = categories.find((c) => c.id !== editingCategory.id && c.name.toLowerCase() === name.toLowerCase());
+    if (exists) {
+      toast({ title: 'Já existe outra categoria com esse nome', variant: 'destructive' }); return;
+    }
+    const preset = CATEGORY_TYPES.find((t) => t.id === editCategoryForm.type) || CATEGORY_TYPES[0];
+    try {
+      const { error } = await supabase.from('categories').update({
+        name,
+        is_pizza: preset.is_pizza, is_marmita: preset.is_marmita,
+        has_inventory: editCategoryForm.inventory,
+        print_destination: editCategoryForm.dest,
+        extra_field: preset.extra_field, extra_label: preset.extra_label, extra_placeholder: preset.extra_placeholder,
+        image_url: editCategoryForm.image_url.trim() || null,
+      }).eq('id', editingCategory.id).eq('restaurant_id', restaurantId!);
+      if (error) throw error;
+      await supabase.from('products').update({ category: name }).eq('restaurant_id', restaurantId!).eq('category', editingCategory.name);
+      setShowEditCategoryModal(false);
+      setEditingCategory(null);
+      await loadCategoriesAndSubcategories();
+      await loadProducts();
+      invalidatePublicMenuCache(queryClient, slug || restaurant?.slug || ctxRestaurant?.slug);
+      toast({ title: 'Categoria atualizada!' });
+    } catch (e) { toast({ title: 'Erro ao atualizar categoria', variant: 'destructive' }); }
+  };
+
+  const saveMenuDisplayMode = async (value: 'default' | 'categories_first') => {
+    if (!restaurantId) return;
+    setMenuDisplayModeSaving(true);
+    try {
+      const { error } = await supabase.from('restaurants').update({ menu_display_mode: value }).eq('id', restaurantId);
+      if (error) throw error;
+      setRestaurant((prev) => prev ? { ...prev, menu_display_mode: value } : null);
+      invalidatePublicMenuCache(queryClient, slug || restaurant?.slug || ctxRestaurant?.slug);
+      toast({ title: 'Exibição do cardápio atualizada!' });
+    } catch (e) {
+      toast({ title: 'Erro ao salvar', variant: 'destructive' });
+    } finally {
+      setMenuDisplayModeSaving(false);
+    }
   };
 
   const handleDeleteCategory = async (category: Category) => {
@@ -1111,6 +1208,28 @@ export default function AdminMenu() {
             </CardHeader>
             <CardContent className="px-3 pb-4 space-y-1">
 
+              {/* Exibição do cardápio */}
+              <div className="mb-3 pb-3 border-b border-border/60">
+                <Label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5 block">Primeira tela do cardápio</Label>
+                <Select
+                  value={menuDisplayMode}
+                  onValueChange={(v) => saveMenuDisplayMode(v as 'default' | 'categories_first')}
+                  disabled={menuDisplayModeSaving}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    {menuDisplayModeSaving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Padrão (pills + produtos)</SelectItem>
+                    <SelectItem value="categories_first">Categorias com imagens primeiro</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  &quot;Categorias com imagens&quot; mostra cards de categorias na primeira tela.
+                </p>
+              </div>
+
               {/* "Todas" */}
               <button
                 type="button"
@@ -1150,6 +1269,7 @@ export default function AdminMenu() {
                         count={products.filter((p) => p.category === cat.name).length}
                         isSelected={selectedCategoryId === cat.id}
                         onSelect={() => setSelectedCategoryId(cat.id)}
+                        onEdit={() => handleOpenEditCategory(cat)}
                         onDelete={() => handleDeleteCategory(cat)}
                       />
                     ))}
@@ -1992,7 +2112,7 @@ export default function AdminMenu() {
       </Dialog>
 
       {/* ── New Category Modal ──────────────────────────────────────────────── */}
-      <Dialog open={showCategoryModal} onOpenChange={setShowCategoryModal}>
+      <Dialog open={showCategoryModal} onOpenChange={(open) => { if (!open) setCategoryFormImageUrl(''); setShowCategoryModal(open); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Nova Categoria</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
@@ -2000,6 +2120,38 @@ export default function AdminMenu() {
               <Label>Nome da categoria</Label>
               <Input placeholder="Ex: Pizza, Bebidas, Sobremesas" value={categoryFormName} onChange={(e) => setCategoryFormName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()} />
+            </div>
+            {/* Imagem da categoria */}
+            <div className="space-y-2">
+              <Label>Imagem da categoria (para cardápio com categorias primeiro)</Label>
+              <input type="file" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" className="hidden" id="cat-image-add"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file || !restaurantId) return;
+                  setCategoryImageUploading(true);
+                  try {
+                    const url = await uploadProductImage(restaurantId, file);
+                    setCategoryFormImageUrl(url);
+                    toast({ title: 'Imagem enviada!' });
+                  } catch (err) {
+                    toast({ title: 'Erro ao enviar imagem', description: err instanceof Error ? err.message : 'Tente outro arquivo.', variant: 'destructive' });
+                  } finally {
+                    setCategoryImageUploading(false);
+                    e.target.value = '';
+                  }
+                }} />
+              <label htmlFor="cat-image-add" className={`flex flex-col items-center justify-center w-full h-24 rounded-lg border cursor-pointer transition-colors ${
+                categoryFormImageUrl ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40 hover:bg-muted/60'
+              }`}>
+                {categoryImageUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : categoryFormImageUrl ? (
+                  <img src={categoryFormImageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
+                ) : (
+                  <><Upload className="h-6 w-6 text-muted-foreground mb-1" /><span className="text-xs text-muted-foreground">Clique para enviar</span></>
+                )}
+              </label>
+              {categoryFormImageUrl && (
+                <button type="button" onClick={() => setCategoryFormImageUrl('')} className="text-xs text-muted-foreground hover:text-destructive">Remover imagem</button>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Tipo / Comportamento</Label>
@@ -2062,6 +2214,96 @@ export default function AdminMenu() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCategoryModal(false)}>Cancelar</Button>
             <Button onClick={handleAddCategory} disabled={!categoryFormName.trim()}>Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Category Modal ─────────────────────────────────────────────── */}
+      <Dialog open={showEditCategoryModal} onOpenChange={(open) => { if (!open) setEditingCategory(null); setShowEditCategoryModal(open); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar Categoria</DialogTitle></DialogHeader>
+          {editingCategory && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Nome da categoria</Label>
+                <Input
+                  placeholder="Ex: Pizza, Bebidas"
+                  value={editCategoryForm.name}
+                  onChange={(e) => setEditCategoryForm((f) => ({ ...f, name: e.target.value }))}
+                  onKeyDown={(e) => e.key === 'Enter' && handleUpdateCategory()}
+                />
+              </div>
+              {/* Imagem */}
+              <div className="space-y-2">
+                <Label>Imagem da categoria</Label>
+                <input type="file" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" className="hidden" id="cat-image-edit"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !restaurantId) return;
+                    setEditCategoryImageUploading(true);
+                    try {
+                      const url = await uploadProductImage(restaurantId, file);
+                      setEditCategoryForm((f) => ({ ...f, image_url: url }));
+                      toast({ title: 'Imagem enviada!' });
+                    } catch (err) {
+                      toast({ title: 'Erro ao enviar imagem', variant: 'destructive' });
+                    } finally {
+                      setEditCategoryImageUploading(false);
+                      e.target.value = '';
+                    }
+                  }} />
+                <label htmlFor="cat-image-edit" className={`flex flex-col items-center justify-center w-full h-24 rounded-lg border cursor-pointer transition-colors ${
+                  editCategoryForm.image_url ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40 hover:bg-muted/60'
+                }`}>
+                  {editCategoryImageUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : editCategoryForm.image_url ? (
+                    <img src={editCategoryForm.image_url} alt="" className="w-full h-full object-cover rounded-lg" />
+                  ) : (
+                    <><Upload className="h-6 w-6 text-muted-foreground mb-1" /><span className="text-xs text-muted-foreground">Clique para enviar</span></>
+                  )}
+                </label>
+                {editCategoryForm.image_url && (
+                  <button type="button" onClick={() => setEditCategoryForm((f) => ({ ...f, image_url: '' }))} className="text-xs text-muted-foreground hover:text-destructive">Remover imagem</button>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo / Comportamento</Label>
+                <Select value={editCategoryForm.type} onValueChange={(v) => setEditCategoryForm((f) => ({ ...f, type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CATEGORY_TYPES.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5"><Printer className="h-3.5 w-3.5" /> Destino de Impressão</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setEditCategoryForm((f) => ({ ...f, dest: 'kitchen' as const }))}
+                    className={`flex items-center gap-2 rounded-lg border p-3 text-sm font-medium transition-all ${
+                      editCategoryForm.dest === 'kitchen' ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-950/40 dark:text-blue-300' : 'border-border hover:bg-muted/40'
+                    }`}>
+                    <ChefHat className="h-4 w-4" /><span>Cozinha</span>
+                  </button>
+                  <button type="button" onClick={() => setEditCategoryForm((f) => ({ ...f, dest: 'bar' as const }))}
+                    className={`flex items-center gap-2 rounded-lg border p-3 text-sm font-medium transition-all ${
+                      editCategoryForm.dest === 'bar' ? 'border-orange-400 bg-orange-50 text-orange-700 dark:border-orange-600 dark:bg-orange-950/40 dark:text-orange-300' : 'border-border hover:bg-muted/40'
+                    }`}>
+                    <Wine className="h-4 w-4" /><span>Bar</span>
+                  </button>
+                </div>
+              </div>
+              <div className={`flex items-start gap-3 rounded-lg border p-3.5 cursor-pointer ${editCategoryForm.inventory ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/40'}`}
+                onClick={() => setEditCategoryForm((f) => ({ ...f, inventory: !f.inventory }))}>
+                <Switch checked={editCategoryForm.inventory} onCheckedChange={(v) => setEditCategoryForm((f) => ({ ...f, inventory: v }))} className="mt-0.5" />
+                <div>
+                  <div className="flex items-center gap-1.5"><Boxes className="h-3.5 w-3.5 text-primary" /><span className="text-sm font-medium">Controle de Estoque</span></div>
+                  <p className="text-xs text-muted-foreground mt-0.5">Ativa gerenciamento de quantidade e custo para esta categoria.</p>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditCategoryModal(false)}>Cancelar</Button>
+            <Button onClick={handleUpdateCategory} disabled={!editingCategory || !editCategoryForm.name.trim()}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
