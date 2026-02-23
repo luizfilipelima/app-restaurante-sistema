@@ -37,10 +37,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { GripVertical, Loader2, Check, X, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { GripVertical, Loader2, Check, X, Plus, Trash2, ChevronDown, ChevronRight, Pencil, Upload } from 'lucide-react';
+import { uploadProductImage } from '@/lib/imageUpload';
 
 const CATEGORY_TYPES = [
   { id: 'default', label: 'Padrão', is_pizza: false, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
+  { id: 'pizza', label: 'Pizza', is_pizza: true, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
+  { id: 'marmita', label: 'Marmita', is_pizza: false, is_marmita: true, extra_field: null, extra_label: null, extra_placeholder: null },
   { id: 'volume', label: 'Bebidas (volume)', is_pizza: false, is_marmita: false, extra_field: 'volume', extra_label: 'Volume ou medida', extra_placeholder: 'Ex: 350ml, 1L, 2L' },
   { id: 'portion', label: 'Sobremesas (porção)', is_pizza: false, is_marmita: false, extra_field: 'portion', extra_label: 'Porção', extra_placeholder: 'Ex: individual, fatia, 500g' },
   { id: 'detail', label: 'Combos (detalhe)', is_pizza: false, is_marmita: false, extra_field: 'detail', extra_label: 'Detalhe do combo', extra_placeholder: 'Ex: Pizza + Refrigerante' },
@@ -56,6 +59,7 @@ interface SortableCategoryRowProps {
   subcategories: Subcategory[];
   expanded: boolean;
   onToggleExpand: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   onSubcategoriesChange: () => void;
 }
@@ -65,6 +69,7 @@ function SortableCategoryRow({
   subcategories,
   expanded,
   onToggleExpand,
+  onEdit,
   onDelete,
   onSubcategoriesChange,
 }: SortableCategoryRowProps) {
@@ -188,14 +193,28 @@ function SortableCategoryRow({
           {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-foreground">{category.name}</div>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {category.is_pizza && <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">Pizza</span>}
-            {category.is_marmita && <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200">Marmita</span>}
-            {category.extra_field && <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">Extra</span>}
-            <span className="text-xs text-muted-foreground">Posição: {category.order_index + 1}</span>
+          <div className="flex items-center gap-2">
+            {category.image_url ? (
+              <img src={category.image_url} alt="" className="h-10 w-10 rounded-lg object-cover flex-shrink-0" />
+            ) : (
+              <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 text-muted-foreground">
+                <Upload className="h-4 w-4" />
+              </div>
+            )}
+            <div>
+              <div className="font-medium text-foreground">{category.name}</div>
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {category.is_pizza && <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">Pizza</span>}
+                {category.is_marmita && <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200">Marmita</span>}
+                {category.extra_field && <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">Extra</span>}
+                <span className="text-xs text-muted-foreground">Posição: {category.order_index + 1}</span>
+              </div>
+            </div>
           </div>
         </div>
+        <Button type="button" variant="ghost" size="icon" onClick={onEdit} title="Editar categoria">
+          <Pencil className="h-4 w-4" />
+        </Button>
         <Button type="button" variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={onDelete} title="Excluir categoria">
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -306,6 +325,12 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
   const [modalOpen, setModalOpen] = useState(false);
   const [formName, setFormName] = useState('');
   const [formType, setFormType] = useState<string>(CATEGORY_TYPES[0].id);
+  const [formImageUrl, setFormImageUrl] = useState('');
+  const [imageUploading, setImageUploading] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editForm, setEditForm] = useState<{ name: string; type: string; image_url: string }>({ name: '', type: CATEGORY_TYPES[0].id, image_url: '' });
+  const [editImageUploading, setEditImageUploading] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -403,6 +428,7 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
         restaurant_id: restaurantId,
         name,
         order_index: nextOrder,
+        image_url: formImageUrl.trim() || null,
         is_pizza: preset.is_pizza,
         is_marmita: preset.is_marmita,
         extra_field: preset.extra_field,
@@ -413,11 +439,57 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
       setModalOpen(false);
       setFormName('');
       setFormType(CATEGORY_TYPES[0].id);
+      setFormImageUrl('');
       await loadData();
       onCategoriesChange?.();
       toast({ title: 'Categoria adicionada!' });
     } catch (e) {
       toast({ title: 'Erro ao adicionar categoria', variant: 'destructive' });
+    }
+  };
+
+  const openEditModal = (cat: Category) => {
+    setEditingCategory(cat);
+    const typeId = cat.is_pizza ? 'pizza' : cat.is_marmita ? 'marmita' : (cat.extra_field || 'default');
+    setEditForm({
+      name: cat.name,
+      type: CATEGORY_TYPES.some((t) => t.id === typeId) ? typeId : 'default',
+      image_url: cat.image_url || '',
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!editingCategory || !restaurantId) return;
+    const name = editForm.name.trim();
+    if (!name) {
+      toast({ title: 'Nome obrigatório', variant: 'destructive' });
+      return;
+    }
+    const existing = categories.find((c) => c.id !== editingCategory.id && c.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      toast({ title: 'Já existe uma categoria com esse nome', variant: 'destructive' });
+      return;
+    }
+    const preset = CATEGORY_TYPES.find((t) => t.id === editForm.type) || CATEGORY_TYPES[0];
+    try {
+      const { error } = await supabase.from('categories').update({
+        name,
+        image_url: editForm.image_url.trim() || null,
+        is_pizza: preset.is_pizza,
+        is_marmita: preset.is_marmita,
+        extra_field: preset.extra_field,
+        extra_label: preset.extra_label,
+        extra_placeholder: preset.extra_placeholder,
+      }).eq('id', editingCategory.id).eq('restaurant_id', restaurantId);
+      if (error) throw error;
+      setEditModalOpen(false);
+      setEditingCategory(null);
+      await loadData();
+      onCategoriesChange?.();
+      toast({ title: 'Categoria atualizada!' });
+    } catch (e) {
+      toast({ title: 'Erro ao atualizar categoria', variant: 'destructive' });
     }
   };
 
@@ -517,6 +589,7 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
                       subcategories={subcategoriesByCategory[category.id] || []}
                       expanded={expandedId === category.id}
                       onToggleExpand={() => setExpandedId((id) => (id === category.id ? null : category.id))}
+                      onEdit={() => openEditModal(category)}
                       onDelete={() => handleDeleteCategory(category)}
                       onSubcategoriesChange={loadData}
                     />
@@ -534,37 +607,138 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
             <DialogTitle>Nova categoria</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Nome da categoria</Label>
-              <Input
-                placeholder="Ex: Pizza, Bebidas, Sobremesas"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Tipo / Comportamento</Label>
-              <Select value={formType} onValueChange={setFormType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORY_TYPES.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex gap-4 items-start">
+              <div className="flex-shrink-0">
+                <Label className="text-xs text-muted-foreground">Imagem</Label>
+                <label className="cursor-pointer block mt-1">
+                  <input type="file" accept="image/*" className="sr-only" disabled={imageUploading || !restaurantId}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !restaurantId) return;
+                      setImageUploading(true);
+                      try {
+                        const url = await uploadProductImage(restaurantId, file);
+                        setFormImageUrl(url);
+                        toast({ title: 'Imagem enviada!' });
+                      } catch (err) {
+                        toast({ title: 'Erro ao enviar imagem', description: err instanceof Error ? err.message : 'Tente outro arquivo.', variant: 'destructive' });
+                      } finally {
+                        setImageUploading(false);
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                  <div className={`relative w-20 h-20 rounded-lg border-2 overflow-hidden flex items-center justify-center transition-all ${
+                    formImageUrl ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40'
+                  }`}>
+                    {imageUploading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formImageUrl ? (
+                      <img src={formImageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </div>
+                  {formImageUrl && (
+                    <button type="button" onClick={() => setFormImageUrl('')} className="mt-1 text-[10px] text-muted-foreground hover:text-destructive">Remover</button>
+                  )}
+                </label>
+              </div>
+              <div className="flex-1 space-y-3 min-w-0">
+                <div className="space-y-2">
+                  <Label>Nome da categoria</Label>
+                  <Input
+                    placeholder="Ex: Pizza, Bebidas, Sobremesas"
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tipo / Comportamento</Label>
+                  <Select value={formType} onValueChange={setFormType}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CATEGORY_TYPES.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleAddCategory} disabled={!formName.trim()}>
-              Adicionar
-            </Button>
+            <Button variant="outline" onClick={() => { setModalOpen(false); setFormImageUrl(''); }}>Cancelar</Button>
+            <Button onClick={handleAddCategory} disabled={!formName.trim()}>Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editModalOpen} onOpenChange={(open) => { setEditModalOpen(open); if (!open) setEditingCategory(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar categoria</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex gap-4 items-start">
+              <div className="flex-shrink-0">
+                <Label className="text-xs text-muted-foreground">Imagem</Label>
+                <label className="cursor-pointer block mt-1">
+                  <input type="file" accept="image/*" className="sr-only" disabled={editImageUploading || !restaurantId}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !restaurantId) return;
+                      setEditImageUploading(true);
+                      try {
+                        const url = await uploadProductImage(restaurantId, file);
+                        setEditForm((f) => ({ ...f, image_url: url }));
+                        toast({ title: 'Imagem enviada!' });
+                      } catch (err) {
+                        toast({ title: 'Erro ao enviar imagem', description: err instanceof Error ? err.message : 'Tente outro arquivo.', variant: 'destructive' });
+                      } finally {
+                        setEditImageUploading(false);
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                  <div className={`relative w-20 h-20 rounded-lg border-2 overflow-hidden flex items-center justify-center transition-all ${
+                    editForm.image_url ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40'
+                  }`}>
+                    {editImageUploading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : editForm.image_url ? (
+                      <img src={editForm.image_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </div>
+                  {editForm.image_url && (
+                    <button type="button" onClick={() => setEditForm((f) => ({ ...f, image_url: '' }))} className="mt-1 text-[10px] text-muted-foreground hover:text-destructive">Remover</button>
+                  )}
+                </label>
+              </div>
+              <div className="flex-1 space-y-3 min-w-0">
+                <div className="space-y-2">
+                  <Label>Nome da categoria</Label>
+                  <Input
+                    placeholder="Ex: Pizza, Bebidas"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tipo / Comportamento</Label>
+                  <Select value={editForm.type} onValueChange={(v) => setEditForm((f) => ({ ...f, type: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CATEGORY_TYPES.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleUpdateCategory} disabled={!editForm.name.trim()}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

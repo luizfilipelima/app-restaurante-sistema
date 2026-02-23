@@ -126,6 +126,8 @@ export interface Restaurant {
   bank_account?: BankAccountByCountry | null;
   /** Idioma da interface do cardápio público */
   language?: 'pt' | 'es' | 'en';
+  /** Modo de exibição do cardápio: default (pills + lista) | categories_first (cards de categorias primeiro) */
+  menu_display_mode?: 'default' | 'categories_first';
   /** Templates personalizáveis de mensagens WhatsApp */
   whatsapp_templates?: WhatsAppTemplates | null;
   /** Override manual da receita mensal em BRL (Super Admin). Se definido, usado no Dashboard BI em vez do preço do plano. */
@@ -572,6 +574,8 @@ export interface Category {
   restaurant_id: string;
   name: string;
   order_index: number;
+  /** URL da imagem da categoria */
+  image_url?: string | null;
   is_pizza?: boolean;
   is_marmita?: boolean;
   has_inventory?: boolean;

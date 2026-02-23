@@ -300,6 +300,7 @@ export default function AdminSettings() {
     phone_country:           'BR' as PhoneCountry,
     currency:                'BRL' as CurrencyCode,
     language:                'pt' as CardapioLanguage,
+    menu_display_mode:       'default' as 'default' | 'categories_first',
     instagram_url:           '',
     logo:                    '',
     is_manually_closed:      false,
@@ -359,6 +360,10 @@ export default function AdminSettings() {
       const language: CardapioLanguage = validLanguages.includes(rawLanguage as CardapioLanguage)
         ? (rawLanguage as CardapioLanguage) : 'pt';
 
+      const rawMenuMode = data.menu_display_mode as string;
+      const menu_display_mode: 'default' | 'categories_first' = (rawMenuMode === 'categories_first' || rawMenuMode === 'default')
+        ? rawMenuMode : 'default';
+
       const rawCountry = data.phone_country as string;
       const validCountries: PhoneCountry[] = ['BR', 'PY', 'AR'];
       const phone_country: PhoneCountry = validCountries.includes(rawCountry as PhoneCountry)
@@ -372,6 +377,7 @@ export default function AdminSettings() {
         phone_country,
         currency,
         language,
+        menu_display_mode,
         instagram_url:           data.instagram_url    || '',
         logo:                    data.logo             || '',
         is_manually_closed:      !!data.is_manually_closed,
@@ -410,6 +416,7 @@ export default function AdminSettings() {
         phone_country:           formData.phone_country,
         currency:                formData.currency,
         language:                formData.language,
+        menu_display_mode:       formData.menu_display_mode,
         instagram_url:           formData.instagram_url || null,
         logo:                    formData.logo,
         is_manually_closed:      formData.is_manually_closed,
@@ -771,6 +778,26 @@ export default function AdminSettings() {
                 </Select>
                 <p className="text-[10px] text-muted-foreground">
                   {t('settings.regional.menuLangDesc')}
+                </p>
+              </FieldGroup>
+
+              {/* Modo de exibição do cardápio */}
+              <FieldGroup>
+                <SectionLabel>Primeira tela do cardápio</SectionLabel>
+                <Select
+                  value={formData.menu_display_mode}
+                  onValueChange={(v) => set('menu_display_mode', v as 'default' | 'categories_first')}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Padrão (categorias em pills + produtos)</SelectItem>
+                    <SelectItem value="categories_first">Categorias expandidas (cards com imagens primeiro)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">
+                  Se &quot;Categorias expandidas&quot;, o cliente vê os cards de categorias primeiro; ao clicar, abre a página com os produtos.
                 </p>
               </FieldGroup>
 

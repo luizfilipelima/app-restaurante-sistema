@@ -43,11 +43,15 @@ export const TEMPLATE_VARS = {
   courier_dispatch: [
     { key: 'codigo_pedido',     label: 'Código do pedido',     example: '#F8737EBC',          description: 'Código único do pedido (ex: #F8737EBC)' },
     { key: 'cliente_nome',      label: 'Nome do cliente',      example: 'João Silva',        description: 'Nome completo do cliente' },
+    { key: 'cliente_telefone',  label: 'WhatsApp do cliente',  example: '+55 11 99999-9999',  description: 'Número de WhatsApp do cliente' },
     { key: 'detalhes_endereco', label: 'Detalhes do endereço', example: 'Apto 12, Bloco B',  description: 'Complemento/referência do endereço' },
     { key: 'endereco',          label: 'Endereço / Coords',    example: '-23.550520, -46.633308', description: 'Coordenadas GPS do endereço' },
     { key: 'mapa',              label: 'Link do mapa',         example: 'https://maps.google.com/?q=-23.55,-46.63', description: 'Link do Google Maps' },
     { key: 'restaurante_nome',  label: 'Nome do restaurante',  example: 'Pizzaria da Vitória', description: 'Nome do restaurante' },
     { key: 'itens',             label: 'Itens do pedido',      example: '  • 2x Pizza — R$ 38,90', description: 'Lista resumida dos itens' },
+    { key: 'subtotal',          label: 'Subtotal',             example: 'R$ 38,90',           description: 'Subtotal do pedido (sem taxa)' },
+    { key: 'taxa_entrega',      label: 'Taxa de entrega',      example: 'R$ 5,00',            description: 'Valor da taxa de entrega' },
+    { key: 'total',             label: 'Total do pedido',      example: 'R$ 43,90',           description: 'Valor total completo do pedido' },
   ] as TemplateVariable[],
 } as const;
 
@@ -85,6 +89,13 @@ export const DEFAULT_TEMPLATES = {
 
 *Pedido:* {{codigo_pedido}}
 *Cliente:* {{cliente_nome}}
+*WhatsApp:* {{cliente_telefone}}
+
+*Valores:*
+  Subtotal: {{subtotal}}
+  Taxa entrega: {{taxa_entrega}}
+  *Total: {{total}}*
+
 *Detalhes da Entrega:* {{detalhes_endereco}}
 *Google Maps:* {{mapa}}
 *Itens:*
@@ -126,6 +137,13 @@ export const DEFAULT_TEMPLATES_ES = {
 
 *Pedido:* {{codigo_pedido}}
 *Cliente:* {{cliente_nome}}
+*WhatsApp:* {{cliente_telefone}}
+
+*Valores:*
+  Subtotal: {{subtotal}}
+  Taxa entrega: {{taxa_entrega}}
+  *Total: {{total}}*
+
 *Detalles de Entrega:* {{detalhes_endereco}}
 *Google Maps:* {{mapa}}
 *Items:*

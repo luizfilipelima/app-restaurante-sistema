@@ -1,18 +1,19 @@
 import { useEffect, useState, useMemo, lazy, Suspense, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { getSubdomain } from '@/lib/subdomain';
 import { Restaurant, Product, Category, Subcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { useRestaurantMenuData, useActiveOffersByRestaurantId, useLoyaltyProgram, useLoyaltyStatus } from '@/hooks/queries';
-import { ShoppingCart, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2 } from 'lucide-react';
+import { ShoppingCart, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { isWithinOpeningHours, normalizePhoneWithCountryCode } from '@/lib/utils';
 import { useMenuCurrency } from '@/hooks/useMenuCurrency';
 import CurrencySelector from '@/components/public/CurrencySelector';
-import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
+import MenuLanguageSelector from '@/components/public/MenuLanguageSelector';
+import { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import ProductCard from '@/components/public/ProductCard';
 import InitialSplashScreen from '@/components/public/InitialSplashScreen';
@@ -77,8 +78,8 @@ interface PublicMenuProps {
 }
 
 export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableNumber, onCallWaiter, callingWaiter }: PublicMenuProps = {}) {
-  const { t } = useTranslation();
-  const params = useParams();
+  const { t, i18n } = useTranslation();
+  const params = useParams<{ restaurantSlug?: string; categoryId?: string }>();
   const subdomain = getSubdomain();
   // Prioridade: prop (StoreLayout) > URL > subdomínio
   const restaurantSlug =
@@ -88,6 +89,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const categoryIdFromRoute = params.categoryId ?? null;
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
@@ -195,6 +197,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     savedPhone || null
   );
   const loyaltyEnabled = !!loyaltyProgram?.enabled;
+  const menuDisplayMode = (restaurant?.menu_display_mode ?? 'default') as 'default' | 'categories_first';
+  const categoriesFirst = menuDisplayMode === 'categories_first';
+  const viewingSingleCategory = !!categoryIdFromRoute;
+
   const defaultPhoneCountry = (restaurant?.phone_country === 'PY' || restaurant?.phone_country === 'AR')
     ? restaurant.phone_country
     : 'BR';
@@ -279,12 +285,19 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       .filter((g): g is NonNullable<typeof g> => g !== null);
   }, [categories, products, categoriesFromDb, subcategories]);
 
+  const currentCategoryFromRoute = useMemo(
+    () => (categoryIdFromRoute ? categoriesFromDb.find((c) => c.id === categoryIdFromRoute) : null),
+    [categoryIdFromRoute, categoriesFromDb]
+  );
+
   // Filtrar e ordenar produtos — memoizado para não recalcular a cada render
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    let result = selectedCategory === 'all'
-      ? products
-      : products.filter((p) => p.category === selectedCategory).sort((a, b) => a.name.localeCompare(b.name));
+    let result = viewingSingleCategory && currentCategoryFromRoute
+      ? products.filter((p) => p.category === currentCategoryFromRoute.name).sort((a, b) => a.name.localeCompare(b.name))
+      : selectedCategory === 'all'
+        ? products
+        : products.filter((p) => p.category === selectedCategory).sort((a, b) => a.name.localeCompare(b.name));
     if (query) {
       result = result.filter(
         (p) =>
@@ -293,7 +306,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       );
     }
     return result;
-  }, [products, selectedCategory, searchQuery]);
+  }, [products, selectedCategory, searchQuery, viewingSingleCategory, currentCategoryFromRoute]);
 
   const isRefreshing = isFetching && isPlaceholderData;
 
@@ -375,6 +388,12 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-6xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">
+              {viewingSingleCategory && (
+                <Link to="/" className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 flex-shrink-0">
+                  <ArrowLeft className="h-5 w-5" />
+                  <span className="text-sm font-medium hidden sm:inline">Categorias</span>
+                </Link>
+              )}
               <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl overflow-hidden ring-1 ring-slate-200/80 flex-shrink-0 bg-white shadow-sm">
                 {restaurant.logo ? (
                   <img src={restaurant.logo} alt={restaurant.name} width={56} height={56} className="w-full h-full object-cover" />
@@ -400,6 +419,15 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                   className="flex-shrink-0 ml-auto sm:ml-2"
                 />
               )}
+              <MenuLanguageSelector
+                value={(i18n.language === 'es' ? 'es' : 'pt') as import('@/lib/i18n').MenuLanguage}
+                onChange={(lang) => {
+                  i18n.changeLanguage(lang);
+                  setStoredMenuLanguage(lang);
+                }}
+                nativeLanguage={(restaurant.language === 'es' ? 'es' : 'pt') as import('@/lib/i18n').MenuLanguage}
+                className="flex-shrink-0 ml-1"
+              />
             </div>
             {/* Ícone de carrinho — quadrado escuro com badge laranja */}
             <button
@@ -444,7 +472,39 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       </header>
 
       <main className="container mx-auto px-3 sm:px-4 py-3 sm:py-5 max-w-6xl space-y-4 sm:space-y-5">
-        {/* Busca e categorias — layout referência: busca em destaque + pills horizontais */}
+        {/* ── Modo categorias primeiro: grid de cards de categorias ── */}
+        {categoriesFirst && !viewingSingleCategory && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-slate-700">{t('menu.all')}</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+              {categoriesFromDb
+                .filter((cat) => categories.includes(cat.name))
+                .map((cat) => (
+                  <Link
+                    key={cat.id}
+                    to={`/categoria/${cat.id}`}
+                    className="group flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all active:scale-[0.98]"
+                  >
+                    <div className="aspect-square w-full bg-slate-100 overflow-hidden">
+                      {cat.image_url ? (
+                        <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Utensils className="h-12 w-12 text-slate-300" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3 text-center">
+                      <span className="font-semibold text-slate-800 text-sm">{cat.name}</span>
+                    </div>
+                  </Link>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Busca e categorias — layout referência: busca em destaque + pills horizontais (não no modo categorias-first inicial) */}
+        {(!categoriesFirst || viewingSingleCategory) && (
         <div className={`sticky z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-white/95 backdrop-blur-sm rounded-b-xl ${tableNumber != null && onCallWaiter ? 'top-[115px] sm:top-[125px] md:top-[135px]' : 'top-[65px] sm:top-[73px] md:top-[81px]'}`}>
           <div className="space-y-2.5">
             <div className="relative">
@@ -457,7 +517,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               />
             </div>
 
-            {/* Categorias em formato pill — ícone + texto inline */}
+            {/* Categorias em formato pill — ocultas quando vendo uma categoria específica */}
+            {!viewingSingleCategory && (
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory scroll-smooth">
               <button
                 type="button"
@@ -490,10 +551,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 );
               })}
             </div>
+            )}
           </div>
         </div>
+        )}
 
-        {/* ── Programa de Fidelidade (quando ativo) ── */}
+        {/* ── Programa de Fidelidade, ofertas e produtos (não no modo categorias-first inicial) ── */}
+        {(!categoriesFirst || viewingSingleCategory) && (
+        <>
         {loyaltyEnabled && !isTableOrder && (
           <section className="animate-in fade-in slide-in-from-top-2 duration-300">
             {savedPhone ? (
@@ -626,7 +691,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             // Exibir apenas produtos da categoria selecionada
             <div className="space-y-2 sm:space-y-3">
               <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
-                {selectedCategory}
+                {viewingSingleCategory && currentCategoryFromRoute ? currentCategoryFromRoute.name : selectedCategory}
               </h2>
               <div className="flex flex-col gap-3 sm:gap-4">
                 {filteredProducts.map((product) => {
@@ -666,6 +731,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             <span className="text-xs">{t('menu.developedBy')}</span>
           </a>
         </footer>
+        </>
+        )}
       </main>
     </div>
 

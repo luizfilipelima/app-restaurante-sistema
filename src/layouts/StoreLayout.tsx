@@ -66,7 +66,9 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
         <Suspense fallback={<InitialSplashScreen />}>
           <Routes>
           <Route path="/" element={<PublicMenu tenantSlug={tenantSlug} />} />
+        <Route path="/categoria/:categoryId" element={<PublicMenu tenantSlug={tenantSlug} />} />
         <Route path="/menu" element={<MenuViewOnly tenantSlug={tenantSlug} />} />
+        <Route path="/menu/categoria/:categoryId" element={<MenuViewOnly tenantSlug={tenantSlug} />} />
         <Route path="/cardapio/:tableNumber" element={<MenuTable tenantSlug={tenantSlug} />} />
         <Route path="/checkout" element={<PublicCheckout tenantSlug={tenantSlug} />} />
         <Route path="/order-confirmed" element={<OrderConfirmation tenantSlug={tenantSlug} />} />

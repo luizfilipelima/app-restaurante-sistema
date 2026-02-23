@@ -1,14 +1,15 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { getSubdomain } from '@/lib/subdomain';
 import { useRestaurantMenuData } from '@/hooks/queries';
-import { Clock, Search, Utensils, Coffee, IceCream, UtensilsCrossed } from 'lucide-react';
+import { Clock, Search, Utensils, Coffee, IceCream, UtensilsCrossed, ArrowLeft } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { isWithinOpeningHours } from '@/lib/utils';
-import i18n, { setStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
+import { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
+import MenuLanguageSelector from '@/components/public/MenuLanguageSelector';
 import ProductCardViewOnly from '@/components/public/ProductCardViewOnly';
 
 const CATEGORY_ICONS: Record<string, any> = {
@@ -25,8 +26,8 @@ interface MenuViewOnlyProps {
 }
 
 export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnlyProps = {}) {
-  const { t } = useTranslation();
-  const params = useParams();
+  const { t, i18n } = useTranslation();
+  const params = useParams<{ restaurantSlug?: string; categoryId?: string }>();
   const subdomain = getSubdomain();
   // Prioridade: prop (StoreLayout) > URL > subdomínio
   const restaurantSlug =
@@ -64,19 +65,42 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
 
   useEffect(() => {
     if (!menuData?.restaurant) return;
-    const lang: MenuLanguage = menuData.restaurant.language === 'es' ? 'es' : 'pt';
+    const r = menuData.restaurant;
+    const userHasChosen = hasStoredMenuLanguage();
+    const lang: MenuLanguage = userHasChosen ? getStoredMenuLanguage() : (r.language === 'es' ? 'es' : 'pt');
+    if (!userHasChosen) setStoredMenuLanguage(lang);
     i18n.changeLanguage(lang);
-    setStoredMenuLanguage(lang);
   }, [menuData?.restaurant]);
 
+  const categoryIdFromRoute = params.categoryId ?? null;
+  const menuDisplayMode = (restaurant?.menu_display_mode ?? 'default') as 'default' | 'categories_first';
+  const categoriesFirst = menuDisplayMode === 'categories_first';
+  const viewingSingleCategory = !!categoryIdFromRoute;
+
+  const currentCategoryFromRoute = useMemo(
+    () => (categoryIdFromRoute ? categoriesFromDb.find((c) => c.id === categoryIdFromRoute) : null),
+    [categoryIdFromRoute, categoriesFromDb]
+  );
+
   // Filtrar produtos por categoria e busca
-  const filteredProducts = products.filter((product) => {
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-    const matchesSearch = searchQuery.trim() === '' || 
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch;
-  });
+  const filteredProducts = useMemo(() => {
+    let base = viewingSingleCategory && currentCategoryFromRoute
+      ? products.filter((p) => p.category === currentCategoryFromRoute.name)
+      : products.filter((product) => {
+          const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+          const matchesSearch = searchQuery.trim() === '' ||
+            product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()));
+          return matchesCategory && matchesSearch;
+        });
+    if (searchQuery.trim() && viewingSingleCategory) {
+      base = base.filter((p) =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.description ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    return base;
+  }, [products, selectedCategory, searchQuery, viewingSingleCategory, currentCategoryFromRoute]);
 
   if (loading) {
     return (
@@ -136,7 +160,14 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
       {/* Header - Mobile First */}
       <header className="bg-white/95 backdrop-blur-sm border-b border-slate-200/80 sticky top-0 z-20 safe-area-inset-top">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-6xl">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2 sm:gap-4 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+            {viewingSingleCategory && (
+              <Link to="/menu" className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 flex-shrink-0">
+                <ArrowLeft className="h-5 w-5" />
+                <span className="text-sm font-medium hidden sm:inline">Categorias</span>
+              </Link>
+            )}
             <div className="h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-xl sm:rounded-2xl overflow-hidden ring-2 ring-slate-100 flex-shrink-0 bg-white shadow-sm">
               {restaurant.logo ? (
                 <img src={restaurant.logo} alt={restaurant.name} width={56} height={56} className="w-full h-full object-cover" />
@@ -158,12 +189,54 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                 </span>
               </div>
             </div>
+            </div>
+            <MenuLanguageSelector
+              value={(i18n.language === 'es' ? 'es' : 'pt') as MenuLanguage}
+              onChange={(lang) => {
+                i18n.changeLanguage(lang);
+                setStoredMenuLanguage(lang);
+              }}
+              nativeLanguage={(restaurant.language === 'es' ? 'es' : 'pt') as MenuLanguage}
+              className="flex-shrink-0"
+            />
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-6xl space-y-4 sm:space-y-6">
-        {/* Busca e categorias - Mobile First */}
+        {/* Modo categorias primeiro: grid de cards */}
+        {categoriesFirst && !viewingSingleCategory && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-slate-700">{t('menu.all')}</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+              {categoriesFromDb
+                .filter((cat) => categories.includes(cat.name))
+                .map((cat) => (
+                  <Link
+                    key={cat.id}
+                    to={`/menu/categoria/${cat.id}`}
+                    className="group flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all active:scale-[0.98]"
+                  >
+                    <div className="aspect-square w-full bg-slate-100 overflow-hidden">
+                      {cat.image_url ? (
+                        <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Utensils className="h-12 w-12 text-slate-300" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3 text-center">
+                      <span className="font-semibold text-slate-800 text-sm">{cat.name}</span>
+                    </div>
+                  </Link>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Busca e categorias — quando não no modo categorias-first inicial */}
+        {(!categoriesFirst || viewingSingleCategory) && (
         <div className="sticky top-[65px] sm:top-[73px] md:top-[81px] z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-slate-100/80 backdrop-blur-md rounded-xl sm:rounded-2xl">
           <div className="space-y-3 sm:space-y-4">
             <div className="relative">
@@ -176,6 +249,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
               />
             </div>
 
+            {!viewingSingleCategory && (
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory scroll-smooth -mx-1 px-1">
               <button
                 type="button"
@@ -207,17 +281,20 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                     <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${selectedCategory === category ? 'bg-white/15' : 'bg-slate-100'}`}>
                       <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
-                    <span className="text-[10px] sm:text-xs font-semibold whitespace-nowrap leading-tight">{category}</span>
-                  </button>
+                    <span className="text-[10px] sm:text-xs font-semibold whitespace-nowrap leading-tight">{category}                </span>
+              </button>
                 );
               })}
             </div>
+            )}
           </div>
         </div>
+        )}
 
-        {/* Lista de produtos - Mobile First */}
+        {/* Lista de produtos - Mobile First (oculta no modo categorias-first inicial) */}
+        {(!categoriesFirst || viewingSingleCategory) && (
         <section className="space-y-6 sm:space-y-8">
-          {selectedCategory === 'all' ? (
+          {selectedCategory === 'all' && !viewingSingleCategory ? (
             // Exibir agrupado por categoria (e subcategoria quando houver)
             categories.map((categoryName) => {
               const categoryProducts = filteredProducts.filter((p) => p.category === categoryName);
@@ -269,7 +346,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
           ) : (
                 <>
                   <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
-                    {selectedCategory}
+                    {viewingSingleCategory && currentCategoryFromRoute ? currentCategoryFromRoute.name : selectedCategory}
                   </h2>
                   <div className="flex flex-col gap-3 sm:gap-4">
                     {filteredProducts.map((product) => (
@@ -292,6 +369,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
             </div>
           )}
         </section>
+        )}
 
         {/* Rodapé */}
         <footer className="pt-8 pb-6 text-center border-t border-slate-200/60">

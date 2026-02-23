@@ -57,11 +57,15 @@ const SAMPLE_VARS: Record<TemplateKey, Record<string, string>> = {
   courier_dispatch: {
     codigo_pedido:     '#F8737EBC',
     cliente_nome:      'João Silva',
+    cliente_telefone:  '+55 11 99999-9999',
     detalhes_endereco: 'Apto 12, Bloco B',
     endereco:          '-23.550520, -46.633308',
     mapa:              'https://maps.google.com/?q=-23.55,-46.63',
     restaurante_nome:  'Pizzaria da Vitória',
     itens:             '  • 2x Pizza Margherita\n  • 1x Refrigerante 2L',
+    subtotal:          'R$ 38,90',
+    taxa_entrega:      'R$ 5,00',
+    total:             'R$ 43,90',
   },
 };
 

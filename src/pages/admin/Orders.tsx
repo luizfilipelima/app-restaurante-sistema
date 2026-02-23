@@ -306,16 +306,28 @@ export default function AdminOrders() {
         .join('\n');
 
       const orderLang = ((dispatchOrder as { customer_language?: string })?.customer_language === 'es' || (restaurant as { language?: string })?.language === 'es') ? 'es' as const : 'pt' as const;
+      const subtotalFmt = formatCurrency(dispatchOrder.subtotal ?? 0);
+      const taxaFmt = dispatchOrder.delivery_fee != null && dispatchOrder.delivery_fee > 0
+        ? formatCurrency(dispatchOrder.delivery_fee)
+        : '';
+      const totalFmt = formatCurrency(dispatchOrder.total ?? 0);
+      const clienteTelefone = dispatchOrder.customer_phone
+        ? formatPhone(dispatchOrder.customer_phone)
+        : '';
       const dispatchMessage = processTemplate(
         getTemplate('courier_dispatch', localWaTemplates, orderLang),
         {
           codigo_pedido:     `#${dispatchOrder.id.slice(0, 8).toUpperCase()}`,
           cliente_nome:      dispatchOrder.customer_name,
+          cliente_telefone:  clienteTelefone,
           detalhes_endereco: dispatchOrder.address_details ?? '',
           endereco:          dispatchOrder.latitude != null ? `${dispatchOrder.latitude},${dispatchOrder.longitude}` : '',
           mapa:              mapsUrl,
           restaurante_nome:  restaurant?.name ?? '',
           itens:             itemsText,
+          subtotal:          subtotalFmt,
+          taxa_entrega:      taxaFmt,
+          total:             totalFmt,
         },
       );
 
