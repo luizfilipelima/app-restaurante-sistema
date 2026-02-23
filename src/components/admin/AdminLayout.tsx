@@ -134,12 +134,7 @@ type NavSection = NavGroup | NavCollapsible;
 
 type TFn = (key: string) => string;
 
-const buildNavSections = (
-  base: string,
-  restaurantId: string | null,
-  t: TFn,
-  restaurantSlug?: string | null,
-): NavSection[] => [
+const buildNavSections = (base: string, t: TFn): NavSection[] => [
   // 1. VISÃO GERAL — Dashboard BI Global
   {
     kind: 'group',
@@ -474,7 +469,7 @@ export default function AdminLayout({
   const canManageUsers = user?.role === 'restaurant_admin' || user?.role === 'super_admin';
 
   const base = basePath || '/admin';
-  const navSections = buildNavSections(base, restaurantId, t, restaurant?.slug);
+  const navSections = buildNavSections(base, t);
 
   // Gerenciar sessões simultâneas (máximo 3 por restaurante)
   useSessionManager(user?.id || null, restaurantId);
