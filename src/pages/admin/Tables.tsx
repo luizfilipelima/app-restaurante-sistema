@@ -561,7 +561,7 @@ export default function AdminTables() {
                       toast({ title: 'Quantidade inválida', variant: 'destructive' });
                       return;
                     }
-                    const maxNum = activeTables.length > 0 ? Math.max(...activeTables.map((t) => t.number)) : 0;
+                    const maxNum = tables.length > 0 ? Math.max(...tables.map((t) => t.number)) : 0;
                     const nextOrderBase = tables.length > 0 ? Math.max(0, ...tables.map((t) => t.order_index ?? 0)) : 0;
                     setAddingBulk(true);
                     try {
