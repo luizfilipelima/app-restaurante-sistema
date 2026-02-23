@@ -2,14 +2,14 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getSubdomain } from '@/lib/subdomain';
 import { useRestaurantMenuData } from '@/hooks/queries';
-import { Clock, Search, Utensils, Coffee, IceCream, UtensilsCrossed, ArrowLeft } from 'lucide-react';
+import { Clock, Search, Utensils, Coffee, IceCream, UtensilsCrossed, ArrowLeft, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { isWithinOpeningHours } from '@/lib/utils';
 import { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
-import MenuLanguageSelector from '@/components/public/MenuLanguageSelector';
+import MenuSettingsPopover from '@/components/public/MenuSettingsPopover';
 import ProductCardViewOnly from '@/components/public/ProductCardViewOnly';
 
 const CATEGORY_ICONS: Record<string, any> = {
@@ -190,9 +190,13 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
               </div>
             </div>
             </div>
-            <MenuLanguageSelector
-              value={(i18n.language === 'es' ? 'es' : 'pt') as MenuLanguage}
-              onChange={(lang) => {
+            <MenuSettingsPopover
+              currency={currency}
+              currencyOptions={[currency]}
+              baseCurrency={currency}
+              onCurrencyChange={() => {}}
+              language={(i18n.language === 'es' ? 'es' : 'pt') as MenuLanguage}
+              onLanguageChange={(lang) => {
                 i18n.changeLanguage(lang);
                 setStoredMenuLanguage(lang);
               }}
@@ -215,9 +219,9 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                   <Link
                     key={cat.id}
                     to={`/menu/categoria/${cat.id}`}
-                    className="group flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all active:scale-[0.98]"
+                    className="group flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:ring-2 hover:ring-slate-200/60 transition-all duration-200 active:scale-[0.98] cursor-pointer"
                   >
-                    <div className="aspect-square w-full bg-slate-100 overflow-hidden">
+                    <div className="relative aspect-square w-full bg-slate-100 overflow-hidden">
                       {cat.image_url ? (
                         <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       ) : (
@@ -225,9 +229,14 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                           <Utensils className="h-12 w-12 text-slate-300" />
                         </div>
                       )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                     </div>
-                    <div className="p-3 text-center">
-                      <span className="font-semibold text-slate-800 text-sm">{cat.name}</span>
+                    <div className="p-3 flex items-center justify-between gap-2 min-h-[52px]">
+                      <span className="font-semibold text-slate-800 text-sm truncate flex-1">{cat.name}</span>
+                      <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-orange-100 px-2 py-1 text-xs font-medium text-slate-600 group-hover:text-orange-600 transition-colors">
+                        {t('menu.viewProducts')}
+                        <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </span>
                     </div>
                   </Link>
                 ))}

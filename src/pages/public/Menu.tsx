@@ -11,8 +11,7 @@ import { Input } from '@/components/ui/input';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { isWithinOpeningHours, normalizePhoneWithCountryCode } from '@/lib/utils';
 import { useMenuCurrency } from '@/hooks/useMenuCurrency';
-import CurrencySelector from '@/components/public/CurrencySelector';
-import MenuLanguageSelector from '@/components/public/MenuLanguageSelector';
+import MenuSettingsPopover from '@/components/public/MenuSettingsPopover';
 import { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import ProductCard from '@/components/public/ProductCard';
@@ -135,7 +134,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     displayCurrency: currency,
     setDisplayCurrency,
     paymentCurrencies,
-    hasMultipleCurrencies,
     convertForDisplay,
     formatForDisplay,
     baseCurrency,
@@ -410,23 +408,18 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                   {isOpen ? t('menu.open') : t('menu.closed')}
                 </span>
               </div>
-              {hasMultipleCurrencies && (
-                <CurrencySelector
-                  value={currency}
-                  options={paymentCurrencies}
-                  onChange={setDisplayCurrency}
-                  baseCurrency={baseCurrency}
-                  className="flex-shrink-0 ml-auto sm:ml-2"
-                />
-              )}
-              <MenuLanguageSelector
-                value={(i18n.language === 'es' ? 'es' : 'pt') as import('@/lib/i18n').MenuLanguage}
-                onChange={(lang) => {
+              <MenuSettingsPopover
+                currency={currency}
+                currencyOptions={paymentCurrencies}
+                baseCurrency={baseCurrency}
+                onCurrencyChange={setDisplayCurrency}
+                language={(i18n.language === 'es' ? 'es' : 'pt') as import('@/lib/i18n').MenuLanguage}
+                onLanguageChange={(lang) => {
                   i18n.changeLanguage(lang);
                   setStoredMenuLanguage(lang);
                 }}
                 nativeLanguage={(restaurant.language === 'es' ? 'es' : 'pt') as import('@/lib/i18n').MenuLanguage}
-                className="flex-shrink-0 ml-1"
+                className="ml-auto"
               />
             </div>
             {/* Ícone de carrinho — quadrado escuro com badge laranja */}
@@ -483,9 +476,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                   <Link
                     key={cat.id}
                     to={`/categoria/${cat.id}`}
-                    className="group flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all active:scale-[0.98]"
+                    className="group flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:ring-2 hover:ring-slate-200/60 transition-all duration-200 active:scale-[0.98] cursor-pointer"
                   >
-                    <div className="aspect-square w-full bg-slate-100 overflow-hidden">
+                    <div className="relative aspect-square w-full bg-slate-100 overflow-hidden">
                       {cat.image_url ? (
                         <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       ) : (
@@ -493,9 +486,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                           <Utensils className="h-12 w-12 text-slate-300" />
                         </div>
                       )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                     </div>
-                    <div className="p-3 text-center">
-                      <span className="font-semibold text-slate-800 text-sm">{cat.name}</span>
+                    <div className="p-3 flex items-center justify-between gap-2 min-h-[52px]">
+                      <span className="font-semibold text-slate-800 text-sm truncate flex-1">{cat.name}</span>
+                      <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-orange-100 px-2 py-1 text-xs font-medium text-slate-600 group-hover:text-orange-600 transition-colors">
+                        {t('menu.viewProducts')}
+                        <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </span>
                     </div>
                   </Link>
                 ))}
