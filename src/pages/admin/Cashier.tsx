@@ -348,6 +348,8 @@ function CashierContent() {
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
   const { t, lang } = useAdminTranslation();
+  const tRef = useRef(t);
+  tRef.current = t;
   const dateLocale = DATE_LOCALES[lang] ?? ptBR;
   const scannerRef = useRef<HTMLInputElement>(null);
   const { data: restaurant } = useRestaurant(restaurantId);
@@ -492,11 +494,11 @@ function CashierContent() {
       setQueue(items);
     } catch (e) {
       console.error(e);
-      toast({ title: t('cashier.errorLoadQueue'), variant: 'destructive' });
+      toast({ title: tRef.current('cashier.errorLoadQueue'), variant: 'destructive' });
     } finally {
       setLoadingList(false);
     }
-  }, [restaurantId, hasBuffet, hasTables, t]);
+  }, [restaurantId, hasBuffet, hasTables]);
 
   const todayStart = useMemo(() => startOfDay(new Date()).toISOString(), []);
 
@@ -504,7 +506,7 @@ function CashierContent() {
     if (!restaurantId) return;
     try {
       const items: CompletedItem[] = [];
-      const labels = getPaymentLabels(t);
+      const labels = getPaymentLabels(tRef.current);
       const pmLabel = (m: string) => labels[m as PaymentMethod] ?? m;
 
       const [ordersRes, vcRes, comandasRes] = await Promise.all([
@@ -588,7 +590,7 @@ function CashierContent() {
           totalAmount: c.total_amount ?? 0,
           arrivalAt: c.opened_at,
           exitAt: c.closed_at ?? c.opened_at,
-          paymentMethods: t('cashier.closed'),
+          paymentMethods: tRef.current('cashier.closed'),
           comandaBuffet: {
             number: c.number,
             items: (c.comanda_items ?? []).map((i: any) => ({
@@ -604,9 +606,9 @@ function CashierContent() {
       setCompletedList(items);
     } catch (e) {
       console.error(e);
-      toast({ title: t('cashier.errorLoadCompleted'), variant: 'destructive' });
+      toast({ title: tRef.current('cashier.errorLoadCompleted'), variant: 'destructive' });
     }
-  }, [restaurantId, hasTables, hasBuffet, todayStart, t]);
+  }, [restaurantId, hasTables, hasBuffet, todayStart]);
 
   const loadQueueRef = useRef(loadQueue);
   loadQueueRef.current = loadQueue;
