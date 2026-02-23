@@ -54,8 +54,8 @@ function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', con
           : 'bg-white/80 border border-slate-100/80 backdrop-blur-sm'
       } ${!readOnly ? 'cursor-pointer active:scale-[0.995] hover:shadow-md hover:border-slate-200/80 touch-manipulation' : ''}`}
     >
-      {/* Imagem à esquerda — proporção quadrada para visual mais equilibrado */}
-      <div className="relative w-24 sm:w-28 flex-shrink-0 aspect-square overflow-hidden rounded-xl bg-slate-50">
+      {/* Imagem à esquerda — proporção 1:1 (self-start evita stretch do flex) */}
+      <div className="relative w-24 sm:w-28 flex-shrink-0 aspect-square self-start overflow-hidden rounded-xl bg-slate-50">
         {hasImage ? (
           <img
             src={product.image_url!}

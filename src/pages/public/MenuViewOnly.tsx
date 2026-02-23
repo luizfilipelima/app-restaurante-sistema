@@ -208,7 +208,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
       </header>
 
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-6xl space-y-4 sm:space-y-6">
-        {/* Modo categorias primeiro: lista em 1 coluna, cards horizontais */}
+        {/* Modo categorias primeiro: cards com imagem no topo (16:9), bordas arredondadas */}
         {categoriesFirst && !viewingSingleCategory && (
           <div className="space-y-4">
             <h2 className="text-base font-semibold text-slate-700">{t('menu.all')}</h2>
@@ -219,17 +219,17 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                   <Link
                     key={cat.id}
                     to={`/menu/categoria/${cat.id}`}
-                    className="group flex items-stretch gap-0 rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:ring-2 hover:ring-slate-200/60 transition-all duration-200 active:scale-[0.99] cursor-pointer"
+                    className="group flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:ring-2 hover:ring-slate-200/60 transition-all duration-200 active:scale-[0.99] cursor-pointer"
                   >
                     {cat.image_url ? (
                       <>
-                        <div className="relative w-40 sm:w-48 flex-shrink-0 aspect-video bg-slate-100 overflow-hidden rounded-l-2xl">
-                          <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 rounded-l-2xl" />
-                          <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                        <div className="relative w-full aspect-video bg-slate-100 overflow-hidden rounded-t-2xl">
+                          <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                         </div>
-                        <div className="flex-1 min-w-0 flex items-center justify-between gap-3 p-4 sm:p-5">
-                          <span className="font-semibold text-slate-800 text-base sm:text-lg truncate">{cat.name}</span>
-                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-orange-100 px-2.5 py-1.5 text-xs font-medium text-slate-600 group-hover:text-orange-600 transition-colors">
+                        <div className="flex items-center justify-between gap-3 p-4 sm:p-5">
+                          <span className="font-semibold text-slate-800 text-base sm:text-lg truncate flex-1">{cat.name}</span>
+                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-orange-100 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-orange-600 transition-colors">
                             {t('menu.viewProducts')}
                             <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                           </span>
@@ -237,12 +237,12 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                       </>
                     ) : (
                       <div className="flex items-center gap-4 w-full p-4 sm:p-5">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-xl bg-slate-100 flex items-center justify-center">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-2xl bg-slate-100 flex items-center justify-center">
                           <Utensils className="h-8 w-8 sm:h-10 sm:w-10 text-slate-400" />
                         </div>
                         <div className="flex-1 min-w-0 flex items-center justify-between gap-3">
                           <span className="font-semibold text-slate-800 text-base sm:text-lg truncate">{cat.name}</span>
-                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-orange-100 px-2.5 py-1.5 text-xs font-medium text-slate-600 group-hover:text-orange-600 transition-colors">
+                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-orange-100 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-orange-600 transition-colors">
                             {t('menu.viewProducts')}
                             <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                           </span>

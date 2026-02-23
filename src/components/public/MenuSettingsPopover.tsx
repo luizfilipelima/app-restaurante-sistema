@@ -3,7 +3,7 @@
  * Reduz o ruído visual no header do cardápio.
  */
 import { memo } from 'react';
-import { SlidersHorizontal, Check } from 'lucide-react';
+import { Languages, Check } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,8 +58,8 @@ function MenuSettingsPopover({
       >
         <button
           type="button"
-          aria-label="Configurações (moeda e idioma)"
-          title="Moeda e idioma"
+          aria-label="Idioma e moeda"
+          title="Idioma e moeda"
           className={`
             flex items-center justify-center
             h-9 w-9 rounded-lg
@@ -68,7 +68,7 @@ function MenuSettingsPopover({
             ${className}
           `}
         >
-          <SlidersHorizontal className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+          <Languages className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={6} className="min-w-[200px]">
