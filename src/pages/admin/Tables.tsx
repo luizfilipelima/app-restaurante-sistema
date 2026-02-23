@@ -840,6 +840,29 @@ function getZoneBadgeStyle(zoneName: string): string {
 
 // ─── Table Card (touch-friendly) — exportado para WaiterTerminal ───────────────
 
+const STATUS_CONFIG = {
+  free: {
+    label: 'Livre',
+    dotClass: 'bg-slate-300',
+    badgeClass: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+  },
+  occupied: {
+    label: 'Ocupada',
+    dotClass: 'bg-blue-500',
+    badgeClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+  },
+  calling_waiter: {
+    label: 'Chamando',
+    dotClass: 'bg-amber-500 animate-pulse',
+    badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
+  },
+  awaiting_closure: {
+    label: 'Conta pedida',
+    dotClass: 'bg-red-500',
+    badgeClass: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
+  },
+} as const;
+
 export function TableCard({
   table,
   currency,
@@ -854,9 +877,10 @@ export function TableCard({
 }) {
   const isCalling = table.status === 'calling_waiter' || table.hasPendingWaiterCall;
   const isOccupied = table.status !== 'free';
+  const cfg = STATUS_CONFIG[table.status];
 
   const borderColor = {
-    free: 'border-slate-200',
+    free: 'border-slate-200 dark:border-slate-700',
     occupied: 'border-primary/60',
     calling_waiter: 'border-amber-500/80',
     awaiting_closure: 'border-red-500/60',
@@ -867,72 +891,74 @@ export function TableCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex min-h-[140px] sm:min-h-[150px] w-full flex-col items-stretch rounded-xl border-2 bg-white p-4 text-left shadow-sm transition-all touch-manipulation active:scale-[0.98] hover:shadow-md dark:bg-card overflow-hidden',
+        'flex min-h-[160px] sm:min-h-[172px] w-full flex-col items-stretch rounded-xl border-2 bg-white p-3.5 sm:p-4 text-left shadow-sm transition-all touch-manipulation active:scale-[0.98] hover:shadow-md dark:bg-card overflow-hidden',
         borderColor
       )}
     >
-      <div className="flex flex-col gap-3 flex-1 min-h-0">
-        {/* Topo: Número + Status + Sino (apenas quando chamando) */}
-        <div className="flex w-full items-center justify-between gap-2 min-h-[32px] shrink-0">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="text-xl font-bold sm:text-2xl truncate">Mesa {table.number}</span>
-            {isOccupied && (
-              <span
-                className={cn(
-                  'h-2 w-2 shrink-0 rounded-full',
-                  isCalling && 'bg-amber-500 animate-pulse',
-                  !isCalling && table.status === 'occupied' && 'bg-blue-500',
-                  !isCalling && table.status === 'awaiting_closure' && 'bg-red-500'
-                )}
-                aria-hidden
-              />
-            )}
+      <div className="flex flex-col gap-2.5 flex-1 min-h-0">
+        {/* Linha 1: Número da mesa + Status badge + Sino */}
+        <div className="flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="text-lg font-bold sm:text-xl truncate">Mesa {table.number}</span>
+            <span
+              className={cn(
+                'shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide',
+                cfg.badgeClass
+              )}
+            >
+              <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', cfg.dotClass)} aria-hidden />
+              {cfg.label}
+            </span>
           </div>
           {isCalling && (
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 animate-pulse dark:bg-amber-900/40 dark:text-amber-400" aria-label="Chamando garçom">
-              <Bell className="h-4 w-4" />
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 animate-pulse dark:bg-amber-900/40 dark:text-amber-400" aria-label="Chamando garçom">
+              <Bell className="h-3.5 w-3.5" />
             </span>
           )}
         </div>
 
-        {/* Centro: Valor total + itens (apenas quando ocupada) */}
-        <div className="flex flex-col justify-center gap-1 flex-1 min-h-[48px]">
+        {/* Linha 2: Valor + itens + pedidos */}
+        <div className="flex flex-col justify-center gap-0.5 flex-1 min-h-[44px]">
           {isOccupied ? (
             <>
-              {table.totalAmount > 0 && (
-                <p className="text-lg font-bold text-foreground sm:text-xl leading-tight">
-                  {formatPrice(table.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
-                </p>
-              )}
-              {table.itemsCount > 0 && (
-                <p className="text-sm text-muted-foreground">{table.itemsCount} itens</p>
-              )}
+              <p className="text-base font-bold text-foreground leading-tight">
+                {formatPrice(table.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
+              </p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0 text-[11px] text-muted-foreground">
+                {table.itemsCount > 0 && <span>{table.itemsCount} itens</span>}
+                {table.orderIds.length > 1 && (
+                  <>
+                    {table.itemsCount > 0 && <span>•</span>}
+                    <span>{table.orderIds.length} pedidos</span>
+                  </>
+                )}
+              </div>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">Livre</p>
+            <p className="text-xs text-muted-foreground">Livre</p>
           )}
         </div>
 
-        {/* Rodapé: Tag zona (esquerda) + Tempo (direita) */}
-        <div className="flex w-full items-center justify-between gap-3 pt-2 mt-auto border-t border-border/50 shrink-0">
-          {zoneName ? (
-            <Badge
-              variant="outline"
-              className={cn('text-[10px] font-semibold uppercase tracking-wide border-0 truncate max-w-[60%]', getZoneBadgeStyle(zoneName))}
-            >
-              {zoneName}
-            </Badge>
-          ) : (
-            <span className="flex-1" />
-          )}
+        {/* Linha 3: Zona + Tempo */}
+        <div className="flex items-center justify-between gap-2 pt-2 mt-auto border-t border-border/50 shrink-0 min-h-[28px]">
+          <div className="min-w-0 flex-1 truncate">
+            {zoneName ? (
+              <Badge
+                variant="outline"
+                className={cn('text-[10px] font-semibold uppercase tracking-wide border-0 truncate max-w-full', getZoneBadgeStyle(zoneName))}
+              >
+                {zoneName}
+              </Badge>
+            ) : (
+              <span className="text-[10px] text-muted-foreground">—</span>
+            )}
+          </div>
           {isOccupied && table.openedAt ? (
-            <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
-              <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1 shrink-0">
+              <Clock className="h-3 w-3 flex-shrink-0" />
               {formatDistanceToNow(new Date(table.openedAt), { addSuffix: true, locale: ptBR })}
             </span>
-          ) : (
-            <span className="shrink-0" />
-          )}
+          ) : null}
         </div>
       </div>
     </button>

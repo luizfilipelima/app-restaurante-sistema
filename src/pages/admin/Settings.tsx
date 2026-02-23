@@ -1281,105 +1281,187 @@ export default function AdminSettings() {
             ABA 5b — Câmbio
         ══════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="cambio" className="mt-0 space-y-5" id="cambio">
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-5">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                <Repeat className="h-[18px] w-[18px] text-muted-foreground" />
+          {/* Moeda nativa como padrão — destaque visual */}
+          <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/80 to-card dark:from-emerald-950/20 dark:to-card p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0">
+                <Repeat className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-foreground">Câmbio Inteligente</h2>
-                <p className="text-[11px] text-muted-foreground">
-                  Configure as cotações e moedas exibidas no alternador de pagamento do checkout. Os preços do cardápio serão convertidos automaticamente.
+                <h2 className="text-base font-semibold text-foreground">Câmbio Inteligente</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Moeda base do restaurante: <span className="font-semibold text-emerald-700 dark:text-emerald-400">{CURRENCIES.find(c => c.value === formData.currency)?.label ?? formData.currency}</span> — configure em &quot;Regional&quot; acima. As cotações são exibidas em relação à moeda nativa para facilitar o câmbio.
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <FieldGroup>
-                <Label className="text-xs font-medium">1 BRL = quantos Guaraníes?</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  step={100}
-                  value={formData.exchange_rates.pyg_per_brl}
-                  onChange={(e) => {
-                    const v = Math.max(1, Number(e.target.value) || 3600);
-                    set('exchange_rates', { ...formData.exchange_rates, pyg_per_brl: v });
-                  }}
-                  placeholder="3600"
-                  className="mt-1"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">Gs. por 1 Real</p>
-              </FieldGroup>
-              <FieldGroup>
-                <Label className="text-xs font-medium">1 BRL = quantos Pesos Argentinos?</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  step={10}
-                  value={formData.exchange_rates.ars_per_brl}
-                  onChange={(e) => {
-                    const v = Math.max(1, Number(e.target.value) || 1150);
-                    set('exchange_rates', { ...formData.exchange_rates, ars_per_brl: v });
-                  }}
-                  placeholder="1150"
-                  className="mt-1"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">ARS $ por 1 Real</p>
-              </FieldGroup>
-              <FieldGroup>
-                <Label className="text-xs font-medium">1 BRL = quantos Dólares?</Label>
-                <Input
-                  type="number"
-                  min={0.01}
-                  step={0.01}
-                  value={formData.exchange_rates.usd_per_brl}
-                  onChange={(e) => {
-                    const v = Math.max(0.01, Number(e.target.value) || 0.18);
-                    set('exchange_rates', { ...formData.exchange_rates, usd_per_brl: v });
-                  }}
-                  placeholder="0.18"
-                  className="mt-1"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">US$ por 1 Real</p>
-              </FieldGroup>
+            {/* Cotações — formato intuitivo baseado na moeda nativa */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cotações de câmbio</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* 1 BRL = X PYG (sempre) */}
+                <div className="rounded-xl border border-border bg-background/60 p-4 space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <span className="text-muted-foreground">1 BRL</span>
+                    <span className="text-foreground">=</span>
+                    <span className="text-foreground">quantos Gs.?</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={100}
+                    value={formData.exchange_rates.pyg_per_brl}
+                    onChange={(e) => {
+                      const v = Math.max(1, Number(e.target.value) || 3600);
+                      set('exchange_rates', { ...formData.exchange_rates, pyg_per_brl: v });
+                    }}
+                    placeholder="3600"
+                    className="h-11 font-mono"
+                  />
+                  <p className="text-[11px] text-muted-foreground">Guaraníes por 1 Real</p>
+                </div>
+
+                {/* 1 BRL = X ARS (sempre) */}
+                <div className="rounded-xl border border-border bg-background/60 p-4 space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <span className="text-muted-foreground">1 BRL</span>
+                    <span className="text-foreground">=</span>
+                    <span className="text-foreground">quantos ARS?</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={10}
+                    value={formData.exchange_rates.ars_per_brl}
+                    onChange={(e) => {
+                      const v = Math.max(1, Number(e.target.value) || 1150);
+                      set('exchange_rates', { ...formData.exchange_rates, ars_per_brl: v });
+                    }}
+                    placeholder="1150"
+                    className="h-11 font-mono"
+                  />
+                  <p className="text-[11px] text-muted-foreground">Pesos argentinos por 1 Real</p>
+                </div>
+
+                {/* USD: 1 USD = X [moeda nativa] */}
+                {formData.currency !== 'USD' ? (
+                  <div className="rounded-xl border border-border bg-background/60 p-4 space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <span className="text-muted-foreground">1 US$</span>
+                      <span className="text-foreground">=</span>
+                      <span className="text-foreground">
+                        quantos {formData.currency === 'BRL' ? 'Reais?' : formData.currency === 'PYG' ? 'Gs.?' : 'ARS?'}
+                      </span>
+                    </Label>
+                    <Input
+                      type="number"
+                      min={0.01}
+                      step={formData.currency === 'PYG' ? 100 : 0.1}
+                      value={(() => {
+                        const r = formData.exchange_rates;
+                        const usd = r.usd_per_brl ?? 0.18;
+                        if (formData.currency === 'BRL') return (1 / usd).toFixed(2);
+                        if (formData.currency === 'PYG') return Math.round((r.pyg_per_brl ?? 3600) / usd);
+                        return Math.round(((r.ars_per_brl ?? 1150) / usd) * 100) / 100;
+                      })()}
+                      onChange={(e) => {
+                        const raw = Number(e.target.value) || 0.01;
+                        const displayVal = Math.max(0.01, raw);
+                        const r = formData.exchange_rates;
+                        let usd_per_brl: number;
+                        if (formData.currency === 'BRL') {
+                          usd_per_brl = 1 / displayVal;
+                        } else if (formData.currency === 'PYG') {
+                          usd_per_brl = (r.pyg_per_brl ?? 3600) / displayVal;
+                        } else {
+                          usd_per_brl = (r.ars_per_brl ?? 1150) / displayVal;
+                        }
+                        usd_per_brl = Math.max(0.01, Math.min(100, usd_per_brl));
+                        set('exchange_rates', { ...r, usd_per_brl });
+                      }}
+                      placeholder={formData.currency === 'BRL' ? '5.50' : formData.currency === 'PYG' ? '20000' : '1150'}
+                      className="h-11 font-mono"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      {formData.currency === 'BRL' ? 'Reais por 1 Dólar' : formData.currency === 'PYG' ? 'Guaraníes por 1 Dólar' : 'Pesos argentinos por 1 Dólar'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-border bg-background/60 p-4 space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <span className="text-muted-foreground">1 BRL</span>
+                      <span className="text-foreground">=</span>
+                      <span className="text-foreground">quantos US$?</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      min={0.01}
+                      step={0.01}
+                      value={formData.exchange_rates.usd_per_brl}
+                      onChange={(e) => {
+                        const v = Math.max(0.01, Number(e.target.value) || 0.18);
+                        set('exchange_rates', { ...formData.exchange_rates, usd_per_brl: v });
+                      }}
+                      placeholder="0.18"
+                      className="h-11 font-mono"
+                    />
+                    <p className="text-[11px] text-muted-foreground">Dólares por 1 Real</p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <FieldGroup>
-              <Label className="text-xs font-medium">Moedas no alternador do checkout</Label>
-              <p className="text-[10px] text-muted-foreground mb-2">
-                Selecione quais moedas o cliente poderá escolher ao pagar
+            {/* Moedas no alternador — nativa em destaque */}
+            <div className="mt-6 pt-6 border-t border-border">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Moedas disponíveis no checkout</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Selecione as moedas que o cliente poderá escolher no cardápio e na tela de pagamento. A moeda nativa é sempre exibida primeiro.
               </p>
-              <div className="flex flex-wrap gap-2">
-                {CURRENCIES.map(c => {
-                  const checked = formData.payment_currencies.includes(c.value);
-                  return (
-                    <label
-                      key={c.value}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
-                        checked ? 'border-[#F87116] bg-orange-50' : 'border-border bg-muted/30 hover:bg-muted/50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => {
-                          const next = e.target.checked
-                            ? [...formData.payment_currencies, c.value]
-                            : formData.payment_currencies.filter(x => x !== c.value);
-                          if (next.length >= 1) set('payment_currencies', next);
-                        }}
-                        className="rounded border-slate-300"
-                      />
-                      <span className="text-sm font-medium">{c.label}</span>
-                    </label>
-                  );
-                })}
+              <div className="flex flex-wrap gap-3">
+                {[...CURRENCIES]
+                  .sort((a, b) => {
+                    if (a.value === formData.currency) return -1;
+                    if (b.value === formData.currency) return 1;
+                    return 0;
+                  })
+                  .map(c => {
+                    const checked = formData.payment_currencies.includes(c.value);
+                    const isNative = c.value === formData.currency;
+                    return (
+                      <label
+                        key={c.value}
+                        className={`
+                          flex items-center gap-2.5 px-4 py-3 rounded-xl border cursor-pointer transition-all
+                          ${checked
+                            ? isNative
+                              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 ring-1 ring-emerald-500/30'
+                              : 'border-[#F87116] bg-orange-50 dark:bg-orange-950/30'
+                            : 'border-border bg-muted/30 hover:bg-muted/50'
+                          }
+                        `}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = e.target.checked
+                              ? [...formData.payment_currencies, c.value]
+                              : formData.payment_currencies.filter(x => x !== c.value);
+                            if (next.length >= 1) set('payment_currencies', next);
+                          }}
+                          className="rounded border-slate-300"
+                        />
+                        <span className="text-sm font-medium">{c.label}</span>
+                        {isNative && (
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-200/80 dark:bg-emerald-800/60 text-emerald-800 dark:text-emerald-200">
+                            Moeda nativa
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
               </div>
-              <p className="text-[10px] text-muted-foreground mt-2">
-                O cliente verá um alternador no cardápio e checkout para escolher pagar em Real, Guaraní, Peso Argentino ou Dólar conforme configurado.
-              </p>
-            </FieldGroup>
+            </div>
           </div>
 
           <div className="flex justify-end">
