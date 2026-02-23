@@ -96,6 +96,31 @@ export function formatGuarani(value: number): string {
   return formatCurrency(value, 'PYG');
 }
 
+/**
+ * Infere o país do telefone a partir do prefixo internacional armazenado.
+ * Útil quando o número foi salvo com código de país (ex: 595981234567).
+ */
+export function inferPhoneCountry(phone: string): 'BR' | 'PY' | 'AR' {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('595')) return 'PY';
+  if (digits.startsWith('54')) return 'AR';
+  if (digits.startsWith('55')) return 'BR';
+  return 'BR';
+}
+
+/**
+ * Retorna o telefone no formato correto para wa.me (dígitos com código de país).
+ * Se o número já tiver prefixo internacional (55, 595, 54), usa como está.
+ * Caso contrário, normaliza com o fallbackCountry (ex: pedidos antigos sem código).
+ */
+export function ensurePhoneForWhatsApp(phone: string, fallbackCountry: 'BR' | 'PY' | 'AR' = 'BR'): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('595') && digits.length >= 12) return digits;
+  if (digits.startsWith('54') && digits.length >= 10) return digits;
+  if (digits.startsWith('55') && digits.length >= 12) return digits;
+  return normalizePhoneWithCountryCode(phone, fallbackCountry);
+}
+
 /** Normaliza telefone para número internacional (apenas dígitos). BR: +55, PY: +595, AR: +54. */
 export function normalizePhoneWithCountryCode(phone: string, countryCode: 'BR' | 'PY' | 'AR'): string {
   const digits = phone.replace(/\D/g, '');

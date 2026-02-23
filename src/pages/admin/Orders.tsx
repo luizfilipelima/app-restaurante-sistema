@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { formatCurrency, formatPhone, getCardapioPublicUrl, normalizePhoneWithCountryCode } from '@/lib/utils';
+import { formatCurrency, formatPhone, getCardapioPublicUrl, ensurePhoneForWhatsApp, inferPhoneCountry, normalizePhoneWithCountryCode } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -311,13 +311,13 @@ export default function AdminOrders() {
         ? formatCurrency(dispatchOrder.delivery_fee, currency)
         : '';
       const totalFmt = formatCurrency(dispatchOrder.total ?? 0, currency);
-      const customerCountry = (restaurant as { phone_country?: string })?.phone_country === 'PY'
-        ? 'PY'
-        : (restaurant as { phone_country?: string })?.phone_country === 'AR'
-          ? 'AR'
-          : 'BR';
+      const restaurantCountry = (restaurant as { phone_country?: string })?.phone_country === 'PY' ? 'PY' as const
+        : (restaurant as { phone_country?: string })?.phone_country === 'AR' ? 'AR' as const : 'BR' as const;
+      const digits = (dispatchOrder.customer_phone ?? '').replace(/\D/g, '');
+      const hasKnownPrefix = digits.startsWith('595') || digits.startsWith('54') || digits.startsWith('55');
+      const customerCountry = hasKnownPrefix ? inferPhoneCountry(dispatchOrder.customer_phone ?? '') : restaurantCountry;
       const clienteTelefone = dispatchOrder.customer_phone
-        ? '+' + normalizePhoneWithCountryCode(dispatchOrder.customer_phone, customerCountry)
+        ? '+' + ensurePhoneForWhatsApp(dispatchOrder.customer_phone, customerCountry)
         : '';
       const dispatchMessage = processTemplate(
         getTemplate('courier_dispatch', localWaTemplates, orderLang),
@@ -634,9 +634,16 @@ export default function AdminOrders() {
                       const NextIconComponent = goToCompleted ? completedConfig.icon : config.nextIcon;
                       const gradientClass = goToCompleted ? completedConfig.gradient : config.gradient;
 
-                      // WhatsApp "saiu para entrega" — idioma do cliente (order.customer_language)
+                      // País do telefone do cliente: infere do prefixo ou usa do restaurante (fallback para pedidos antigos)
+                      const customerFallbackCountry = (restaurant as { phone_country?: string })?.phone_country === 'PY' ? 'PY' as const
+                        : (restaurant as { phone_country?: string })?.phone_country === 'AR' ? 'AR' as const : 'BR' as const;
+                      const orderCustomerCountry = (() => {
+                        const d = (order.customer_phone ?? '').replace(/\D/g, '');
+                        if (d.startsWith('595') || d.startsWith('54') || d.startsWith('55')) return inferPhoneCountry(order.customer_phone);
+                        return customerFallbackCountry;
+                      })();
                       const buildWhatsAppDeliveryUrl = () => {
-                        const phone = order.customer_phone.replace(/\D/g, '');
+                        const phone = ensurePhoneForWhatsApp(order.customer_phone, orderCustomerCountry);
                         const firstName = order.customer_name.split(' ')[0];
                         const orderLang = ((order as { customer_language?: string })?.customer_language === 'es' || (restaurant as { language?: string })?.language === 'es') ? 'es' as const : 'pt' as const;
                         const msg = processTemplate(
@@ -651,7 +658,7 @@ export default function AdminOrders() {
 
                       // WhatsApp "pedido pronto para retirada" — idioma do cliente
                       const buildWhatsAppPickupReadyUrl = () => {
-                        const phone = order.customer_phone.replace(/\D/g, '');
+                        const phone = ensurePhoneForWhatsApp(order.customer_phone, orderCustomerCountry);
                         const firstName = order.customer_name.split(' ')[0];
                         const isEs = (order as { customer_language?: string })?.customer_language === 'es' || (restaurant as { language?: string })?.language === 'es';
                         const msg = isEs
@@ -707,8 +714,8 @@ export default function AdminOrders() {
                                 </Button>
                                 {restaurant?.slug && order.customer_phone && (
                                   <a
-                                    href={`https://wa.me/${order.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                                      `Olá! Acesse nosso cardápio e faça seu pedido: ${getCardapioPublicUrl(restaurant.slug)}?phone=${encodeURIComponent(normalizePhoneWithCountryCode(order.customer_phone, 'BR'))}`
+                                    href={`https://wa.me/${ensurePhoneForWhatsApp(order.customer_phone, orderCustomerCountry)}?text=${encodeURIComponent(
+                                      `Olá! Acesse nosso cardápio e faça seu pedido: ${getCardapioPublicUrl(restaurant.slug)}?phone=${encodeURIComponent('+' + ensurePhoneForWhatsApp(order.customer_phone, orderCustomerCountry))}`
                                     )}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
