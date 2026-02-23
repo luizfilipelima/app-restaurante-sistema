@@ -3,11 +3,20 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { getSubdomain } from '@/lib/subdomain';
 import { Restaurant, Product, Category, Subcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
+import { useTableOrderStore } from '@/store/tableOrderStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { useRestaurantMenuData, useActiveOffersByRestaurantId, useLoyaltyProgram, useLoyaltyStatus } from '@/hooks/queries';
 import { ShoppingCart, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2, ArrowLeft } from 'lucide-react';
 import { getCategoryIconComponent } from '@/lib/categoryIcons';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { isWithinOpeningHours, normalizePhoneWithCountryCode } from '@/lib/utils';
@@ -143,6 +152,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
   const isTableOrder = !!(tableId && tableNumber);
+  const { tableCustomerName, setTableCustomerName } = useTableOrderStore();
+  const [welcomeNameInput, setWelcomeNameInput] = useState('');
+  const showWelcomeModal = isTableOrder && !tableCustomerName?.trim();
 
   const handleCheckoutNavigation = () => {
     const params = new URLSearchParams();
@@ -806,6 +818,48 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           </div>
         </div>
       )}
+
+      {/* Modal de boas-vindas — pede nome do cliente na mesa (autoatendimento identificado) */}
+      <Dialog open={showWelcomeModal} onOpenChange={() => {}}>
+        <DialogContent
+          className="sm:max-w-md"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {tableNumber ? `Bem-vindo à Mesa ${tableNumber}!` : 'Bem-vindo!'}
+            </DialogTitle>
+            <DialogDescription>
+              Qual seu nome? Assim podemos identificar seu pedido na divisão da conta.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="Ex: João, Maria"
+              value={welcomeNameInput}
+              onChange={(e) => setWelcomeNameInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && welcomeNameInput.trim() && (setTableCustomerName(welcomeNameInput.trim()), setWelcomeNameInput(''))}
+              className="h-12 text-base"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                if (welcomeNameInput.trim()) {
+                  setTableCustomerName(welcomeNameInput.trim());
+                  setWelcomeNameInput('');
+                }
+              }}
+              disabled={!welcomeNameInput.trim()}
+              className="w-full h-12"
+            >
+              Continuar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modais (lazy — só carregam quando necessários) */}
       <Suspense fallback={null}>

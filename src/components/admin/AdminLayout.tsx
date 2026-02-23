@@ -171,9 +171,23 @@ const buildNavSections = (
     items: [
       {
         kind: 'leaf',
-        name: t('nav.items.tables'),
+        name: t('nav.items.tablesCentral'),
         href: `${base}/tables`,
         icon: LayoutGrid,
+        featureFlag: 'feature_tables',
+        featureLabel: 'Plano Standard',
+        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
+      },
+      {
+        kind: 'leaf',
+        name: t('nav.items.waiterTerminal'),
+        href: restaurantSlug
+          ? `/${restaurantSlug}/terminal-garcom`
+          : restaurantId
+            ? `/terminal-garcom?restaurant_id=${restaurantId}`
+            : '/terminal-garcom',
+        icon: ConciergeBell,
+        external: true,
         featureFlag: 'feature_tables',
         featureLabel: 'Plano Standard',
         roleRequired: ['waiter'],

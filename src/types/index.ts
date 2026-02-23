@@ -4,6 +4,10 @@ export enum UserRole {
   SUPER_ADMIN = 'super_admin',
   RESTAURANT_ADMIN = 'restaurant_admin',
   KITCHEN = 'kitchen',
+  WAITER = 'waiter',
+  CASHIER = 'cashier',
+  MANAGER = 'manager',
+  OWNER = 'owner',
 }
 
 export enum OrderStatus {
@@ -445,6 +449,8 @@ export interface OrderItem {
   unit_price: number;
   total_price: number;
   observations?: string;
+  /** Nome do cliente na mesa (para divisão de conta). Null = Mesa Geral. */
+  customer_name?: string | null;
   // Para pizzas
   pizza_size?: string;
   pizza_flavors?: string[]; // Array de nomes dos sabores

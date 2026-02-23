@@ -371,7 +371,7 @@ function CashierContent() {
               .select(`
                 id, customer_name, total, created_at, table_id,
                 delivery_type, order_source,
-                order_items(id, product_name, quantity, unit_price, total_price, observations),
+                order_items(id, product_name, quantity, unit_price, total_price, observations, customer_name),
                 tables(number)
               `)
               .eq('restaurant_id', restaurantId)
@@ -677,8 +677,30 @@ function CashierContent() {
       : selected?.type === 'comanda_buffet'
         ? selected.items.map((i) => ({ name: i.description, qty: i.quantity, price: i.total_price }))
         : selected?.type === 'table'
-          ? (selected.order.order_items ?? []).map((i) => ({ name: i.product_name, qty: i.quantity, price: i.total_price }))
+          ? (selected.order.order_items ?? []).map((i: any) => ({ name: i.product_name, qty: i.quantity, price: i.total_price }))
           : [];
+
+  // Para mesa: agrupa por customer_name (João, Maria, Mesa Geral)
+  const tableItemsGrouped =
+    selected?.type === 'table' && (selected.order.order_items ?? []).length > 0
+      ? (() => {
+          const items = selected.order.order_items as Array<{ product_name: string; quantity: number; total_price: number; customer_name?: string | null }>;
+          const map = new Map<string, { label: string; items: { name: string; qty: number; price: number }[]; subtotal: number }>();
+          for (const i of items) {
+            const key = (i.customer_name ?? '').trim() || '__mesa_geral__';
+            const label = key === '__mesa_geral__' ? 'Mesa Geral' : key;
+            const row = { name: i.product_name, qty: i.quantity, price: Number(i.total_price) };
+            const existing = map.get(key);
+            if (existing) {
+              existing.items.push(row);
+              existing.subtotal += row.price;
+            } else {
+              map.set(key, { label, items: [row], subtotal: row.price });
+            }
+          }
+          return Array.from(map.values()).sort((a, b) => (a.label === 'Mesa Geral' ? 1 : 0) - (b.label === 'Mesa Geral' ? 1 : 0) || a.label.localeCompare(b.label));
+        })()
+      : null;
 
   return (
     <div className="h-full flex flex-col">
@@ -817,17 +839,33 @@ function CashierContent() {
                 </Button>
               </div>
 
-              <div className="divide-y divide-border max-h-48 overflow-y-auto">
-                {itemsForDisplay.map((it, i) => (
-                  <div key={i} className="px-4 py-3 flex justify-between items-center">
-                    <span className="text-sm truncate flex-1">
-                      {Number(it.qty) % 1 === 0 ? `${it.qty}×` : it.qty} {it.name}
-                    </span>
-                    <span className="text-sm font-semibold tabular-nums">
-                      {formatCurrency(Number(it.price), currency)}
-                    </span>
-                  </div>
-                ))}
+              <div className="divide-y divide-border max-h-64 overflow-y-auto">
+                {tableItemsGrouped ? (
+                  tableItemsGrouped.map((group) => (
+                    <div key={group.label} className="px-4 py-3 border-b border-border/60 last:border-0">
+                      <p className="text-xs font-semibold text-muted-foreground mb-1.5">
+                        {group.label} — {formatCurrency(group.subtotal, currency)}
+                      </p>
+                      {group.items.map((it, i) => (
+                        <div key={i} className="flex justify-between items-center text-sm py-0.5">
+                          <span className="truncate flex-1">{Number(it.qty) % 1 === 0 ? `${it.qty}×` : it.qty} {it.name}</span>
+                          <span className="font-medium tabular-nums">{formatCurrency(Number(it.price), currency)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))
+                ) : (
+                  itemsForDisplay.map((it, i) => (
+                    <div key={i} className="px-4 py-3 flex justify-between items-center">
+                      <span className="text-sm truncate flex-1">
+                        {Number(it.qty) % 1 === 0 ? `${it.qty}×` : it.qty} {it.name}
+                      </span>
+                      <span className="text-sm font-semibold tabular-nums">
+                        {formatCurrency(Number(it.price), currency)}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
 
               <div className="px-5 py-4 bg-slate-50 border-t border-border">

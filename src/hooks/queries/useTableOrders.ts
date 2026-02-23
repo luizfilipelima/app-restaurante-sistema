@@ -16,7 +16,7 @@ async function fetchTableOrders(orderIds: string[]): Promise<TableOrderWithItems
     .from('orders')
     .select(`
       id, customer_name, customer_phone, total, subtotal, bill_requested, created_at,
-      order_items(id, product_name, quantity, unit_price, total_price, observations)
+      order_items(id, product_name, quantity, unit_price, total_price, observations, customer_name)
     `)
     .in('id', orderIds)
     .eq('is_paid', false)

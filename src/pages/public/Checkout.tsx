@@ -98,7 +98,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const [searchParams] = useSearchParams();
   const tableIdFromUrl = searchParams.get('tableId');
   const tableNumberFromUrl = searchParams.get('tableNumber');
-  const { tableId: tableIdStore, tableNumber: tableNumberStore, clearTable } = useTableOrderStore();
+  const { tableId: tableIdStore, tableNumber: tableNumberStore, tableCustomerName, clearTable } = useTableOrderStore();
   const tableId = tableIdFromUrl || tableIdStore;
   const tableNumber = tableNumberFromUrl ? parseInt(tableNumberFromUrl, 10) : tableNumberStore;
   const isTableOrder = !!(tableId && tableNumber);
@@ -283,7 +283,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
   const handleCheckout = async () => {
     setFormError(null);
-    const nameToUse = isTableOrder ? `Mesa ${tableNumber}` : customerName;
+    const tableName = (tableCustomerName ?? '').trim() || null;
+    if (isTableOrder && !tableName) {
+      setFormError('Informe seu nome para identificar seu pedido na divisão da conta.');
+      return;
+    }
+    const nameToUse = isTableOrder ? (tableName ?? `Mesa ${tableNumber}`) : customerName;
     const phoneToUse = isTableOrder
       ? ((currentRestaurant?.phone || '').replace(/\D/g, '').length >= 9
           ? (currentRestaurant?.phone || '0')
@@ -460,6 +465,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         customer_language: getStoredMenuLanguage(),
       };
 
+      const customerNameForItems = isTableOrder ? (tableName ?? null) : null;
       const orderItemsPayload = items.map((item) => {
         const itemTotal =
           item.unitPrice * item.quantity +
@@ -478,6 +484,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           pizza_edge: item.pizzaEdge ?? null,
           is_upsell: item.isUpsell ?? false,
           addons: item.addons && item.addons.length > 0 ? item.addons : null,
+          customer_name: customerNameForItems,
         };
       });
 

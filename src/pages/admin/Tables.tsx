@@ -1,8 +1,8 @@
 /**
- * Mesas & QR Codes — Hub de Operação do Salão
+ * Central de Mesas e Praças (Backoffice / Gestão)
  *
- * Tela otimizada para tablets e smartphones (garçom/gerente).
- * Grid de mesas com status em tempo real, modal de operação do garçom.
+ * Tela de configuração: zonas, mesas, QR Codes.
+ * Inclui card com link para o Terminal do Garçom.
  */
 
 import { useEffect, useState, useRef } from 'react';
@@ -60,16 +60,18 @@ import {
   Utensils,
   Receipt,
   CheckCircle2,
-  X,
-  Search,
   Clock,
   Settings,
   Link2,
   Unlink,
+  ExternalLink,
+  Copy,
+  ConciergeBell,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { WaiterPDV } from '@/components/waiter/WaiterPDV';
 
 // ─── HallZonesConfig (CRUD Zonas) ────────────────────────────────────────────
 
@@ -238,14 +240,58 @@ export default function AdminTables() {
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
+  const terminalUrl = restaurant?.slug
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${restaurant.slug}/terminal-garcom`
+    : '';
+
   return (
     <div className="space-y-6 pb-8">
+      {/* Card Terminal do Garçom */}
+      <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-4 sm:p-6">
+        <h3 className="font-semibold text-primary flex items-center gap-2 mb-2">
+          <ConciergeBell className="h-5 w-5" />
+          Terminal do Garçom
+        </h3>
+        <p className="text-sm text-muted-foreground mb-3">
+          Acesse a tela operacional em tablets e celulares. Copie o link ou abra em nova aba.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <code className="flex-1 min-w-0 truncate rounded bg-muted px-2 py-1.5 text-sm">
+            {terminalUrl || 'Carregando...'}
+          </code>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              if (terminalUrl) {
+                navigator.clipboard.writeText(terminalUrl);
+                toast({ title: 'Link copiado!' });
+              }
+            }}
+            disabled={!terminalUrl}
+          >
+            <Copy className="h-4 w-4 mr-1" />
+            Copiar Link
+          </Button>
+          <Button
+            size="sm"
+            asChild
+            disabled={!terminalUrl}
+          >
+            <a href={terminalUrl || '#'} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Abrir em Nova Aba
+            </a>
+          </Button>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">Hub de Operação do Salão</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">Central de Mesas e Praças</h1>
           <p className="text-muted-foreground mt-1">
-            Visão geral das mesas. Toque em uma mesa para operar.
+            Gerencie zonas, mesas e gere QR Codes. O garçom opera pelo Terminal.
           </p>
         </div>
         <div className="flex gap-2">
@@ -330,6 +376,7 @@ export default function AdminTables() {
 
       {/* Sheet/Modal de Operação da Mesa */}
       <TableOperationSheet
+        mode="management"
         table={selectedTable}
         onClose={() => setSelectedTable(null)}
         currency={currency}
@@ -472,9 +519,9 @@ export default function AdminTables() {
   );
 }
 
-// ─── Table Card (touch-friendly) ──────────────────────────────────────────────
+// ─── Table Card (touch-friendly) — exportado para WaiterTerminal ───────────────
 
-function TableCard({
+export function TableCard({
   table,
   currency,
   onClick,
@@ -525,9 +572,10 @@ function TableCard({
   );
 }
 
-// ─── Sheet de Operação da Mesa ───────────────────────────────────────────────
+// ─── Sheet de Operação da Mesa — exportado para WaiterTerminal ─────────────────
 
-function TableOperationSheet({
+export function TableOperationSheet({
+  mode,
   table,
   onClose,
   currency,
@@ -542,6 +590,7 @@ function TableOperationSheet({
   onTableOrZoneUpdated,
   isMobile,
 }: {
+  mode: 'management' | 'operation';
   table: TableWithStatus | null;
   onClose: () => void;
   currency: string;
@@ -556,12 +605,11 @@ function TableOperationSheet({
   onTableOrZoneUpdated: () => void;
   isMobile: boolean;
 }) {
+  const isManagement = mode === 'management';
   const { data: orders = [] } = useTableOrders(table?.orderIds ?? []);
   const { data: productsData = [] } = useAdminProducts(restaurantId);
 
-  const [showProductSearch, setShowProductSearch] = useState(false);
-  const [productSearch, setProductSearch] = useState('');
-  const [placingOrder, setPlacingOrder] = useState(false);
+  const [showPDV, setShowPDV] = useState(false);
   const [attendingCallId, setAttendingCallId] = useState<string | null>(null);
   const [requestingClosure, setRequestingClosure] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
@@ -569,79 +617,39 @@ function TableOperationSheet({
   const [downloadingQr, setDownloadingQr] = useState(false);
   const [comandaInput, setComandaInput] = useState('');
   const [updatingTableZone, setUpdatingTableZone] = useState(false);
+  const [localHallZoneId, setLocalHallZoneId] = useState<string | null | undefined>(undefined);
   const comandaInputRef = useRef<HTMLInputElement>(null);
+
+  // Sincroniza estado local com a mesa (para corrigir bug de zona não atualizar no dropdown)
+  useEffect(() => {
+    setLocalHallZoneId(table?.hall_zone_id ?? null);
+  }, [table?.id, table?.hall_zone_id]);
 
   const { data: linkedComandas = [] } = useTableComandaLinks(table?.id ?? null, restaurantId);
   const linkComanda = useLinkComandaToTable(restaurantId);
   const unlinkComanda = useUnlinkComandaFromTable(restaurantId);
 
-  const filteredProducts = productSearch.trim()
-    ? productsData.filter(
-        (p) =>
-          p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-          (p.category || '').toLowerCase().includes(productSearch.toLowerCase())
-      )
-    : productsData;
-
   const canAddOrder = !table?.billRequested;
   const totalAmount = orders.reduce((s, o) => s + (o.total ?? 0), 0);
   const allItems = orders.flatMap((o) => (o.order_items ?? []).map((i) => ({ ...i, orderId: o.id })));
 
-  const handlePlaceOrder = async (product: import('@/types').Product) => {
-    if (!table || !restaurantId || placingOrder || !canAddOrder) return;
-    const price = product.price_sale ?? product.price;
-    const qty = 1;
-    const itemTotal = price * qty;
-    setPlacingOrder(true);
-    try {
-      const { data, error } = await supabase.rpc('place_order', {
-        p_order: {
-          restaurant_id: restaurantId,
-          customer_name: `Mesa ${table.number}`,
-          customer_phone: '5511999999999',
-          delivery_type: 'pickup',
-          delivery_fee: 0,
-          subtotal: itemTotal,
-          total: itemTotal,
-          payment_method: 'table',
-          order_source: 'table',
-          table_id: table.id,
-          status: 'pending',
-          notes: null,
-          is_paid: false,
-          loyalty_redeemed: false,
-          discount_coupon_id: null,
-          discount_amount: 0,
-        },
-        p_items: [
-          {
-            product_id: product.id,
-            product_name: product.name,
-            quantity: qty,
-            unit_price: price,
-            total_price: itemTotal,
-            observations: null,
-            pizza_size: null,
-            pizza_flavors: null,
-            pizza_dough: null,
-            pizza_edge: null,
-            is_upsell: false,
-            addons: null,
-          },
-        ],
-      });
-      if (error) throw error;
-      if (data && !(data as { ok?: boolean }).ok) throw new Error((data as { error?: string }).error);
-      setShowProductSearch(false);
-      setProductSearch('');
-      onOrderPlaced();
-      toast({ title: `${product.name} adicionado à mesa!` });
-    } catch (e) {
-      toast({ title: 'Erro ao adicionar pedido', variant: 'destructive' });
-    } finally {
-      setPlacingOrder(false);
+  // Agrupa itens por customer_name para divisão de conta (João, Maria, Mesa Geral)
+  const itemsGroupedByCustomer = (() => {
+    const groups = new Map<string, { label: string; items: typeof allItems; subtotal: number }>();
+    for (const item of allItems) {
+      const key = (item as { customer_name?: string | null }).customer_name?.trim() || '__mesa_geral__';
+      const label = key === '__mesa_geral__' ? 'Mesa Geral' : key;
+      const existing = groups.get(key);
+      const itemTotal = Number((item as { total_price?: number }).total_price ?? 0);
+      if (existing) {
+        existing.items.push(item);
+        existing.subtotal += itemTotal;
+      } else {
+        groups.set(key, { label, items: [item], subtotal: itemTotal });
+      }
     }
-  };
+    return Array.from(groups.values()).sort((a, b) => (a.label === 'Mesa Geral' ? 1 : 0) - (b.label === 'Mesa Geral' ? 1 : 0) || a.label.localeCompare(b.label));
+  })();
 
   const handleMarkCallAttended = async (callId: string) => {
     try {
@@ -731,6 +739,7 @@ function TableOperationSheet({
     try {
       const { error } = await supabase.from('tables').update({ hall_zone_id: zoneId }).eq('id', table.id);
       if (error) throw error;
+      setLocalHallZoneId(zoneId); // Atualiza imediatamente o dropdown
       onTableOrZoneUpdated();
       toast({ title: 'Zona atualizada!' });
     } catch {
@@ -785,6 +794,26 @@ function TableOperationSheet({
 
   if (!table) return null;
 
+  if (showPDV && !isManagement && restaurantId) {
+    return (
+      <Sheet open={!!table} onOpenChange={(open) => !open && (setShowPDV(false), onClose())}>
+        <SheetContent
+          side="right"
+          className="flex flex-col p-0 w-full max-w-none sm:max-w-none md:max-w-2xl lg:max-w-4xl overflow-hidden"
+        >
+          <WaiterPDV
+            table={table}
+            restaurantId={restaurantId}
+            currency={currency}
+            products={productsData}
+            onOrderPlaced={() => { setShowPDV(false); onOrderPlaced(); }}
+            onBack={() => setShowPDV(false)}
+          />
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
   const baseUrl = restaurant?.slug
     ? getCardapioPublicUrl(restaurant.slug).replace(/\/$/, '') + `/cardapio/${table.number}`
     : '';
@@ -812,12 +841,12 @@ function TableOperationSheet({
           </SheetHeader>
 
           <div className="mt-4 flex flex-1 flex-col gap-6">
-            {/* Zona da Mesa (editar) */}
-            {hallZones.length > 0 && (
+            {/* Zona da Mesa (editar — apenas modo gestão) */}
+            {isManagement && hallZones.length > 0 && (
               <section>
                 <h3 className="mb-2 font-semibold">Zona</h3>
                 <Select
-                  value={table.hall_zone_id ?? 'none'}
+                  value={localHallZoneId ?? 'none'}
                   onValueChange={(v) => handleUpdateTableZone(v === 'none' ? null : v)}
                   disabled={updatingTableZone}
                 >
@@ -834,7 +863,7 @@ function TableOperationSheet({
               </section>
             )}
 
-            {/* Resumo da Conta */}
+            {/* Resumo da Conta — agrupado por pessoa (João, Maria, Mesa Geral) */}
             <section>
               <h3 className="mb-2 flex items-center gap-2 font-semibold">
                 <Receipt className="h-4 w-4" />
@@ -843,26 +872,35 @@ function TableOperationSheet({
               {allItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Nenhum item consumido.</p>
               ) : (
-                <ul className="space-y-2 rounded-lg border bg-muted/30 p-3">
-                  {allItems.map((item, i) => (
-                    <li key={`${item.id}-${i}`} className="flex justify-between text-sm">
-                      <span>{item.product_name} x{item.quantity}</span>
-                      <span className="font-medium">
-                        {formatPrice(Number(item.total_price), currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
-                      </span>
-                    </li>
+                <div className="space-y-4 rounded-lg border bg-muted/30 p-3">
+                  {itemsGroupedByCustomer.map((group) => (
+                    <div key={group.label} className="rounded-md border border-border/60 bg-background p-2.5">
+                      <p className="mb-2 font-semibold text-sm text-foreground">
+                        {group.label} <span className="text-muted-foreground font-normal">(Subtotal: {formatPrice(group.subtotal, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')})</span>
+                      </p>
+                      <ul className="space-y-1">
+                        {group.items.map((item, i) => (
+                          <li key={`${item.id}-${i}`} className="flex justify-between text-sm text-muted-foreground">
+                            <span>{item.product_name} x{item.quantity}</span>
+                            <span className="font-medium text-foreground">
+                              {formatPrice(Number(item.total_price), currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
               {totalAmount > 0 && (
                 <p className="mt-2 text-right font-bold">
-                  Subtotal: {formatPrice(totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
+                  Total: {formatPrice(totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
                 </p>
               )}
             </section>
 
-            {/* Comandas Vinculadas (quando buffet + mesa ocupada) */}
-            {hasBuffet && (table.status !== 'free') && (
+            {/* Comandas Vinculadas (apenas modo operação, quando buffet + mesa ocupada) */}
+            {!isManagement && hasBuffet && (table.status !== 'free') && (
               <section>
                 <h3 className="mb-2 flex items-center gap-2 font-semibold">
                   <Link2 className="h-4 w-4" />
@@ -913,8 +951,8 @@ function TableOperationSheet({
 
             {/* Ações */}
             <div className="grid gap-3">
-              {/* Responder Chamado */}
-              {pendingCallIds.length > 0 && (
+              {/* Responder Chamado (apenas operação) */}
+              {!isManagement && pendingCallIds.length > 0 && (
                 <Button
                   size="lg"
                   className="min-h-[48px] bg-amber-600 hover:bg-amber-700"
@@ -930,62 +968,17 @@ function TableOperationSheet({
                 </Button>
               )}
 
-              {/* Lançar Novo Pedido */}
-              {canAddOrder && (
-                <>
-                  {!showProductSearch ? (
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="min-h-[48px] touch-manipulation"
-                      onClick={() => setShowProductSearch(true)}
-                    >
-                      <Utensils className="h-5 w-5 mr-2" />
-                      Lançar Novo Pedido
-                    </Button>
-                  ) : (
-                    <div className="space-y-2 rounded-lg border p-3">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          placeholder="Buscar produto..."
-                          value={productSearch}
-                          onChange={(e) => setProductSearch(e.target.value)}
-                          className="pl-9 min-h-[44px]"
-                          autoFocus
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-1 top-1/2 -translate-y-1/2"
-                          onClick={() => { setShowProductSearch(false); setProductSearch(''); }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="max-h-[200px] overflow-y-auto space-y-1">
-                        {filteredProducts.slice(0, 20).map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
-                            onClick={() => handlePlaceOrder(p)}
-                            disabled={placingOrder}
-                          >
-                            <span>{p.name}</span>
-                            <span className="font-medium">
-                              {formatPrice(p.price_sale ?? p.price, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
-                            </span>
-                          </button>
-                        ))}
-                        {filteredProducts.length === 0 && productSearch && (
-                          <p className="py-4 text-center text-sm text-muted-foreground">Nenhum produto encontrado.</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>
+              {/* Lançar Novo Pedido (apenas operação) — abre PDV de Bolso */}
+              {!isManagement && canAddOrder && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="min-h-[48px] touch-manipulation"
+                  onClick={() => setShowPDV(true)}
+                >
+                  <Utensils className="h-5 w-5 mr-2" />
+                  Lançar Novo Pedido
+                </Button>
               )}
 
               {/* Gerar QR Code */}
@@ -999,8 +992,8 @@ function TableOperationSheet({
                 Exibir QR Code da Mesa
               </Button>
 
-              {/* Solicitar Fechamento */}
-              {!table.billRequested && table.orderIds.length > 0 && (
+              {/* Solicitar Fechamento (apenas operação) */}
+              {!isManagement && !table.billRequested && table.orderIds.length > 0 && (
                 <Button
                   size="lg"
                   variant="destructive"
@@ -1017,7 +1010,7 @@ function TableOperationSheet({
                 </Button>
               )}
 
-              {table.billRequested && (
+              {!isManagement && table.billRequested && (
                 <p className="rounded-lg bg-red-100 px-3 py-2 text-sm font-medium text-red-800 dark:bg-red-900/40 dark:text-red-200">
                   Conta solicitada. Mesa na fila do Caixa.
                 </p>

@@ -54,6 +54,7 @@ const AdminComandaQRCode    = lazyWithRetry(() => import('./pages/admin/ComandaQ
 const AdminProductsInventory = lazyWithRetry(() => import('./pages/admin/ProductsInventory'));
 const AdminInventory         = lazyWithRetry(() => import('./pages/admin/Inventory'));
 const AdminTables           = lazyWithRetry(() => import('./pages/admin/Tables'));
+const WaiterTerminal        = lazyWithRetry(() => import('./pages/admin/WaiterTerminal'));
 const UpgradePage           = lazyWithRetry(() => import('./pages/admin/UpgradePage'));
 
 // Cozinha (KDS) e Expedição (Expo Screen)
@@ -160,7 +161,7 @@ const adminRoutes = (
       path="tables"
       element={
         <ProtectedRoute requiredFeature="feature_tables">
-          <RoleProtectedRoute allowedRoles={['waiter']}>
+          <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
             <AdminTables />
           </RoleProtectedRoute>
         </ProtectedRoute>
@@ -402,6 +403,24 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={KDS_ROLES}>
                 <ExpoScreen />
+              </ProtectedRoute>
+            }
+          />
+          {/* /:slug/terminal-garcom — Terminal do Garçom (Operação de Mesas) */}
+          <Route
+            path="/:slug/terminal-garcom"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.WAITER, UserRole.CASHIER, UserRole.MANAGER, UserRole.OWNER, UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN]}>
+                <WaiterTerminal />
+              </ProtectedRoute>
+            }
+          />
+          {/* /terminal-garcom — fallback com restaurant_id na query */}
+          <Route
+            path="/terminal-garcom"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.WAITER, UserRole.CASHIER, UserRole.MANAGER, UserRole.OWNER, UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN]}>
+                <WaiterTerminal />
               </ProtectedRoute>
             }
           />
