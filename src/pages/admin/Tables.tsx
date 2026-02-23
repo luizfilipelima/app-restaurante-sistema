@@ -74,6 +74,7 @@ import {
   RotateCcw,
   Trash2,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -403,7 +404,6 @@ export default function AdminTables() {
               currency={currency}
               zoneName={hallZones.find((z) => z.id === table.hall_zone_id)?.name ?? null}
               onClick={() => setSelectedTable(table)}
-              onResetTable={canResetTable && table.status !== 'free' ? (e) => { e.stopPropagation(); setResetTableTarget(table); } : undefined}
             />
         ))}
       </div>
@@ -505,6 +505,49 @@ export default function AdminTables() {
               <HallZonesConfig restaurantId={restaurantId} hallZones={hallZones} />
             </TabsContent>
             <TabsContent value="mesas" className="space-y-6 mt-4">
+              {/* Mesas Ocupadas — Limpar mesa (apenas admin/gerente) */}
+              {canResetTable && (() => {
+                const occupied = gridTablesAll.filter((t) => t.is_active && t.status !== 'free');
+                if (occupied.length === 0) return null;
+                return (
+                  <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800/50 p-4">
+                    <h3 className="font-semibold text-sm flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4 text-amber-600" />
+                      Mesas Ocupadas
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Limpar mesa cancela os pedidos e desvincula comandas. Use com cuidado.
+                    </p>
+                    <div className="max-h-[140px] overflow-y-auto space-y-2">
+                      {occupied.map((t) => (
+                        <div
+                          key={t.id}
+                          className="flex items-center justify-between gap-3 rounded-lg border bg-white dark:bg-card px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <span className="font-medium">Mesa {t.number}</span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {hallZones.find((z) => z.id === t.hall_zone_id)?.name ?? '—'} · {t.itemsCount} itens · {formatPrice(t.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30"
+                            onClick={() => {
+                              setResetTableTarget(t);
+                              setShowConfig(false);
+                            }}
+                          >
+                            Limpar Mesa
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               {/* Sessão Superior: Adicionar Mesas Inteligente */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-sm">Adicionar mesas</h3>
@@ -779,6 +822,22 @@ export default function AdminTables() {
   );
 }
 
+// Cores para badges de zona (estilo Kanban: fundo claro + texto escuro)
+const ZONE_BADGE_STYLES = [
+  'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
+  'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-200',
+  'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200',
+  'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+  'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+  'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200',
+];
+
+function getZoneBadgeStyle(zoneName: string): string {
+  let hash = 0;
+  for (let i = 0; i < zoneName.length; i++) hash = ((hash << 5) - hash) + zoneName.charCodeAt(i);
+  return ZONE_BADGE_STYLES[Math.abs(hash) % ZONE_BADGE_STYLES.length];
+}
+
 // ─── Table Card (touch-friendly) — exportado para WaiterTerminal ───────────────
 
 export function TableCard({
@@ -786,76 +845,92 @@ export function TableCard({
   currency,
   zoneName,
   onClick,
-  onResetTable,
 }: {
   table: TableWithStatus;
   currency: string;
-  /** Nome da zona da mesa (ex: Varanda, Salão Principal). Exibido como tag no card. */
+  /** Nome da zona da mesa (ex: Varanda, Salão Principal). Exibido como badge no card. */
   zoneName?: string | null;
   onClick: () => void;
-  /** Callback para resetar mesa (apenas Gerente/Admin, mesas ocupadas). Para de propagação do clique. */
-  onResetTable?: (e: React.MouseEvent) => void;
 }) {
-  const isCalling = table.status === 'calling_waiter';
-  const statusClasses = {
-    free: 'border-emerald-500/50 bg-emerald-50/50 dark:bg-emerald-950/20',
-    occupied: 'border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/20',
-    calling_waiter: 'border-amber-500 bg-amber-100 dark:bg-amber-950/40',
-    awaiting_closure: 'border-red-500 bg-red-50 dark:bg-red-950/20',
-  };
-  const showReset = !!onResetTable && table.status !== 'free';
+  const isCalling = table.status === 'calling_waiter' || table.hasPendingWaiterCall;
+  const isOccupied = table.status !== 'free';
+
+  const borderColor = {
+    free: 'border-slate-200',
+    occupied: 'border-primary/60',
+    calling_waiter: 'border-amber-500/80',
+    awaiting_closure: 'border-red-500/60',
+  }[table.status];
 
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'flex min-h-[100px] sm:min-h-[120px] flex-col items-start justify-between rounded-xl border-2 p-4 text-left transition-all touch-manipulation active:scale-[0.98]',
-        statusClasses[table.status],
-        isCalling && 'animate-pulse'
+        'flex min-h-[120px] sm:min-h-[130px] flex-col items-stretch justify-between rounded-xl border-2 bg-white p-4 text-left shadow-sm transition-all touch-manipulation active:scale-[0.98] hover:shadow-md dark:bg-card',
+        borderColor
       )}
     >
-      <div className="flex w-full flex-col gap-1">
-        <div className="flex w-full items-center justify-between gap-2">
-          <span className="text-xl font-bold sm:text-2xl">Mesa {table.number}</span>
-        <div className="flex shrink-0 items-center gap-1">
-          {isCalling && <Bell className="h-5 w-5 text-amber-600" aria-hidden />}
-          {showReset && onResetTable && (
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              onClick={onResetTable}
-              aria-label="Resetar mesa"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
+      {/* Topo: Número + Status + Sino (apenas quando chamando) */}
+      <div className="flex w-full items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="text-xl font-bold sm:text-2xl truncate">Mesa {table.number}</span>
+          {isOccupied && (
+            <span
+              className={cn(
+                'h-2 w-2 shrink-0 rounded-full',
+                isCalling && 'bg-amber-500 animate-pulse',
+                !isCalling && table.status === 'occupied' && 'bg-blue-500',
+                !isCalling && table.status === 'awaiting_closure' && 'bg-red-500'
+              )}
+              aria-hidden
+            />
           )}
         </div>
-        {zoneName && (
-          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-            {zoneName}
+        {isCalling && (
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 animate-pulse dark:bg-amber-900/40 dark:text-amber-400" aria-label="Chamando garçom">
+            <Bell className="h-4 w-4" />
           </span>
         )}
       </div>
+
+      {/* Centro: Valor total + itens (apenas quando ocupada) */}
+      <div className="flex-1 flex flex-col justify-center min-h-[44px]">
+        {isOccupied ? (
+          <>
+            {table.totalAmount > 0 && (
+              <p className="text-lg font-bold text-foreground sm:text-xl">
+                {formatPrice(table.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
+              </p>
+            )}
+            {table.itemsCount > 0 && (
+              <p className="text-xs text-muted-foreground mt-0.5">{table.itemsCount} itens</p>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground/70">Livre</p>
+        )}
       </div>
-      {table.status !== 'free' && (
-        <div className="w-full space-y-1 text-sm">
-          {table.itemsCount > 0 && (
-            <p className="text-muted-foreground">{table.itemsCount} itens</p>
-          )}
-          {table.totalAmount > 0 && (
-            <p className="font-semibold">{formatPrice(table.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}</p>
-          )}
-          {table.openedAt && (
-            <p className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              {formatDistanceToNow(new Date(table.openedAt), { addSuffix: true, locale: ptBR })}
-            </p>
-          )}
-        </div>
-      )}
+
+      {/* Rodapé: Tag zona (esquerda) + Tempo (direita) */}
+      <div className="flex w-full items-center justify-between gap-2 pt-1 border-t border-border/50 mt-auto">
+        {zoneName ? (
+          <Badge
+            variant="outline"
+            className={cn('text-[10px] font-semibold uppercase tracking-wide border-0', getZoneBadgeStyle(zoneName))}
+          >
+            {zoneName}
+          </Badge>
+        ) : (
+          <span />
+        )}
+        {isOccupied && table.openedAt && (
+          <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
+            <Clock className="h-3 w-3" />
+            {formatDistanceToNow(new Date(table.openedAt), { addSuffix: true, locale: ptBR })}
+          </span>
+        )}
+      </div>
     </button>
   );
 }
