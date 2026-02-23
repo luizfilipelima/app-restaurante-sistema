@@ -239,6 +239,8 @@ export default function AdminTables() {
 
   const tables = tablesData ?? [];
   const activeTables = tables.filter((t) => t.is_active);
+  const inactiveTables = tables.filter((t) => !t.is_active);
+  const [reactivatingId, setReactivatingId] = useState<string | null>(null);
   const pendingCalls = (waiterCallsData ?? []).filter((c) => c.status === 'pending');
 
   // Merge tableStatuses with tables for grid (tableStatuses is source of truth for status)
@@ -650,7 +652,7 @@ export default function AdminTables() {
                           disabled={deletingBulk}
                         >
                           {deletingBulk ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-                          Excluir {selectedTableIds.size} mesa(s) selecionada(s)
+                          Desativar {selectedTableIds.size} mesa(s)
                         </Button>
                       )}
                     </div>
@@ -680,6 +682,55 @@ export default function AdminTables() {
                     </div>
                   </>
                 )}
+
+                {/* Mesas inativas — visualizar e reativar */}
+                {inactiveTables.length > 0 && (
+                  <div className="space-y-3 border-t pt-4">
+                    <h3 className="font-semibold text-sm text-muted-foreground">Mesas inativas</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Mesas excluídas (desativadas). Reative para voltar a usá-las sem criar duplicatas.
+                    </p>
+                    <div className="max-h-[160px] overflow-y-auto border border-dashed rounded-lg divide-y bg-muted/20">
+                      {inactiveTables.map((t) => (
+                        <div
+                          key={t.id}
+                          className="flex items-center justify-between gap-3 px-3 py-2.5"
+                        >
+                          <div>
+                            <span className="font-medium">Mesa {t.number}</span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {hallZones.find((z) => z.id === t.hall_zone_id)?.name ?? 'Sem zona'}
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0 gap-1.5"
+                            disabled={reactivatingId === t.id}
+                            onClick={async () => {
+                              setReactivatingId(t.id);
+                              try {
+                                const { error } = await supabase.from('tables').update({ is_active: true }).eq('id', t.id);
+                                if (error) throw error;
+                                refetchTables();
+                                queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+                                toast({ title: `Mesa ${t.number} reativada!` });
+                              } catch {
+                                toast({ title: 'Erro ao reativar mesa', variant: 'destructive' });
+                              } finally {
+                                setReactivatingId(null);
+                              }
+                            }}
+                          >
+                            {reactivatingId === t.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                            Reativar
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </TabsContent>
           </Tabs>
@@ -690,9 +741,9 @@ export default function AdminTables() {
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Excluir mesas selecionadas?</DialogTitle>
+            <DialogTitle>Desativar mesas selecionadas?</DialogTitle>
             <DialogDescription>
-              As mesas serão desativadas e os QR Codes antigos pararão de funcionar. Você precisará gerar novos QR Codes para as mesas que continuarem em uso. Deseja continuar?
+              As mesas serão desativadas (não excluídas) e sairão da lista. Os QR Codes antigos pararão de funcionar. Você pode reativar mesas inativas em Configurar → Mesas. Deseja continuar?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -711,11 +762,11 @@ export default function AdminTables() {
                   if (error) throw error;
                   refetchTables();
                   queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
-                  toast({ title: `${ids.length} mesa(s) excluída(s)!` });
+                  toast({ title: `${ids.length} mesa(s) desativada(s)!` });
                   setSelectedTableIds(new Set());
                   setShowDeleteConfirm(false);
                 } catch {
-                  toast({ title: 'Erro ao excluir mesas', variant: 'destructive' });
+                  toast({ title: 'Erro ao desativar mesas', variant: 'destructive' });
                 } finally {
                   setDeletingBulk(false);
                 }
@@ -723,7 +774,7 @@ export default function AdminTables() {
               disabled={deletingBulk}
             >
               {deletingBulk ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              {deletingBulk ? 'Excluindo...' : 'Sim, excluir'}
+              {deletingBulk ? 'Desativando...' : 'Sim, desativar'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -735,7 +786,7 @@ export default function AdminTables() {
           <DialogHeader>
             <DialogTitle>Adicionar Mesa</DialogTitle>
             <DialogDescription>
-              Cadastre uma mesa por vez. Para várias mesas em lote, use Configurar Salão.
+              Cadastre uma mesa por vez. Se o número já existir como mesa inativa, ela será reativada. Para várias mesas em lote, use Configurar Salão.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -748,9 +799,30 @@ export default function AdminTables() {
                 toast({ title: 'Número da mesa inválido', variant: 'destructive' });
                 return;
               }
-              const exists = tables.some((t) => t.number === num);
-              if (exists) {
-                toast({ title: `Mesa ${num} já existe`, variant: 'destructive' });
+              const existing = tables.find((t) => t.number === num);
+              if (existing) {
+                if (existing.is_active) {
+                  toast({ title: `Mesa ${num} já existe`, variant: 'destructive' });
+                  return;
+                }
+                setAddingSingle(true);
+                try {
+                  const { error } = await supabase.from('tables').update({
+                    is_active: true,
+                    hall_zone_id: addSingleZoneId || null,
+                  }).eq('id', existing.id);
+                  if (error) throw error;
+                  refetchTables();
+                  queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+                  setShowAddTable(false);
+                  setAddSingleNumber('');
+                  setAddSingleZoneId(null);
+                  toast({ title: `Mesa ${num} reativada!` });
+                } catch {
+                  toast({ title: 'Erro ao reativar mesa', variant: 'destructive' });
+                } finally {
+                  setAddingSingle(false);
+                }
                 return;
               }
               setAddingSingle(true);
@@ -1157,9 +1229,9 @@ export function TableOperationSheet({
       setShowDeleteConfirm(false);
       onClose();
       onTableDeleted();
-      toast({ title: 'Mesa excluída!' });
+        toast({ title: 'Mesa desativada!' });
     } catch {
-      toast({ title: 'Erro ao excluir mesa', variant: 'destructive' });
+      toast({ title: 'Erro ao desativar mesa', variant: 'destructive' });
     } finally {
       setDeletingTable(false);
     }
@@ -1451,7 +1523,7 @@ export function TableOperationSheet({
                 </p>
               )}
 
-              {/* Excluir Mesa — apenas Central de Mesas (modo gestão) */}
+              {/* Desativar Mesa — apenas Central de Mesas (modo gestão) */}
               {isManagement && onTableDeleted && (
                 <Button
                   size="lg"
@@ -1460,7 +1532,7 @@ export function TableOperationSheet({
                   onClick={() => setShowDeleteConfirm(true)}
                 >
                   <Trash2 className="h-5 w-5 mr-2" />
-                  Excluir mesa
+                  Desativar mesa
                 </Button>
               )}
             </div>
@@ -1468,13 +1540,13 @@ export function TableOperationSheet({
         </SheetContent>
       </Sheet>
 
-      {/* Modal confirmação: Excluir mesa */}
+      {/* Modal confirmação: Desativar mesa */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Excluir mesa</DialogTitle>
+            <DialogTitle>Desativar mesa</DialogTitle>
             <DialogDescription>
-              Deseja realmente excluir a Mesa {table?.number}? Ela deixará de aparecer na Central de Mesas. Esta ação pode ser revertida posteriormente pela equipe técnica.
+              A Mesa {table?.number} deixará de aparecer na Central de Mesas. Você pode reativá-la em Configurar → Mesas.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -1483,7 +1555,7 @@ export function TableOperationSheet({
             </Button>
             <Button variant="destructive" onClick={handleDeleteTable} disabled={deletingTable}>
               {deletingTable ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              {deletingTable ? 'Excluindo...' : 'Sim, excluir mesa'}
+              {deletingTable ? 'Desativando...' : 'Sim, desativar'}
             </Button>
           </DialogFooter>
         </DialogContent>
