@@ -54,6 +54,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Plus,
   Bell,
@@ -200,13 +201,12 @@ export default function AdminTables() {
   const [addSingleNumber, setAddSingleNumber] = useState('');
   const [addSingleZoneId, setAddSingleZoneId] = useState<string | null>(null);
   const [addingSingle, setAddingSingle] = useState(false);
-  const [addFrom, setAddFrom] = useState('1');
-  const [addTo, setAddTo] = useState('10');
+  const [addQuantity, setAddQuantity] = useState('5');
   const [addZoneId, setAddZoneId] = useState<string | null>(null);
   const [addingBulk, setAddingBulk] = useState(false);
-  const [deleteFrom, setDeleteFrom] = useState('');
-  const [deleteTo, setDeleteTo] = useState('');
+  const [selectedTableIds, setSelectedTableIds] = useState<Set<string>>(new Set());
   const [deletingBulk, setDeletingBulk] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Realtime: mesas, chamados, zonas e vínculos
   useEffect(() => {
@@ -238,6 +238,7 @@ export default function AdminTables() {
   }, [restaurantId, queryClient, refetchTables]);
 
   const tables = tablesData ?? [];
+  const activeTables = tables.filter((t) => t.is_active);
   const pendingCalls = (waiterCallsData ?? []).filter((c) => c.status === 'pending');
 
   // Merge tableStatuses with tables for grid (tableStatuses is source of truth for status)
@@ -482,180 +483,205 @@ export default function AdminTables() {
         isMobile={isMobile}
       />
 
-      {/* Dialog Configurar Salão — Zonas + Adicionar em lote + Excluir em lote */}
-      <Dialog open={showConfig} onOpenChange={setShowConfig}>
+      {/* Dialog Configurar Salão — Zonas + Mesas (adicionar inteligente + exclusão em lote) */}
+      <Dialog open={showConfig} onOpenChange={(open) => {
+          setShowConfig(open);
+          if (!open) {
+            setSelectedTableIds(new Set());
+            setShowDeleteConfirm(false);
+          }
+        }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Configurar Salão</DialogTitle>
           </DialogHeader>
           <Tabs defaultValue="zonas">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="zonas">Zonas</TabsTrigger>
-              <TabsTrigger value="add-bulk">Adicionar em lote</TabsTrigger>
-              <TabsTrigger value="delete-bulk">Excluir em lote</TabsTrigger>
+              <TabsTrigger value="mesas">Mesas</TabsTrigger>
             </TabsList>
             <TabsContent value="zonas">
               <HallZonesConfig restaurantId={restaurantId} hallZones={hallZones} />
             </TabsContent>
-            <TabsContent value="add-bulk">
-              <form
-                className="space-y-4"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!restaurantId) return;
-                  const from = parseInt(addFrom, 10);
-                  const to = parseInt(addTo, 10);
-                  if (isNaN(from) || isNaN(to) || from < 1 || to < from) {
-                    toast({ title: 'Intervalo inválido', variant: 'destructive' });
-                    return;
-                  }
-                  setAddingBulk(true);
-                  try {
-                    const existing = new Set(tables.map((t) => t.number));
-                    let added = 0;
-                    for (let n = from; n <= to; n++) {
-                      if (existing.has(n)) continue;
-                      const nextOrder = tables.length + added;
-                      const { error } = await supabase.from('tables').insert({
-                        restaurant_id: restaurantId,
-                        number: n,
-                        order_index: nextOrder,
-                        is_active: true,
-                        hall_zone_id: addZoneId || null,
-                      });
-                      if (!error) added++;
-                      existing.add(n);
+            <TabsContent value="mesas" className="space-y-6 mt-4">
+              {/* Sessão Superior: Adicionar Mesas Inteligente */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm">Adicionar mesas</h3>
+                <form
+                  className="space-y-4"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!restaurantId) return;
+                    const qty = parseInt(addQuantity, 10);
+                    if (isNaN(qty) || qty < 1) {
+                      toast({ title: 'Quantidade inválida', variant: 'destructive' });
+                      return;
                     }
-                    refetchTables();
-                    queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
-                    toast({ title: `${added} mesa(s) adicionada(s)!` });
-                  } catch {
-                    toast({ title: 'Erro ao adicionar mesas', variant: 'destructive' });
-                  } finally {
-                    setAddingBulk(false);
-                  }
-                }}
-              >
-                {hallZones.length > 0 && (
+                    const maxNum = tables.length > 0 ? Math.max(...tables.map((t) => t.number)) : 0;
+                    const nextOrderBase = Math.max(0, ...tables.map((t) => t.order_index ?? 0));
+                    setAddingBulk(true);
+                    try {
+                      let added = 0;
+                      for (let i = 0; i < qty; i++) {
+                        const num = maxNum + i + 1;
+                        const { error } = await supabase.from('tables').insert({
+                          restaurant_id: restaurantId,
+                          number: num,
+                          order_index: nextOrderBase + added + 1,
+                          is_active: true,
+                          hall_zone_id: addZoneId || null,
+                        });
+                        if (!error) added++;
+                      }
+                      refetchTables();
+                      queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+                      toast({ title: `${added} mesa(s) adicionada(s)!` });
+                    } catch {
+                      toast({ title: 'Erro ao adicionar mesas', variant: 'destructive' });
+                    } finally {
+                      setAddingBulk(false);
+                    }
+                  }}
+                >
                   <div>
-                    <Label>Zona das mesas</Label>
-                    <Select value={addZoneId ?? 'none'} onValueChange={(v) => setAddZoneId(v === 'none' ? null : v)}>
-                      <SelectTrigger className="min-h-[44px] mt-1">
-                        <SelectValue placeholder="Nenhuma (sem zona)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhuma (sem zona)</SelectItem>
-                        {hallZones.map((z) => (
-                          <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="add_quantity">Quantidade de mesas a adicionar</Label>
+                    <Input
+                      id="add_quantity"
+                      type="number"
+                      min={1}
+                      value={addQuantity}
+                      onChange={(e) => setAddQuantity(e.target.value)}
+                      placeholder="Ex: 5"
+                      className="min-h-[44px] mt-1"
+                    />
                   </div>
+                  {hallZones.length > 0 && (
+                    <div>
+                      <Label>Zona das mesas</Label>
+                      <Select value={addZoneId ?? 'none'} onValueChange={(v) => setAddZoneId(v === 'none' ? null : v)}>
+                        <SelectTrigger className="min-h-[44px] mt-1">
+                          <SelectValue placeholder="Nenhuma (sem zona)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma (sem zona)</SelectItem>
+                          {hallZones.map((z) => (
+                            <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    O sistema cria automaticamente as próximas numerações (ex: se já existem 1, 2 e 5, adiciona 6, 7...).
+                  </p>
+                  <Button type="submit" disabled={addingBulk}>
+                    {addingBulk ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                    {addingBulk ? 'Adicionando...' : 'Adicionar mesas'}
+                  </Button>
+                </form>
+              </div>
+
+              {/* Sessão Inferior: Lista e exclusão em lote */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold text-sm">Mesas cadastradas</h3>
+                {activeTables.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4">Nenhuma mesa cadastrada.</p>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={selectedTableIds.size === activeTables.length && activeTables.length > 0}
+                          onCheckedChange={(c) => {
+                            if (c) setSelectedTableIds(new Set(activeTables.map((t) => t.id)));
+                            else setSelectedTableIds(new Set());
+                          }}
+                        />
+                        Selecionar todas
+                      </label>
+                      {selectedTableIds.size > 0 && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setShowDeleteConfirm(true)}
+                          disabled={deletingBulk}
+                        >
+                          {deletingBulk ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                          Excluir {selectedTableIds.size} mesa(s) selecionada(s)
+                        </Button>
+                      )}
+                    </div>
+                    <div className="max-h-[220px] overflow-y-auto border rounded-lg divide-y">
+                      {activeTables.map((t) => (
+                        <label
+                          key={t.id}
+                          className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={selectedTableIds.has(t.id)}
+                            onCheckedChange={(c) => {
+                              setSelectedTableIds((prev) => {
+                                const next = new Set(prev);
+                                if (c) next.add(t.id);
+                                else next.delete(t.id);
+                                return next;
+                              });
+                            }}
+                          />
+                          <span className="font-medium">Mesa {t.number}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {hallZones.find((z) => z.id === t.hall_zone_id)?.name ?? 'Sem zona'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </>
                 )}
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <Label htmlFor="add_from">De</Label>
-                    <Input
-                      id="add_from"
-                      type="number"
-                      min={1}
-                      value={addFrom}
-                      onChange={(e) => setAddFrom(e.target.value)}
-                      className="min-h-[44px]"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <Label htmlFor="add_to">Até</Label>
-                    <Input
-                      id="add_to"
-                      type="number"
-                      min={1}
-                      value={addTo}
-                      onChange={(e) => setAddTo(e.target.value)}
-                      className="min-h-[44px]"
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Ex: de 1 até 20 criará as mesas 1, 2, 3... 20 (mesas já existentes serão ignoradas).
-                </p>
-                <Button type="submit" disabled={addingBulk}>
-                  {addingBulk ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                  {addingBulk ? 'Adicionando...' : 'Adicionar mesas'}
-                </Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="delete-bulk">
-              <form
-                className="space-y-4"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!restaurantId) return;
-                  const from = parseInt(deleteFrom, 10);
-                  const to = parseInt(deleteTo, 10);
-                  if (isNaN(from) || isNaN(to) || from < 1 || to < from) {
-                    toast({ title: 'Intervalo inválido', variant: 'destructive' });
-                    return;
-                  }
-                  const toDelete = tables.filter((t) => t.is_active && t.number >= from && t.number <= to);
-                  if (toDelete.length === 0) {
-                    toast({ title: 'Nenhuma mesa nesse intervalo', variant: 'destructive' });
-                    return;
-                  }
-                  if (!confirm(`Excluir ${toDelete.length} mesa(s) (${from} até ${to})? As mesas serão desativadas.`)) return;
-                  setDeletingBulk(true);
-                  try {
-                    const ids = toDelete.map((t) => t.id);
-                    const { error } = await supabase.from('tables').update({ is_active: false }).in('id', ids);
-                    if (error) throw error;
-                    refetchTables();
-                    queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
-                    toast({ title: `${toDelete.length} mesa(s) excluída(s)!` });
-                    setDeleteFrom('');
-                    setDeleteTo('');
-                  } catch {
-                    toast({ title: 'Erro ao excluir mesas', variant: 'destructive' });
-                  } finally {
-                    setDeletingBulk(false);
-                  }
-                }}
-              >
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <Label htmlFor="delete_from">De</Label>
-                    <Input
-                      id="delete_from"
-                      type="number"
-                      min={1}
-                      value={deleteFrom}
-                      onChange={(e) => setDeleteFrom(e.target.value)}
-                      placeholder="Ex: 1"
-                      className="min-h-[44px]"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <Label htmlFor="delete_to">Até</Label>
-                    <Input
-                      id="delete_to"
-                      type="number"
-                      min={1}
-                      value={deleteTo}
-                      onChange={(e) => setDeleteTo(e.target.value)}
-                      placeholder="Ex: 10"
-                      className="min-h-[44px]"
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  As mesas no intervalo serão desativadas (soft delete). Ex: de 1 até 10 excluirá as mesas 1, 2, 3... 10.
-                </p>
-                <Button type="submit" variant="destructive" disabled={deletingBulk}>
-                  {deletingBulk ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-                  {deletingBulk ? 'Excluindo...' : 'Excluir mesas'}
-                </Button>
-              </form>
+              </div>
             </TabsContent>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de exclusão de mesas */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir mesas selecionadas?</DialogTitle>
+            <DialogDescription>
+              As mesas serão desativadas e os QR Codes antigos pararão de funcionar. Você precisará gerar novos QR Codes para as mesas que continuarem em uso. Deseja continuar?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!restaurantId || selectedTableIds.size === 0) return;
+                setDeletingBulk(true);
+                try {
+                  const ids = Array.from(selectedTableIds);
+                  const { error } = await supabase.from('tables').update({ is_active: false }).in('id', ids);
+                  if (error) throw error;
+                  refetchTables();
+                  queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+                  toast({ title: `${ids.length} mesa(s) excluída(s)!` });
+                  setSelectedTableIds(new Set());
+                  setShowDeleteConfirm(false);
+                } catch {
+                  toast({ title: 'Erro ao excluir mesas', variant: 'destructive' });
+                } finally {
+                  setDeletingBulk(false);
+                }
+              }}
+              disabled={deletingBulk}
+            >
+              {deletingBulk ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              {deletingBulk ? 'Excluindo...' : 'Sim, excluir'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

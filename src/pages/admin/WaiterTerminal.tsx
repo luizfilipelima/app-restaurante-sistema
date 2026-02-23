@@ -2,7 +2,7 @@
  * Terminal do Garçom — Tela operacional (Mobile-First)
  *
  * Rota isolada, sem sidebar. Para tablets e celulares.
- * Seletor de praça, grid de mesas em tempo real, ações operacionais.
+ * Tabs: Salão (mesas) + Expedição (pedidos prontos para retirada).
  */
 
 import { useEffect, useState } from 'react';
@@ -18,11 +18,15 @@ import {
   useWaiterCalls,
   useHallZones,
 } from '@/hooks/queries';
+import { useReadyOrders } from '@/hooks/useReadyOrders';
 import { TableCard, TableOperationSheet } from '@/pages/admin/Tables';
+import { ExpoPanel } from '@/components/waiter/ExpoPanel';
 import type { TableWithStatus } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { UtensilsCrossed, Package } from 'lucide-react';
 
 // ─── Shell com contexto de restaurante ───────────────────────────────────────
 
@@ -80,6 +84,7 @@ function WaiterTerminalContent() {
   const { data: waiterCallsData } = useWaiterCalls(restaurantId);
   const { data: hallZones = [] } = useHallZones(restaurantId);
   const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
+  const { orders: readyOrders, loading: readyLoading, delivering, handleDeliver, count: readyCount } = useReadyOrders(restaurantId);
 
   const [selectedTable, setSelectedTable] = useState<TableWithStatus | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
@@ -123,63 +128,96 @@ function WaiterTerminalContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
-      {/* Top bar fixa — Seletor de Praça */}
-      <header className="sticky top-0 z-10 border-b bg-white shadow-sm safe-area-inset-top">
-        <div className="flex flex-col gap-3 p-4">
-          <h1 className="text-lg font-bold text-slate-900">Terminal do Garçom</h1>
-          {hallZones.length > 0 && (
-            <div className="overflow-x-auto -mx-4 px-4 scrollbar-thin">
-              <div className="flex gap-2 min-w-max pb-1">
-                <button
-                  type="button"
-                  onClick={() => setSelectedZoneId(null)}
-                  className={cn(
-                    'shrink-0 rounded-full px-4 py-2.5 text-sm font-medium transition-colors touch-manipulation min-h-[44px]',
-                    selectedZoneId === null ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'
-                  )}
-                >
-                  Todas as Praças
-                </button>
-                {hallZones.map((z) => (
-                  <button
-                    key={z.id}
-                    type="button"
-                    onClick={() => setSelectedZoneId(z.id)}
+      <Tabs defaultValue="salao" className="flex flex-1 flex-col">
+        {/* Top bar fixa — Tabs Salão | Expedição (com badge) */}
+        <header className="sticky top-0 z-10 border-b bg-white shadow-sm safe-area-inset-top">
+          <div className="p-4">
+            <h1 className="text-lg font-bold text-slate-900 mb-3">Terminal do Garçom</h1>
+            <TabsList className="grid w-full grid-cols-2 h-12">
+              <TabsTrigger value="salao" className="gap-2">
+                <UtensilsCrossed className="h-4 w-4" />
+                Salão
+              </TabsTrigger>
+              <TabsTrigger value="expedicao" className="gap-2 relative overflow-visible">
+                <Package className="h-4 w-4" />
+                Expedição
+                {readyCount > 0 && (
+                  <span
                     className={cn(
-                      'shrink-0 rounded-full px-4 py-2.5 text-sm font-medium transition-colors touch-manipulation min-h-[44px]',
-                      selectedZoneId === z.id ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'
+                      'absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-xs font-bold',
+                      'bg-red-500 text-white animate-pulse'
                     )}
                   >
-                    {z.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </header>
-
-      {/* Grid de Mesas */}
-      <main className="flex-1 overflow-auto p-4">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {gridTables.filter((t) => t.is_active).map((table) => (
-            <TableCard
-              key={table.id}
-              table={table}
-              currency={currency}
-              onClick={() => setSelectedTable(table)}
-            />
-          ))}
-        </div>
-
-        {gridTables.filter((t) => t.is_active).length === 0 && (
-          <div className="rounded-xl border border-dashed bg-white/50 p-12 text-center">
-            <p className="text-muted-foreground">
-              {selectedZoneId ? 'Nenhuma mesa nesta praça.' : 'Nenhuma mesa cadastrada.'}
-            </p>
+                    {readyCount > 99 ? '99+' : readyCount}
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="salao" className="mt-0 pt-3">
+              {hallZones.length > 0 && (
+                <div className="overflow-x-auto -mx-4 px-4 scrollbar-thin">
+                  <div className="flex gap-2 min-w-max pb-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedZoneId(null)}
+                      className={cn(
+                        'shrink-0 rounded-full px-4 py-2.5 text-sm font-medium transition-colors touch-manipulation min-h-[44px]',
+                        selectedZoneId === null ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'
+                      )}
+                    >
+                      Todas as Praças
+                    </button>
+                    {hallZones.map((z) => (
+                      <button
+                        key={z.id}
+                        type="button"
+                        onClick={() => setSelectedZoneId(z.id)}
+                        className={cn(
+                          'shrink-0 rounded-full px-4 py-2.5 text-sm font-medium transition-colors touch-manipulation min-h-[44px]',
+                          selectedZoneId === z.id ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'
+                        )}
+                      >
+                        {z.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
           </div>
-        )}
-      </main>
+        </header>
+
+        {/* Conteúdo das abas */}
+        <main className="flex-1 overflow-auto p-4">
+          <TabsContent value="salao" className="mt-0 h-full">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              {gridTables.filter((t) => t.is_active).map((table) => (
+                <TableCard
+                  key={table.id}
+                  table={table}
+                  currency={currency}
+                  onClick={() => setSelectedTable(table)}
+                />
+              ))}
+            </div>
+            {gridTables.filter((t) => t.is_active).length === 0 && (
+              <div className="rounded-xl border border-dashed bg-white/50 p-12 text-center">
+                <p className="text-muted-foreground">
+                  {selectedZoneId ? 'Nenhuma mesa nesta praça.' : 'Nenhuma mesa cadastrada.'}
+                </p>
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent value="expedicao" className="mt-0">
+            <ExpoPanel
+              orders={readyOrders}
+              loading={readyLoading}
+              delivering={delivering}
+              onDeliver={handleDeliver}
+            />
+          </TabsContent>
+        </main>
+      </Tabs>
 
       {/* Modal de Operação */}
       <TableOperationSheet

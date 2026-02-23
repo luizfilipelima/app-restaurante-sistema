@@ -46,7 +46,6 @@ import {
   Ticket,
   Gift,
   Printer,
-  PackageCheck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -182,18 +181,6 @@ const buildNavSections = (
         external: true,
         featureFlag: 'feature_tables',
         featureLabel: 'Plano Standard',
-        roleRequired: ['waiter'],
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.expo'),
-        href: restaurantSlug
-          ? `/${restaurantSlug}/garcom`
-          : restaurantId
-            ? `/expo?restaurant_id=${restaurantId}`
-            : '/expo',
-        icon: PackageCheck,
-        external: true,
         roleRequired: ['waiter'],
       },
       {
