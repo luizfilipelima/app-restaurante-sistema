@@ -190,7 +190,7 @@ function WaiterTerminalContent() {
         {/* Conteúdo das abas */}
         <main className="flex-1 overflow-auto p-4">
           <TabsContent value="salao" className="mt-0 h-full">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {gridTables.filter((t) => t.is_active).map((table) => (
                 <TableCard
                   key={table.id}

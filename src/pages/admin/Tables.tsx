@@ -395,8 +395,8 @@ export default function AdminTables() {
         </div>
       )}
 
-      {/* Grid de Mesas */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+      {/* Grid de Mesas — 5 colunas máx. para cards maiores */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {gridTables.filter((t) => t.is_active).map((table) => (
             <TableCard
               key={table.id}
@@ -891,75 +891,76 @@ export function TableCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex min-h-[160px] sm:min-h-[172px] w-full flex-col items-stretch rounded-xl border-2 bg-white p-3.5 sm:p-4 text-left shadow-sm transition-all touch-manipulation active:scale-[0.98] hover:shadow-md dark:bg-card overflow-hidden',
+        'flex min-h-[200px] sm:min-h-[220px] w-full flex-col items-stretch rounded-xl border-2 bg-white p-4 sm:p-5 text-left shadow-sm transition-all touch-manipulation active:scale-[0.98] hover:shadow-md dark:bg-card overflow-hidden',
         borderColor
       )}
     >
-      <div className="flex flex-col gap-2.5 flex-1 min-h-0">
-        {/* Linha 1: Número da mesa + Status badge + Sino */}
-        <div className="flex items-center justify-between gap-2 shrink-0">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <span className="text-lg font-bold sm:text-xl truncate">Mesa {table.number}</span>
+      <div className="flex flex-col gap-3 flex-1 min-h-0">
+        {/* 1. Nome da mesa */}
+        <div className="flex items-start justify-between gap-2 shrink-0">
+          <span className="text-lg font-bold sm:text-xl break-words">Mesa {table.number}</span>
+          {isCalling && (
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 animate-pulse dark:bg-amber-900/40 dark:text-amber-400" aria-label="Chamando garçom">
+              <Bell className="h-4 w-4" />
+            </span>
+          )}
+        </div>
+
+        {/* 2. Status */}
+        <div className="shrink-0">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-semibold uppercase tracking-wide',
+              cfg.badgeClass
+            )}
+          >
+            <span className={cn('h-2 w-2 rounded-full shrink-0', cfg.dotClass)} aria-hidden />
+            {cfg.label}
+          </span>
+        </div>
+
+        {/* 3. Valor (quando ocupada) */}
+        {isOccupied && (
+          <p className="text-base font-bold text-foreground leading-tight shrink-0">
+            {formatPrice(table.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
+          </p>
+        )}
+
+        {/* 4. Quantidade de itens (quando ocupada) */}
+        {isOccupied && (
+          <p className="text-sm text-muted-foreground shrink-0">
+            {table.itemsCount > 0 ? `${table.itemsCount} itens` : ''}
+            {table.orderIds.length > 1 && (
+              <span className="ml-1">
+                {table.itemsCount > 0 ? '•' : ''} {table.orderIds.length} pedidos
+              </span>
+            )}
+          </p>
+        )}
+
+        {/* 5. Zona — nome completo (sem truncar) */}
+        <div className="pt-2 mt-auto border-t border-border/50 shrink-0">
+          {zoneName ? (
             <span
               className={cn(
-                'shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide',
-                cfg.badgeClass
+                'inline-block text-[11px] font-semibold uppercase tracking-wide px-2 py-1 rounded break-words max-w-full',
+                getZoneBadgeStyle(zoneName)
               )}
             >
-              <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', cfg.dotClass)} aria-hidden />
-              {cfg.label}
+              {zoneName}
             </span>
-          </div>
-          {isCalling && (
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 animate-pulse dark:bg-amber-900/40 dark:text-amber-400" aria-label="Chamando garçom">
-              <Bell className="h-3.5 w-3.5" />
-            </span>
-          )}
-        </div>
-
-        {/* Linha 2: Valor + itens + pedidos */}
-        <div className="flex flex-col justify-center gap-0.5 flex-1 min-h-[44px]">
-          {isOccupied ? (
-            <>
-              <p className="text-base font-bold text-foreground leading-tight">
-                {formatPrice(table.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
-              </p>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-0 text-[11px] text-muted-foreground">
-                {table.itemsCount > 0 && <span>{table.itemsCount} itens</span>}
-                {table.orderIds.length > 1 && (
-                  <>
-                    {table.itemsCount > 0 && <span>•</span>}
-                    <span>{table.orderIds.length} pedidos</span>
-                  </>
-                )}
-              </div>
-            </>
           ) : (
-            <p className="text-xs text-muted-foreground">Livre</p>
+            <span className="text-[11px] text-muted-foreground">—</span>
           )}
         </div>
 
-        {/* Linha 3: Zona + Tempo */}
-        <div className="flex items-center justify-between gap-2 pt-2 mt-auto border-t border-border/50 shrink-0 min-h-[28px]">
-          <div className="min-w-0 flex-1 truncate">
-            {zoneName ? (
-              <Badge
-                variant="outline"
-                className={cn('text-[10px] font-semibold uppercase tracking-wide border-0 truncate max-w-full', getZoneBadgeStyle(zoneName))}
-              >
-                {zoneName}
-              </Badge>
-            ) : (
-              <span className="text-[10px] text-muted-foreground">—</span>
-            )}
-          </div>
-          {isOccupied && table.openedAt ? (
-            <span className="text-[10px] text-muted-foreground flex items-center gap-1 shrink-0">
-              <Clock className="h-3 w-3 flex-shrink-0" />
-              {formatDistanceToNow(new Date(table.openedAt), { addSuffix: true, locale: ptBR })}
-            </span>
-          ) : null}
-        </div>
+        {/* 6. Tempo (quando ocupada) */}
+        {isOccupied && table.openedAt && (
+          <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 shrink-0">
+            <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+            {formatDistanceToNow(new Date(table.openedAt), { addSuffix: true, locale: ptBR })}
+          </p>
+        )}
       </div>
     </button>
   );
