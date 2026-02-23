@@ -438,6 +438,37 @@ function SubMenuSection({
   );
 }
 
+// ─── Link de Configurações (usa useCanAccess dentro do Provider) ──────────────
+
+const SETTINGS_ROLES = ['manager', 'owner', 'restaurant_admin', 'super_admin'] as const;
+
+function SettingsLink({ base }: { base: string }) {
+  const canAccess = useCanAccess([...SETTINGS_ROLES]);
+  if (!canAccess) return null;
+  return (
+    <Link
+      to={`${base}/settings`}
+      title="Configurações"
+      className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+    >
+      <Settings className="h-4 w-4" />
+    </Link>
+  );
+}
+
+function SettingsDropdownItem({ base }: { base: string }) {
+  const canAccess = useCanAccess([...SETTINGS_ROLES]);
+  if (!canAccess) return null;
+  return (
+    <DropdownMenuItem asChild>
+      <Link to={`${base}/settings`} className="gap-2 cursor-pointer">
+        <Settings className="h-4 w-4" />
+        Configurações
+      </Link>
+    </DropdownMenuItem>
+  );
+}
+
 // ─── Componente principal: AdminLayout ───────────────────────────────────────
 
 export default function AdminLayout({
@@ -461,11 +492,9 @@ export default function AdminLayout({
   const isSuperAdminView = user?.role === 'super_admin' && !!managedRestaurantId;
 
   // Permissão para exibir botões de gestão (Settings, Upgrade, Usuários).
-  // Usamos o role do sistema (síncrono do authStore) — NÃO chamamos useCanAccess aqui
-  // porque AdminLayout é o Provider do AdminRestaurantContext, e chamar hooks que lêem
-  // esse contexto antes de ele ser fornecido pode causar inconsistências no React.
-  // restaurant_admin = todos os usuários de restaurante não-cozinha (owner, manager, etc.)
-  // O backend e as páginas individuais aplicam o controle granular.
+  // canManageUsers: fallback síncrono (restaurant_admin/super_admin) para Upgrade e gestão de usuários.
+  // O link de Configurações usa SettingsLink que chama useCanAccess dentro do Provider,
+  // permitindo owner/manager (roles granulares) verem o link.
   const canManageUsers = user?.role === 'restaurant_admin' || user?.role === 'super_admin';
 
   const base = basePath || '/admin';
@@ -771,17 +800,9 @@ export default function AdminLayout({
               </DropdownMenu>
             )}
 
-            {/* Utilitários: Configurações (único acesso) */}
+            {/* Utilitários: Configurações (gerente, proprietário e acima) */}
             <div className="flex items-center gap-1">
-              {canManageUsers && (
-                <Link
-                  to={`${base}/settings`}
-                  title="Configurações"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-                >
-                  <Settings className="h-4 w-4" />
-                </Link>
-              )}
+              <SettingsLink base={base} />
             </div>
           </div>
         </div>
@@ -907,14 +928,7 @@ export default function AdminLayout({
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel className="text-xs text-slate-500">Configurações</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {canManageUsers && (
-                    <DropdownMenuItem asChild>
-                      <Link to={`${base}/settings`} className="gap-2 cursor-pointer">
-                        <Settings className="h-4 w-4" />
-                        Configurações
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
+                  <SettingsDropdownItem base={base} />
                 </DropdownMenuContent>
               </DropdownMenu>
 

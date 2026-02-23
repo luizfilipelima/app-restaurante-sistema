@@ -206,11 +206,11 @@ const adminRoutes = (
         </ProtectedRoute>
       }
     />
-    {/* Configurações — proprietário e acima */}
+    {/* Configurações — gerente, proprietário e acima */}
     <Route
       path="settings"
       element={
-        <RoleProtectedRoute allowedRoles={['owner', 'restaurant_admin', 'super_admin']}>
+        <RoleProtectedRoute allowedRoles={['manager', 'owner', 'restaurant_admin', 'super_admin']}>
           <AdminSettings />
         </RoleProtectedRoute>
       }
