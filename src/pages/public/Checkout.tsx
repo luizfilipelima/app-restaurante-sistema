@@ -98,7 +98,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const [searchParams] = useSearchParams();
   const tableIdFromUrl = searchParams.get('tableId');
   const tableNumberFromUrl = searchParams.get('tableNumber');
-  const { tableId: tableIdStore, tableNumber: tableNumberStore, tableCustomerName, clearTable, setTable } = useTableOrderStore();
+  const { tableId: tableIdStore, tableNumber: tableNumberStore, tableCustomerName, setTableCustomerName, clearTable, setTable } = useTableOrderStore();
   const tableId = tableIdFromUrl || tableIdStore;
   const tableNumber = tableNumberFromUrl ? parseInt(tableNumberFromUrl, 10) : tableNumberStore;
   const isTableOrder = !!(tableId && tableNumber);
@@ -715,15 +715,33 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
         </div>
 
-        {/* ── Mesa badge ── */}
+        {/* ── Mesa badge + Nome do cliente ── */}
         {isTableOrder && (
-          <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-200">
-            <div className="h-9 w-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-              <Store className="h-[18px] w-[18px] text-amber-700" />
+          <div className="relative z-10 space-y-3">
+            <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-200">
+              <div className="h-9 w-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <Store className="h-[18px] w-[18px] text-amber-700" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-amber-900">Mesa {tableNumber}</p>
+                <p className="text-xs text-amber-700">Pedido vai direto para a cozinha</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-bold text-amber-900">Mesa {tableNumber}</p>
-              <p className="text-xs text-amber-700">Pedido vai direto para a cozinha</p>
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
+                <User className="h-3.5 w-3.5 text-amber-600" />
+                <span className="text-sm font-semibold text-slate-800">Seu nome (divisão da conta)</span>
+              </div>
+              <div className="p-4">
+                <Input
+                  value={tableCustomerName ?? ''}
+                  onChange={(e) => { setTableCustomerName(e.target.value.trim() || null); setFormError(null); }}
+                  placeholder="Ex: João, Maria"
+                  className="h-12 text-base bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
+                  autoComplete="name"
+                />
+                <p className="text-xs text-slate-400 mt-2">Identifique seu pedido para facilitar a divisão da conta na mesa.</p>
+              </div>
             </div>
           </div>
         )}

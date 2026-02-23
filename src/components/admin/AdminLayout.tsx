@@ -171,6 +171,15 @@ const buildNavSections = (
       },
       {
         kind: 'leaf',
+        name: t('nav.items.buffet'),
+        href: `${base}/buffet`,
+        icon: Scale,
+        featureFlag: 'feature_buffet_module',
+        featureLabel: 'Plano Enterprise',
+        roleRequired: ['cashier'],
+      },
+      {
+        kind: 'leaf',
         name: t('nav.items.waiterTerminal'),
         href: restaurantSlug
           ? `/${restaurantSlug}/terminal-garcom`
@@ -182,15 +191,6 @@ const buildNavSections = (
         featureFlag: 'feature_tables',
         featureLabel: 'Plano Standard',
         roleRequired: ['waiter'],
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.buffet'),
-        href: `${base}/buffet`,
-        icon: Scale,
-        featureFlag: 'feature_buffet_module',
-        featureLabel: 'Plano Enterprise',
-        roleRequired: ['cashier'],
       },
     ],
   },
@@ -209,15 +209,6 @@ const buildNavSections = (
             : '/kitchen',
         icon: ChefHat,
         external: true,
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.couriers'),
-        href: `${base}/couriers`,
-        icon: Bike,
-        featureFlag: 'feature_couriers',
-        featureLabel: 'Plano Standard',
-        roleRequired: ['manager'],
       },
     ],
   },
@@ -275,6 +266,15 @@ const buildNavSections = (
     kind: 'group',
     label: t('nav.groups.settings'),
     items: [
+      {
+        kind: 'leaf',
+        name: t('nav.items.couriers'),
+        href: `${base}/couriers`,
+        icon: Bike,
+        featureFlag: 'feature_couriers',
+        featureLabel: 'Plano Standard',
+        roleRequired: ['manager'],
+      },
       {
         kind: 'leaf',
         name: t('nav.items.tablesCentral'),

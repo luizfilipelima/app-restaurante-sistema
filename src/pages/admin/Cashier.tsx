@@ -482,7 +482,7 @@ function CashierContent() {
         items.push({
           id: `buf-${c.id}`,
           type: 'comanda_buffet',
-          label: `Comanda ${c.number}`,
+          label: `Buffet — Comanda ${c.number}`,
           customerName: null,
           totalAmount: c.total_amount ?? 0,
           createdAt: c.opened_at,
@@ -957,7 +957,7 @@ function CashierContent() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Caixa / PDV</h1>
             <p className="text-muted-foreground mt-0.5 text-sm">
-              Hub central de pagamentos — Mesas, Comandas Digitais e Buffet
+              Hub central de pagamentos — Mesas, Comandas Digitais, Buffet (pesagem em Kg)
             </p>
           </div>
           <div className="flex items-center gap-2">

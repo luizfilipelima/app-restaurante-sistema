@@ -84,7 +84,10 @@ function ExpoCard({
 
   const isTableOrder = order.order_source === 'table' || !!order.table_id;
   const isComandaOrder = order.order_source === 'comanda';
-  const tableLabel = order.customer_name?.replace(/^Mesa\s+/i, '') || '?';
+  // Número da mesa: preferir tables.number (join), fallback para customer_name quando no formato "Mesa N"
+  const tableNum = order.tables?.number ?? (order.customer_name?.match(/^Mesa\s+(\d+)$/i)?.[1] ?? null);
+  const tableLabel = tableNum != null ? String(tableNum) : '?';
+  const isPersonName = order.customer_name && !/^Mesa\s+\d+$/i.test(order.customer_name);
   const isCritical = urgency === 'critical';
 
   return (
@@ -131,6 +134,9 @@ function ExpoCard({
               #{order.id.slice(0, 6).toUpperCase()}
             </span>
           </div>
+          {isTableOrder && isPersonName && (
+            <p className="text-sm text-slate-600 font-medium truncate mt-1.5">Cliente: {order.customer_name}</p>
+          )}
           {!isTableOrder && order.customer_name && (
             <div className="flex items-center gap-1.5 mt-1.5">
               <span className="text-sm text-slate-600 font-medium truncate">{order.customer_name}</span>

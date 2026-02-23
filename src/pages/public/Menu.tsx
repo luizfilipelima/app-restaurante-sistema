@@ -154,6 +154,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const isTableOrder = !!(tableId && tableNumber);
   const { tableCustomerName, setTableCustomerName } = useTableOrderStore();
   const [welcomeNameInput, setWelcomeNameInput] = useState('');
+  const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [editNameInput, setEditNameInput] = useState('');
   const showWelcomeModal = isTableOrder && !tableCustomerName?.trim();
 
   const handleCheckoutNavigation = () => {
@@ -461,15 +463,29 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         {/* Barra Mesa + Chamar Garçom - modo mesa */}
         {tableNumber != null && onCallWaiter && (
           <div className="border-t border-amber-200/60 bg-amber-50/90">
-            <div className="container mx-auto max-w-6xl flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5">
-              <span className="text-sm font-semibold text-amber-900">
-                {t('menu.tableLabel')} {tableNumber}
-              </span>
+            <div className="container mx-auto max-w-6xl flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <span className="text-sm font-semibold text-amber-900">
+                  {t('menu.tableLabel')} {tableNumber}
+                </span>
+                {tableCustomerName?.trim() && (
+                  <span className="text-xs text-amber-800 bg-amber-100/80 px-2 py-1 rounded-lg">
+                    Pedindo como: <strong>{tableCustomerName}</strong>
+                    <button
+                      type="button"
+                      onClick={() => { setEditNameInput(tableCustomerName); setShowEditNameModal(true); }}
+                      className="ml-1.5 text-amber-600 hover:text-amber-800 underline"
+                    >
+                      Alterar
+                    </button>
+                  </span>
+                )}
+              </div>
               <Button
                 onClick={onCallWaiter}
                 disabled={callingWaiter}
                 size="sm"
-                className="flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold shadow-sm"
+                className="flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold shadow-sm shrink-0"
               >
                 {callingWaiter ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -861,6 +877,47 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         </DialogContent>
       </Dialog>
 
+      {/* Modal para alterar nome na mesa */}
+      <Dialog open={showEditNameModal} onOpenChange={setShowEditNameModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar seu nome</DialogTitle>
+            <DialogDescription>
+              Identifique seu pedido para a divisão da conta na mesa.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="Ex: João, Maria"
+              value={editNameInput}
+              onChange={(e) => setEditNameInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && editNameInput.trim()) {
+                  setTableCustomerName(editNameInput.trim());
+                  setShowEditNameModal(false);
+                }
+              }}
+              className="h-12 text-base"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                if (editNameInput.trim()) {
+                  setTableCustomerName(editNameInput.trim());
+                  setShowEditNameModal(false);
+                }
+              }}
+              disabled={!editNameInput.trim()}
+              className="w-full h-12"
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modais (lazy — só carregam quando necessários) */}
       <Suspense fallback={null}>
         <CartDrawer
@@ -871,6 +928,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           convertForDisplay={convertForDisplay}
           restaurantId={cartRestaurantId}
           customerPhone={savedPhone}
+          tableCustomerName={isTableOrder ? tableCustomerName : null}
+          tableNumber={isTableOrder ? tableNumber ?? null : null}
         />
 
         {simpleModalProduct && (

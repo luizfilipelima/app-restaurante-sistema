@@ -22,7 +22,6 @@ import {
   Calculator,
   Clock,
   Trash2,
-  CheckCircle2,
   Smartphone,
   Link2,
   Link2Off,
@@ -95,7 +94,7 @@ function StatusBar({
       {/* Título + indicadores */}
       <div className="flex items-center gap-3 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight leading-tight">Buffet & Comandas</h1>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight leading-tight">Buffet / Kg</h1>
           <p className="text-xs text-slate-500 mt-0.5">Operação offline-first · atualização em tempo real</p>
         </div>
 
@@ -165,7 +164,7 @@ function ScannerPanel({
   onScannerEnter, weightInput, setWeightInput, onWeightSubmit,
   selectedProduct, selectedComanda, activeVirtualComanda,
   onDeselectComanda, onDeselectVirtual, loadingVirtual, currency,
-  products, onProductClick,
+  products, onProductClick, onRemoveItem: _onRemoveItem,
 }: {
   scannerRef: React.RefObject<HTMLInputElement>;
   weightRef: React.RefObject<HTMLInputElement>;
@@ -184,6 +183,8 @@ function ScannerPanel({
   currency: CurrencyCode;
   products: Product[];
   onProductClick: (p: Product) => void;
+  /** Reservado para remoção de itens individuais da comanda */
+  onRemoveItem?: (itemId: string) => void;
 }) {
   const [productSearch, setProductSearch] = useState('');
   const filteredProducts = useMemo(() =>
@@ -413,7 +414,6 @@ function ScannerPanel({
       {/* Atalhos de teclado */}
       <div className="text-[10px] text-slate-400 flex gap-3 flex-wrap px-1">
         <span><kbd className="bg-slate-100 px-1 rounded">F2</kbd> nova comanda</span>
-        <span><kbd className="bg-slate-100 px-1 rounded">F8</kbd> fechar</span>
         <span><kbd className="bg-slate-100 px-1 rounded">ESC</kbd> limpar</span>
       </div>
     </div>
@@ -423,13 +423,12 @@ function ScannerPanel({
 // ─── Componente: Card de Comanda ──────────────────────────────────────────────
 
 function ComandaCard({
-  comanda, isSelected, currency, onSelect, onClose, onDelete, deleting,
+  comanda, isSelected, currency, onSelect, onDelete, deleting,
 }: {
   comanda: ComandaWithItems;
   isSelected: boolean;
   currency: CurrencyCode;
   onSelect: () => void;
-  onClose: (e: React.MouseEvent) => void;
   onDelete: (e: React.MouseEvent) => void;
   deleting: boolean;
 }) {
@@ -510,8 +509,8 @@ function ComandaCard({
         )}
       </AnimatePresence>
 
-      {/* ── Barra de ativo ───────────────────────────────────────── */}
-      {isSelected && (
+      {/* ── Barra de ativo (comandas vazias) ──────────────────────── */}
+      {isSelected && itemCount === 0 && (
         <div className="mx-3.5 mb-2.5 flex items-center gap-1.5 rounded-lg bg-orange-50 border border-orange-100 px-2.5 py-1.5">
           <Zap className="h-3 w-3 text-[#F87116] flex-shrink-0" />
           <span className="text-[10px] text-[#F87116] font-semibold">Ativa — escaneie produtos para adicionar</span>
@@ -520,31 +519,27 @@ function ComandaCard({
 
       {/* ── Footer de ações ──────────────────────────────────────── */}
       <div
-        className={`flex items-stretch gap-2 px-3.5 pb-3 ${itemCount > 0 || isSelected ? 'pt-0' : 'pt-0'}`}
+        className="flex items-stretch gap-2 px-3.5 pb-3 pt-0"
         onClick={(e) => e.stopPropagation()}
       >
         {isSelected ? (
           <>
-            {/* Fechar comanda */}
+            {itemCount > 0 && (
+              <div className="flex-1 flex items-center gap-2 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-[11px] text-slate-600">
+                <Receipt className="h-3.5 w-3.5 flex-shrink-0 text-slate-500" />
+                <span>Para fechar e receber pagamento, utilize a tela <strong>Caixa / PDV</strong>.</span>
+              </div>
+            )}
             <button
-              onClick={onClose}
-              className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white text-xs font-semibold transition-all shadow-sm shadow-emerald-200"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Fechar Comanda
-              <kbd className="text-[9px] opacity-70 bg-emerald-600 px-1 py-0.5 rounded">F8</kbd>
-            </button>
-            {/* Excluir (ícone apenas quando ativo) */}
-            <button
-              onClick={onDelete}
-              disabled={deleting}
-              title="Excluir comanda"
-              className="h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors"
-            >
-              {deleting
-                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : <Trash2 className="h-3.5 w-3.5" />
-              }
+            onClick={onDelete}
+            disabled={deleting}
+            title="Excluir comanda"
+            className="h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors"
+          >
+            {deleting
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <Trash2 className="h-3.5 w-3.5" />
+            }
             </button>
           </>
         ) : (
@@ -573,7 +568,7 @@ export default function Buffet() {
   const currency     = useAdminCurrency();
   const {
     comandas, loading, isLive,
-    createComanda, addItemToComanda, closeComanda, refresh,
+    createComanda, addItemToComanda, refresh,
   } = useComandas(restaurantId || '');
   const { pendingCount, isOnline, isSyncing } = useOfflineSync(restaurantId || '');
 
@@ -582,8 +577,6 @@ export default function Buffet() {
   const [scannerInput,       setScannerInput]        = useState('');
   const [weightInput,        setWeightInput]         = useState('');
   const [selectedProduct,    setSelectedProduct]     = useState<Product | null>(null);
-  const [showCloseDialog,    setShowCloseDialog]     = useState(false);
-  const [closingComandaId,   setClosingComandaId]    = useState<string | null>(null);
   const [showDeleteDialog,   setShowDeleteDialog]    = useState(false);
   const [deletingComandaId,  setDeletingComandaId]   = useState<string | null>(null);
   const [confirmDeleting,    setConfirmDeleting]     = useState(false);
@@ -599,9 +592,6 @@ export default function Buffet() {
 
   // ── Hotkeys ──────────────────────────────────────────────────────────────────
   useHotkeys('f2', () => handleNewComanda(), { preventDefault: true });
-  useHotkeys('f8', () => {
-    if (selectedComanda) { setClosingComandaId(selectedComanda.id); setShowCloseDialog(true); }
-  }, { preventDefault: true, enableOnFormTags: true });
   useHotkeys('escape', () => {
     setSelectedComandaId(null);
     setSelectedProduct(null);
@@ -813,7 +803,6 @@ export default function Buffet() {
 
   // ── Métricas rápidas ──────────────────────────────────────────────────────────
   const totalAberto = comandas.reduce((s, c) => s + c.total_amount, 0);
-  const closingComanda = closingComandaId ? comandas.find((c) => c.id === closingComandaId) : null;
   const deletingComanda = deletingComandaId ? comandas.find((c) => c.id === deletingComandaId) : null;
 
   // ── Loading ───────────────────────────────────────────────────────────────────
@@ -882,6 +871,7 @@ export default function Buffet() {
           currency={currency}
           products={products}
           onProductClick={handleProductClick}
+          onRemoveItem={handleRemoveItem}
         />
 
         {/* Coluna direita: grid de comandas */}
@@ -927,11 +917,6 @@ export default function Buffet() {
                   onSelect={() => {
                     setSelectedComandaId(comanda.id);
                     setActiveVirtualComanda(null);
-                  }}
-                  onClose={(e) => {
-                    e.stopPropagation();
-                    setClosingComandaId(comanda.id);
-                    setShowCloseDialog(true);
                   }}
                   onDelete={(e) => handleRequestDelete(comanda.id, e)}
                   deleting={deletingComandaId === comanda.id && confirmDeleting}
@@ -996,80 +981,6 @@ export default function Buffet() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Modal: Fechar Comanda ───────────────────────────────────────── */}
-      <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="h-9 w-9 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              </div>
-              <DialogTitle>Fechar Comanda</DialogTitle>
-            </div>
-          </DialogHeader>
-          {closingComanda && (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
-                <p className="text-xs text-slate-500 mb-1">Comanda #{closingComanda.number}</p>
-                <p className="text-4xl font-extrabold text-slate-900 tracking-tight">
-                  {formatCurrency(closingComanda.total_amount, currency)}
-                </p>
-                <p className="text-xs text-slate-400 mt-1">
-                  {closingComanda.items?.length ?? 0} item(s) · {formatTimeOpen(closingComanda.opened_at)} aberta
-                </p>
-              </div>
-
-              {/* Lista de itens no modal */}
-              {(closingComanda.items?.length ?? 0) > 0 && (
-                <div className="space-y-1 max-h-40 overflow-y-auto">
-                  {closingComanda.items?.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between text-xs">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate text-slate-800">{item.description}</p>
-                        <p className="text-slate-400">
-                          {item.quantity} × {formatCurrency(item.unit_price, currency)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="font-semibold text-slate-700">
-                          {formatCurrency(item.total_price, currency)}
-                        </span>
-                        <button
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="h-5 w-5 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => { setShowCloseDialog(false); setClosingComandaId(null); }}>
-                  Cancelar
-                </Button>
-                <Button
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={async () => {
-                    if (closingComandaId) {
-                      await closeComanda(closingComandaId);
-                      setShowCloseDialog(false);
-                      setClosingComandaId(null);
-                      setSelectedComandaId(null);
-                      scannerRef.current?.focus();
-                    }
-                  }}
-                >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Confirmar Fechamento
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

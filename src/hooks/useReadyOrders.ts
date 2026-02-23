@@ -25,6 +25,8 @@ export interface ExpoOrder {
   customer_name: string;
   order_source?: string | null;
   table_id?: string | null;
+  /** Número da mesa (via join tables). Usado para exibir "Mesa X" na expedição. */
+  tables?: { number: number } | null;
   notes?: string | null;
   status: string;
   updated_at: string;
@@ -46,6 +48,7 @@ export function useReadyOrders(restaurantId: string | null) {
         .select(`
           id, restaurant_id, customer_name, order_source, table_id, notes,
           status, updated_at, ready_at, accepted_at, delivered_at,
+          tables(number),
           order_items(id, product_name, quantity, observations,
             pizza_size, pizza_flavors, pizza_dough, pizza_edge, addons)
         `)
@@ -54,12 +57,17 @@ export function useReadyOrders(restaurantId: string | null) {
         .order('ready_at', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
-      const sorted = [...(data ?? [])].sort((a, b) => {
-        const ta = new Date((a as ExpoOrder).ready_at || a.updated_at).getTime();
-        const tb = new Date((b as ExpoOrder).ready_at || b.updated_at).getTime();
+      const raw = data ?? [];
+      const normalized = raw.map((o: any) => ({
+        ...o,
+        tables: Array.isArray(o.tables) ? o.tables[0] : o.tables,
+      }));
+      const sorted = [...normalized].sort((a, b) => {
+        const ta = new Date((a.ready_at || a.updated_at)).getTime();
+        const tb = new Date((b.ready_at || b.updated_at)).getTime();
         return ta - tb;
       });
-      setOrders(sorted as unknown as ExpoOrder[]);
+      setOrders(sorted as ExpoOrder[]);
     } catch (err) {
       console.error('useReadyOrders: erro ao carregar', err);
     } finally {

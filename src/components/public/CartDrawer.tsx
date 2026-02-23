@@ -18,9 +18,13 @@ interface CartDrawerProps {
   convertForDisplay?: (value: number) => number;
   restaurantId?: string | null;
   customerPhone?: string;
+  /** Nome do cliente na mesa (pedidos via QR) — exibido no header para reforçar identificação. */
+  tableCustomerName?: string | null;
+  /** Número da mesa — exibido junto ao nome quando pedido de mesa. */
+  tableNumber?: number | null;
 }
 
-export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL', convertForDisplay, restaurantId, customerPhone }: CartDrawerProps) {
+export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL', convertForDisplay, restaurantId, customerPhone, tableCustomerName, tableNumber }: CartDrawerProps) {
   const { t } = useTranslation();
   const { items, addItem, updateQuantity, removeItem, getSubtotal } = useCartStore();
   const [upsellRows, setUpsellRows] = useState<UpsellRow[]>([]);
@@ -117,24 +121,29 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
             </div>
 
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 flex-shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-sm shadow-orange-500/20">
-                  <ShoppingBag className="h-4 w-4 text-white" />
+            <div className="flex flex-col gap-1.5 px-5 py-3 border-b border-slate-100 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-sm shadow-orange-500/20">
+                    <ShoppingBag className="h-4 w-4 text-white" />
+                  </div>
+                  <h2 className="text-lg font-bold text-slate-900">{t('cart.title')}</h2>
+                  {items.length > 0 && (
+                    <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
+                      {items.length}
+                    </span>
+                  )}
                 </div>
-                <h2 className="text-lg font-bold text-slate-900">{t('cart.title')}</h2>
-                {items.length > 0 && (
-                  <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
-                    {items.length}
-                  </span>
-                )}
+                <button
+                  onClick={onClose}
+                  className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 active:scale-95 transition-all"
+                >
+                  <span className="text-sm font-bold">✕</span>
+                </button>
               </div>
-              <button
-                onClick={onClose}
-                className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 active:scale-95 transition-all"
-              >
-                <span className="text-sm font-bold">✕</span>
-              </button>
+              {tableCustomerName?.trim() && tableNumber != null && (
+                <p className="text-xs text-amber-700 font-medium">Pedindo como: {tableCustomerName} · Mesa {tableNumber}</p>
+              )}
             </div>
 
             {/* Loyalty banner */}

@@ -397,13 +397,14 @@ export default function AdminTables() {
       {/* Grid de Mesas */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {gridTables.filter((t) => t.is_active).map((table) => (
-          <TableCard
-            key={table.id}
-            table={table}
-            currency={currency}
-            onClick={() => setSelectedTable(table)}
-            onResetTable={canResetTable && table.status !== 'free' ? (e) => { e.stopPropagation(); setResetTableTarget(table); } : undefined}
-          />
+            <TableCard
+              key={table.id}
+              table={table}
+              currency={currency}
+              zoneName={hallZones.find((z) => z.id === table.hall_zone_id)?.name ?? null}
+              onClick={() => setSelectedTable(table)}
+              onResetTable={canResetTable && table.status !== 'free' ? (e) => { e.stopPropagation(); setResetTableTarget(table); } : undefined}
+            />
         ))}
       </div>
 
@@ -517,8 +518,8 @@ export default function AdminTables() {
                       toast({ title: 'Quantidade inválida', variant: 'destructive' });
                       return;
                     }
-                    const maxNum = tables.length > 0 ? Math.max(...tables.map((t) => t.number)) : 0;
-                    const nextOrderBase = Math.max(0, ...tables.map((t) => t.order_index ?? 0));
+                    const maxNum = activeTables.length > 0 ? Math.max(...activeTables.map((t) => t.number)) : 0;
+                    const nextOrderBase = tables.length > 0 ? Math.max(0, ...tables.map((t) => t.order_index ?? 0)) : 0;
                     setAddingBulk(true);
                     try {
                       let added = 0;
@@ -663,6 +664,7 @@ export default function AdminTables() {
                 setDeletingBulk(true);
                 try {
                   const ids = Array.from(selectedTableIds);
+                  await supabase.from('table_comanda_links').delete().in('table_id', ids);
                   const { error } = await supabase.from('tables').update({ is_active: false }).in('id', ids);
                   if (error) throw error;
                   refetchTables();
@@ -782,11 +784,14 @@ export default function AdminTables() {
 export function TableCard({
   table,
   currency,
+  zoneName,
   onClick,
   onResetTable,
 }: {
   table: TableWithStatus;
   currency: string;
+  /** Nome da zona da mesa (ex: Varanda, Salão Principal). Exibido como tag no card. */
+  zoneName?: string | null;
   onClick: () => void;
   /** Callback para resetar mesa (apenas Gerente/Admin, mesas ocupadas). Para de propagação do clique. */
   onResetTable?: (e: React.MouseEvent) => void;
@@ -810,8 +815,9 @@ export function TableCard({
         isCalling && 'animate-pulse'
       )}
     >
-      <div className="flex w-full items-center justify-between gap-2">
-        <span className="text-xl font-bold sm:text-2xl">Mesa {table.number}</span>
+      <div className="flex w-full flex-col gap-1">
+        <div className="flex w-full items-center justify-between gap-2">
+          <span className="text-xl font-bold sm:text-2xl">Mesa {table.number}</span>
         <div className="flex shrink-0 items-center gap-1">
           {isCalling && <Bell className="h-5 w-5 text-amber-600" aria-hidden />}
           {showReset && onResetTable && (
@@ -827,6 +833,12 @@ export function TableCard({
             </Button>
           )}
         </div>
+        {zoneName && (
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+            {zoneName}
+          </span>
+        )}
+      </div>
       </div>
       {table.status !== 'free' && (
         <div className="w-full space-y-1 text-sm">
@@ -1034,6 +1046,7 @@ export function TableOperationSheet({
     if (!table || !onTableDeleted || deletingTable) return;
     setDeletingTable(true);
     try {
+      await supabase.from('table_comanda_links').delete().eq('table_id', table.id);
       const { error } = await supabase.from('tables').update({ is_active: false }).eq('id', table.id);
       if (error) throw error;
       setShowDeleteConfirm(false);

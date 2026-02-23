@@ -54,6 +54,7 @@ interface ExpoOrder {
   customer_name: string;
   order_source?: string | null;
   table_id?: string | null;
+  tables?: { number: number } | null;
   notes?: string | null;
   status: string;
   updated_at: string;
@@ -117,7 +118,9 @@ function ExpoCard({
 
   const isTableOrder    = order.order_source === 'table' || !!order.table_id;
   const isComandaOrder  = order.order_source === 'comanda';
-  const tableLabel      = order.customer_name?.replace(/^Mesa\s+/i, '') || '?';
+  const tableNum        = order.tables?.number ?? (order.customer_name?.match(/^Mesa\s+(\d+)$/i)?.[1] ?? null);
+  const tableLabel      = tableNum != null ? String(tableNum) : '?';
+  const isPersonName    = order.customer_name && !/^Mesa\s+\d+$/i.test(order.customer_name);
   const isCritical      = urgency === 'critical';
 
   return (
@@ -171,6 +174,9 @@ function ExpoCard({
           </div>
 
           {/* Nome do cliente / garçom */}
+          {isTableOrder && isPersonName && (
+            <p className="text-sm text-slate-300 font-medium truncate mt-1.5">Cliente: {order.customer_name}</p>
+          )}
           {!isTableOrder && order.customer_name && (
             <div className="flex items-center gap-1.5 mt-1.5">
               <User className="h-3.5 w-3.5 text-slate-500" />
@@ -348,6 +354,7 @@ export default function ExpoScreen() {
         .select(`
           id, restaurant_id, customer_name, order_source, table_id, notes,
           status, updated_at, ready_at, accepted_at, delivered_at,
+          tables(number),
           order_items(id, product_name, quantity, observations,
             pizza_size, pizza_flavors, pizza_dough, pizza_edge, addons)
         `)
@@ -357,7 +364,12 @@ export default function ExpoScreen() {
 
       if (error) throw error;
       // Fallback: ordena por updated_at para pedidos sem ready_at
-      const sorted = [...(data ?? [])].sort((a, b) => {
+      const raw = data ?? [];
+      const normalized = raw.map((o: any) => ({
+        ...o,
+        tables: Array.isArray(o.tables) ? o.tables[0] : o.tables,
+      }));
+      const sorted = [...normalized].sort((a, b) => {
         const ta = new Date((a as any).ready_at || a.updated_at).getTime();
         const tb = new Date((b as any).ready_at || b.updated_at).getTime();
         return ta - tb; // mais antigos primeiro (maior urgência)

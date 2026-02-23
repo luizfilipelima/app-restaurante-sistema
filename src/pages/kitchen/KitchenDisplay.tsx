@@ -74,7 +74,11 @@ export default function KitchenDisplay() {
     }
     loadOrders();
     const cleanup = subscribeToOrders();
-    return () => { cleanup?.(); };
+    const poll = setInterval(loadOrders, 10000);
+    return () => {
+      cleanup?.();
+      clearInterval(poll);
+    };
   }, [effectiveRestaurantId]);
 
   const loadOrders = async () => {
@@ -87,6 +91,7 @@ export default function KitchenDisplay() {
         .from('orders')
         .select(`
           *,
+          tables(number),
           order_items(*)
         `)
         .eq('restaurant_id', effectiveRestaurantId)
@@ -348,7 +353,7 @@ function OrderCard({ order, isNew, onAction, actionLabel, actionColor, variant }
                 {isTableOrder ? (
                   <>
                     <UtensilsCrossed className="h-3 w-3 mr-1" />
-                    MESA {order.customer_name?.replace(/^Mesa\s+/i, '') || ''}
+                    MESA {(order.tables?.number ?? order.customer_name?.replace(/^Mesa\s+/i, '')) || '?'}
                   </>
                 ) : (
                   <>
@@ -358,6 +363,9 @@ function OrderCard({ order, isNew, onAction, actionLabel, actionColor, variant }
                 )}
               </Badge>
             </div>
+            {isTableOrder && order.customer_name && !/^Mesa\s+\d+$/i.test(order.customer_name) && (
+              <p className="text-slate-400 text-sm font-medium mt-0.5">Cliente: {order.customer_name}</p>
+            )}
             {!isTableOrder && (
               <p className="text-slate-400 text-sm font-medium mt-0.5">{order.customer_name}</p>
             )}
