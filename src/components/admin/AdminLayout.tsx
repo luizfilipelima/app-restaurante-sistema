@@ -46,6 +46,7 @@ import {
   Ticket,
   Gift,
   Printer,
+  PackageCheck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -134,7 +135,7 @@ const buildNavSections = (
   t: TFn,
   restaurantSlug?: string | null,
 ): NavSection[] => [
-  // 1. VISÃO GERAL — dados e fluxo principal
+  // 1. VISÃO GERAL (Acompanhamento) — Métricas e BI, Kanban unificado
   {
     kind: 'group',
     label: t('nav.groups.overview'),
@@ -153,6 +154,13 @@ const buildNavSections = (
         icon: ClipboardList,
         roleRequired: ['waiter'],
       },
+    ],
+  },
+  // 2. FRENTE DE CAIXA E SALÃO (Operação Diária — Front of House)
+  {
+    kind: 'group',
+    label: t('nav.groups.frontOfHouse'),
+    items: [
       {
         kind: 'leaf',
         name: t('nav.items.cashier'),
@@ -161,22 +169,6 @@ const buildNavSections = (
         featureFlag: 'feature_virtual_comanda',
         featureLabel: 'Plano Enterprise',
         roleRequired: ['cashier'],
-      },
-    ],
-  },
-  // 2. OPERAÇÃO — trabalho do dia a dia
-  {
-    kind: 'group',
-    label: t('nav.groups.operation'),
-    items: [
-      {
-        kind: 'leaf',
-        name: t('nav.items.tablesCentral'),
-        href: `${base}/tables`,
-        icon: LayoutGrid,
-        featureFlag: 'feature_tables',
-        featureLabel: 'Plano Standard',
-        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
       },
       {
         kind: 'leaf',
@@ -200,7 +192,7 @@ const buildNavSections = (
           : restaurantId
             ? `/expo?restaurant_id=${restaurantId}`
             : '/expo',
-        icon: ConciergeBell,
+        icon: PackageCheck,
         external: true,
         roleRequired: ['waiter'],
       },
@@ -213,15 +205,13 @@ const buildNavSections = (
         featureLabel: 'Plano Enterprise',
         roleRequired: ['cashier'],
       },
-      {
-        kind: 'leaf',
-        name: t('nav.items.couriers'),
-        href: `${base}/couriers`,
-        icon: Bike,
-        featureFlag: 'feature_couriers',
-        featureLabel: 'Plano Standard',
-        roleRequired: ['manager'],
-      },
+    ],
+  },
+  // 3. COZINHA E LOGÍSTICA (Back of House)
+  {
+    kind: 'group',
+    label: t('nav.groups.kitchenLogistics'),
+    items: [
       {
         kind: 'leaf',
         name: t('nav.items.kitchen'),
@@ -233,12 +223,21 @@ const buildNavSections = (
         icon: ChefHat,
         external: true,
       },
+      {
+        kind: 'leaf',
+        name: t('nav.items.couriers'),
+        href: `${base}/couriers`,
+        icon: Bike,
+        featureFlag: 'feature_couriers',
+        featureLabel: 'Plano Standard',
+        roleRequired: ['manager'],
+      },
     ],
   },
-  // 3. PRODUTOS & ESTOQUE — gestão de insumos
+  // 4. CARDÁPIO E ESTOQUE (Gestão de Insumos)
   {
     kind: 'group',
-    label: t('nav.groups.productsStock'),
+    label: t('nav.groups.menuStock'),
     items: [
       {
         kind: 'leaf',
@@ -256,7 +255,7 @@ const buildNavSections = (
       },
     ],
   },
-  // 4. MARKETING & VENDAS — crescimento
+  // 5. MARKETING E VENDAS (Growth)
   {
     kind: 'group',
     label: t('nav.groups.marketingSales'),
@@ -284,11 +283,20 @@ const buildNavSections = (
       },
     ],
   },
-  // 5. CONFIGURAÇÕES — ajustes estruturais
+  // 6. GESTÃO E CONFIGURAÇÕES (Estrutura do Negócio)
   {
     kind: 'group',
     label: t('nav.groups.settings'),
     items: [
+      {
+        kind: 'leaf',
+        name: t('nav.items.tablesCentral'),
+        href: `${base}/tables`,
+        icon: LayoutGrid,
+        featureFlag: 'feature_tables',
+        featureLabel: 'Plano Standard',
+        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
+      },
       {
         kind: 'leaf',
         name: t('nav.items.settingsGeneral'),
