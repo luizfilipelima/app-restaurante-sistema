@@ -15,13 +15,7 @@ import type { LoyaltyProgram, LoyaltyScoringChannels } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Toggle } from '@/components/ui/toggle';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import {
   Gift,
@@ -58,7 +52,7 @@ export default function AdminLoyalty() {
   const navigate = useNavigate();
   const { t } = useAdminTranslation();
   const { data: restaurant } = useRestaurant(restaurantId);
-  const { data: program, isLoading: loadingProgram } = useLoyaltyProgram(restaurantId);
+  const { data: program } = useLoyaltyProgram(restaurantId);
   const { data: metrics, isLoading: loadingMetrics } = useLoyaltyMetrics(
     restaurantId,
     program?.orders_required ?? 10
@@ -120,8 +114,7 @@ export default function AdminLoyalty() {
   const completedDisplay = Math.min(Math.round((5 / ordersRequired) * displayMax), displayMax);
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-10">
         {/* ── Hero Section ───────────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -212,10 +205,10 @@ export default function AdminLoyalty() {
               <p className="text-sm font-medium text-slate-800">{t('loyalty.toggleLabel')}</p>
               <p className="text-[11px] text-slate-500">{t('loyalty.toggleDesc')}</p>
             </div>
-            <Toggle
-              pressed={form.enabled ?? false}
-              onPressedChange={(v) => setForm({ ...form, enabled: v })}
-              className="data-[state=on]:bg-violet-500 data-[state=on]:text-white"
+            <Switch
+              checked={form.enabled ?? false}
+              onCheckedChange={(v: boolean) => setForm({ ...form, enabled: v })}
+              className="data-[state=checked]:bg-violet-500"
             />
           </div>
 
@@ -228,37 +221,32 @@ export default function AdminLoyalty() {
               {CHANNELS.map(({ key, icon: Icon, labelKey, tipKey }) => {
                 const enabled = (form.scoring_channels ?? defaultChannels)[key] ?? true;
                 return (
-                  <Tooltip key={key}>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => toggleChannel(key)}
-                        className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
-                          enabled
-                            ? 'border-violet-400 bg-violet-50 text-violet-800'
-                            : 'border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-300'
-                        }`}
-                      >
-                        <div
-                          className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                            enabled ? 'bg-violet-200' : 'bg-slate-200'
-                          }`}
-                        >
-                          <Icon className={`h-5 w-5 ${enabled ? 'text-violet-600' : 'text-slate-400'}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold">{t(`loyalty.${labelKey}`)}</p>
-                          <p className="text-[10px] opacity-75 flex items-center gap-1">
-                            {enabled ? 'Ativo' : 'Inativo'}
-                            <HelpCircle className="h-3 w-3" />
-                          </p>
-                        </div>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-[220px]">
-                      {t(`loyalty.${tipKey}`)}
-                    </TooltipContent>
-                  </Tooltip>
+                  <button
+                    key={key}
+                    type="button"
+                    title={t(`loyalty.${tipKey}`)}
+                    onClick={() => toggleChannel(key)}
+                    className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+                      enabled
+                        ? 'border-violet-400 bg-violet-50 text-violet-800'
+                        : 'border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-300'
+                    }`}
+                  >
+                    <div
+                      className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                        enabled ? 'bg-violet-200' : 'bg-slate-200'
+                      }`}
+                    >
+                      <Icon className={`h-5 w-5 ${enabled ? 'text-violet-600' : 'text-slate-400'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">{t(`loyalty.${labelKey}`)}</p>
+                      <p className="text-[10px] opacity-75 flex items-center gap-1">
+                        {enabled ? 'Ativo' : 'Inativo'}
+                        <HelpCircle className="h-3 w-3" />
+                      </p>
+                    </div>
+                  </button>
                 );
               })}
             </div>
@@ -454,6 +442,5 @@ export default function AdminLoyalty() {
           )}
         </motion.div>
       </div>
-    </TooltipProvider>
   );
 }
