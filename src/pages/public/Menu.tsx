@@ -15,7 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
@@ -154,8 +153,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const isTableOrder = !!(tableId && tableNumber);
   const { tableCustomerName, setTableCustomerName } = useTableOrderStore();
   const [welcomeNameInput, setWelcomeNameInput] = useState('');
-  const [showEditNameModal, setShowEditNameModal] = useState(false);
-  const [editNameInput, setEditNameInput] = useState('');
   const showWelcomeModal = isTableOrder && !tableCustomerName?.trim();
 
   const handleCheckoutNavigation = () => {
@@ -471,13 +468,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 {tableCustomerName?.trim() && (
                   <span className="text-xs text-amber-800 bg-amber-100/80 px-2 py-1 rounded-lg">
                     Pedindo como: <strong>{tableCustomerName}</strong>
-                    <button
-                      type="button"
-                      onClick={() => { setEditNameInput(tableCustomerName); setShowEditNameModal(true); }}
-                      className="ml-1.5 text-amber-600 hover:text-amber-800 underline"
-                    >
-                      Alterar
-                    </button>
                   </span>
                 )}
               </div>
@@ -838,83 +828,46 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       {/* Modal de boas-vindas — pede nome do cliente na mesa (autoatendimento identificado) */}
       <Dialog open={showWelcomeModal} onOpenChange={() => {}}>
         <DialogContent
-          className="sm:max-w-md"
+          hideClose
+          className="w-[calc(100vw-2rem)] max-w-[380px] rounded-3xl border-0 shadow-2xl overflow-hidden p-0 gap-0 bg-white sm:mx-4 safe-area-inset"
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
-          <DialogHeader>
-            <DialogTitle>
-              {tableNumber ? `Bem-vindo à Mesa ${tableNumber}!` : 'Bem-vindo!'}
-            </DialogTitle>
-            <DialogDescription>
-              Qual seu nome? Assim podemos identificar seu pedido na divisão da conta.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              placeholder="Ex: João, Maria"
-              value={welcomeNameInput}
-              onChange={(e) => setWelcomeNameInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && welcomeNameInput.trim() && (setTableCustomerName(welcomeNameInput.trim()), setWelcomeNameInput(''))}
-              className="h-12 text-base"
-              autoFocus
-            />
+          <div className="px-6 pt-8 pb-6 sm:px-8 sm:pt-10 sm:pb-8">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-200">
+              <UtensilsCrossed className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
+            </div>
+            <DialogHeader className="text-center space-y-2 pb-6">
+              <DialogTitle className="text-xl sm:text-2xl font-bold text-slate-900">
+                {tableNumber ? `Bem-vindo à Mesa ${tableNumber}!` : 'Bem-vindo!'}
+              </DialogTitle>
+              <DialogDescription className="text-slate-500 text-sm sm:text-base leading-relaxed max-w-[280px] mx-auto">
+                Qual seu nome? Assim podemos identificar seu pedido na divisão da conta.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input
+                placeholder="Ex: João, Maria"
+                value={welcomeNameInput}
+                onChange={(e) => setWelcomeNameInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && welcomeNameInput.trim() && (setTableCustomerName(welcomeNameInput.trim()), setWelcomeNameInput(''))}
+                className="h-14 text-base rounded-2xl border-2 border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-400 focus:ring-2 focus:ring-orange-100 px-4"
+                autoFocus
+              />
+              <Button
+                onClick={() => {
+                  if (welcomeNameInput.trim()) {
+                    setTableCustomerName(welcomeNameInput.trim());
+                    setWelcomeNameInput('');
+                  }
+                }}
+                disabled={!welcomeNameInput.trim()}
+                className="w-full h-14 text-base font-semibold rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg shadow-orange-200/50 transition-all active:scale-[0.98]"
+              >
+                Continuar
+              </Button>
+            </div>
           </div>
-          <DialogFooter>
-            <Button
-              onClick={() => {
-                if (welcomeNameInput.trim()) {
-                  setTableCustomerName(welcomeNameInput.trim());
-                  setWelcomeNameInput('');
-                }
-              }}
-              disabled={!welcomeNameInput.trim()}
-              className="w-full h-12"
-            >
-              Continuar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal para alterar nome na mesa */}
-      <Dialog open={showEditNameModal} onOpenChange={setShowEditNameModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Alterar seu nome</DialogTitle>
-            <DialogDescription>
-              Identifique seu pedido para a divisão da conta na mesa.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              placeholder="Ex: João, Maria"
-              value={editNameInput}
-              onChange={(e) => setEditNameInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && editNameInput.trim()) {
-                  setTableCustomerName(editNameInput.trim());
-                  setShowEditNameModal(false);
-                }
-              }}
-              className="h-12 text-base"
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={() => {
-                if (editNameInput.trim()) {
-                  setTableCustomerName(editNameInput.trim());
-                  setShowEditNameModal(false);
-                }
-              }}
-              disabled={!editNameInput.trim()}
-              className="w-full h-12"
-            >
-              Salvar
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

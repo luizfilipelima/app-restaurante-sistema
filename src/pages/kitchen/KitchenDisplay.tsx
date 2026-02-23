@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Clock, AlertTriangle, ChefHat, ArrowRight, LayoutDashboard, UtensilsCrossed, Bike } from 'lucide-react';
+import { Clock, AlertTriangle, ChefHat, ArrowRight, LayoutDashboard, UtensilsCrossed, Bike, Scale } from 'lucide-react';
 
 export default function KitchenDisplay() {
   const { user } = useAuthStore();
@@ -99,7 +99,12 @@ export default function KitchenDisplay() {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setOrders((data as DatabaseOrder[]) || []);
+      const raw = (data ?? []) as any[];
+      const normalized = raw.map((o) => ({
+        ...o,
+        tables: Array.isArray(o.tables) ? o.tables[0] : o.tables,
+      }));
+      setOrders(normalized);
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
       setOrders([]);
@@ -208,6 +213,105 @@ export default function KitchenDisplay() {
   const pendingOrders = orders.filter(o => o.status === 'pending');
   const preparingOrders = orders.filter(o => o.status === 'preparing');
 
+  // Categorias para agrupamento no KDS
+  type OrderCategory = 'local_fisico' | 'delivery' | 'buffet';
+  const getOrderCategory = (o: DatabaseOrder): OrderCategory => {
+    if (o.order_source === 'buffet') return 'buffet';
+    if (o.order_source === 'delivery' || o.delivery_type === 'delivery' || o.order_source === 'pickup' || o.delivery_type === 'pickup') return 'delivery';
+    return 'local_fisico'; // table, comanda, ou fallback
+  };
+
+  const groupByCategory = <T extends { id: string }>(list: T[], getCat: (x: T) => OrderCategory) => {
+    const groups: Record<OrderCategory, T[]> = { local_fisico: [], delivery: [], buffet: [] };
+    list.forEach((o) => { const c = getCat(o); groups[c].push(o); });
+    return groups;
+  };
+
+  const pendingByCat = groupByCategory(pendingOrders, getOrderCategory);
+  const preparingByCat = groupByCategory(preparingOrders, getOrderCategory);
+
+  const categoryConfig: Record<OrderCategory, { label: string; icon: typeof UtensilsCrossed; badgeClass: string; headerClass: string }> = {
+    local_fisico: {
+      label: 'Local Físico',
+      icon: UtensilsCrossed,
+      badgeClass: 'bg-amber-500/20 text-amber-400 border-amber-500/50',
+      headerClass: 'text-amber-400 border-amber-500/30',
+    },
+    delivery: {
+      label: 'Delivery / Retirada',
+      icon: Bike,
+      badgeClass: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50',
+      headerClass: 'text-cyan-400 border-cyan-500/30',
+    },
+    buffet: {
+      label: 'Buffet / Kg',
+      icon: Scale,
+      badgeClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50',
+      headerClass: 'text-emerald-400 border-emerald-500/30',
+    },
+  };
+
+  const renderOrderColumn = (
+    title: string,
+    titleColor: string,
+    titleIcon: React.ReactNode,
+    ordersByCat: Record<OrderCategory, DatabaseOrder[]>,
+    onAction: (id: string) => void,
+    actionLabel: string,
+    actionColor: string,
+    variant: 'pending' | 'preparing',
+    emptyMsg: string
+  ) => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+        <h2 className={`text-xl font-bold ${titleColor} flex items-center gap-2`}>
+          {titleIcon} {title}
+        </h2>
+        <Badge className={`${titleColor.replace('text-', 'bg-').replace('400', '500')}/20 ${titleColor} border-0 text-lg px-3`}>
+          {Object.values(ordersByCat).reduce((s, arr) => s + arr.length, 0)}
+        </Badge>
+      </div>
+
+      <div className="space-y-6">
+        {(['local_fisico', 'delivery', 'buffet'] as OrderCategory[]).map((cat) => {
+          const ordersList = ordersByCat[cat];
+          const cfg = categoryConfig[cat];
+          const IconComp = cfg.icon;
+          if (ordersList.length === 0) return null;
+          return (
+            <div key={cat} className="space-y-3">
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border bg-slate-900/30 ${cfg.headerClass}`}>
+                <IconComp className="h-5 w-5 shrink-0" />
+                <span className="font-bold text-sm uppercase tracking-wide">{cfg.label}</span>
+                <Badge variant="outline" className={`ml-auto border-0 text-xs font-bold ${cfg.badgeClass}`}>
+                  {ordersList.length}
+                </Badge>
+              </div>
+              <div className={`grid gap-4 ${variant === 'preparing' && ordersList.length > 1 ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1'}`}>
+                {ordersList.map((order) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    category={cat}
+                    categoryConfig={categoryConfig[cat]}
+                    isNew={newOrderIds.includes(order.id)}
+                    onAction={() => onAction(order.id)}
+                    actionLabel={actionLabel}
+                    actionColor={actionColor}
+                    variant={variant}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        {Object.values(ordersByCat).every((arr) => arr.length === 0) && (
+          <EmptyState message={emptyMsg} />
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 overflow-x-hidden font-sans">
       {/* Header */}
@@ -251,59 +355,35 @@ export default function KitchenDisplay() {
         </div>
       </div>
 
-      {/* Kanban Board */}
-      <div className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Kanban Board — agrupado por Local Físico, Delivery e Buffet/Kg */}
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
           
           {/* Coluna: Pendentes */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-lg border border-slate-800">
-              <h2 className="text-xl font-bold text-yellow-500 flex items-center gap-2">
-                <Clock className="h-6 w-6" /> AGUARDANDO
-              </h2>
-              <Badge className="bg-yellow-500/20 text-yellow-500 border-0 text-lg px-3">{pendingOrders.length}</Badge>
-            </div>
-            
-            <div className="grid grid-cols-1 gap-4">
-              {pendingOrders.map(order => (
-                <OrderCard 
-                  key={order.id} 
-                  order={order} 
-                  isNew={newOrderIds.includes(order.id)} 
-                  onAction={() => updateStatus(order.id, 'preparing')}
-                  actionLabel="INICIAR PREPARO"
-                  actionColor="bg-blue-600 hover:bg-blue-700"
-                  variant="pending"
-                />
-              ))}
-              {pendingOrders.length === 0 && <EmptyState message="Sem novos pedidos" />}
-            </div>
-          </div>
+          {renderOrderColumn(
+            'AGUARDANDO',
+            'text-yellow-500',
+            <Clock className="h-6 w-6" />,
+            pendingByCat,
+            (id) => updateStatus(id, 'preparing'),
+            'INICIAR PREPARO',
+            'bg-blue-600 hover:bg-blue-700',
+            'pending',
+            'Sem novos pedidos'
+          )}
 
           {/* Coluna: Em Preparo */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-lg border border-slate-800">
-              <h2 className="text-xl font-bold text-blue-500 flex items-center gap-2">
-                <ChefHat className="h-6 w-6" /> EM PREPARO
-              </h2>
-              <Badge className="bg-blue-500/20 text-blue-500 border-0 text-lg px-3">{preparingOrders.length}</Badge>
-            </div>
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {preparingOrders.map(order => (
-                <OrderCard 
-                  key={order.id} 
-                  order={order} 
-                  isNew={newOrderIds.includes(order.id)} 
-                  onAction={() => updateStatus(order.id, 'ready')}
-                  actionLabel="PRONTO"
-                  actionColor="bg-green-600 hover:bg-green-700"
-                  variant="preparing"
-                />
-              ))}
-              {preparingOrders.length === 0 && <EmptyState message="Cozinha livre" />}
-            </div>
-          </div>
+          {renderOrderColumn(
+            'EM PREPARO',
+            'text-blue-500',
+            <ChefHat className="h-6 w-6" />,
+            preparingByCat,
+            (id) => updateStatus(id, 'ready'),
+            'PRONTO',
+            'bg-green-600 hover:bg-green-700',
+            'preparing',
+            'Cozinha livre'
+          )}
 
         </div>
       </div>
@@ -311,13 +391,34 @@ export default function KitchenDisplay() {
   );
 }
 
-function OrderCard({ order, isNew, onAction, actionLabel, actionColor, variant }: any) {
+function OrderCard({
+  order,
+  category,
+  categoryConfig,
+  isNew,
+  onAction,
+  actionLabel,
+  actionColor,
+  variant,
+}: {
+  order: DatabaseOrder & { tables?: { number: number } | null };
+  category: 'local_fisico' | 'delivery' | 'buffet';
+  categoryConfig: { label: string; icon: typeof UtensilsCrossed; badgeClass: string };
+  isNew: boolean;
+  onAction: () => void;
+  actionLabel: string;
+  actionColor: string;
+  variant: 'pending' | 'preparing';
+}) {
   const duration = Math.floor((new Date().getTime() - new Date(order.created_at).getTime()) / 1000 / 60);
   const isTableOrder = order.order_source === 'table' || !!order.table_id;
-  
+  const isComandaOrder = order.order_source === 'comanda';
+  const isDelivery = order.order_source === 'delivery' || order.delivery_type === 'delivery';
+  const IconComp = categoryConfig.icon;
+
   let borderColor = 'border-slate-700';
   let timerColor = 'bg-slate-800 text-slate-300';
-  
+
   if (variant === 'preparing') {
     if (duration >= 20) {
       borderColor = 'border-red-500 ring-1 ring-red-500';
@@ -331,42 +432,34 @@ function OrderCard({ order, isNew, onAction, actionLabel, actionColor, variant }
     }
   }
 
+  const badgeLabel = category === 'buffet'
+    ? 'BUFFET / KG'
+    : category === 'delivery'
+      ? (isDelivery ? 'DELIVERY' : 'RETIRADA')
+      : isComandaOrder
+        ? 'COMANDA'
+        : `MESA ${(order.tables?.number ?? order.customer_name?.replace(/^Mesa\s+/i, '')) || '?'}`;
+
   return (
     <Card className={`bg-slate-800 border-2 ${borderColor} shadow-xl relative overflow-hidden transition-all duration-300`}>
       {isNew && (
         <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500 animate-pulse" />
       )}
-      
+
       <CardHeader className="pb-2 bg-slate-800/50 border-b border-slate-700/50">
         <div className="flex justify-between items-start gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-2xl font-black text-white">#{order.id.slice(0, 4).toUpperCase()}</h3>
-              <Badge
-                variant="outline"
-                className={`shrink-0 border-0 text-xs font-bold ${
-                  isTableOrder
-                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
-                    : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50'
-                }`}
-              >
-                {isTableOrder ? (
-                  <>
-                    <UtensilsCrossed className="h-3 w-3 mr-1" />
-                    MESA {(order.tables?.number ?? order.customer_name?.replace(/^Mesa\s+/i, '')) || '?'}
-                  </>
-                ) : (
-                  <>
-                    <Bike className="h-3 w-3 mr-1" />
-                    DELIVERY
-                  </>
-                )}
+              <Badge variant="outline" className={`shrink-0 border-0 text-xs font-bold ${categoryConfig.badgeClass}`}>
+                <IconComp className="h-3 w-3 mr-1" />
+                {badgeLabel}
               </Badge>
             </div>
-            {isTableOrder && order.customer_name && !/^Mesa\s+\d+$/i.test(order.customer_name) && (
+            {(isTableOrder || isComandaOrder) && order.customer_name && !/^Mesa\s+\d+$/i.test(order.customer_name) && (
               <p className="text-slate-400 text-sm font-medium mt-0.5">Cliente: {order.customer_name}</p>
             )}
-            {!isTableOrder && (
+            {category === 'delivery' && (
               <p className="text-slate-400 text-sm font-medium mt-0.5">{order.customer_name}</p>
             )}
           </div>
