@@ -27,6 +27,10 @@ import { useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { UtensilsCrossed, Package } from 'lucide-react';
+import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { ptBR, es, enUS } from 'date-fns/locale';
+
+const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
 // ─── Shell com contexto de restaurante ───────────────────────────────────────
 
@@ -78,6 +82,8 @@ function WaiterTerminalContent() {
   const { restaurantId, restaurant } = useAdminRestaurant();
   const currency = useAdminCurrency();
   const queryClient = useQueryClient();
+  const { t, lang } = useAdminTranslation();
+  const dateLocale = DATE_LOCALES[lang] ?? ptBR;
 
   const { data: tablesData, refetch: refetchTables } = useTables(restaurantId);
   const { data: tableStatuses = [] } = useTableStatuses(restaurantId);
@@ -98,6 +104,14 @@ function WaiterTerminalContent() {
         queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+        queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_items' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+        queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'order_items' }, () => {
         queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
         queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
       })
@@ -191,20 +205,22 @@ function WaiterTerminalContent() {
         <main className="flex-1 overflow-auto p-4">
           <TabsContent value="salao" className="mt-0 h-full">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {gridTables.filter((t) => t.is_active).map((table) => (
+              {gridTables.filter((tbl) => tbl.is_active).map((table) => (
                 <TableCard
                   key={table.id}
                   table={table}
                   currency={currency}
                   zoneName={hallZones.find((z) => z.id === table.hall_zone_id)?.name ?? null}
                   onClick={() => setSelectedTable(table)}
+                  t={t}
+                  dateLocale={dateLocale}
                 />
               ))}
             </div>
             {gridTables.filter((t) => t.is_active).length === 0 && (
               <div className="rounded-xl border border-dashed bg-white/50 p-12 text-center">
                 <p className="text-muted-foreground">
-                  {selectedZoneId ? 'Nenhuma mesa nesta praça.' : 'Nenhuma mesa cadastrada.'}
+                  {selectedZoneId ? t('tablesCentral.noTablesInZone') : t('tablesCentral.noTables')}
                 </p>
               </div>
             )}

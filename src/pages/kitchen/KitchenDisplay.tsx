@@ -432,13 +432,17 @@ function OrderCard({
     }
   }
 
+  // Tag para pedidos de mesa: sempre mostrar MESA quando order_source=table ou table_id
+  const tableNum = order.tables?.number ?? order.customer_name?.match(/^Mesa\s*(\d+)/i)?.[1] ?? null;
   const badgeLabel = category === 'buffet'
     ? 'BUFFET / KG'
     : category === 'delivery'
       ? (isDelivery ? 'DELIVERY' : 'RETIRADA')
-      : isComandaOrder
-        ? 'COMANDA'
-        : `MESA ${(order.tables?.number ?? order.customer_name?.replace(/^Mesa\s+/i, '')) || '?'}`;
+      : isTableOrder
+        ? `MESA ${tableNum ?? '?'}`
+        : isComandaOrder
+          ? 'COMANDA'
+          : 'LOCAL';
 
   return (
     <Card className={`bg-slate-800 border-2 ${borderColor} shadow-xl relative overflow-hidden transition-all duration-300`}>

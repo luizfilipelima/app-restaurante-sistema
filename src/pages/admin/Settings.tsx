@@ -21,8 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
 import { toast } from '@/hooks/use-toast';
 import {
-  Save, Upload, Loader2, Instagram, Printer,
-  Phone, Globe, ImageIcon, AlarmClock, X, Wifi, Languages, Store,
+  Save, Upload, Loader2, Printer,
+  Phone, Globe, ImageIcon, AlarmClock, X, Wifi, Store,
   Users, ExternalLink, Link2,
   MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode,
 } from 'lucide-react';
@@ -443,9 +443,7 @@ export default function AdminSettings() {
             border-b border-border rounded-none gap-0
           ">
             {[
-              { value: 'perfil',       icon: Store,   label: t('settings.tabs.profile')   },
-              { value: 'regional',     icon: Globe,   label: t('settings.tabs.regional')  },
-              { value: 'contato',      icon: Phone,   label: t('settings.tabs.contact')   },
+              { value: 'perfil',       icon: Store,   label: 'Perfil, Regional e Contato' },
               { value: 'pagamentos',   icon: CreditCard, label: 'PIX e Transferência'     },
               { value: 'impressao',    icon: Printer, label: 'Impressão'                  },
               { value: 'cambio',       icon: Repeat,  label: 'Câmbio'                     },
@@ -476,12 +474,12 @@ export default function AdminSettings() {
         {/* ══════════════════════════════════════════════════════════════════════
             ABA 1 — Perfil do Negócio
         ══════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="perfil" className="mt-0 space-y-5">
+        <TabsContent value="perfil" className="mt-0 space-y-7">
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
             {/* ── Logo — drop zone ── */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col">
+            <div className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col shadow-sm">
 
               {/* Cabeçalho */}
               <div className="flex items-center gap-2.5 px-4 pt-4 pb-3 border-b border-border/60">
@@ -582,7 +580,7 @@ export default function AdminSettings() {
             </div>
 
             {/* ── Informações do negócio ── */}
-            <div className="md:col-span-2 rounded-2xl border border-border bg-card p-5 space-y-5">
+            <div className="md:col-span-2 rounded-2xl border border-border bg-card p-6 space-y-5 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
                   <Store className="h-[18px] w-[18px] text-muted-foreground" />
@@ -638,44 +636,22 @@ export default function AdminSettings() {
             </div>
           </div>
 
-          {/* Rodapé salvar */}
-          <div className="flex justify-end">
-            <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
-          </div>
-        </TabsContent>
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            ABA 2 — Regionalização
-        ══════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="regional" className="mt-0 space-y-5">
-
-          {/* Seletores principais — 2 colunas em desktop */}
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-5">
+          {/* ── Regionalização (moeda, país, idiomas) ── */}
+          <div className="rounded-2xl border border-border bg-card p-6 space-y-5 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                <Globe className="h-[18px] w-[18px] text-muted-foreground" />
+              <div className="h-9 w-9 rounded-xl bg-[#F87116]/10 flex items-center justify-center flex-shrink-0">
+                <Globe className="h-[18px] w-[18px] text-[#F87116]" />
               </div>
               <div>
                 <h2 className="text-sm font-semibold text-foreground">{t('settings.regional.title')}</h2>
-                <p className="text-[11px] text-muted-foreground">
-                  {t('settings.regional.subtitle')}
-                </p>
+                <p className="text-[11px] text-muted-foreground">{t('settings.regional.subtitle')}</p>
               </div>
             </div>
-
-            {/* Grid 2 cols em sm e 4 em xl, para telas largas */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-5">
-
-              {/* Moeda */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               <FieldGroup>
                 <SectionLabel>{t('settings.regional.currency')}</SectionLabel>
-                <Select
-                  value={formData.currency}
-                  onValueChange={(v) => set('currency', v as CurrencyCode)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={formData.currency} onValueChange={(v) => set('currency', v as CurrencyCode)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {CURRENCIES.map(c => (
                       <SelectItem key={c.value} value={c.value}>
@@ -685,74 +661,42 @@ export default function AdminSettings() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[10px] text-muted-foreground">
-                  {t('settings.regional.currencyDesc')}
-                </p>
+                <p className="text-[10px] text-muted-foreground">{t('settings.regional.currencyDesc')}</p>
               </FieldGroup>
-
-              {/* País de origem */}
               <FieldGroup>
                 <SectionLabel>{t('settings.regional.country')}</SectionLabel>
-                <Select
-                  value={formData.phone_country}
-                  onValueChange={(v) => set('phone_country', v as PhoneCountry)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={formData.phone_country} onValueChange={(v) => set('phone_country', v as PhoneCountry)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {PHONE_COUNTRIES.map(c => (
                       <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[10px] text-muted-foreground">
-                  {t('settings.regional.countryDesc')}
-                </p>
+                <p className="text-[10px] text-muted-foreground">{t('settings.regional.countryDesc')}</p>
               </FieldGroup>
-
-              {/* Idioma do cardápio */}
               <FieldGroup>
                 <SectionLabel>{t('settings.regional.menuLang')}</SectionLabel>
-                <Select
-                  value={formData.language}
-                  onValueChange={(v) => set('language', v as CardapioLanguage)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={formData.language} onValueChange={(v) => set('language', v as CardapioLanguage)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {CARDAPIO_LANGS.map(l => (
                       <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[10px] text-muted-foreground">
-                  {t('settings.regional.menuLangDesc')}
-                </p>
+                <p className="text-[10px] text-muted-foreground">{t('settings.regional.menuLangDesc')}</p>
               </FieldGroup>
-
-              {/* Modo de exibição do cardápio */}
               <FieldGroup>
                 <SectionLabel>Primeira tela do cardápio</SectionLabel>
-                <Select
-                  value={formData.menu_display_mode}
-                  onValueChange={(v) => set('menu_display_mode', v as 'default' | 'categories_first')}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={formData.menu_display_mode} onValueChange={(v) => set('menu_display_mode', v as 'default' | 'categories_first')}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">Padrão (categorias em pills + produtos)</SelectItem>
-                    <SelectItem value="categories_first">Categorias expandidas (cards com imagens primeiro)</SelectItem>
+                    <SelectItem value="default">Padrão (pills + produtos)</SelectItem>
+                    <SelectItem value="categories_first">Categorias expandidas</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-[10px] text-muted-foreground">
-                  Se &quot;Categorias expandidas&quot;, o cliente vê os cards de categorias primeiro; ao clicar, abre a página com os produtos.
-                </p>
               </FieldGroup>
-
-              {/* Idioma do painel — atualiza o painel instantaneamente */}
               <FieldGroup>
                 <SectionLabel>{t('settings.regional.panelLang')}</SectionLabel>
                 <Select
@@ -760,87 +704,50 @@ export default function AdminSettings() {
                   onValueChange={(v) => {
                     const lang = v as PanelLanguage;
                     setPanelLangLocal(lang);
-                    // Atualiza o Zustand → todo o painel re-renderiza imediatamente
                     setStoreLang(lang);
-                    toast({
-                      title: lang === 'pt' ? '🇧🇷 Idioma do painel atualizado'
-                           : lang === 'es' ? '🇦🇷 Idioma del panel actualizado'
-                           : '🇺🇸 Panel language updated',
-                    });
+                    toast({ title: lang === 'pt' ? '🇧🇷 Idioma atualizado' : lang === 'es' ? '🇦🇷 Idioma actualizado' : '🇺🇸 Language updated' });
                   }}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {PANEL_LANGS.map(l => (
                       <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[10px] text-muted-foreground">
-                  {t('settings.regional.panelLangDesc')}
-                </p>
+                <p className="text-[10px] text-muted-foreground">{t('settings.regional.panelLangDesc')}</p>
               </FieldGroup>
             </div>
-          </div>
-
-          {/* Preview de formatação de preços */}
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                <Languages className="h-[18px] w-[18px] text-muted-foreground" />
+            <div className="pt-3 border-t border-border/60">
+              <p className="text-[10px] text-muted-foreground mb-2">{t('settings.regional.formatPreview')}</p>
+              <div className="flex flex-wrap gap-2">
+                {[1500, 9900, 25000].map(val => {
+                  let display = '';
+                  if (formData.currency === 'BRL') display = `R$ ${(val / 100).toFixed(2).replace('.', ',')}`;
+                  else if (formData.currency === 'PYG') display = `Gs. ${val.toLocaleString('es-PY')}`;
+                  else if (formData.currency === 'ARS') display = `$ ${(val / 100).toFixed(2).replace('.', ',')}`;
+                  else display = `$ ${(val / 100).toFixed(2)}`;
+                  return (
+                    <span key={val} className="px-3 py-1.5 rounded-lg bg-muted/60 text-sm font-medium">{display}</span>
+                  );
+                })}
               </div>
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">{t('settings.regional.formatPreview')}</h2>
-                <p className="text-[11px] text-muted-foreground">{t('settings.regional.formatPreviewDesc')}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[1500, 9900, 25000, 100000].map(val => {
-                let display = '';
-                if (formData.currency === 'BRL') display = `R$ ${(val / 100).toFixed(2).replace('.', ',')}`;
-                else if (formData.currency === 'PYG') display = `Gs. ${val.toLocaleString('es-PY')}`;
-                else if (formData.currency === 'ARS') display = `$ ${(val / 100).toFixed(2).replace('.', ',')}`;
-                else display = `$ ${(val / 100).toFixed(2)}`;
-                return (
-                  <div key={val} className="bg-muted/50 rounded-xl p-3 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">{t('settings.regional.bankValue')}: {val}</p>
-                    <p className="text-sm font-bold text-foreground">{display}</p>
-                  </div>
-                );
-              })}
             </div>
           </div>
 
-          <div className="flex justify-end">
-            <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
-          </div>
-        </TabsContent>
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            ABA 3 — Canais e Contato
-        ══════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="contato" className="mt-0 space-y-4">
-
-          {/* ── Telefone & WhatsApp ── */}
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          {/* ── Contato (telefone, WhatsApp, redes) ── */}
+          <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
             <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
-              <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                <Phone className="h-[18px] w-[18px] text-muted-foreground" />
+              <div className="h-9 w-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center flex-shrink-0">
+                <Phone className="h-[18px] w-[18px] text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-foreground">Números de Contato</h2>
-                <p className="text-[11px] text-muted-foreground">
-                  Usados para receber pedidos e comunicação com clientes
-                </p>
+                <h2 className="text-sm font-semibold text-foreground">Contato</h2>
+                <p className="text-[11px] text-muted-foreground">Telefone e WhatsApp exibidos no cardápio</p>
               </div>
             </div>
-
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-                {/* Telefone */}
                 <FieldGroup>
                   <SectionLabel>Telefone</SectionLabel>
                   <div className="flex items-stretch rounded-lg border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring">
@@ -856,14 +763,11 @@ export default function AdminSettings() {
                       required
                     />
                   </div>
-                  <p className="text-[10px] text-muted-foreground">Exibido no cardápio para clientes</p>
                 </FieldGroup>
-
-                {/* WhatsApp */}
                 <FieldGroup>
                   <SectionLabel>WhatsApp</SectionLabel>
                   <div className="flex items-stretch rounded-lg border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring">
-                    <span className="flex items-center gap-1 px-3 bg-emerald-50 text-emerald-700 text-xs border-r border-border select-none font-semibold flex-shrink-0">
+                    <span className="flex items-center gap-1 px-3 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-xs border-r border-border select-none font-semibold flex-shrink-0">
                       <MessageCircle className="h-3.5 w-3.5" />
                       {COUNTRY_CODES[formData.phone_country]}
                     </span>
@@ -889,34 +793,10 @@ export default function AdminSettings() {
                   )}
                 </FieldGroup>
               </div>
-
-              {/* Info */}
-              <div className="rounded-xl bg-muted/40 border border-border p-3 text-[11px] text-muted-foreground flex items-start gap-2.5">
-                <Wifi className="h-4 w-4 flex-shrink-0 mt-0.5 text-emerald-500" />
-                <p>
-                  O WhatsApp precisa estar ativo no celular. O prefixo de país é definido na aba <strong>Regional</strong>.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Redes Sociais ── */}
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
-            <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                <Instagram className="h-[18px] w-[18px] text-white" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">Redes Sociais</h2>
-                <p className="text-[11px] text-muted-foreground">Link exibido no rodapé do cardápio</p>
-              </div>
-            </div>
-
-            <div className="p-5 space-y-4">
               <FieldGroup>
                 <SectionLabel>Instagram</SectionLabel>
-                <div className="flex items-stretch rounded-lg border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring">
-                  <span className="flex items-center px-3 bg-muted text-xs text-muted-foreground border-r border-border select-none font-mono flex-shrink-0">
+                <div className="flex items-stretch rounded-lg border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring max-w-md">
+                  <span className="flex items-center px-3 bg-muted text-xs text-muted-foreground border-r border-border select-none flex-shrink-0">
                     <AtSign className="h-3.5 w-3.5" />
                   </span>
                   <input
@@ -931,17 +811,18 @@ export default function AdminSettings() {
                   />
                 </div>
                 {formData.instagram_url && (
-                  <a
-                    href={formData.instagram_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-[11px] text-pink-600 hover:underline font-medium"
-                  >
+                  <a href={formData.instagram_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[11px] text-pink-600 hover:underline font-medium">
                     <ExternalLink className="h-3 w-3" />
                     {formData.instagram_url}
                   </a>
                 )}
               </FieldGroup>
+              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 p-3 flex items-start gap-2.5">
+                <Wifi className="h-4 w-4 flex-shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+                <p className="text-[11px] text-emerald-800 dark:text-emerald-200/90">
+                  O prefixo de país vem do campo &quot;País de origem&quot; na seção Regional acima. O WhatsApp precisa estar ativo no celular para receber mensagens.
+                </p>
+              </div>
             </div>
           </div>
 

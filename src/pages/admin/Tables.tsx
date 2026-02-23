@@ -75,14 +75,18 @@ import {
   Trash2,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import type { Locale } from 'date-fns';
+import { ptBR, es, enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { WaiterPDV } from '@/components/waiter/WaiterPDV';
 import { useCanAccess } from '@/hooks/useUserRole';
+import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+
+const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
 // ─── HallZonesConfig (CRUD Zonas) ────────────────────────────────────────────
 
-function HallZonesConfig({ restaurantId, hallZones }: { restaurantId: string | null; hallZones: import('@/types').HallZone[] }) {
+function HallZonesConfig({ restaurantId, hallZones, t }: { restaurantId: string | null; hallZones: import('@/types').HallZone[]; t: (k: string) => string }) {
   const [newZoneName, setNewZoneName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -115,7 +119,7 @@ function HallZonesConfig({ restaurantId, hallZones }: { restaurantId: string | n
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Excluir zona "${name}"? As mesas dessa zona ficarão sem zona.`)) return;
+    if (!confirm(`${t('tablesCentral.deleteZone')} "${name}"? ${t('tablesCentral.deleteZoneConfirm')}`)) return;
     try {
       await deleteZone.mutateAsync(id);
       toast({ title: 'Zona excluída!' });
@@ -127,13 +131,13 @@ function HallZonesConfig({ restaurantId, hallZones }: { restaurantId: string | n
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="font-semibold mb-2">Zonas do Salão</h3>
+        <h3 className="font-semibold mb-2">{t('tablesCentral.zones')}</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Crie setores como Varanda, Salão Principal, Piso Superior. Depois associe cada mesa a uma zona.
+          {t('tablesCentral.zonesDesc')}
         </p>
         <form onSubmit={handleCreate} className="flex gap-2">
           <Input
-            placeholder="Ex: Varanda, Salão Principal"
+            placeholder={t('tablesCentral.zonePlaceholder')}
             value={newZoneName}
             onChange={(e) => setNewZoneName(e.target.value)}
             className="min-h-[44px]"
@@ -145,7 +149,7 @@ function HallZonesConfig({ restaurantId, hallZones }: { restaurantId: string | n
       </div>
       <ul className="space-y-2 max-h-[200px] overflow-y-auto">
         {hallZones.length === 0 ? (
-          <li className="text-sm text-muted-foreground py-2">Nenhuma zona cadastrada.</li>
+          <li className="text-sm text-muted-foreground py-2">{t('tablesCentral.noZones')}</li>
         ) : (
           hallZones.map((z) => (
             <li key={z.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
@@ -168,7 +172,7 @@ function HallZonesConfig({ restaurantId, hallZones }: { restaurantId: string | n
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" onClick={() => { setEditingId(z.id); setEditName(z.name); }}>Editar</Button>
                     <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(z.id, z.name)} disabled={deleteZone.isPending}>
-                      Excluir
+                      {t('tablesCentral.deleteZone')}
                     </Button>
                   </div>
                 </>
@@ -188,6 +192,8 @@ export default function AdminTables() {
   const queryClient = useQueryClient();
   const { restaurant } = useAdminRestaurant();
   const currency = useAdminCurrency();
+  const { t, lang } = useAdminTranslation();
+  const dateLocale = DATE_LOCALES[lang] ?? ptBR;
   const { data: tablesData, refetch: refetchTables } = useTables(restaurantId);
   const { data: tableStatuses = [] } = useTableStatuses(restaurantId);
   const { data: waiterCallsData } = useWaiterCalls(restaurantId);
@@ -218,6 +224,14 @@ export default function AdminTables() {
         queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+        queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_items' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+        queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'order_items' }, () => {
         queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
         queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
       })
@@ -300,9 +314,9 @@ export default function AdminTables() {
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold sm:text-3xl">Central de Mesas e Praças</h1>
+            <h1 className="text-2xl font-bold sm:text-3xl">{t('tablesCentral.title')}</h1>
             <p className="text-muted-foreground mt-1">
-              Gerencie zonas, mesas e gere QR Codes. O garçom opera pelo Terminal.
+              {t('tablesCentral.subtitle')}
             </p>
           </div>
         <div className="flex gap-2">
@@ -313,7 +327,7 @@ export default function AdminTables() {
             onClick={() => setShowConfig(true)}
           >
             <Settings className="h-5 w-5 mr-2" />
-            Configurar
+            {t('tablesCentral.configure')}
           </Button>
           <Button
             size="lg"
@@ -321,7 +335,7 @@ export default function AdminTables() {
             onClick={() => setShowAddTable(true)}
           >
             <Plus className="h-5 w-5 mr-2" />
-            Adicionar Mesa
+            {t('tablesCentral.addTable')}
           </Button>
         </div>
         </div>
@@ -345,7 +359,7 @@ export default function AdminTables() {
               disabled={!terminalUrl}
             >
               <Copy className="h-4 w-4" />
-              <span className="sr-only sm:not-sr-only sm:ml-1">Copiar</span>
+              <span className="sr-only sm:not-sr-only sm:ml-1">{t('tablesCentral.copyLink')}</span>
             </Button>
             <Button
               size="sm"
@@ -356,7 +370,7 @@ export default function AdminTables() {
             >
               <a href={terminalUrl || '#'} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4" />
-                <span className="sr-only sm:not-sr-only sm:ml-1">Abrir em nova aba</span>
+                <span className="sr-only sm:not-sr-only sm:ml-1">{t('tablesCentral.openInNewTab')}</span>
               </a>
             </Button>
           </div>
@@ -377,7 +391,7 @@ export default function AdminTables() {
                   : 'bg-muted hover:bg-muted/80'
               )}
             >
-              Todas as Zonas
+              {t('tablesCentral.allZones')}
             </button>
             {hallZones.map((z) => (
               <button
@@ -398,13 +412,15 @@ export default function AdminTables() {
 
       {/* Grid de Mesas — 5 colunas máx. para cards maiores */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-        {gridTables.filter((t) => t.is_active).map((table) => (
+        {gridTables.filter((tbl) => tbl.is_active).map((table) => (
             <TableCard
               key={table.id}
               table={table}
               currency={currency}
               zoneName={hallZones.find((z) => z.id === table.hall_zone_id)?.name ?? null}
               onClick={() => setSelectedTable(table)}
+              t={t}
+              dateLocale={dateLocale}
             />
         ))}
       </div>
@@ -413,37 +429,37 @@ export default function AdminTables() {
       <Dialog open={!!resetTableTarget} onOpenChange={(open) => !open && setResetTableTarget(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Resetar mesa</DialogTitle>
+            <DialogTitle>{t('tablesCentral.resetTable')}</DialogTitle>
             <DialogDescription>
-              Deseja realmente resetar esta mesa? Todos os itens lançados serão cancelados e a mesa voltará ao status Livre.
+              {t('tablesCentral.resetTableConfirm')}
             </DialogDescription>
           </DialogHeader>
           {resetTableTarget && (
             <p className="text-sm text-muted-foreground">
-              Mesa {resetTableTarget.number} — {resetTableTarget.itemsCount} itens • {formatPrice(resetTableTarget.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
+              {t('tablesCentral.table')} {resetTableTarget.number} — {resetTableTarget.itemsCount} {t('tablesCentral.items')} • {formatPrice(resetTableTarget.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
             </p>
           )}
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setResetTableTarget(null)} disabled={resettingTable}>
-              Cancelar
+              {t('tablesCentral.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleResetTable} disabled={resettingTable}>
               {resettingTable ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
-              {resettingTable ? 'Resetando...' : 'Sim, resetar mesa'}
+              {resettingTable ? t('tablesCentral.resetting') : t('tablesCentral.yesReset')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {gridTables.filter((t) => t.is_active).length === 0 && (
+      {gridTables.filter((tbl) => tbl.is_active).length === 0 && (
         <div className="rounded-xl border border-dashed bg-muted/30 p-12 text-center">
           <p className="text-muted-foreground">
-            {selectedZoneId ? 'Nenhuma mesa nesta zona.' : 'Nenhuma mesa cadastrada.'}
+            {selectedZoneId ? t('tablesCentral.noTablesInZone') : t('tablesCentral.noTables')}
           </p>
           {!selectedZoneId && (
             <Button className="mt-4" onClick={() => setShowAddTable(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Adicionar Mesa
+              {t('tablesCentral.addTable')}
             </Button>
           )}
         </div>
@@ -495,15 +511,15 @@ export default function AdminTables() {
         }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Configurar Salão</DialogTitle>
+            <DialogTitle>{t('tablesCentral.configureHall')}</DialogTitle>
           </DialogHeader>
           <Tabs defaultValue="zonas">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="zonas">Zonas</TabsTrigger>
-              <TabsTrigger value="mesas">Mesas</TabsTrigger>
+              <TabsTrigger value="zonas">{t('tablesCentral.zonas')}</TabsTrigger>
+              <TabsTrigger value="mesas">{t('tablesCentral.mesas')}</TabsTrigger>
             </TabsList>
             <TabsContent value="zonas">
-              <HallZonesConfig restaurantId={restaurantId} hallZones={hallZones} />
+              <HallZonesConfig restaurantId={restaurantId} hallZones={hallZones} t={t} />
             </TabsContent>
             <TabsContent value="mesas" className="space-y-6 mt-4">
               {/* Mesas Ocupadas — Limpar mesa (apenas admin/gerente) */}
@@ -514,21 +530,21 @@ export default function AdminTables() {
                   <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800/50 p-4">
                     <h3 className="font-semibold text-sm flex items-center gap-2">
                       <RotateCcw className="h-4 w-4 text-amber-600" />
-                      Mesas Ocupadas
+                      {t('tablesCentral.occupiedTables')}
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      Limpar mesa cancela os pedidos e desvincula comandas. Use com cuidado.
+                      {t('tablesCentral.clearTableDesc')}
                     </p>
                     <div className="max-h-[140px] overflow-y-auto space-y-2">
-                      {occupied.map((t) => (
+                      {occupied.map((tbl) => (
                         <div
-                          key={t.id}
+                          key={tbl.id}
                           className="flex items-center justify-between gap-3 rounded-lg border bg-white dark:bg-card px-3 py-2"
                         >
                           <div className="min-w-0">
-                            <span className="font-medium">Mesa {t.number}</span>
+                            <span className="font-medium">{t('tablesCentral.table')} {tbl.number}</span>
                             <span className="text-xs text-muted-foreground ml-2">
-                              {hallZones.find((z) => z.id === t.hall_zone_id)?.name ?? '—'} · {t.itemsCount} itens · {formatPrice(t.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
+                              {hallZones.find((z) => z.id === tbl.hall_zone_id)?.name ?? '—'} · {tbl.itemsCount} {t('tablesCentral.items')} · {formatPrice(tbl.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
                             </span>
                           </div>
                           <Button
@@ -537,11 +553,11 @@ export default function AdminTables() {
                             size="sm"
                             className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30"
                             onClick={() => {
-                              setResetTableTarget(t);
+                              setResetTableTarget(tbl);
                               setShowConfig(false);
                             }}
                           >
-                            Limpar Mesa
+                            {t('tablesCentral.clearTable')}
                           </Button>
                         </div>
                       ))}
@@ -911,44 +927,49 @@ function getZoneBadgeStyle(zoneName: string): string {
 
 // ─── Table Card (touch-friendly) — exportado para WaiterTerminal ───────────────
 
-const STATUS_CONFIG = {
-  free: {
-    label: 'Livre',
-    dotClass: 'bg-slate-300',
-    badgeClass: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-  },
-  occupied: {
-    label: 'Ocupada',
-    dotClass: 'bg-blue-500',
-    badgeClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
-  },
-  calling_waiter: {
-    label: 'Chamando',
-    dotClass: 'bg-amber-500 animate-pulse',
-    badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
-  },
-  awaiting_closure: {
-    label: 'Conta pedida',
-    dotClass: 'bg-red-500',
-    badgeClass: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
-  },
-} as const;
+function getStatusConfig(t: (k: string) => string) {
+  return {
+    free: {
+      label: t('tablesCentral.status.free'),
+      dotClass: 'bg-slate-300',
+      badgeClass: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+    },
+    occupied: {
+      label: t('tablesCentral.status.occupied'),
+      dotClass: 'bg-blue-500',
+      badgeClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+    },
+    calling_waiter: {
+      label: t('tablesCentral.status.calling'),
+      dotClass: 'bg-amber-500 animate-pulse',
+      badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
+    },
+    awaiting_closure: {
+      label: t('tablesCentral.status.awaitingClosure'),
+      dotClass: 'bg-red-500',
+      badgeClass: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
+    },
+  } as const;
+}
 
 export function TableCard({
   table,
   currency,
   zoneName,
   onClick,
+  t,
+  dateLocale,
 }: {
   table: TableWithStatus;
   currency: string;
-  /** Nome da zona da mesa (ex: Varanda, Salão Principal). Exibido como badge no card. */
   zoneName?: string | null;
   onClick: () => void;
+  t: (k: string) => string;
+  dateLocale: Locale;
 }) {
   const isCalling = table.status === 'calling_waiter' || table.hasPendingWaiterCall;
   const isOccupied = table.status !== 'free';
-  const cfg = STATUS_CONFIG[table.status];
+  const cfg = getStatusConfig(t)[table.status];
 
   const borderColor = {
     free: 'border-slate-200 dark:border-slate-700',
@@ -969,7 +990,7 @@ export function TableCard({
       <div className="flex flex-col gap-3 flex-1 min-h-0">
         {/* 1. Nome da mesa */}
         <div className="flex items-start justify-between gap-2 shrink-0">
-          <span className="text-lg font-bold sm:text-xl break-words">Mesa {table.number}</span>
+          <span className="text-lg font-bold sm:text-xl break-words">{t('tablesCentral.table')} {table.number}</span>
           {isCalling && (
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 animate-pulse dark:bg-amber-900/40 dark:text-amber-400" aria-label="Chamando garçom">
               <Bell className="h-4 w-4" />
@@ -1000,10 +1021,10 @@ export function TableCard({
         {/* 4. Quantidade de itens (quando ocupada) */}
         {isOccupied && (
           <p className="text-sm text-muted-foreground shrink-0">
-            {table.itemsCount > 0 ? `${table.itemsCount} itens` : ''}
+            {table.itemsCount > 0 ? `${table.itemsCount} ${t('tablesCentral.items')}` : ''}
             {table.orderIds.length > 1 && (
               <span className="ml-1">
-                {table.itemsCount > 0 ? '•' : ''} {table.orderIds.length} pedidos
+                {table.itemsCount > 0 ? '•' : ''} {table.orderIds.length} {t('tablesCentral.orders')}
               </span>
             )}
           </p>
@@ -1029,7 +1050,7 @@ export function TableCard({
         {isOccupied && table.openedAt && (
           <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 shrink-0">
             <Clock className="h-3.5 w-3.5 flex-shrink-0" />
-            {formatDistanceToNow(new Date(table.openedAt), { addSuffix: true, locale: ptBR })}
+            {formatDistanceToNow(new Date(table.openedAt), { addSuffix: true, locale: dateLocale })}
           </p>
         )}
       </div>
