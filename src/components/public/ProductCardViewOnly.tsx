@@ -38,9 +38,9 @@ export default function ProductCardViewOnly({ product, currency, comboItems }: P
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group w-full text-left flex items-stretch gap-4 rounded-2xl overflow-hidden bg-white/80 border border-slate-100/80 backdrop-blur-sm transition-all duration-200 active:scale-[0.995] hover:shadow-md hover:border-slate-200/80 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:ring-offset-2"
+        className="group w-full text-left flex items-stretch gap-3 sm:gap-4 rounded-2xl overflow-hidden bg-white/80 border border-slate-100/80 backdrop-blur-sm transition-all duration-200 active:scale-[0.995] hover:shadow-md hover:border-slate-200/80 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:ring-offset-2"
       >
-        <div className="relative w-24 sm:w-28 flex-shrink-0 aspect-square self-start overflow-hidden rounded-xl bg-slate-50">
+        <div className="relative w-[105px] sm:w-[123px] flex-shrink-0 aspect-square self-start overflow-hidden rounded-xl bg-slate-50">
           {product.image_url ? (
             <img
               src={product.image_url}

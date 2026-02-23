@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getSubdomain } from '@/lib/subdomain';
 import { useRestaurantMenuData } from '@/hooks/queries';
 import { Clock, Search, Utensils, Coffee, IceCream, UtensilsCrossed, ArrowLeft, ChevronRight } from 'lucide-react';
+import { getCategoryIconComponent } from '@/lib/categoryIcons';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
@@ -28,6 +29,7 @@ interface MenuViewOnlyProps {
 export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnlyProps = {}) {
   const { t, i18n } = useTranslation();
   const params = useParams<{ restaurantSlug?: string; categoryId?: string }>();
+  const navigate = useNavigate();
   const subdomain = getSubdomain();
   // Prioridade: prop (StoreLayout) > URL > subdomínio
   const restaurantSlug =
@@ -35,6 +37,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
     params.restaurantSlug ??
     (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
 
+  const [viewingCategoryId, setViewingCategoryId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -75,11 +78,12 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
   const categoryIdFromRoute = params.categoryId ?? null;
   const menuDisplayMode = (restaurant?.menu_display_mode ?? 'default') as 'default' | 'categories_first';
   const categoriesFirst = menuDisplayMode === 'categories_first';
-  const viewingSingleCategory = !!categoryIdFromRoute;
+  const effectiveViewingCategoryId = categoryIdFromRoute ?? viewingCategoryId;
+  const viewingSingleCategory = !!effectiveViewingCategoryId;
 
   const currentCategoryFromRoute = useMemo(
-    () => (categoryIdFromRoute ? categoriesFromDb.find((c) => c.id === categoryIdFromRoute) : null),
-    [categoryIdFromRoute, categoriesFromDb]
+    () => (effectiveViewingCategoryId ? categoriesFromDb.find((c) => c.id === effectiveViewingCategoryId) : null),
+    [effectiveViewingCategoryId, categoriesFromDb]
   );
 
   // Filtrar produtos por categoria e busca
@@ -163,10 +167,14 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
           <div className="flex items-center justify-between gap-2 sm:gap-4 min-w-0">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
             {viewingSingleCategory && (
-              <Link to="/menu" className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => (viewingCategoryId ? setViewingCategoryId(null) : navigate('/menu'))}
+                className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 flex-shrink-0"
+              >
                 <ArrowLeft className="h-5 w-5" />
                 <span className="text-sm font-medium hidden sm:inline">Categorias</span>
-              </Link>
+              </button>
             )}
             <div className="h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-xl sm:rounded-2xl overflow-hidden ring-2 ring-slate-100 flex-shrink-0 bg-white shadow-sm">
               {restaurant.logo ? (
@@ -216,10 +224,11 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
               {categoriesFromDb
                 .filter((cat) => categories.includes(cat.name))
                 .map((cat) => (
-                  <Link
+                  <button
                     key={cat.id}
-                    to={`/menu/categoria/${cat.id}`}
-                    className="group flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:ring-2 hover:ring-slate-200/60 transition-all duration-200 active:scale-[0.99] cursor-pointer"
+                    type="button"
+                    onClick={() => setViewingCategoryId(cat.id)}
+                    className="group w-full text-left flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:ring-2 hover:ring-slate-200/60 transition-all duration-200 active:scale-[0.99] cursor-pointer"
                   >
                     {cat.image_url ? (
                       <>
@@ -237,19 +246,22 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                       </>
                     ) : (
                       <div className="flex items-center gap-4 w-full p-4 sm:p-5">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-2xl bg-slate-100 flex items-center justify-center">
-                          <Utensils className="h-8 w-8 sm:h-10 sm:w-10 text-slate-400" />
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center ring-1 ring-slate-200/60 group-hover:from-orange-50 group-hover:to-orange-100/50 group-hover:ring-orange-200/80 transition-all duration-200">
+                          {(() => {
+                            const IconComp = getCategoryIconComponent(cat.icon);
+                            return <IconComp className="h-8 w-8 sm:h-10 sm:w-10 text-slate-500 group-hover:text-orange-600 transition-colors" />;
+                          })()}
                         </div>
                         <div className="flex-1 min-w-0 flex items-center justify-between gap-3">
                           <span className="font-semibold text-slate-800 text-base sm:text-lg truncate">{cat.name}</span>
-                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-orange-100 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-orange-600 transition-colors">
+                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-orange-100 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-orange-600 transition-colors duration-200">
                             {t('menu.viewProducts')}
                             <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                           </span>
                         </div>
                       </div>
                     )}
-                  </Link>
+                  </button>
                 ))}
             </div>
           </div>

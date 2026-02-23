@@ -580,6 +580,8 @@ export interface Category {
   order_index: number;
   /** URL da imagem da categoria */
   image_url?: string | null;
+  /** Ícone Lucide quando não há imagem (Coffee, Wine, UtensilsCrossed, etc.) */
+  icon?: string | null;
   is_pizza?: boolean;
   is_marmita?: boolean;
   has_inventory?: boolean;

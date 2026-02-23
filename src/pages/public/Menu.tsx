@@ -1,11 +1,12 @@
 import { useEffect, useState, useMemo, lazy, Suspense, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { getSubdomain } from '@/lib/subdomain';
 import { Restaurant, Product, Category, Subcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { useRestaurantMenuData, useActiveOffersByRestaurantId, useLoyaltyProgram, useLoyaltyStatus } from '@/hooks/queries';
 import { ShoppingCart, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2, ArrowLeft } from 'lucide-react';
+import { getCategoryIconComponent } from '@/lib/categoryIcons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSharingMeta } from '@/hooks/useSharingMeta';
@@ -89,6 +90,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const categoryIdFromRoute = params.categoryId ?? null;
+  const [viewingCategoryId, setViewingCategoryId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
@@ -197,7 +199,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const loyaltyEnabled = !!loyaltyProgram?.enabled;
   const menuDisplayMode = (restaurant?.menu_display_mode ?? 'default') as 'default' | 'categories_first';
   const categoriesFirst = menuDisplayMode === 'categories_first';
-  const viewingSingleCategory = !!categoryIdFromRoute;
+  const effectiveViewingCategoryId = categoryIdFromRoute ?? viewingCategoryId;
+  const viewingSingleCategory = !!effectiveViewingCategoryId;
 
   const defaultPhoneCountry = (restaurant?.phone_country === 'PY' || restaurant?.phone_country === 'AR')
     ? restaurant.phone_country
@@ -284,8 +287,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   }, [categories, products, categoriesFromDb, subcategories]);
 
   const currentCategoryFromRoute = useMemo(
-    () => (categoryIdFromRoute ? categoriesFromDb.find((c) => c.id === categoryIdFromRoute) : null),
-    [categoryIdFromRoute, categoriesFromDb]
+    () => (effectiveViewingCategoryId ? categoriesFromDb.find((c) => c.id === effectiveViewingCategoryId) : null),
+    [effectiveViewingCategoryId, categoriesFromDb]
   );
 
   // Filtrar e ordenar produtos — memoizado para não recalcular a cada render
@@ -387,10 +390,14 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               {viewingSingleCategory && (
-                <Link to="/" className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => (viewingCategoryId ? setViewingCategoryId(null) : navigate('/'))}
+                  className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 flex-shrink-0"
+                >
                   <ArrowLeft className="h-5 w-5" />
                   <span className="text-sm font-medium hidden sm:inline">Categorias</span>
-                </Link>
+                </button>
               )}
               <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl overflow-hidden ring-1 ring-slate-200/80 flex-shrink-0 bg-white shadow-sm">
                 {restaurant.logo ? (
@@ -473,10 +480,11 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               {categoriesFromDb
                 .filter((cat) => categories.includes(cat.name))
                 .map((cat) => (
-                  <Link
+                  <button
                     key={cat.id}
-                    to={`/categoria/${cat.id}`}
-                    className="group flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:ring-2 hover:ring-slate-200/60 transition-all duration-200 active:scale-[0.99] cursor-pointer"
+                    type="button"
+                    onClick={() => setViewingCategoryId(cat.id)}
+                    className="group w-full text-left flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:ring-2 hover:ring-slate-200/60 transition-all duration-200 active:scale-[0.99] cursor-pointer"
                   >
                     {cat.image_url ? (
                       <>
@@ -494,19 +502,22 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       </>
                     ) : (
                       <div className="flex items-center gap-4 w-full p-4 sm:p-5">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-2xl bg-slate-100 flex items-center justify-center">
-                          <Utensils className="h-8 w-8 sm:h-10 sm:w-10 text-slate-400" />
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center ring-1 ring-slate-200/60 group-hover:from-orange-50 group-hover:to-orange-100/50 group-hover:ring-orange-200/80 transition-all duration-200">
+                          {(() => {
+                            const IconComp = getCategoryIconComponent(cat.icon);
+                            return <IconComp className="h-8 w-8 sm:h-10 sm:w-10 text-slate-500 group-hover:text-orange-600 transition-colors" />;
+                          })()}
                         </div>
                         <div className="flex-1 min-w-0 flex items-center justify-between gap-3">
                           <span className="font-semibold text-slate-800 text-base sm:text-lg truncate">{cat.name}</span>
-                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-orange-100 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-orange-600 transition-colors">
+                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-orange-100 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-orange-600 transition-colors duration-200">
                             {t('menu.viewProducts')}
                             <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                           </span>
                         </div>
                       </div>
                     )}
-                  </Link>
+                  </button>
                 ))}
             </div>
           </div>

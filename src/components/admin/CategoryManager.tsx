@@ -39,6 +39,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { GripVertical, Loader2, Check, X, Plus, Trash2, ChevronDown, ChevronRight, Pencil, Upload } from 'lucide-react';
 import { uploadProductImage } from '@/lib/imageUpload';
+import { CATEGORY_ICON_OPTIONS, getCategoryIconComponent } from '@/lib/categoryIcons';
 
 const CATEGORY_TYPES = [
   { id: 'default', label: 'Padrão', is_pizza: false, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
@@ -198,7 +199,10 @@ function SortableCategoryRow({
               <img src={category.image_url} alt="" className="h-10 w-10 rounded-lg object-cover flex-shrink-0" />
             ) : (
               <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 text-muted-foreground">
-                <Upload className="h-4 w-4" />
+                {(() => {
+                  const IconComp = getCategoryIconComponent(category.icon);
+                  return <IconComp className="h-5 w-5" />;
+                })()}
               </div>
             )}
             <div>
@@ -326,10 +330,11 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
   const [formName, setFormName] = useState('');
   const [formType, setFormType] = useState<string>(CATEGORY_TYPES[0].id);
   const [formImageUrl, setFormImageUrl] = useState('');
+  const [formIcon, setFormIcon] = useState<string>('');
   const [imageUploading, setImageUploading] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [editForm, setEditForm] = useState<{ name: string; type: string; image_url: string }>({ name: '', type: CATEGORY_TYPES[0].id, image_url: '' });
+  const [editForm, setEditForm] = useState<{ name: string; type: string; image_url: string; icon: string }>({ name: '', type: CATEGORY_TYPES[0].id, image_url: '', icon: '' });
   const [editImageUploading, setEditImageUploading] = useState(false);
 
   const sensors = useSensors(
@@ -429,6 +434,7 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
         name,
         order_index: nextOrder,
         image_url: formImageUrl.trim() || null,
+        icon: formIcon.trim() || null,
         is_pizza: preset.is_pizza,
         is_marmita: preset.is_marmita,
         extra_field: preset.extra_field,
@@ -440,6 +446,7 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
       setFormName('');
       setFormType(CATEGORY_TYPES[0].id);
       setFormImageUrl('');
+      setFormIcon('');
       await loadData();
       onCategoriesChange?.();
       toast({ title: 'Categoria adicionada!' });
@@ -455,6 +462,7 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
       name: cat.name,
       type: CATEGORY_TYPES.some((t) => t.id === typeId) ? typeId : 'default',
       image_url: cat.image_url || '',
+      icon: cat.icon || '',
     });
     setEditModalOpen(true);
   };
@@ -476,6 +484,7 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
       const { error } = await supabase.from('categories').update({
         name,
         image_url: editForm.image_url.trim() || null,
+        icon: editForm.icon.trim() || null,
         is_pizza: preset.is_pizza,
         is_marmita: preset.is_marmita,
         extra_field: preset.extra_field,
@@ -662,11 +671,32 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
                     </SelectContent>
                   </Select>
                 </div>
+                {!formImageUrl && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Ícone (quando não há imagem)</Label>
+                    <Select value={formIcon || 'Utensils'} onValueChange={setFormIcon}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Padrão" /></SelectTrigger>
+                      <SelectContent>
+                        {CATEGORY_ICON_OPTIONS.map((opt) => {
+                          const IconComp = getCategoryIconComponent(opt.id);
+                          return (
+                            <SelectItem key={opt.id} value={opt.id}>
+                              <span className="flex items-center gap-2">
+                                <IconComp className="h-4 w-4 text-muted-foreground" />
+                                {opt.label}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setModalOpen(false); setFormImageUrl(''); }}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { setModalOpen(false); setFormImageUrl(''); setFormIcon(''); }}>Cancelar</Button>
             <Button onClick={handleAddCategory} disabled={!formName.trim()}>Adicionar</Button>
           </DialogFooter>
         </DialogContent>
@@ -733,6 +763,27 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
                     </SelectContent>
                   </Select>
                 </div>
+                {!editForm.image_url && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Ícone (quando não há imagem)</Label>
+                    <Select value={editForm.icon || 'Utensils'} onValueChange={(v) => setEditForm((f) => ({ ...f, icon: v }))}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Padrão" /></SelectTrigger>
+                      <SelectContent>
+                        {CATEGORY_ICON_OPTIONS.map((opt) => {
+                          const IconComp = getCategoryIconComponent(opt.id);
+                          return (
+                            <SelectItem key={opt.id} value={opt.id}>
+                              <span className="flex items-center gap-2">
+                                <IconComp className="h-4 w-4 text-muted-foreground" />
+                                {opt.label}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             </div>
           </div>

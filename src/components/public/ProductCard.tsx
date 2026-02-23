@@ -48,14 +48,14 @@ function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', con
           onClick?.();
         }
       }}
-      className={`group flex items-stretch gap-4 rounded-2xl overflow-hidden transition-all duration-200 w-full min-w-0 ${
+      className={`group flex items-stretch gap-3 sm:gap-4 rounded-2xl overflow-hidden transition-all duration-200 w-full min-w-0 ${
         isOffer
           ? 'bg-white border border-orange-100 shadow-sm'
           : 'bg-white/80 border border-slate-100/80 backdrop-blur-sm'
       } ${!readOnly ? 'cursor-pointer active:scale-[0.995] hover:shadow-md hover:border-slate-200/80 touch-manipulation' : ''}`}
     >
-      {/* Imagem à esquerda — proporção 1:1 (self-start evita stretch do flex) */}
-      <div className="relative w-24 sm:w-28 flex-shrink-0 aspect-square self-start overflow-hidden rounded-xl bg-slate-50">
+      {/* Imagem à esquerda — proporção 1:1, ~10% maior para melhor destaque */}
+      <div className="relative w-[105px] sm:w-[123px] flex-shrink-0 aspect-square self-start overflow-hidden rounded-xl bg-slate-50">
         {hasImage ? (
           <img
             src={product.image_url!}
