@@ -38,8 +38,7 @@ import {
   DialogContent,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { format, formatDistanceToNow, differenceInMinutes, startOfDay } from 'date-fns';
+import { formatDistanceToNow, startOfDay } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
 import { QRCodeSVG } from 'qrcode.react';
@@ -63,9 +62,11 @@ import {
   LayoutGrid,
   ShoppingBag,
   RefreshCw,
+  ListChecks,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { CashierCompletedView } from '@/components/cashier/CashierCompletedView';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
@@ -272,61 +273,6 @@ function QRModal({
   );
 }
 
-// ─── Card de conta concluída ───────────────────────────────────────────────────
-
-function CompletedCard({
-  item,
-  currency,
-  onClick,
-  selected,
-  t,
-  dateLocale,
-}: {
-  item: CompletedItem;
-  currency: CurrencyCode;
-  onClick: () => void;
-  selected: boolean;
-  t: (k: string) => string;
-  dateLocale: Locale;
-}) {
-  const durationMin = differenceInMinutes(new Date(item.exitAt), new Date(item.arrivalAt));
-  const durationStr = durationMin >= 60
-    ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`
-    : `${durationMin}m`;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full text-left rounded-xl border-2 p-3 transition-all ${
-        selected
-          ? 'border-[#F87116] bg-orange-50/60'
-          : 'border-border bg-card hover:border-slate-300 hover:shadow-sm'
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <Badge className="text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
-            {item.label}
-          </Badge>
-          <p className="text-[11px] text-muted-foreground mt-1.5 leading-tight">
-            {t('cashier.arrival')}: {format(new Date(item.arrivalAt), 'HH:mm', { locale: dateLocale })} |
-            {t('cashier.exit')}: {format(new Date(item.exitAt), 'HH:mm', { locale: dateLocale })} |
-            {t('cashier.duration')}: {durationStr}
-          </p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
-            {item.paymentMethods}
-          </p>
-        </div>
-        <div className="flex-shrink-0 text-right">
-          <p className="text-sm font-bold text-foreground">{formatCurrency(item.totalAmount, currency)}</p>
-          {selected && <ChevronRight className="h-4 w-4 text-[#F87116] mt-1 ml-auto" />}
-        </div>
-      </div>
-    </button>
-  );
-}
-
 // ─── Card da fila ─────────────────────────────────────────────────────────────
 
 function QueueCard({
@@ -417,10 +363,8 @@ function CashierContent() {
   const [justClosed, setJustClosed] = useState(false);
   const [scanInput, setScanInput] = useState('');
   const [scanError, setScanError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'open' | 'completed'>('open');
+  const [mainView, setMainView] = useState<'cashier' | 'completed'>('cashier');
   const [completedList, setCompletedList] = useState<CompletedItem[]>([]);
-  const [loadingCompleted, setLoadingCompleted] = useState(false);
-  const [selectedCompleted, setSelectedCompleted] = useState<CompletedItem | null>(null);
 
   const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
   const { data: hasTables } = useFeatureAccess('feature_tables', restaurantId);
@@ -558,7 +502,6 @@ function CashierContent() {
 
   const loadCompletedToday = useCallback(async () => {
     if (!restaurantId) return;
-    setLoadingCompleted(true);
     try {
       const items: CompletedItem[] = [];
       const labels = getPaymentLabels(t);
@@ -662,8 +605,6 @@ function CashierContent() {
     } catch (e) {
       console.error(e);
       toast({ title: t('cashier.errorLoadCompleted'), variant: 'destructive' });
-    } finally {
-      setLoadingCompleted(false);
     }
   }, [restaurantId, hasTables, hasBuffet, todayStart, t]);
 
@@ -683,8 +624,8 @@ function CashierContent() {
   }, [loadQueue]);
 
   useEffect(() => {
-    if (activeTab === 'completed') loadCompletedToday();
-  }, [activeTab, loadCompletedToday]);
+    if (mainView === 'cashier') loadCompletedToday();
+  }, [mainView, loadCompletedToday]);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -738,7 +679,6 @@ function CashierContent() {
       if (selected?.id === item.id) return;
       setScanError(null);
       setSelected(item);
-      setSelectedCompleted(null);
       const total = getDisplayTotal(item.totalAmount, item.type === 'comanda_digital' ? item.items : item.type === 'comanda_buffet' ? item.items : undefined);
       const id = `pay-${Date.now()}`;
       const displayVal = convertPriceFromStorage(total, baseCurrency);
@@ -748,16 +688,11 @@ function CashierContent() {
     [selected?.id, baseCurrency]
   );
 
-  const selectCompletedItem = useCallback((item: CompletedItem) => {
-    setSelected(null);
-    setSelectedCompleted(item);
-  }, []);
-
   const handleScanSubmit = useCallback(() => {
     const value = scanInput.trim().toUpperCase();
     if (!value) return;
 
-    if (activeTab === 'open') {
+    if (mainView === 'cashier') {
       setScanInput('');
       if (SCANNER_PATTERN.test(value)) {
         const found = queue.find(
@@ -790,22 +725,8 @@ function CashierContent() {
       } else {
         setScanError(t('cashier.invalidFormat'));
       }
-    } else {
-      const term = value.toLowerCase();
-      const found = completedList.find(
-        (c) =>
-          c.label.toLowerCase().includes(term) ||
-          (term.match(/^\d+$/) && c.label.includes(term))
-      );
-      if (found) selectCompletedItem(found);
     }
-  }, [scanInput, queue, completedList, activeTab, selectItem, selectCompletedItem, t]);
-
-  const completedFiltered = useMemo(() => {
-    const v = scanInput.trim().toLowerCase();
-    if (!v) return completedList;
-    return completedList.filter((c) => c.label.toLowerCase().includes(v));
-  }, [completedList, scanInput]);
+  }, [scanInput, queue, mainView, selectItem, t]);
 
   const handleScanKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') handleScanSubmit();
@@ -940,7 +861,6 @@ function CashierContent() {
       }
 
       setSelected(null);
-      setSelectedCompleted(null);
       setPayments([]);
       setPaymentInputs({});
       setJustClosed(true);
@@ -956,7 +876,6 @@ function CashierContent() {
 
   const handleClearSelection = () => {
     setSelected(null);
-    setSelectedCompleted(null);
     setPayments([]);
     setPaymentInputs({});
     setScanError(null);
@@ -1015,7 +934,33 @@ function CashierContent() {
               {t('cashier.subtitle')}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
+              <button
+                onClick={() => setMainView('cashier')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  mainView === 'cashier'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                {t('cashierCompleted.viewCashier')}
+              </button>
+              <button
+                onClick={() => setMainView('completed')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  mainView === 'completed'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <ListChecks className="h-4 w-4" />
+                {t('cashierCompleted.viewCompleted')}
+              </button>
+            </div>
+            {mainView === 'cashier' && (
+            <>
             {comandaUrl && (
               <Button variant="outline" size="sm" onClick={() => setShowQRModal(true)}>
                 <QrCode className="h-3.5 w-3.5 mr-1.5" />
@@ -1030,12 +975,36 @@ function CashierContent() {
               {isLive ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
               {loadingList && queue.length === 0 ? '…' : queue.length} {t('cashier.open')}
             </div>
-            <Button variant="ghost" size="icon" onClick={() => { loadQueue(false); loadCompletedToday(); }} title={t('cashier.refresh')}>
+            <Button variant="ghost" size="icon" onClick={() => loadQueue(false)} title={t('cashier.refresh')}>
               <RefreshCw className={`h-4 w-4 ${loadingList && queue.length === 0 ? 'animate-spin' : ''}`} />
             </Button>
+            </>
+            )}
           </div>
         </div>
-        {/* KPIs do turno */}
+      {mainView === 'completed' && (
+        <CashierCompletedView
+          restaurantId={restaurantId}
+          restaurantName={restaurant?.name ?? 'Restaurante'}
+          currency={baseCurrency}
+          hasTables={!!hasTables}
+          hasBuffet={!!hasBuffet}
+          onPrintOrder={(item) => {
+            if (item.order) {
+              printOrder(
+                item.order as any,
+                restaurant?.name ?? '',
+                (restaurant?.print_paper_width as '58mm' | '80mm') || '80mm',
+                baseCurrency
+              );
+              toast({ title: t('cashier.printSent'), variant: 'default' });
+            }
+          }}
+          t={t}
+          dateLocale={dateLocale}
+        />
+      )}
+      {mainView === 'cashier' && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('cashier.accountsOpen')}</p>
@@ -1054,8 +1023,10 @@ function CashierContent() {
             </p>
           </div>
         </div>
+      )}
       </div>
 
+      {mainView === 'cashier' && (
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-5 min-h-0">
         {/* COLUNA ESQUERDA: Busca + Fila */}
         <div className="lg:col-span-2 flex flex-col min-h-0 gap-4">
@@ -1099,20 +1070,14 @@ function CashierContent() {
 
           <div className="rounded-2xl border border-border bg-card overflow-hidden flex-1 min-h-0 flex flex-col shadow-sm">
             <div className="px-4 py-3 border-b border-border flex-shrink-0">
-              <h2 className="text-sm font-semibold mb-2">{t('cashier.queueTitle')}</h2>
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'open' | 'completed')}>
-                <TabsList className="w-full grid grid-cols-2">
-                  <TabsTrigger value="open" className="text-xs">
-                    {t('cashier.waitingPayment')}
-                    {queue.length > 0 && (
-                      <Badge className="ml-1.5 h-5 px-1.5 bg-[#F87116]/20 text-[#F87116] border-0">{queue.length}</Badge>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger value="completed" className="text-xs">
-                    {t('cashier.completedToday')}
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="open" className="mt-3 flex-1 overflow-y-auto min-h-0">
+              <h2 className="text-sm font-semibold mb-2">
+                {t('cashier.queueTitle')} — {t('cashier.waitingPayment')}
+                {queue.length > 0 && (
+                  <Badge className="ml-1.5 h-5 px-1.5 bg-[#F87116]/20 text-[#F87116] border-0">{queue.length}</Badge>
+                )}
+              </h2>
+            </div>
+            <div className="mt-0 flex-1 overflow-y-auto min-h-0 p-3">
                   {loadingList ? (
                     <div className="flex justify-center py-12">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -1144,114 +1109,13 @@ function CashierContent() {
                       ))}
                     </div>
                   )}
-                </TabsContent>
-                <TabsContent value="completed" className="mt-3 flex-1 overflow-y-auto min-h-0 p-3">
-                  {loadingCompleted ? (
-                    <div className="flex justify-center py-12">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : completedFiltered.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-                      <CheckCircle2 className="h-10 w-10 text-emerald-500/50" />
-                      <p className="text-sm text-muted-foreground">
-                        {scanInput.trim() ? t('cashier.noSearchResults') : t('cashier.noCompletedToday')}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {completedFiltered.map((item) => (
-                        <CompletedCard
-                          key={item.id}
-                          item={item}
-                          currency={currency}
-                          selected={selectedCompleted?.id === item.id}
-                          onClick={() => selectCompletedItem(item)}
-                          t={t}
-                          dateLocale={dateLocale}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
             </div>
           </div>
         </div>
 
-        {/* COLUNA DIREITA: Terminal de Pagamento ou Recibo (somente leitura) */}
+        {/* COLUNA DIREITA: Terminal de Pagamento */}
         <div className="lg:col-span-3">
-          {selectedCompleted ? (
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-                <span className="font-mono font-bold">{selectedCompleted.label}</span>
-                <Button variant="ghost" size="sm" onClick={() => setSelectedCompleted(null)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="p-5 overflow-y-auto max-h-[60vh]">
-                {selectedCompleted.order ? (
-                  <>
-                    <OrderReceipt
-                      data={{
-                        order: selectedCompleted.order,
-                        restaurantName: restaurant?.name ?? '',
-                        paperWidth: (restaurant?.print_paper_width as '58mm' | '80mm') || '80mm',
-                        currency: baseCurrency,
-                      }}
-                    />
-                    <Button
-                      className="w-full mt-4"
-                      onClick={() => {
-                        if (selectedCompleted.order && restaurant)
-                          printOrder(
-                            selectedCompleted.order as any,
-                            restaurant.name,
-                            (restaurant.print_paper_width as '58mm' | '80mm') || '80mm',
-                            currency,
-                            (restaurant.print_settings_by_sector as any) ?? undefined
-                          );
-                        toast({ title: t('cashier.printSent') });
-                      }}
-                    >
-                      <Printer className="h-4 w-4 mr-2" />
-                      {t('cashier.reprint')}
-                    </Button>
-                  </>
-                ) : selectedCompleted.comandaBuffet ? (
-                  <div className="space-y-4">
-                    <div className="text-sm">
-                      <p className="font-semibold mb-2">{t('cashier.buffetLabel', { num: String(selectedCompleted.comandaBuffet.number) })}</p>
-                      <div className="border rounded-lg divide-y">
-                        {selectedCompleted.comandaBuffet.items.map((i, idx) => (
-                          <div key={idx} className="flex justify-between px-3 py-2">
-                            <span>{i.description} x{i.quantity}</span>
-                            <span>{formatCurrency(i.total_price, baseCurrency)}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="font-bold mt-2 text-right">
-                        Total: {formatCurrency(selectedCompleted.totalAmount, baseCurrency)}
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {t('cashier.arrival')}: {format(new Date(selectedCompleted.arrivalAt), 'HH:mm', { locale: dateLocale })} |
-                      {t('cashier.exit')}: {format(new Date(selectedCompleted.exitAt), 'HH:mm', { locale: dateLocale })}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <p className="text-sm font-semibold">{selectedCompleted.label}</p>
-                    <p className="text-lg font-bold">{formatCurrency(selectedCompleted.totalAmount, baseCurrency)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t('cashier.arrival')}: {format(new Date(selectedCompleted.arrivalAt), 'HH:mm', { locale: dateLocale })} |
-                      {t('cashier.exit')}: {format(new Date(selectedCompleted.exitAt), 'HH:mm', { locale: dateLocale })} |
-                      {t('cashier.payment')}: {selectedCompleted.paymentMethods}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : !selected ? (
+          {!selected ? (
             <div className="flex flex-col items-center justify-center min-h-[400px] rounded-2xl border-2 border-dashed border-muted bg-muted/10 gap-5 p-10 text-center">
               <ShoppingBag className="h-16 w-16 text-muted-foreground/40" />
               <p className="text-base font-semibold text-muted-foreground">{t('cashier.noSelection')}</p>
@@ -1428,6 +1292,7 @@ function CashierContent() {
           )}
         </div>
       </div>
+      )}
 
       <OrderReceipt data={receiptData} />
       <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />
