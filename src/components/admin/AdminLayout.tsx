@@ -32,7 +32,6 @@ import {
   Search,
   ChevronDown,
   ChevronRight,
-  Truck,
   ExternalLink,
   Lock,
   Sparkles,
@@ -46,6 +45,7 @@ import {
   Tag,
   Ticket,
   Gift,
+  Printer,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -134,6 +134,7 @@ const buildNavSections = (
   t: TFn,
   restaurantSlug?: string | null,
 ): NavSection[] => [
+  // 1. VISÃO GERAL — dados e fluxo principal
   {
     kind: 'group',
     label: t('nav.groups.overview'),
@@ -143,7 +144,6 @@ const buildNavSections = (
         name: t('nav.items.dashboard'),
         href: base,
         icon: LayoutDashboard,
-        // Dashboard financeiro: visível apenas para proprietário e acima
         roleRequired: ['owner', 'restaurant_admin', 'super_admin'],
       },
       {
@@ -151,26 +151,32 @@ const buildNavSections = (
         name: t('nav.items.orders'),
         href: `${base}/orders`,
         icon: ClipboardList,
-        // Pedidos: garçom e acima (exclui cozinha que só usa KDS)
         roleRequired: ['waiter'],
+      },
+      {
+        kind: 'leaf',
+        name: t('nav.items.cashier'),
+        href: `${base}/cashier`,
+        icon: ScanBarcode,
+        featureFlag: 'feature_virtual_comanda',
+        featureLabel: 'Plano Enterprise',
+        roleRequired: ['cashier'],
       },
     ],
   },
+  // 2. OPERAÇÃO — trabalho do dia a dia
   {
     kind: 'group',
     label: t('nav.groups.operation'),
     items: [
       {
         kind: 'leaf',
-        name: t('nav.items.kitchen'),
-        href: restaurantSlug
-          ? `/${restaurantSlug}/kds`
-          : restaurantId
-            ? `/kitchen?restaurant_id=${restaurantId}`
-            : '/kitchen',
-        icon: ChefHat,
-        external: true,
-        // KDS: acessível para cozinha e acima (sem roleRequired = nível mínimo kitchen)
+        name: t('nav.items.tables'),
+        href: `${base}/tables`,
+        icon: LayoutGrid,
+        featureFlag: 'feature_tables',
+        featureLabel: 'Plano Standard',
+        roleRequired: ['waiter'],
       },
       {
         kind: 'leaf',
@@ -182,7 +188,6 @@ const buildNavSections = (
             : '/expo',
         icon: ConciergeBell,
         external: true,
-        // Expedição: garçom e acima (cozinha fica só no KDS)
         roleRequired: ['waiter'],
       },
       {
@@ -192,24 +197,34 @@ const buildNavSections = (
         icon: Scale,
         featureFlag: 'feature_buffet_module',
         featureLabel: 'Plano Enterprise',
-        // Buffet: caixa e acima
         roleRequired: ['cashier'],
       },
       {
         kind: 'leaf',
-        name: t('nav.items.cashier'),
-        href: `${base}/cashier`,
-        icon: ScanBarcode,
-        featureFlag: 'feature_virtual_comanda',
-        featureLabel: 'Plano Enterprise',
-        // Caixa: caixa e acima
-        roleRequired: ['cashier'],
+        name: t('nav.items.couriers'),
+        href: `${base}/couriers`,
+        icon: Bike,
+        featureFlag: 'feature_couriers',
+        featureLabel: 'Plano Standard',
+        roleRequired: ['manager'],
+      },
+      {
+        kind: 'leaf',
+        name: t('nav.items.kitchen'),
+        href: restaurantSlug
+          ? `/${restaurantSlug}/kds`
+          : restaurantId
+            ? `/kitchen?restaurant_id=${restaurantId}`
+            : '/kitchen',
+        icon: ChefHat,
+        external: true,
       },
     ],
   },
+  // 3. PRODUTOS & ESTOQUE — gestão de insumos
   {
     kind: 'group',
-    label: t('nav.groups.menu'),
+    label: t('nav.groups.productsStock'),
     items: [
       {
         kind: 'leaf',
@@ -223,9 +238,15 @@ const buildNavSections = (
         name: t('nav.items.inventory'),
         href: `${base}/inventory`,
         icon: Boxes,
-        // Estoque: gerente e acima
         roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
       },
+    ],
+  },
+  // 4. MARKETING & VENDAS — crescimento
+  {
+    kind: 'group',
+    label: t('nav.groups.marketingSales'),
+    items: [
       {
         kind: 'leaf',
         name: t('nav.items.offers'),
@@ -249,49 +270,40 @@ const buildNavSections = (
       },
     ],
   },
+  // 5. CONFIGURAÇÕES — ajustes estruturais
   {
-    kind: 'collapsible',
-    key: 'logistica',
-    label: t('nav.groups.logistics'),
-    icon: Truck,
+    kind: 'group',
+    label: t('nav.groups.settings'),
     items: [
       {
         kind: 'leaf',
-        name: t('nav.items.tables'),
-        href: `${base}/tables`,
-        icon: LayoutGrid,
-        featureFlag: 'feature_tables',
-        featureLabel: 'Plano Standard',
-        // Mesas: garçom e acima
-        roleRequired: ['waiter'],
+        name: t('nav.items.settingsGeneral'),
+        href: `${base}/settings`,
+        icon: Settings,
+        roleRequired: ['restaurant_admin', 'super_admin'],
       },
       {
-        kind: 'submenu',
-        key: 'delivery',
-        name: t('nav.items.delivery'),
-        icon: Truck,
-        items: [
-          {
-            kind: 'leaf',
-            name: t('nav.items.couriers'),
-            href: `${base}/couriers`,
-            icon: Bike,
-            featureFlag: 'feature_couriers',
-            featureLabel: 'Plano Standard',
-            // Entregadores: gerente e acima
-            roleRequired: ['manager'],
-          },
-          {
-            kind: 'leaf',
-            name: t('nav.items.deliveryZones'),
-            href: `${base}/delivery-zones`,
-            icon: MapPin,
-            featureFlag: 'feature_delivery_zones',
-            featureLabel: 'Plano Standard',
-            // Zonas de entrega: gerente e acima
-            roleRequired: ['manager'],
-          },
-        ],
+        kind: 'leaf',
+        name: t('nav.items.settingsDeliveryZones'),
+        href: `${base}/delivery-zones`,
+        icon: MapPin,
+        featureFlag: 'feature_delivery_zones',
+        featureLabel: 'Plano Standard',
+        roleRequired: ['manager'],
+      },
+      {
+        kind: 'leaf',
+        name: t('nav.items.settingsPrint'),
+        href: `${base}/settings#impressao`,
+        icon: Printer,
+        roleRequired: ['restaurant_admin', 'super_admin'],
+      },
+      {
+        kind: 'leaf',
+        name: t('nav.items.usersTeam'),
+        href: `${base}/settings#usuarios`,
+        icon: Users,
+        roleRequired: ['restaurant_admin', 'super_admin'],
       },
     ],
   },

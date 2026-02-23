@@ -2237,6 +2237,7 @@ export default function AdminMenu() {
               </div>
             </div>
           </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCategoryModal(false)}>Cancelar</Button>
             <Button onClick={handleAddCategory} disabled={!categoryFormName.trim()}>Adicionar</Button>
@@ -2327,6 +2328,7 @@ export default function AdminMenu() {
                   <div className="flex items-center gap-1.5"><Boxes className="h-3.5 w-3.5 text-primary" /><span className="text-sm font-medium">Controle de Estoque</span></div>
                   <p className="text-xs text-muted-foreground mt-0.5">Ativa gerenciamento de quantidade e custo para esta categoria.</p>
                 </div>
+              </div>
               </div>
             </div>
           )}

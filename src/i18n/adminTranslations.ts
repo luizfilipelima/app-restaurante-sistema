@@ -38,10 +38,11 @@ const pt = {
 
   nav: {
     groups: {
-      overview:   'Visão Geral',
-      operation:  'Operação',
-      menu:       'Cardápio',
-      logistics:  'Logística & Salão',
+      overview:       'Visão Geral',
+      operation:      'Operação',
+      productsStock:  'Produtos & Estoque',
+      marketingSales: 'Marketing & Vendas',
+      settings:       'Configurações',
     },
     items: {
       dashboard:      'Dashboard',
@@ -61,6 +62,10 @@ const pt = {
       deliveryZones:  'Zonas de Entrega',
       delivery:       'Delivery',
       settings:       'Configurações',
+      usersTeam:      'Usuários & Equipe',
+      settingsGeneral:      'Ajustes Gerais',
+      settingsDeliveryZones:'Delivery & Zonas',
+      settingsPrint:        'Impressão',
       plan:           'Meu Plano',
       users:          'Usuários',
       logout:         'Sair',
@@ -243,10 +248,11 @@ const es: typeof pt = {
 
   nav: {
     groups: {
-      overview:   'Vista General',
-      operation:  'Operación',
-      menu:       'Menú',
-      logistics:  'Logística & Salón',
+      overview:       'Vista General',
+      operation:      'Operación',
+      productsStock:  'Productos y Stock',
+      marketingSales: 'Marketing y Ventas',
+      settings:       'Configuración',
     },
     items: {
       dashboard:      'Dashboard',
@@ -266,6 +272,10 @@ const es: typeof pt = {
       deliveryZones:  'Zonas de Entrega',
       delivery:       'Delivery',
       settings:       'Configuración',
+      usersTeam:      'Usuarios y Equipo',
+      settingsGeneral:      'Ajustes Generales',
+      settingsDeliveryZones:'Delivery y Zonas',
+      settingsPrint:        'Impresión',
       plan:           'Mi Plan',
       users:          'Usuarios',
       logout:         'Salir',
@@ -448,10 +458,11 @@ const en: typeof pt = {
 
   nav: {
     groups: {
-      overview:   'Overview',
-      operation:  'Operations',
-      menu:       'Menu',
-      logistics:  'Logistics & Hall',
+      overview:       'Overview',
+      operation:      'Operations',
+      productsStock:  'Products & Stock',
+      marketingSales: 'Marketing & Sales',
+      settings:       'Settings',
     },
     items: {
       dashboard:      'Dashboard',
@@ -471,6 +482,10 @@ const en: typeof pt = {
       deliveryZones:  'Delivery Zones',
       delivery:       'Delivery',
       settings:       'Settings',
+      usersTeam:      'Users & Team',
+      settingsGeneral:      'General Settings',
+      settingsDeliveryZones:'Delivery & Zones',
+      settingsPrint:        'Printing',
       plan:           'My Plan',
       users:          'Users',
       logout:         'Sign out',
