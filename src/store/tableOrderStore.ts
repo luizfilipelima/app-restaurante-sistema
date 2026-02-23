@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+const STORAGE_KEY = (tableId: string) => `table-order-${tableId}`;
+
 interface TableOrderState {
   tableId: string | null;
   tableNumber: number | null;
@@ -10,11 +12,31 @@ interface TableOrderState {
   clearTable: () => void;
 }
 
-export const useTableOrderStore = create<TableOrderState>((set) => ({
+export const useTableOrderStore = create<TableOrderState>((set, get) => ({
   tableId: null,
   tableNumber: null,
   tableCustomerName: null,
-  setTable: (tableId, tableNumber) => set({ tableId, tableNumber, tableCustomerName: null }),
-  setTableCustomerName: (tableCustomerName) => set({ tableCustomerName }),
-  clearTable: () => set({ tableId: null, tableNumber: null, tableCustomerName: null }),
+  setTable: (tableId, tableNumber) => {
+    let tableCustomerName: string | null = null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY(tableId));
+      if (raw) {
+        const parsed = JSON.parse(raw) as { tableCustomerName?: string };
+        if (parsed?.tableCustomerName?.trim()) tableCustomerName = parsed.tableCustomerName.trim();
+      }
+    } catch { /* ignore */ }
+    set({ tableId, tableNumber, tableCustomerName });
+  },
+  setTableCustomerName: (tableCustomerName) => {
+    const { tableId, tableNumber } = get();
+    set({ tableCustomerName });
+    if (tableId && tableNumber != null) {
+      try {
+        localStorage.setItem(STORAGE_KEY(tableId), JSON.stringify({ tableNumber, tableCustomerName }));
+      } catch { /* ignore */ }
+    }
+  },
+  clearTable: () => {
+    set({ tableId: null, tableNumber: null, tableCustomerName: null });
+  },
 }));

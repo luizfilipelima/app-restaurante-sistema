@@ -70,6 +70,7 @@ import {
   Copy,
   ConciergeBell,
   RotateCcw,
+  Trash2,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -466,6 +467,11 @@ export default function AdminTables() {
           queryClient.invalidateQueries({ queryKey: ['hallZones', restaurantId] });
           queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
         }}
+        onTableDeleted={() => {
+          setSelectedTable(null);
+          refetchTables();
+          queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+        }}
         isMobile={isMobile}
       />
 
@@ -670,6 +676,7 @@ export function TableOperationSheet({
   onOrderPlaced,
   onClosureRequested,
   onTableOrZoneUpdated,
+  onTableDeleted,
   isMobile,
 }: {
   mode: 'management' | 'operation';
@@ -685,6 +692,8 @@ export function TableOperationSheet({
   onOrderPlaced: () => void;
   onClosureRequested: () => void;
   onTableOrZoneUpdated: () => void;
+  /** Chamado quando a mesa é excluída (apenas modo management). */
+  onTableDeleted?: () => void;
   isMobile: boolean;
 }) {
   const isManagement = mode === 'management';
@@ -700,6 +709,8 @@ export function TableOperationSheet({
   const [comandaInput, setComandaInput] = useState('');
   const [updatingTableZone, setUpdatingTableZone] = useState(false);
   const [localHallZoneId, setLocalHallZoneId] = useState<string | null | undefined>(undefined);
+  const [deletingTable, setDeletingTable] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const comandaInputRef = useRef<HTMLInputElement>(null);
 
   // Sincroniza estado local com a mesa (para corrigir bug de zona não atualizar no dropdown)
@@ -828,6 +839,23 @@ export function TableOperationSheet({
       toast({ title: 'Erro ao atualizar zona', variant: 'destructive' });
     } finally {
       setUpdatingTableZone(false);
+    }
+  };
+
+  const handleDeleteTable = async () => {
+    if (!table || !onTableDeleted || deletingTable) return;
+    setDeletingTable(true);
+    try {
+      const { error } = await supabase.from('tables').update({ is_active: false }).eq('id', table.id);
+      if (error) throw error;
+      setShowDeleteConfirm(false);
+      onClose();
+      onTableDeleted();
+      toast({ title: 'Mesa excluída!' });
+    } catch {
+      toast({ title: 'Erro ao excluir mesa', variant: 'destructive' });
+    } finally {
+      setDeletingTable(false);
     }
   };
 
@@ -1116,10 +1144,44 @@ export function TableOperationSheet({
                   Conta solicitada. Mesa na fila do Caixa.
                 </p>
               )}
+
+              {/* Excluir Mesa — apenas Central de Mesas (modo gestão) */}
+              {isManagement && onTableDeleted && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="min-h-[48px] touch-manipulation border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash2 className="h-5 w-5 mr-2" />
+                  Excluir mesa
+                </Button>
+              )}
             </div>
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Modal confirmação: Excluir mesa */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir mesa</DialogTitle>
+            <DialogDescription>
+              Deseja realmente excluir a Mesa {table?.number}? Ela deixará de aparecer na Central de Mesas. Esta ação pode ser revertida posteriormente pela equipe técnica.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={deletingTable}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteTable} disabled={deletingTable}>
+              {deletingTable ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              {deletingTable ? 'Excluindo...' : 'Sim, excluir mesa'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal QR Code */}
       <Dialog open={qrModalOpen} onOpenChange={setQrModalOpen}>

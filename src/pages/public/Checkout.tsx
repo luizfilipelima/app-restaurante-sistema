@@ -98,10 +98,16 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const [searchParams] = useSearchParams();
   const tableIdFromUrl = searchParams.get('tableId');
   const tableNumberFromUrl = searchParams.get('tableNumber');
-  const { tableId: tableIdStore, tableNumber: tableNumberStore, tableCustomerName, clearTable } = useTableOrderStore();
+  const { tableId: tableIdStore, tableNumber: tableNumberStore, tableCustomerName, clearTable, setTable } = useTableOrderStore();
   const tableId = tableIdFromUrl || tableIdStore;
   const tableNumber = tableNumberFromUrl ? parseInt(tableNumberFromUrl, 10) : tableNumberStore;
   const isTableOrder = !!(tableId && tableNumber);
+
+  useEffect(() => {
+    if (isTableOrder && tableId && tableNumber != null && !tableIdStore) {
+      setTable(tableId, tableNumber);
+    }
+  }, [isTableOrder, tableId, tableNumber, tableIdStore, setTable]);
 
   // ── Entrega ──
   const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
