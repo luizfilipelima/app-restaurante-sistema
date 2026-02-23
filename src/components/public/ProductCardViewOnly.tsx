@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Product } from '@/types';
 import { formatPrice, type CurrencyCode } from '@/lib/priceHelper';
+import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
 import {
   Dialog,
   DialogContent,
@@ -60,6 +61,9 @@ export default function ProductCardViewOnly({ product, currency, comboItems }: P
           {subtitle && (
             <p className="mt-0.5 text-xs text-slate-500 leading-snug line-clamp-2">{subtitle}</p>
           )}
+          {(product.allergens?.length || product.labels?.length) ? (
+            <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} compact className="mt-2" />
+          ) : null}
           <div className="mt-3 flex items-center justify-between gap-3">
             <span className="text-sm font-semibold text-slate-900 tabular-nums">
               {formatPrice(Number(product.price), currency)}
@@ -100,6 +104,9 @@ export default function ProductCardViewOnly({ product, currency, comboItems }: P
                   : product.description}
               </p>
             )}
+            {(product.allergens?.length || product.labels?.length) ? (
+              <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} className="mt-1" />
+            ) : null}
             <p className="text-slate-900 font-bold text-lg sm:text-xl tabular-nums mt-1">
               {formatPrice(Number(product.price), currency)}
             </p>

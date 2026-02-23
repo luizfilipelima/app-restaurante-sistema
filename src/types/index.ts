@@ -184,6 +184,10 @@ export interface Product {
   is_combo?: boolean;
   /** Como exibir no cardápio: 'grid' = card vertical padrão, 'beverage' = card horizontal (bebidas) */
   card_layout?: 'grid' | 'beverage';
+  /** Alérgenos: gluten, crustaceans, eggs, fish, peanuts, soy, milk, nuts, celery, mustard, sesame, sulphites, lupin, molluscs */
+  allergens?: string[] | null;
+  /** Etiquetas: vegetarian, vegan, spicy, gluten_free, organic */
+  labels?: string[] | null;
   created_at: string;
   updated_at: string;
 }

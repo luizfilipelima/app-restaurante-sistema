@@ -7,6 +7,7 @@ import { Product } from '@/types';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
+import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
 
 interface ProductCardProps {
   product: Product;
@@ -93,6 +94,9 @@ function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', con
             {subtitle}
           </p>
         )}
+        {(product.allergens?.length || product.labels?.length) ? (
+          <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} compact className="mt-2" />
+        ) : null}
         <div className="mt-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
             {isOffer && (

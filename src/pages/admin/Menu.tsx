@@ -93,6 +93,7 @@ import {
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
 import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/ProductAddonsSection';
+import ProductAllergensLabelsSection from '@/components/admin/ProductAllergensLabelsSection';
 import { useProductUpsells, useSaveProductUpsells, useProductComboItems, useProductAddons, useSaveProductAddons } from '@/hooks/queries';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -142,6 +143,9 @@ const formDefaults = {
   invExpiry: '',
   // Exibição no cardápio público
   cardLayout: 'grid' as 'grid' | 'beverage',
+  // Alérgenos e etiquetas
+  allergens: [] as string[],
+  labels: [] as string[],
 };
 
 // ─── SortableCategoryItem ──────────────────────────────────────────────────────
@@ -708,6 +712,8 @@ export default function AdminMenu() {
       subcategoryId: product.subcategory_id ?? null,
       printDest: (product.print_destination ?? cat?.print_destination ?? 'kitchen') as 'kitchen' | 'bar',
       cardLayout: (product.card_layout === 'beverage' ? 'beverage' : 'grid') as 'grid' | 'beverage',
+      allergens: Array.isArray(product.allergens) ? product.allergens : [],
+      labels: Array.isArray(product.labels) ? product.labels : [],
       hasInventory,
       invQuantity,
       invMinQuantity,
@@ -789,6 +795,8 @@ export default function AdminMenu() {
         subcategory_id: form.subcategoryId || null,
         print_destination: form.printDest,
         card_layout: form.cardLayout,
+        allergens: form.allergens?.length ? form.allergens : null,
+        labels: form.labels?.length ? form.labels : null,
       };
       let savedProductId = editingProduct?.id ?? '';
 
@@ -1620,6 +1628,14 @@ export default function AdminMenu() {
                 </button>
               </div>
             </div>
+
+            {/* Alérgenos e Etiquetas */}
+            <ProductAllergensLabelsSection
+              allergens={form.allergens}
+              labels={form.labels}
+              onAllergensChange={(ids) => setForm((f) => ({ ...f, allergens: ids }))}
+              onLabelsChange={(ids) => setForm((f) => ({ ...f, labels: ids }))}
+            />
 
             {/* Combo Builder (categoria Combos) */}
             {isComboCategory && (

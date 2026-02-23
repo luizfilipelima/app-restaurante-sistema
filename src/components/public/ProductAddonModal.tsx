@@ -10,6 +10,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Minus, Plus, ArrowLeft, Check } from 'lucide-react';
+import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
 
 interface AddonItem {
   id: string;
@@ -136,6 +137,9 @@ export default function ProductAddonModal({
                   {product.description}
                 </p>
               )}
+              {(product.allergens?.length || product.labels?.length) ? (
+                <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} className="pt-2" />
+              ) : null}
             </div>
 
             {/* Seletor de quantidade — compacto */}

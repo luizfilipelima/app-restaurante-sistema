@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { Minus, Plus, ArrowLeft } from 'lucide-react';
+import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
 
 interface SimpleProductModalProps {
   open: boolean;
@@ -103,6 +104,9 @@ export default function SimpleProductModal({
                   {product.description}
                 </p>
               )}
+              {(product.allergens?.length || product.labels?.length) ? (
+                <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} className="pt-2" />
+              ) : null}
             </div>
 
             {/* Seletor de quantidade — compacto */}
