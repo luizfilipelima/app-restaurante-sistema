@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useSuperAdminDashboardBI, dashboardBIKey, useInvalidateDashboardBI } from '@/hooks/queries/useSuperAdminDashboardBI';
+import { useSuperAdminDashboardBI, useInvalidateDashboardBI } from '@/hooks/queries/useSuperAdminDashboardBI';
 import type { PlanFilter } from '@/hooks/queries/useSuperAdminDashboardBI';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatBRLReais } from '@/lib/utils';
 import {
   BarChart,
   Bar,
@@ -146,12 +145,6 @@ export default function SaasMetrics() {
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  // ── Preparar dados do gráfico (usa receita recalculada com preços da página Planos) ───
-  const chartData = revenueByPlan.map((item) => ({
-    ...item,
-    fill: PLAN_COLORS[item.plan_name]?.bar ?? '#94a3b8',
-  }));
 
   // ── Loading skeleton ─────────────────────────────────────────────────────
   if (isLoading) {
