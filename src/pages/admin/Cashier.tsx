@@ -40,7 +40,8 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { format, formatDistanceToNow, differenceInMinutes, startOfDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import type { Locale } from 'date-fns';
+import { ptBR, es, enUS } from 'date-fns/locale';
 import { QRCodeSVG } from 'qrcode.react';
 import QRCodeLib from 'qrcode';
 import {
@@ -64,6 +65,9 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+
+const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -127,12 +131,14 @@ interface PaymentEntry {
   displayValue: string;
 }
 
-const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  cash: 'Dinheiro',
-  card: 'Cartão',
-  pix: 'PIX',
-  bank_transfer: 'Transferência',
-};
+function getPaymentLabels(t: (k: string) => string): Record<PaymentMethod, string> {
+  return {
+    cash: t('cashier.paymentLabels.cash'),
+    card: t('cashier.paymentLabels.card'),
+    pix: t('cashier.paymentLabels.pix'),
+    bank_transfer: t('cashier.paymentLabels.bank_transfer'),
+  };
+}
 
 const SCANNER_PATTERN = /^CMD-[A-Z0-9]{4}$/i;
 const ALL_CURRENCIES: CurrencyCode[] = ['BRL', 'PYG', 'ARS', 'USD'];
@@ -153,12 +159,14 @@ function QRModal({
   url,
   restaurantName,
   logo,
+  t,
 }: {
   open: boolean;
   onClose: () => void;
   url: string;
   restaurantName: string;
   logo: string | null;
+  t: (k: string) => string;
 }) {
   const [downloading, setDownloading] = useState(false);
   const [printing, setPrinting] = useState(false);
@@ -200,7 +208,7 @@ function QRModal({
         : '';
       const win = window.open('', '_blank');
       if (!win) {
-        alert('Permita pop-ups para imprimir.');
+        alert(t('cashier.allowPopups'));
         return;
       }
       win.document.write(
@@ -209,9 +217,9 @@ function QRModal({
         .card{text-align:center;max-width:320px}.logo{margin-bottom:8px}.title{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#64748b;margin-bottom:4px}
         .name{font-size:18px;font-weight:700;color:#0f172a;margin-bottom:20px}.qr{padding:12px;border:2px solid #f1f5f9;border-radius:16px;display:inline-block;margin-bottom:14px}
         .url{font-size:10px;color:#94a3b8;word-break:break-all;font-family:monospace;margin-bottom:14px}.hint{font-size:11px;color:#64748b;background:#f8fafc;padding:12px;border-radius:12px;line-height:1.5}
-        </style></head><body><div class="card">${logoHtml}<p class="title">Escaneie para abrir sua comanda</p>
+        </style></head><body><div class="card">${logoHtml}<p class="title">${t('cashier.scanToOpen')}</p>
         <p class="name">${restaurantName}</p><div class="qr"><img src="${qrPng}" width="280" height="280"/></div>
-        <p class="url">${url}</p><p class="hint">Aponte a câmera do celular. Nenhum aplicativo necessário.</p></div>
+        <p class="url">${url}</p><p class="hint">${t('cashier.scanHintPrint')}</p></div>
         <script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}<\/script></body></html>`
       );
       win.document.close();
@@ -231,9 +239,9 @@ function QRModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-[380px] p-0 overflow-hidden rounded-2xl border border-slate-200 shadow-2xl bg-white">
+      <DialogContent className="max-w-[400px] p-0 overflow-hidden rounded-2xl border border-slate-200 shadow-2xl bg-white dark:bg-slate-900 dark:border-slate-700">
         <div className="flex flex-col items-center gap-4 px-5 py-5">
-          <DialogTitle className="text-sm font-bold text-slate-900">QR Code da Comanda</DialogTitle>
+          <DialogTitle className="text-sm font-bold text-slate-900">{t('cashier.qrModalTitle')}</DialogTitle>
           {logo ? (
             <img src={logo} alt={restaurantName} className="h-12 w-12 rounded-xl object-cover" />
           ) : (
@@ -247,15 +255,15 @@ function QRModal({
           <div className="flex gap-2">
             <Button size="sm" onClick={handlePrint} disabled={printing}>
               {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
-              Imprimir
+              {t('cashier.print')}
             </Button>
             <Button size="sm" variant="outline" onClick={handleDownload} disabled={downloading}>
               {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Baixar
+              {t('cashier.download')}
             </Button>
             <Button size="sm" variant="outline" onClick={handleCopy}>
               {copied ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <ScanBarcode className="h-4 w-4" />}
-              {copied ? 'Copiado!' : 'Copiar'}
+              {copied ? t('cashier.copied') : t('cashier.copy')}
             </Button>
           </div>
         </div>
@@ -271,11 +279,15 @@ function CompletedCard({
   currency,
   onClick,
   selected,
+  t,
+  dateLocale,
 }: {
   item: CompletedItem;
   currency: CurrencyCode;
   onClick: () => void;
   selected: boolean;
+  t: (k: string) => string;
+  dateLocale: Locale;
 }) {
   const durationMin = differenceInMinutes(new Date(item.exitAt), new Date(item.arrivalAt));
   const durationStr = durationMin >= 60
@@ -298,9 +310,9 @@ function CompletedCard({
             {item.label}
           </Badge>
           <p className="text-[11px] text-muted-foreground mt-1.5 leading-tight">
-            Chegada: {format(new Date(item.arrivalAt), 'HH:mm', { locale: ptBR })} |
-            Saída: {format(new Date(item.exitAt), 'HH:mm', { locale: ptBR })} |
-            Duração: {durationStr}
+            {t('cashier.arrival')}: {format(new Date(item.arrivalAt), 'HH:mm', { locale: dateLocale })} |
+            {t('cashier.exit')}: {format(new Date(item.exitAt), 'HH:mm', { locale: dateLocale })} |
+            {t('cashier.duration')}: {durationStr}
           </p>
           <p className="text-[10px] text-muted-foreground mt-0.5">
             {item.paymentMethods}
@@ -322,11 +334,15 @@ function QueueCard({
   selected,
   currency,
   onClick,
+  t,
+  dateLocale,
 }: {
   item: CashierQueueItem;
   selected: boolean;
   currency: CurrencyCode;
   onClick: () => void;
+  t: (k: string) => string;
+  dateLocale: Locale;
 }) {
   const total = getDisplayTotal(
     item.totalAmount,
@@ -347,10 +363,10 @@ function QueueCard({
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left rounded-xl border-2 p-3 transition-all ${
+      className={`w-full text-left rounded-xl border-2 p-4 transition-all ${
         selected
-          ? 'border-[#F87116] bg-orange-50/60'
-          : 'border-border bg-card hover:border-slate-300 hover:shadow-sm'
+          ? 'border-[#F87116] bg-orange-50/60 dark:bg-orange-950/30 shadow-sm'
+          : 'border-border bg-card hover:border-slate-300 hover:shadow-sm dark:hover:border-slate-600'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -361,7 +377,7 @@ function QueueCard({
           <div className="flex items-center gap-1 mt-0.5">
             <User className="h-3 w-3 text-muted-foreground flex-shrink-0" />
             <span className="text-xs text-muted-foreground truncate">
-              {item.customerName || 'Sem nome'}
+              {item.customerName || t('cashier.noName')}
             </span>
           </div>
         </div>
@@ -369,7 +385,7 @@ function QueueCard({
           <p className="text-sm font-bold text-foreground">{formatCurrency(total, currency)}</p>
           <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 justify-end mt-0.5">
             <Clock className="h-2.5 w-2.5" />
-            {formatDistanceToNow(new Date(item.createdAt), { addSuffix: false, locale: ptBR })}
+            {formatDistanceToNow(new Date(item.createdAt), { addSuffix: false, locale: dateLocale })}
           </p>
         </div>
         {selected && (
@@ -385,6 +401,8 @@ function QueueCard({
 function CashierContent() {
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
+  const { t, lang } = useAdminTranslation();
+  const dateLocale = DATE_LOCALES[lang] ?? ptBR;
   const scannerRef = useRef<HTMLInputElement>(null);
   const { data: restaurant } = useRestaurant(restaurantId);
   const { printOrder, receiptData, secondReceiptData } = usePrinter();
@@ -530,11 +548,11 @@ function CashierContent() {
       setQueue(items);
     } catch (e) {
       console.error(e);
-      toast({ title: 'Erro ao carregar fila', variant: 'destructive' });
+      toast({ title: t('cashier.errorLoadQueue'), variant: 'destructive' });
     } finally {
       setLoadingList(false);
     }
-  }, [restaurantId, hasBuffet, hasTables]);
+  }, [restaurantId, hasBuffet, hasTables, t]);
 
   const todayStart = useMemo(() => startOfDay(new Date()).toISOString(), []);
 
@@ -543,7 +561,8 @@ function CashierContent() {
     setLoadingCompleted(true);
     try {
       const items: CompletedItem[] = [];
-      const pmLabel = (m: string) => PAYMENT_METHOD_LABELS[m as PaymentMethod] ?? m;
+      const labels = getPaymentLabels(t);
+      const pmLabel = (m: string) => labels[m as PaymentMethod] ?? m;
 
       const [ordersRes, vcRes, comandasRes] = await Promise.all([
         hasTables
@@ -626,7 +645,7 @@ function CashierContent() {
           totalAmount: c.total_amount ?? 0,
           arrivalAt: c.opened_at,
           exitAt: c.closed_at ?? c.opened_at,
-          paymentMethods: 'Finalizado',
+          paymentMethods: t('cashier.closed'),
           comandaBuffet: {
             number: c.number,
             items: (c.comanda_items ?? []).map((i: any) => ({
@@ -642,11 +661,11 @@ function CashierContent() {
       setCompletedList(items);
     } catch (e) {
       console.error(e);
-      toast({ title: 'Erro ao carregar concluídos', variant: 'destructive' });
+      toast({ title: t('cashier.errorLoadCompleted'), variant: 'destructive' });
     } finally {
       setLoadingCompleted(false);
     }
-  }, [restaurantId, hasTables, hasBuffet, todayStart]);
+  }, [restaurantId, hasTables, hasBuffet, todayStart, t]);
 
   const loadQueueRef = useRef(loadQueue);
   loadQueueRef.current = loadQueue;
@@ -747,7 +766,7 @@ function CashierContent() {
         if (found) {
           selectItem(found);
         } else {
-          setScanError(`Comanda ${value} não encontrada ou já encerrada.`);
+          setScanError(t('cashier.comandaNotFound', { code: value }));
         }
         return;
       }
@@ -767,9 +786,9 @@ function CashierContent() {
           selectItem(bufFound);
           return;
         }
-        setScanError(`Mesa ou Comanda #${num} não encontrada.`);
+        setScanError(t('cashier.tableOrComandaNotFound', { num }));
       } else {
-        setScanError(`Formato inválido. Use CMD-XXXX, número da Mesa ou Comanda.`);
+        setScanError(t('cashier.invalidFormat'));
       }
     } else {
       const term = value.toLowerCase();
@@ -780,7 +799,7 @@ function CashierContent() {
       );
       if (found) selectCompletedItem(found);
     }
-  }, [scanInput, queue, completedList, activeTab, selectItem, selectCompletedItem]);
+  }, [scanInput, queue, completedList, activeTab, selectItem, selectCompletedItem, t]);
 
   const completedFiltered = useMemo(() => {
     const v = scanInput.trim().toLowerCase();
@@ -825,11 +844,11 @@ function CashierContent() {
       if (items.length > 0) groups.push({ zoneName: z.name, items });
     }
     const noZone = tableItems.filter((t) => !t.hallZoneId);
-    if (noZone.length > 0) groups.push({ zoneName: 'Sem zona', items: noZone });
-    if (nonTableItems.length > 0) groups.push({ zoneName: 'Comandas Avulsas', items: nonTableItems });
-    if (groups.length === 0 && queue.length > 0) groups.push({ zoneName: 'Todos', items: queue });
+    if (noZone.length > 0) groups.push({ zoneName: t('cashier.noZone'), items: noZone });
+    if (nonTableItems.length > 0) groups.push({ zoneName: t('cashier.standaloneComandas'), items: nonTableItems });
+    if (groups.length === 0 && queue.length > 0) groups.push({ zoneName: t('cashier.all'), items: queue });
     return groups;
-  }, [queue, hallZones]);
+  }, [queue, hallZones, t]);
 
   const addPayment = () => {
     const id = `pay-${Date.now()}`;
@@ -895,13 +914,13 @@ function CashierContent() {
             (restaurant.print_settings_by_sector as any) ?? undefined
           );
         }
-        toast({ title: 'Comanda encerrada!', description: `${selected.shortCode} — ${formatCurrency(totalToPay, currency)}` });
+        toast({ title: t('cashier.comandaClosed'), description: `${selected.shortCode} — ${formatCurrency(totalToPay, currency)}` });
       } else if (selected.type === 'comanda_buffet') {
         await supabase
           .from('comandas')
           .update({ status: 'closed', closed_at: new Date().toISOString() })
           .eq('id', selected.comandaId);
-        toast({ title: 'Comanda fechada!', description: `Comanda #${selected.number} — ${formatCurrency(totalToPay, currency)}` });
+        toast({ title: t('cashier.buffetClosed'), description: `#${selected.number} — ${formatCurrency(totalToPay, currency)}` });
       } else if (selected.type === 'table') {
         await supabase
           .from('orders')
@@ -917,7 +936,7 @@ function CashierContent() {
             (restaurant.print_settings_by_sector as any) ?? undefined
           );
         }
-        toast({ title: 'Pedido pago!', description: `Mesa ${selected.tableNumber} — ${formatCurrency(totalToPay, currency)}` });
+        toast({ title: t('cashier.orderPaid'), description: `${selected.tableNumber} — ${formatCurrency(totalToPay, currency)}` });
       }
 
       setSelected(null);
@@ -929,7 +948,7 @@ function CashierContent() {
       loadCompletedToday();
       scannerRef.current?.focus();
     } catch (err: any) {
-      toast({ title: 'Erro ao encerrar', description: err?.message, variant: 'destructive' });
+      toast({ title: t('cashier.errorFinalize'), description: err?.message, variant: 'destructive' });
     } finally {
       setClosing(false);
     }
@@ -961,7 +980,7 @@ function CashierContent() {
           const map = new Map<string, { label: string; items: { name: string; qty: number; price: number }[]; subtotal: number }>();
           for (const i of items) {
             const key = (i.customer_name ?? '').trim() || '__mesa_geral__';
-            const label = key === '__mesa_geral__' ? 'Mesa Geral' : key;
+            const label = key === '__mesa_geral__' ? t('cashier.tableGeneral') : key;
             const row = { name: i.product_name, qty: i.quantity, price: Number(i.total_price) };
             const existing = map.get(key);
             if (existing) {
@@ -984,22 +1003,23 @@ function CashierContent() {
           url={comandaUrl}
           restaurantName={restaurant.name}
           logo={restaurant.logo ?? null}
+          t={t}
         />
       )}
 
-      <div className="space-y-4 mb-4">
+      <div className="space-y-5 mb-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Caixa / PDV</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t('cashier.title')}</h1>
             <p className="text-muted-foreground mt-0.5 text-sm">
-              Hub central de pagamentos — Mesas, Comandas Digitais, Buffet (pesagem em Kg)
+              {t('cashier.subtitle')}
             </p>
           </div>
           <div className="flex items-center gap-2">
             {comandaUrl && (
               <Button variant="outline" size="sm" onClick={() => setShowQRModal(true)}>
                 <QrCode className="h-3.5 w-3.5 mr-1.5" />
-                QR Code
+                {t('cashier.qrCode')}
               </Button>
             )}
             <div
@@ -1008,27 +1028,27 @@ function CashierContent() {
               }`}
             >
               {isLive ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-              {loadingList && queue.length === 0 ? '…' : queue.length} em aberto
+              {loadingList && queue.length === 0 ? '…' : queue.length} {t('cashier.open')}
             </div>
-            <Button variant="ghost" size="icon" onClick={() => { loadQueue(false); loadCompletedToday(); }} title="Atualizar">
+            <Button variant="ghost" size="icon" onClick={() => { loadQueue(false); loadCompletedToday(); }} title={t('cashier.refresh')}>
               <RefreshCw className={`h-4 w-4 ${loadingList && queue.length === 0 ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </div>
         {/* KPIs do turno */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Contas em Aberto</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('cashier.accountsOpen')}</p>
             <p className="text-2xl font-bold text-foreground mt-1 tabular-nums">{loadingList && queue.length === 0 ? '…' : queue.length}</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total a Receber</p>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('cashier.totalToReceive')}</p>
             <p className="text-2xl font-bold text-foreground mt-1 tabular-nums">
               {formatCurrency(totalToReceive, baseCurrency)}
             </p>
           </div>
-          <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 p-4 shadow-sm">
-            <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">Total Recebido (Hoje)</p>
+          <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 p-5 shadow-sm ring-1 ring-emerald-500/5">
+            <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">{t('cashier.totalReceivedToday')}</p>
             <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1 tabular-nums">
               {formatCurrency(totalReceivedToday, baseCurrency)}
             </p>
@@ -1039,13 +1059,13 @@ function CashierContent() {
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-5 min-h-0">
         {/* COLUNA ESQUERDA: Busca + Fila */}
         <div className="lg:col-span-2 flex flex-col min-h-0 gap-4">
-          <div className="rounded-xl border border-border bg-card p-4 space-y-3 flex-shrink-0">
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-3 flex-shrink-0 shadow-sm">
             <div className="flex items-center gap-2">
               <ScanBarcode className="h-5 w-5 text-muted-foreground" />
               <div>
-                <h2 className="text-sm font-semibold">Mesa, Comanda ou CMD-XXXX</h2>
+                <h2 className="text-sm font-semibold">{t('cashier.scanTitle')}</h2>
                 <p className="text-[11px] text-muted-foreground">
-                  Digite ou escaneie o código de barras
+                  {t('cashier.scanHint')}
                 </p>
               </div>
             </div>
@@ -1057,11 +1077,11 @@ function CashierContent() {
                 setScanError(null);
               }}
               onKeyDown={handleScanKeyDown}
-              placeholder="Ex: 12, 450, CMD-A7F2"
+              placeholder={t('cashier.scanPlaceholder')}
               autoFocus
               autoComplete="off"
               spellCheck={false}
-              className="w-full h-14 px-4 rounded-xl border border-input bg-background text-lg font-mono tracking-wide focus:outline-none focus:ring-2 focus:ring-[#F87116]/30 focus:border-[#F87116]"
+              className="w-full h-14 px-4 rounded-xl border-2 border-input bg-background text-lg font-mono tracking-wide focus:outline-none focus:ring-2 focus:ring-[#F87116]/40 focus:border-[#F87116] transition-colors"
             />
             {scanError && (
               <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-2.5 text-xs text-red-700">
@@ -1072,24 +1092,24 @@ function CashierContent() {
             {justClosed && !selected && (
               <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 p-2.5 text-xs text-emerald-700">
                 <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
-                Conta encerrada. Aguardando próxima.
+                {t('cashier.accountClosed')}
               </div>
             )}
           </div>
 
-          <div className="rounded-xl border border-border bg-card overflow-hidden flex-1 min-h-0 flex flex-col">
+          <div className="rounded-2xl border border-border bg-card overflow-hidden flex-1 min-h-0 flex flex-col shadow-sm">
             <div className="px-4 py-3 border-b border-border flex-shrink-0">
-              <h2 className="text-sm font-semibold mb-2">Fila do Caixa</h2>
+              <h2 className="text-sm font-semibold mb-2">{t('cashier.queueTitle')}</h2>
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'open' | 'completed')}>
                 <TabsList className="w-full grid grid-cols-2">
                   <TabsTrigger value="open" className="text-xs">
-                    Aguardando Pagamento
+                    {t('cashier.waitingPayment')}
                     {queue.length > 0 && (
                       <Badge className="ml-1.5 h-5 px-1.5 bg-[#F87116]/20 text-[#F87116] border-0">{queue.length}</Badge>
                     )}
                   </TabsTrigger>
                   <TabsTrigger value="completed" className="text-xs">
-                    Concluídos Hoje
+                    {t('cashier.completedToday')}
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="open" className="mt-3 flex-1 overflow-y-auto min-h-0">
@@ -1100,7 +1120,7 @@ function CashierContent() {
                   ) : queue.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
                       <LayoutGrid className="h-10 w-10 text-muted-foreground/50" />
-                      <p className="text-sm text-muted-foreground">Nenhuma conta em aberto</p>
+                      <p className="text-sm text-muted-foreground">{t('cashier.noOpenAccounts')}</p>
                     </div>
                   ) : (
                     <div className="space-y-4 p-1">
@@ -1115,6 +1135,8 @@ function CashierContent() {
                                 selected={selected?.id === item.id}
                                 currency={currency}
                                 onClick={() => selectItem(item)}
+                              t={t}
+                              dateLocale={dateLocale}
                               />
                             ))}
                           </div>
@@ -1132,7 +1154,7 @@ function CashierContent() {
                     <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
                       <CheckCircle2 className="h-10 w-10 text-emerald-500/50" />
                       <p className="text-sm text-muted-foreground">
-                        {scanInput.trim() ? 'Nenhum resultado para a busca.' : 'Nenhuma conta concluída hoje.'}
+                        {scanInput.trim() ? t('cashier.noSearchResults') : t('cashier.noCompletedToday')}
                       </p>
                     </div>
                   ) : (
@@ -1144,6 +1166,8 @@ function CashierContent() {
                           currency={currency}
                           selected={selectedCompleted?.id === item.id}
                           onClick={() => selectCompletedItem(item)}
+                          t={t}
+                          dateLocale={dateLocale}
                         />
                       ))}
                     </div>
@@ -1186,17 +1210,17 @@ function CashierContent() {
                             currency,
                             (restaurant.print_settings_by_sector as any) ?? undefined
                           );
-                        toast({ title: 'Impressão enviada!' });
+                        toast({ title: t('cashier.printSent') });
                       }}
                     >
                       <Printer className="h-4 w-4 mr-2" />
-                      Reimprimir Recibo
+                      {t('cashier.reprint')}
                     </Button>
                   </>
                 ) : selectedCompleted.comandaBuffet ? (
                   <div className="space-y-4">
                     <div className="text-sm">
-                      <p className="font-semibold mb-2">Comanda {selectedCompleted.comandaBuffet.number}</p>
+                      <p className="font-semibold mb-2">{t('cashier.buffetLabel', { num: String(selectedCompleted.comandaBuffet.number) })}</p>
                       <div className="border rounded-lg divide-y">
                         {selectedCompleted.comandaBuffet.items.map((i, idx) => (
                           <div key={idx} className="flex justify-between px-3 py-2">
@@ -1210,8 +1234,8 @@ function CashierContent() {
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Chegada: {format(new Date(selectedCompleted.arrivalAt), 'HH:mm', { locale: ptBR })} |
-                      Saída: {format(new Date(selectedCompleted.exitAt), 'HH:mm', { locale: ptBR })}
+                      {t('cashier.arrival')}: {format(new Date(selectedCompleted.arrivalAt), 'HH:mm', { locale: dateLocale })} |
+                      {t('cashier.exit')}: {format(new Date(selectedCompleted.exitAt), 'HH:mm', { locale: dateLocale })}
                     </p>
                   </div>
                 ) : (
@@ -1219,29 +1243,29 @@ function CashierContent() {
                     <p className="text-sm font-semibold">{selectedCompleted.label}</p>
                     <p className="text-lg font-bold">{formatCurrency(selectedCompleted.totalAmount, baseCurrency)}</p>
                     <p className="text-xs text-muted-foreground">
-                      Chegada: {format(new Date(selectedCompleted.arrivalAt), 'HH:mm', { locale: ptBR })} |
-                      Saída: {format(new Date(selectedCompleted.exitAt), 'HH:mm', { locale: ptBR })} |
-                      Pagamento: {selectedCompleted.paymentMethods}
+                      {t('cashier.arrival')}: {format(new Date(selectedCompleted.arrivalAt), 'HH:mm', { locale: dateLocale })} |
+                      {t('cashier.exit')}: {format(new Date(selectedCompleted.exitAt), 'HH:mm', { locale: dateLocale })} |
+                      {t('cashier.payment')}: {selectedCompleted.paymentMethods}
                     </p>
                   </div>
                 )}
               </div>
             </div>
           ) : !selected ? (
-            <div className="flex flex-col items-center justify-center min-h-[400px] rounded-xl border-2 border-dashed border-muted bg-muted/20 gap-4 p-8 text-center">
+            <div className="flex flex-col items-center justify-center min-h-[400px] rounded-2xl border-2 border-dashed border-muted bg-muted/10 gap-5 p-10 text-center">
               <ShoppingBag className="h-16 w-16 text-muted-foreground/40" />
-              <p className="text-base font-semibold text-muted-foreground">Nenhuma conta selecionada</p>
+              <p className="text-base font-semibold text-muted-foreground">{t('cashier.noSelection')}</p>
               <p className="text-sm text-muted-foreground/70 max-w-xs">
-                Selecione na fila ou escaneie Mesa/Comanda/CMD-XXXX
+                {t('cashier.selectHint')}
               </p>
             </div>
           ) : (
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
               <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                 <div>
                   <span className="font-mono text-lg font-bold">{selected.label}</span>
                   <span className="ml-2 text-sm text-muted-foreground">
-                    {selected.customerName || 'Sem nome'}
+                    {selected.customerName || t('cashier.noName')}
                   </span>
                 </div>
                 <Button variant="ghost" size="icon" onClick={handleClearSelection}>
@@ -1280,7 +1304,7 @@ function CashierContent() {
 
               <div className="px-5 py-4 bg-slate-50 border-t border-border">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold">Total a pagar</span>
+                  <span className="text-sm font-semibold">{t('cashier.totalToPay')}</span>
                   <span className="text-2xl font-black tabular-nums">
                     {formatCurrency(totalToPay, currency)}
                   </span>
@@ -1290,11 +1314,11 @@ function CashierContent() {
               <div className="px-5 py-4 space-y-4 border-t border-border bg-slate-50/50 dark:bg-slate-900/30">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Forma de pagamento
+                    {t('cashier.paymentMethod')}
                   </Label>
                   <Button variant="outline" size="sm" onClick={addPayment} className="gap-1.5">
                     <Plus className="h-3.5 w-3.5" />
-                    Adicionar
+                    {t('cashier.add')}
                   </Button>
                 </div>
                 <div className="space-y-3">
@@ -1314,9 +1338,9 @@ function CashierContent() {
                             setPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, method: m } : x)));
                           }}
                           className="h-9 rounded-lg border border-input bg-background px-3 text-sm w-[110px] font-medium"
-                          title="Forma de pagamento"
+                          title={t('cashier.paymentMethod')}
                         >
-                          {(Object.entries(PAYMENT_METHOD_LABELS) as [PaymentMethod, string][]).map(([v, l]) => (
+                          {(Object.entries(getPaymentLabels(t)) as [PaymentMethod, string][]).map(([v, l]) => (
                             <option key={v} value={v}>{l}</option>
                           ))}
                         </select>
@@ -1348,13 +1372,13 @@ function CashierContent() {
                   </AnimatePresence>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Recebido</span>
+                  <span className="text-muted-foreground">{t('cashier.received')}</span>
                   <span className="font-semibold tabular-nums">
                     {formatCurrency(receivedInBase, baseCurrency)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Saldo restante</span>
+                  <span className="text-muted-foreground">{t('cashier.remaining')}</span>
                   <span
                     className={`font-bold tabular-nums ${
                       remaining <= 0 ? 'text-emerald-600' : 'text-amber-600'
@@ -1365,13 +1389,13 @@ function CashierContent() {
                 </div>
                 {changeAmount > 0 && (
                   <div className="rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800 p-3">
-                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-1">Troco sugerido</p>
+                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-1">{t('cashier.changeSuggested')}</p>
                     <p className="text-sm font-bold text-amber-900 dark:text-amber-100">
                       {formatCurrency(changeInBase, baseCurrency)}
                     </p>
                     {paymentCurrencies.length > 1 && paymentCurrencies.some((c) => c !== baseCurrency) && (
                       <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
-                        Ou em outras moedas conforme conversão
+                        {t('cashier.changeOtherCurrencies')}
                       </p>
                     )}
                   </div>
@@ -1381,12 +1405,12 @@ function CashierContent() {
               <div className="px-5 pb-5 pt-1">
                 {!canFinalize && payments.length > 0 && remaining > 0 && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 mb-3 text-center">
-                    Informe o valor recebido (total ou parcial) para habilitar o botão.
+                    {t('cashier.informValue')}
                   </p>
                 )}
                 <Button
-                  className={`w-full h-12 text-base font-bold transition-all ${
-                    canFinalize ? 'bg-emerald-600 hover:bg-emerald-700 shadow-md' : ''
+                  className={`w-full h-14 text-base font-bold transition-all rounded-xl ${
+                    canFinalize ? 'bg-emerald-600 hover:bg-emerald-700 shadow-md hover:shadow-lg' : ''
                   }`}
                   disabled={closing || !canFinalize}
                   onClick={handleFinalize}
@@ -1397,7 +1421,7 @@ function CashierContent() {
                   ) : (
                     <CheckCircle2 className="h-5 w-5 mr-2" />
                   )}
-                  Finalizar Pagamento e Encerrar
+                  {t('cashier.finalize')}
                 </Button>
               </div>
             </div>

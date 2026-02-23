@@ -668,7 +668,7 @@ export default function AdminTables() {
                           disabled={deletingBulk}
                         >
                           {deletingBulk ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-                          Desativar {selectedTableIds.size} mesa(s)
+                          {selectedTableIds.size} mesa(s) — Excluir
                         </Button>
                       )}
                     </div>
@@ -753,21 +753,22 @@ export default function AdminTables() {
         </DialogContent>
       </Dialog>
 
-      {/* Confirmação de exclusão de mesas */}
+      {/* Confirmação de exclusão/desativação de mesas */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Desativar mesas selecionadas?</DialogTitle>
+            <DialogTitle>{t('tablesCentral.mesas')} selecionadas</DialogTitle>
             <DialogDescription>
-              As mesas serão desativadas (não excluídas) e sairão da lista. Os QR Codes antigos pararão de funcionar. Você pode reativar mesas inativas em Configurar → Mesas. Deseja continuar?
+              {t('tablesCentral.deactivateConfirm')} Ou exclua definitivamente para liberar os números e criar novas mesas.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
-              Cancelar
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} className="w-full sm:w-auto order-3">
+              {t('tablesCentral.cancel')}
             </Button>
             <Button
-              variant="destructive"
+              variant="outline"
+              className="border-destructive text-destructive hover:bg-destructive/10 w-full sm:w-auto order-2"
               onClick={async () => {
                 if (!restaurantId || selectedTableIds.size === 0) return;
                 setDeletingBulk(true);
@@ -789,8 +790,33 @@ export default function AdminTables() {
               }}
               disabled={deletingBulk}
             >
+              {deletingBulk ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {t('tablesCentral.deactivate')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!restaurantId || selectedTableIds.size === 0) return;
+                setDeletingBulk(true);
+                try {
+                  const ids = Array.from(selectedTableIds);
+                  const { error } = await supabase.from('tables').delete().in('id', ids);
+                  if (error) throw error;
+                  refetchTables();
+                  queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+                  toast({ title: `${ids.length} mesa(s) excluída(s) definitivamente!` });
+                  setSelectedTableIds(new Set());
+                  setShowDeleteConfirm(false);
+                } catch {
+                  toast({ title: 'Erro ao excluir mesas', variant: 'destructive' });
+                } finally {
+                  setDeletingBulk(false);
+                }
+              }}
+              disabled={deletingBulk}
+            >
               {deletingBulk ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              {deletingBulk ? 'Desativando...' : 'Sim, desativar'}
+              {t('tablesCentral.deletePermanently')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1095,6 +1121,7 @@ export function TableOperationSheet({
   isMobile: boolean;
 }) {
   const isManagement = mode === 'management';
+  const { t } = useAdminTranslation();
   const { data: orders = [] } = useTableOrders(table?.orderIds ?? []);
   const { data: productsData = [] } = useAdminProducts(restaurantId);
 
@@ -1244,15 +1271,14 @@ export function TableOperationSheet({
     if (!table || !onTableDeleted || deletingTable) return;
     setDeletingTable(true);
     try {
-      await supabase.from('table_comanda_links').delete().eq('table_id', table.id);
-      const { error } = await supabase.from('tables').update({ is_active: false }).eq('id', table.id);
+      const { error } = await supabase.from('tables').delete().eq('id', table.id);
       if (error) throw error;
       setShowDeleteConfirm(false);
       onClose();
       onTableDeleted();
-        toast({ title: 'Mesa desativada!' });
+      toast({ title: 'Mesa excluída definitivamente!' });
     } catch {
-      toast({ title: 'Erro ao desativar mesa', variant: 'destructive' });
+      toast({ title: 'Erro ao excluir mesa', variant: 'destructive' });
     } finally {
       setDeletingTable(false);
     }
@@ -1544,7 +1570,7 @@ export function TableOperationSheet({
                 </p>
               )}
 
-              {/* Desativar Mesa — apenas Central de Mesas (modo gestão) */}
+              {/* Excluir mesa definitivamente — apenas Central de Mesas (modo gestão) */}
               {isManagement && onTableDeleted && (
                 <Button
                   size="lg"
@@ -1553,7 +1579,7 @@ export function TableOperationSheet({
                   onClick={() => setShowDeleteConfirm(true)}
                 >
                   <Trash2 className="h-5 w-5 mr-2" />
-                  Desativar mesa
+                  {t('tablesCentral.deletePermanently')}
                 </Button>
               )}
             </div>
@@ -1561,22 +1587,27 @@ export function TableOperationSheet({
         </SheetContent>
       </Sheet>
 
-      {/* Modal confirmação: Desativar mesa */}
+      {/* Modal confirmação: Excluir mesa definitivamente */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Desativar mesa</DialogTitle>
+            <DialogTitle>{t('tablesCentral.deletePermanently')}</DialogTitle>
             <DialogDescription>
-              A Mesa {table?.number} deixará de aparecer na Central de Mesas. Você pode reativá-la em Configurar → Mesas.
+              {t('tablesCentral.deletePermanentlyConfirm')}
             </DialogDescription>
           </DialogHeader>
+          {table && (
+            <p className="text-sm text-muted-foreground">
+              {t('tablesCentral.table')} {table.number}
+            </p>
+          )}
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={deletingTable}>
-              Cancelar
+              {t('tablesCentral.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleDeleteTable} disabled={deletingTable}>
               {deletingTable ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              {deletingTable ? 'Desativando...' : 'Sim, desativar'}
+              {deletingTable ? '...' : t('tablesCentral.deletePermanently')}
             </Button>
           </DialogFooter>
         </DialogContent>
