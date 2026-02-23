@@ -607,17 +607,26 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           </section>
         )}
 
-        {/* ── Seção Ofertas no topo ── */}
-        {activeOffers.length > 0 && selectedCategory === 'all' && (
+        {/* ── Seção Ofertas no topo (filtradas por categoria quando visualizando uma) ── */}
+        {(() => {
+          const categoryFilter = viewingSingleCategory && currentCategoryFromRoute
+            ? currentCategoryFromRoute.name
+            : selectedCategory === 'all'
+              ? null
+              : selectedCategory;
+          const offersToShow = categoryFilter
+            ? activeOffers.filter((o) => o.product?.category === categoryFilter)
+            : activeOffers;
+          return offersToShow.length > 0 && (
           <section className="space-y-2 sm:space-y-3">
             <h2 className="text-sm-mobile-block sm:text-base font-semibold text-orange-700 uppercase tracking-wider px-1 flex items-center gap-2">
               {t('menu.offers')}
               <span className="text-xs font-semibold text-orange-600 bg-orange-200/60 px-2 py-0.5 rounded-full">
-                {activeOffers.length}
+                {offersToShow.length}
               </span>
             </h2>
             <div className="flex flex-col gap-3 sm:gap-4">
-              {activeOffers.map((offer) => (
+              {offersToShow.map((offer) => (
                   <ProductCard
                     key={offer.id}
                     product={offer.product}
@@ -630,11 +639,12 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               ))}
             </div>
           </section>
-        )}
+          );
+        })()}
 
         {/* Lista de produtos — layout compacto e denso */}
         <section className="space-y-4 sm:space-y-6 pb-2">
-          {selectedCategory === 'all' ? (
+          {selectedCategory === 'all' && !viewingSingleCategory ? (
             // Estrutura pré-computada via useMemo — sem filtros inline a cada render
             groupedByCategory.map(({ categoryName, categoryProducts, subcatsForCategory, productsWithSub, productsWithoutSub, hasSubs }) => (
               <div key={categoryName} className="space-y-2 sm:space-y-3">

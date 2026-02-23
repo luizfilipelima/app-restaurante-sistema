@@ -92,7 +92,7 @@ import {
   ShoppingCart,
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
-import { CATEGORY_ICON_OPTIONS, getCategoryIconComponent } from '@/lib/categoryIcons';
+import CategoryIconPicker from '@/components/admin/CategoryIconPicker';
 import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/ProductAddonsSection';
 import ProductAllergensLabelsSection from '@/components/admin/ProductAllergensLabelsSection';
 import { useProductUpsells, useSaveProductUpsells, useProductComboItems, useProductAddons, useSaveProductAddons } from '@/hooks/queries';
@@ -2136,71 +2136,49 @@ export default function AdminMenu() {
 
       {/* ── New Category Modal ──────────────────────────────────────────────── */}
       <Dialog open={showCategoryModal} onOpenChange={(open) => { if (!open) setCategoryFormImageUrl(''); setShowCategoryModal(open); }}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Nova Categoria</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Nome da categoria</Label>
-              <Input placeholder="Ex: Pizza, Bebidas, Sobremesas" value={categoryFormName} onChange={(e) => setCategoryFormName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()} />
-            </div>
-            {/* Imagem da categoria */}
-            <div className="space-y-2">
-              <Label>Imagem da categoria (para cardápio com categorias primeiro)</Label>
-              <input type="file" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" className="hidden" id="cat-image-add"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file || !restaurantId) return;
-                  setCategoryImageUploading(true);
-                  try {
-                    const url = await uploadProductImage(restaurantId, file);
-                    setCategoryFormImageUrl(url);
-                    toast({ title: 'Imagem enviada!' });
-                  } catch (err) {
-                    toast({ title: 'Erro ao enviar imagem', description: err instanceof Error ? err.message : 'Tente outro arquivo.', variant: 'destructive' });
-                  } finally {
-                    setCategoryImageUploading(false);
-                    e.target.value = '';
-                  }
-                }} />
-              <label htmlFor="cat-image-add" className={`flex flex-col items-center justify-center w-full h-24 rounded-lg border cursor-pointer transition-colors ${
-                categoryFormImageUrl ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40 hover:bg-muted/60'
-              }`}>
-                {categoryImageUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : categoryFormImageUrl ? (
-                  <img src={categoryFormImageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
-                ) : (
-                  <><Upload className="h-6 w-6 text-muted-foreground mb-1" /><span className="text-xs text-muted-foreground">Clique para enviar</span></>
-                )}
-              </label>
-              {categoryFormImageUrl && (
-                <button type="button" onClick={() => setCategoryFormImageUrl('')} className="text-xs text-muted-foreground hover:text-destructive">Remover imagem</button>
-              )}
-            </div>
-            {/* Ícone (usado quando não há imagem) */}
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Ícone da categoria (quando não há imagem)</Label>
-              <div className="grid grid-cols-5 sm:grid-cols-5 gap-2">
-                {CATEGORY_ICON_OPTIONS.map((opt) => {
-                  const IconComp = getCategoryIconComponent(opt.id);
-                  const selected = categoryFormIcon === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setCategoryFormIcon(opt.id)}
-                      title={opt.label}
-                      className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border transition-all ${
-                        selected
-                          ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
-                          : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <IconComp className="h-5 w-5" strokeWidth={1.8} />
-                    </button>
-                  );
-                })}
+          <div className="grid md:grid-cols-2 gap-6 py-2">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nome da categoria</Label>
+                <Input placeholder="Ex: Pizza, Bebidas, Esfihas, Arguile" value={categoryFormName} onChange={(e) => setCategoryFormName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()} />
               </div>
+              <div className="space-y-2">
+                <Label>Imagem da categoria (para cardápio com categorias primeiro)</Label>
+                <input type="file" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" className="hidden" id="cat-image-add"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !restaurantId) return;
+                    setCategoryImageUploading(true);
+                    try {
+                      const url = await uploadProductImage(restaurantId, file);
+                      setCategoryFormImageUrl(url);
+                      toast({ title: 'Imagem enviada!' });
+                    } catch (err) {
+                      toast({ title: 'Erro ao enviar imagem', description: err instanceof Error ? err.message : 'Tente outro arquivo.', variant: 'destructive' });
+                    } finally {
+                      setCategoryImageUploading(false);
+                      e.target.value = '';
+                    }
+                  }} />
+                <label htmlFor="cat-image-add" className={`flex flex-col items-center justify-center w-full h-24 rounded-xl border-2 cursor-pointer transition-colors ${
+                  categoryFormImageUrl ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40 hover:bg-muted/60'
+                }`}>
+                  {categoryImageUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : categoryFormImageUrl ? (
+                    <img src={categoryFormImageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
+                  ) : (
+                    <><Upload className="h-6 w-6 text-muted-foreground mb-1" /><span className="text-xs text-muted-foreground">Clique para enviar</span></>
+                  )}
+                </label>
+                {categoryFormImageUrl && (
+                  <button type="button" onClick={() => setCategoryFormImageUrl('')} className="text-xs text-muted-foreground hover:text-destructive">Remover imagem</button>
+                )}
+              </div>
+              <CategoryIconPicker value={categoryFormIcon} onChange={setCategoryFormIcon} />
             </div>
+            <div className="space-y-4">
             <div className="space-y-2">
               <Label>Tipo / Comportamento</Label>
               <Select value={categoryFormType} onValueChange={setCategoryFormType}>
@@ -2268,76 +2246,54 @@ export default function AdminMenu() {
 
       {/* ── Edit Category Modal ─────────────────────────────────────────────── */}
       <Dialog open={showEditCategoryModal} onOpenChange={(open) => { if (!open) setEditingCategory(null); setShowEditCategoryModal(open); }}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Editar Categoria</DialogTitle></DialogHeader>
           {editingCategory && (
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label>Nome da categoria</Label>
-                <Input
-                  placeholder="Ex: Pizza, Bebidas"
-                  value={editCategoryForm.name}
-                  onChange={(e) => setEditCategoryForm((f) => ({ ...f, name: e.target.value }))}
-                  onKeyDown={(e) => e.key === 'Enter' && handleUpdateCategory()}
-                />
-              </div>
-              {/* Imagem */}
-              <div className="space-y-2">
-                <Label>Imagem da categoria</Label>
-                <input type="file" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" className="hidden" id="cat-image-edit"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file || !restaurantId) return;
-                    setEditCategoryImageUploading(true);
-                    try {
-                      const url = await uploadProductImage(restaurantId, file);
-                      setEditCategoryForm((f) => ({ ...f, image_url: url }));
-                      toast({ title: 'Imagem enviada!' });
-                    } catch (err) {
-                      toast({ title: 'Erro ao enviar imagem', variant: 'destructive' });
-                    } finally {
-                      setEditCategoryImageUploading(false);
-                      e.target.value = '';
-                    }
-                  }} />
-                <label htmlFor="cat-image-edit" className={`flex flex-col items-center justify-center w-full h-24 rounded-lg border cursor-pointer transition-colors ${
-                  editCategoryForm.image_url ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40 hover:bg-muted/60'
-                }`}>
-                  {editCategoryImageUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : editCategoryForm.image_url ? (
-                    <img src={editCategoryForm.image_url} alt="" className="w-full h-full object-cover rounded-lg" />
-                  ) : (
-                    <><Upload className="h-6 w-6 text-muted-foreground mb-1" /><span className="text-xs text-muted-foreground">Clique para enviar</span></>
-                  )}
-                </label>
-                {editCategoryForm.image_url && (
-                  <button type="button" onClick={() => setEditCategoryForm((f) => ({ ...f, image_url: '' }))} className="text-xs text-muted-foreground hover:text-destructive">Remover imagem</button>
-                )}
-              </div>
-              {/* Ícone (usado quando não há imagem) */}
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Ícone da categoria (quando não há imagem)</Label>
-                <div className="grid grid-cols-5 sm:grid-cols-5 gap-2">
-                  {CATEGORY_ICON_OPTIONS.map((opt) => {
-                    const IconComp = getCategoryIconComponent(opt.id);
-                    const selected = editCategoryForm.icon === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setEditCategoryForm((f) => ({ ...f, icon: opt.id }))}
-                        title={opt.label}
-                        className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border transition-all ${
-                          selected
-                            ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
-                            : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        <IconComp className="h-5 w-5" strokeWidth={1.8} />
-                      </button>
-                    );
-                  })}
+            <div className="grid md:grid-cols-2 gap-6 py-2">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Nome da categoria</Label>
+                  <Input
+                    placeholder="Ex: Pizza, Bebidas, Esfihas, Arguile"
+                    value={editCategoryForm.name}
+                    onChange={(e) => setEditCategoryForm((f) => ({ ...f, name: e.target.value }))}
+                    onKeyDown={(e) => e.key === 'Enter' && handleUpdateCategory()}
+                  />
                 </div>
+                <div className="space-y-2">
+                  <Label>Imagem da categoria</Label>
+                  <input type="file" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" className="hidden" id="cat-image-edit"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !restaurantId) return;
+                      setEditCategoryImageUploading(true);
+                      try {
+                        const url = await uploadProductImage(restaurantId, file);
+                        setEditCategoryForm((f) => ({ ...f, image_url: url }));
+                        toast({ title: 'Imagem enviada!' });
+                      } catch (err) {
+                        toast({ title: 'Erro ao enviar imagem', variant: 'destructive' });
+                      } finally {
+                        setEditCategoryImageUploading(false);
+                        e.target.value = '';
+                      }
+                    }} />
+                  <label htmlFor="cat-image-edit" className={`flex flex-col items-center justify-center w-full h-24 rounded-xl border-2 cursor-pointer transition-colors ${
+                    editCategoryForm.image_url ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40 hover:bg-muted/60'
+                  }`}>
+                    {editCategoryImageUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : editCategoryForm.image_url ? (
+                      <img src={editCategoryForm.image_url} alt="" className="w-full h-full object-cover rounded-lg" />
+                    ) : (
+                      <><Upload className="h-6 w-6 text-muted-foreground mb-1" /><span className="text-xs text-muted-foreground">Clique para enviar</span></>
+                    )}
+                  </label>
+                  {editCategoryForm.image_url && (
+                    <button type="button" onClick={() => setEditCategoryForm((f) => ({ ...f, image_url: '' }))} className="text-xs text-muted-foreground hover:text-destructive">Remover imagem</button>
+                  )}
+                </div>
+                <CategoryIconPicker value={editCategoryForm.icon} onChange={(v) => setEditCategoryForm((f) => ({ ...f, icon: v }))} />
               </div>
+              <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Tipo / Comportamento</Label>
                 <Select value={editCategoryForm.type} onValueChange={(v) => setEditCategoryForm((f) => ({ ...f, type: v }))}>

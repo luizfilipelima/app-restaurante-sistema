@@ -54,13 +54,13 @@ function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', con
           : 'bg-white/80 border border-slate-100/80 backdrop-blur-sm'
       } ${!readOnly ? 'cursor-pointer active:scale-[0.995] hover:shadow-md hover:border-slate-200/80 touch-manipulation' : ''}`}
     >
-      {/* Imagem à esquerda — proporção 1:1, ~10% maior para melhor destaque */}
-      <div className="relative w-[105px] sm:w-[123px] flex-shrink-0 aspect-square self-start overflow-hidden rounded-xl bg-slate-50">
+      {/* Imagem à esquerda — ajusta à altura do card, bordas arredondadas, min 120px */}
+      <div className="relative w-[120px] sm:w-[140px] min-w-[120px] sm:min-w-[140px] min-h-[120px] sm:min-h-[140px] flex-shrink-0 self-stretch overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-100/80">
         {hasImage ? (
           <img
             src={product.image_url!}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-[1.03]"
             loading="lazy"
           />
         ) : (
@@ -85,7 +85,7 @@ function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', con
       </div>
 
       {/* Conteúdo */}
-      <div className="flex-1 min-w-0 flex flex-col justify-center py-3 pr-3 sm:py-4 sm:pr-4">
+      <div className="flex-1 min-w-0 flex flex-col justify-center py-3.5 pr-3 sm:py-4 sm:pr-4 pl-0">
         <h3 className="font-medium text-slate-900 text-[15px] sm:text-base leading-snug line-clamp-2">
           {product.name}
         </h3>

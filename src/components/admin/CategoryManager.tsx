@@ -39,7 +39,8 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { GripVertical, Loader2, Check, X, Plus, Trash2, ChevronDown, ChevronRight, Pencil, Upload } from 'lucide-react';
 import { uploadProductImage } from '@/lib/imageUpload';
-import { CATEGORY_ICON_OPTIONS, getCategoryIconComponent } from '@/lib/categoryIcons';
+import CategoryIconPicker from '@/components/admin/CategoryIconPicker';
+import { getCategoryIconComponent } from '@/lib/categoryIcons';
 
 const CATEGORY_TYPES = [
   { id: 'default', label: 'Padrão', is_pizza: false, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
@@ -671,30 +672,7 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Ícone da categoria (quando não há imagem)</Label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {CATEGORY_ICON_OPTIONS.map((opt) => {
-                      const IconComp = getCategoryIconComponent(opt.id);
-                      const selected = (formIcon || 'Utensils') === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => setFormIcon(opt.id)}
-                          title={opt.label}
-                          className={`flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all ${
-                            selected
-                              ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
-                              : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          <IconComp className="h-5 w-5" strokeWidth={1.8} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                <CategoryIconPicker value={formIcon || 'Utensils'} onChange={setFormIcon} />
               </div>
             </div>
           </div>
@@ -766,30 +744,7 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Ícone da categoria (quando não há imagem)</Label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {CATEGORY_ICON_OPTIONS.map((opt) => {
-                      const IconComp = getCategoryIconComponent(opt.id);
-                      const selected = (editForm.icon || 'Utensils') === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => setEditForm((f) => ({ ...f, icon: opt.id }))}
-                          title={opt.label}
-                          className={`flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all ${
-                            selected
-                              ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
-                              : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          <IconComp className="h-5 w-5" strokeWidth={1.8} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                <CategoryIconPicker value={editForm.icon || 'Utensils'} onChange={(v) => setEditForm((f) => ({ ...f, icon: v }))} />
               </div>
             </div>
           </div>
