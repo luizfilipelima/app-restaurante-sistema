@@ -37,6 +37,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -67,11 +69,13 @@ import {
   ExternalLink,
   Copy,
   ConciergeBell,
+  RotateCcw,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { WaiterPDV } from '@/components/waiter/WaiterPDV';
+import { useCanAccess } from '@/hooks/useUserRole';
 
 // ─── HallZonesConfig (CRUD Zonas) ────────────────────────────────────────────
 
@@ -244,56 +248,52 @@ export default function AdminTables() {
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${restaurant.slug}/terminal-garcom`
     : '';
 
+  const [resetTableTarget, setResetTableTarget] = useState<TableWithStatus | null>(null);
+  const [resettingTable, setResettingTable] = useState(false);
+  const canResetTable = useCanAccess(['manager', 'restaurant_admin', 'super_admin']);
+
+  const handleResetTable = async () => {
+    if (!resetTableTarget || !restaurantId || resettingTable) return;
+    setResettingTable(true);
+    try {
+      const orderIds = resetTableTarget.orderIds ?? [];
+      if (orderIds.length > 0) {
+        const { error: orderErr } = await supabase
+          .from('orders')
+          .update({ status: 'cancelled', table_id: null })
+          .in('id', orderIds);
+        if (orderErr) throw orderErr;
+      }
+      const { error: unlinkErr } = await supabase
+        .from('table_comanda_links')
+        .delete()
+        .eq('table_id', resetTableTarget.id)
+        .eq('restaurant_id', restaurantId);
+      if (unlinkErr) throw unlinkErr;
+      queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['tableComandaLinks'] });
+      if (selectedTable?.id === resetTableTarget.id) setSelectedTable(null);
+      setResetTableTarget(null);
+      toast({ title: 'Mesa resetada!', description: 'A mesa voltou ao status Livre.' });
+    } catch {
+      toast({ title: 'Erro ao resetar mesa', variant: 'destructive' });
+    } finally {
+      setResettingTable(false);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-8">
-      {/* Card Terminal do Garçom */}
-      <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-4 sm:p-6">
-        <h3 className="font-semibold text-primary flex items-center gap-2 mb-2">
-          <ConciergeBell className="h-5 w-5" />
-          Terminal do Garçom
-        </h3>
-        <p className="text-sm text-muted-foreground mb-3">
-          Acesse a tela operacional em tablets e celulares. Copie o link ou abra em nova aba.
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <code className="flex-1 min-w-0 truncate rounded bg-muted px-2 py-1.5 text-sm">
-            {terminalUrl || 'Carregando...'}
-          </code>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              if (terminalUrl) {
-                navigator.clipboard.writeText(terminalUrl);
-                toast({ title: 'Link copiado!' });
-              }
-            }}
-            disabled={!terminalUrl}
-          >
-            <Copy className="h-4 w-4 mr-1" />
-            Copiar Link
-          </Button>
-          <Button
-            size="sm"
-            asChild
-            disabled={!terminalUrl}
-          >
-            <a href={terminalUrl || '#'} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-1" />
-              Abrir em Nova Aba
-            </a>
-          </Button>
-        </div>
-      </div>
-
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">Central de Mesas e Praças</h1>
-          <p className="text-muted-foreground mt-1">
-            Gerencie zonas, mesas e gere QR Codes. O garçom opera pelo Terminal.
-          </p>
-        </div>
+      {/* Header com barra compacta do Terminal do Garçom integrada */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold sm:text-3xl">Central de Mesas e Praças</h1>
+            <p className="text-muted-foreground mt-1">
+              Gerencie zonas, mesas e gere QR Codes. O garçom opera pelo Terminal.
+            </p>
+          </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -312,6 +312,43 @@ export default function AdminTables() {
             <Plus className="h-5 w-5 mr-2" />
             Adicionar Mesas
           </Button>
+        </div>
+        </div>
+        {/* Barra compacta Terminal do Garçom (max ~50–60px) */}
+        <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 h-12 max-h-12">
+          <ConciergeBell className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+          <code className="flex-1 min-w-0 truncate text-xs text-muted-foreground">
+            {terminalUrl || 'Carregando...'}
+          </code>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                if (terminalUrl) {
+                  navigator.clipboard.writeText(terminalUrl);
+                  toast({ title: 'Link copiado!' });
+                }
+              }}
+              disabled={!terminalUrl}
+            >
+              <Copy className="h-4 w-4" />
+              <span className="sr-only sm:not-sr-only sm:ml-1">Copiar</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+              asChild
+              disabled={!terminalUrl}
+            >
+              <a href={terminalUrl || '#'} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only sm:ml-1">Abrir em nova aba</span>
+              </a>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -356,9 +393,36 @@ export default function AdminTables() {
             table={table}
             currency={currency}
             onClick={() => setSelectedTable(table)}
+            onResetTable={canResetTable && table.status !== 'free' ? (e) => { e.stopPropagation(); setResetTableTarget(table); } : undefined}
           />
         ))}
       </div>
+
+      {/* Modal de confirmação: Resetar mesa */}
+      <Dialog open={!!resetTableTarget} onOpenChange={(open) => !open && setResetTableTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Resetar mesa</DialogTitle>
+            <DialogDescription>
+              Deseja realmente resetar esta mesa? Todos os itens lançados serão cancelados e a mesa voltará ao status Livre.
+            </DialogDescription>
+          </DialogHeader>
+          {resetTableTarget && (
+            <p className="text-sm text-muted-foreground">
+              Mesa {resetTableTarget.number} — {resetTableTarget.itemsCount} itens • {formatPrice(resetTableTarget.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
+            </p>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setResetTableTarget(null)} disabled={resettingTable}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleResetTable} disabled={resettingTable}>
+              {resettingTable ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+              {resettingTable ? 'Resetando...' : 'Sim, resetar mesa'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {gridTables.filter((t) => t.is_active).length === 0 && (
         <div className="rounded-xl border border-dashed bg-muted/30 p-12 text-center">
@@ -525,10 +589,13 @@ export function TableCard({
   table,
   currency,
   onClick,
+  onResetTable,
 }: {
   table: TableWithStatus;
   currency: string;
   onClick: () => void;
+  /** Callback para resetar mesa (apenas Gerente/Admin, mesas ocupadas). Para de propagação do clique. */
+  onResetTable?: (e: React.MouseEvent) => void;
 }) {
   const isCalling = table.status === 'calling_waiter';
   const statusClasses = {
@@ -537,6 +604,7 @@ export function TableCard({
     calling_waiter: 'border-amber-500 bg-amber-100 dark:bg-amber-950/40',
     awaiting_closure: 'border-red-500 bg-red-50 dark:bg-red-950/20',
   };
+  const showReset = !!onResetTable && table.status !== 'free';
 
   return (
     <button
@@ -548,9 +616,23 @@ export function TableCard({
         isCalling && 'animate-pulse'
       )}
     >
-      <div className="flex w-full items-center justify-between">
+      <div className="flex w-full items-center justify-between gap-2">
         <span className="text-xl font-bold sm:text-2xl">Mesa {table.number}</span>
-        {isCalling && <Bell className="h-5 w-5 text-amber-600 shrink-0" aria-hidden />}
+        <div className="flex shrink-0 items-center gap-1">
+          {isCalling && <Bell className="h-5 w-5 text-amber-600" aria-hidden />}
+          {showReset && onResetTable && (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              onClick={onResetTable}
+              aria-label="Resetar mesa"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
       {table.status !== 'free' && (
         <div className="w-full space-y-1 text-sm">
