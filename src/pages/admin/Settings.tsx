@@ -443,7 +443,7 @@ export default function AdminSettings() {
             border-b border-border rounded-none gap-0
           ">
             {[
-              { value: 'perfil',       icon: Store,   label: 'Perfil, Regional e Contato' },
+              { value: 'perfil',       icon: Store,   label: 'Perfil e Contato' },
               { value: 'pagamentos',   icon: CreditCard, label: 'PIX e Transferência'     },
               { value: 'impressao',    icon: Printer, label: 'Impressão'                  },
               { value: 'cambio',       icon: Repeat,  label: 'Câmbio'                     },
@@ -692,8 +692,8 @@ export default function AdminSettings() {
                 <Select value={formData.menu_display_mode} onValueChange={(v) => set('menu_display_mode', v as 'default' | 'categories_first')}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">Padrão (pills + produtos)</SelectItem>
-                    <SelectItem value="categories_first">Categorias expandidas</SelectItem>
+                    <SelectItem value="default">Padrão</SelectItem>
+                    <SelectItem value="categories_first">Categorias</SelectItem>
                   </SelectContent>
                 </Select>
               </FieldGroup>

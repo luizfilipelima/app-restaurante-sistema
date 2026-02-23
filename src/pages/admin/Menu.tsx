@@ -1193,14 +1193,6 @@ export default function AdminMenu() {
             </div>
           </div>
 
-          {/* Gestão de Ofertas */}
-          <Button variant="outline" size="sm" asChild className="h-8 gap-1.5">
-            <Link to={basePath ? `${basePath}/offers` : '#'}>
-              <Tag className="h-3.5 w-3.5 text-orange-500" />
-              <span className="hidden sm:inline">Gestão de Ofertas</span>
-            </Link>
-          </Button>
-
           {/* Online */}
           <Button variant="outline" size="sm" onClick={() => setShowOnlineModal(true)} className="h-8 gap-1.5">
             <QrCode className="h-3.5 w-3.5" />
@@ -1244,12 +1236,12 @@ export default function AdminMenu() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">Padrão (pills + produtos)</SelectItem>
-                    <SelectItem value="categories_first">Categorias com imagens primeiro</SelectItem>
+                    <SelectItem value="default">Padrão</SelectItem>
+                    <SelectItem value="categories_first">Categorias</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  &quot;Categorias com imagens&quot; mostra cards de categorias na primeira tela.
+                  &quot;Categorias&quot; mostra cards de categorias na primeira tela.
                 </p>
               </div>
 
