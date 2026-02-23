@@ -491,12 +491,8 @@ export default function AdminLayout({
   // Usuários e outros controles exclusivos. Agora verificamos o papel do usuário logado.
   const isSuperAdminView = user?.role === 'super_admin' && !!managedRestaurantId;
 
-  // Permissão para exibir botões de gestão (Settings, Upgrade, Usuários).
-  // canManageUsers: fallback síncrono (restaurant_admin/super_admin) para Upgrade e gestão de usuários.
-  // O link de Configurações usa SettingsLink que chama useCanAccess dentro do Provider,
-  // permitindo owner/manager (roles granulares) verem o link.
-  const canManageUsers = user?.role === 'restaurant_admin' || user?.role === 'super_admin';
-
+  // O link de Configurações usa SettingsLink/SettingsDropdownItem (useCanAccess)
+  // para permitir manager/owner (roles granulares) verem o link.
   const base = basePath || '/admin';
   const navSections = buildNavSections(base, t);
 
