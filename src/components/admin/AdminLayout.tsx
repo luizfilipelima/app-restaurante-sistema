@@ -27,6 +27,7 @@ import {
   UtensilsCrossed,
   ClipboardList,
   MapPin,
+  Clock,
   Settings,
   LogOut,
   ArrowLeft,
@@ -42,7 +43,6 @@ import {
   Sparkles,
   ScanBarcode,
   Boxes,
-  ConciergeBell,
   Smartphone,
   Instagram,
   Tag,
@@ -170,20 +170,6 @@ const buildNavSections = (
       },
       {
         kind: 'leaf',
-        name: t('nav.items.waiterTerminal'),
-        href: restaurantSlug
-          ? `/${restaurantSlug}/terminal-garcom`
-          : restaurantId
-            ? `/terminal-garcom?restaurant_id=${restaurantId}`
-            : '/terminal-garcom',
-        icon: ConciergeBell,
-        external: true,
-        featureFlag: 'feature_tables',
-        featureLabel: 'Plano Standard',
-        roleRequired: ['waiter'],
-      },
-      {
-        kind: 'leaf',
         name: t('nav.items.buffet'),
         href: `${base}/buffet`,
         icon: Scale,
@@ -232,27 +218,16 @@ const buildNavSections = (
         featureLabel: 'Plano Standard',
         roleRequired: ['manager'],
       },
-    ],
-  },
-  // 4. COZINHA (Produção)
-  {
-    kind: 'group',
-    label: t('nav.groups.kitchen'),
-    items: [
       {
         kind: 'leaf',
-        name: t('nav.items.kitchen'),
-        href: restaurantSlug
-          ? `/${restaurantSlug}/kds`
-          : restaurantId
-            ? `/kitchen?restaurant_id=${restaurantId}`
-            : '/kitchen',
-        icon: ChefHat,
-        external: true,
+        name: t('nav.items.horarios'),
+        href: `${base}/horarios`,
+        icon: Clock,
+        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
       },
     ],
   },
-  // 5. CARDÁPIO & ESTOQUE
+  // 4. CARDÁPIO & ESTOQUE
   {
     kind: 'group',
     label: t('nav.groups.menuStock'),
@@ -273,7 +248,7 @@ const buildNavSections = (
       },
     ],
   },
-  // 6. MARKETING & VENDAS
+  // 5. MARKETING & VENDAS
   {
     kind: 'group',
     label: t('nav.groups.marketingSales'),
@@ -678,55 +653,51 @@ export default function AdminLayout({
         <div className="hidden md:flex fixed top-0 left-64 right-0 z-30 h-16 items-center bg-white border-b border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
           <div className="flex-1 h-full px-6 flex items-center justify-end gap-3">
             {/* Grupo: Terminais Operacionais */}
-            <div className="flex items-center gap-1 border-r border-slate-100 pr-3">
+            <div className="flex items-center gap-2 border-r border-slate-100 pr-3">
               {kdsUrl && (
-                <div className="flex items-center gap-0.5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 gap-1.5 text-slate-600 hover:text-slate-900"
-                    asChild
+                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/60 overflow-hidden">
+                  <a
+                    href={kdsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
+                    title="Abrir Central da Cozinha"
                   >
-                    <a href={kdsUrl} target="_blank" rel="noopener noreferrer">
-                      <ChefHat className="h-4 w-4" />
-                      <span className="hidden xl:inline">Cozinha</span>
-                      <ExternalLink className="h-3 w-3 opacity-60" />
-                    </a>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0 text-slate-400 hover:text-slate-600"
+                    <ChefHat className="h-4 w-4 shrink-0" />
+                    <span className="text-sm font-medium hidden xl:inline">Central da Cozinha</span>
+                    <ExternalLink className="h-3 w-3 opacity-60 shrink-0" />
+                  </a>
+                  <button
+                    type="button"
                     onClick={() => copyToClipboard(kdsUrl)}
-                    title="Copiar link para a cozinha"
+                    title="Copiar link da Central da Cozinha"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center border-l border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
                   >
                     <Copy className="h-3.5 w-3.5" />
-                  </Button>
+                  </button>
                 </div>
               )}
               {terminalUrl && (
-                <div className="flex items-center gap-0.5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 gap-1.5 text-slate-600 hover:text-slate-900"
-                    asChild
+                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/60 overflow-hidden">
+                  <a
+                    href={terminalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
+                    title="Abrir Central do Garçom"
                   >
-                    <a href={terminalUrl} target="_blank" rel="noopener noreferrer">
-                      <Smartphone className="h-4 w-4" />
-                      <span className="hidden xl:inline">Terminal Garçom</span>
-                      <ExternalLink className="h-3 w-3 opacity-60" />
-                    </a>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0 text-slate-400 hover:text-slate-600"
+                    <Smartphone className="h-4 w-4 shrink-0" />
+                    <span className="text-sm font-medium hidden xl:inline">Central do Garçom</span>
+                    <ExternalLink className="h-3 w-3 opacity-60 shrink-0" />
+                  </a>
+                  <button
+                    type="button"
                     onClick={() => copyToClipboard(terminalUrl)}
-                    title="Copiar link para o tablet"
+                    title="Copiar link da Central do Garçom"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center border-l border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
                   >
                     <Copy className="h-3.5 w-3.5" />
-                  </Button>
+                  </button>
                 </div>
               )}
             </div>
@@ -852,7 +823,7 @@ export default function AdminLayout({
                   className="h-9 w-9 shrink-0"
                   asChild
                 >
-                  <a href={kdsUrl} target="_blank" rel="noopener noreferrer" title="Abrir Cozinha (KDS)">
+                  <a href={kdsUrl} target="_blank" rel="noopener noreferrer" title="Abrir Central da Cozinha">
                     <ChefHat className="h-4 w-4" />
                   </a>
                 </Button>
@@ -864,7 +835,7 @@ export default function AdminLayout({
                   className="h-9 w-9 shrink-0"
                   asChild
                 >
-                  <a href={terminalUrl} target="_blank" rel="noopener noreferrer" title="Abrir Terminal do Garçom">
+                  <a href={terminalUrl} target="_blank" rel="noopener noreferrer" title="Abrir Central do Garçom">
                     <Smartphone className="h-4 w-4" />
                   </a>
                 </Button>

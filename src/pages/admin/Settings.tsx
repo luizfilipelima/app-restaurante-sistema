@@ -6,7 +6,7 @@ import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
 import { useAdminLanguageStore } from '@/store/adminLanguageStore';
-import { DayKey, PrintPaperWidth, type BankAccountByCountry, type PrintSettingsBySector, type SectorPrintSettings } from '@/types';
+import { PrintPaperWidth, type BankAccountByCountry, type PrintSettingsBySector, type SectorPrintSettings } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,9 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
 import { toast } from '@/hooks/use-toast';
 import {
-  Save, Upload, Loader2, Clock, Instagram, Printer,
-  Phone, Globe, ImageIcon, CheckCircle2, XCircle,
-  Sun, AlarmClock, X, Wifi, Languages, Store,
+  Save, Upload, Loader2, Instagram, Printer,
+  Phone, Globe, ImageIcon, AlarmClock, X, Wifi, Languages, Store,
   Users, ExternalLink, Link2,
   MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode,
 } from 'lucide-react';
@@ -32,16 +31,6 @@ import { useCanAccess } from '@/hooks/useUserRole';
 import RestaurantUsersPanel from '@/components/admin/RestaurantUsersPanel';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-
-const DAYS: { key: DayKey; label: string; short: string }[] = [
-  { key: 'mon', label: 'Segunda',  short: 'Seg' },
-  { key: 'tue', label: 'Terça',    short: 'Ter' },
-  { key: 'wed', label: 'Quarta',   short: 'Qua' },
-  { key: 'thu', label: 'Quinta',   short: 'Qui' },
-  { key: 'fri', label: 'Sexta',    short: 'Sex' },
-  { key: 'sat', label: 'Sábado',   short: 'Sáb' },
-  { key: 'sun', label: 'Domingo',  short: 'Dom' },
-];
 
 type PhoneCountry = 'BR' | 'PY' | 'AR';
 type CurrencyCode = 'BRL' | 'PYG' | 'ARS' | 'USD';
@@ -290,9 +279,6 @@ export default function AdminSettings() {
     menu_display_mode:       'default' as 'default' | 'categories_first',
     instagram_url:           '',
     logo:                    '',
-    is_manually_closed:      false,
-    always_open:             false,
-    opening_hours:           {} as Record<DayKey, { open: string; close: string } | null>,
     print_auto_on_new_order: false,
     print_paper_width:       '80mm' as PrintPaperWidth,
     print_settings_by_sector: defaultSectorSettings(),
@@ -325,7 +311,6 @@ export default function AdminSettings() {
       const { data, error } = await supabase
         .from('restaurants').select('*').eq('id', restaurantId).single();
       if (error) throw error;
-      const hours = (data.opening_hours || {}) as Record<DayKey, { open: string; close: string } | null>;
 
       const rawCurrency = data.currency as string;
       const validCurrencies: CurrencyCode[] = ['BRL', 'PYG', 'ARS', 'USD'];
@@ -357,12 +342,6 @@ export default function AdminSettings() {
         menu_display_mode,
         instagram_url:           data.instagram_url    || '',
         logo:                    data.logo             || '',
-        is_manually_closed:      !!data.is_manually_closed,
-        always_open:             !!data.always_open,
-        opening_hours:           DAYS.reduce(
-          (acc, d) => ({ ...acc, [d.key]: hours[d.key] || null }),
-          {} as Record<DayKey, { open: string; close: string } | null>
-        ),
         print_auto_on_new_order: !!data.print_auto_on_new_order,
         print_paper_width:       data.print_paper_width === '58mm' ? '58mm' : '80mm',
         print_settings_by_sector: parseSectorSettings(data.print_settings_by_sector),
@@ -396,9 +375,6 @@ export default function AdminSettings() {
         menu_display_mode:       formData.menu_display_mode,
         instagram_url:           formData.instagram_url || null,
         logo:                    formData.logo,
-        is_manually_closed:      formData.is_manually_closed,
-        always_open:             formData.always_open,
-        opening_hours:           formData.opening_hours,
         print_auto_on_new_order: formData.print_auto_on_new_order,
         print_paper_width:       formData.print_paper_width,
         print_settings_by_sector: formData.print_settings_by_sector,
@@ -471,7 +447,6 @@ export default function AdminSettings() {
               { value: 'regional',     icon: Globe,   label: t('settings.tabs.regional')  },
               { value: 'contato',      icon: Phone,   label: t('settings.tabs.contact')   },
               { value: 'pagamentos',   icon: CreditCard, label: 'PIX e Transferência'     },
-              { value: 'horarios',     icon: Clock,   label: 'Horários'                   },
               { value: 'impressao',    icon: Printer, label: 'Impressão'                  },
               { value: 'cambio',       icon: Repeat,  label: 'Câmbio'                     },
               ...(canAccessUsers ? [{ value: 'usuarios', icon: Users, label: t('settings.tabs.users') }] : []),
@@ -1167,124 +1142,6 @@ export default function AdminSettings() {
                   </FieldGroup>
                 </div>
               )}
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
-          </div>
-        </TabsContent>
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            ABA 4 — Horários de Funcionamento
-        ══════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="horarios" className="mt-0 space-y-5">
-
-          {/* Status rápido — toggles no topo */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ToggleRow
-              label="Sempre aberto (24h)"
-              description="Ignora os horários abaixo por dia."
-              checked={formData.always_open}
-              onChange={(v) => set('always_open', v)}
-              icon={Sun}
-              activeColor="bg-emerald-50 border-emerald-200"
-            />
-            <ToggleRow
-              label="Fechado agora (manual)"
-              description="Força status fechado independente do horário."
-              checked={formData.is_manually_closed}
-              onChange={(v) => set('is_manually_closed', v)}
-              icon={XCircle}
-              activeColor="bg-red-50 border-red-200"
-            />
-          </div>
-
-          {/* Grade de horários */}
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                <Clock className="h-[18px] w-[18px] text-muted-foreground" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">Horários por dia da semana</h2>
-                <p className="text-[11px] text-muted-foreground">
-                  {formData.always_open
-                    ? 'Ignorados — estabelecimento definido como sempre aberto.'
-                    : 'Defina abertura e fechamento por dia da semana.'}
-                </p>
-              </div>
-            </div>
-
-            <div className={`space-y-1.5 ${formData.always_open ? 'opacity-40 pointer-events-none select-none' : ''}`}>
-              {DAYS.map(({ key, label, short }) => {
-                const slot = formData.opening_hours[key];
-                const isClosed = !slot;
-                return (
-                  <div
-                    key={key}
-                    className={`flex items-center gap-2 rounded-xl px-3 py-2.5 border transition-colors ${
-                      isClosed ? 'bg-muted/40 border-border' : 'bg-card border-border'
-                    }`}
-                  >
-                    <div className="w-16 flex-shrink-0">
-                      <span className={`text-xs font-semibold hidden sm:block ${isClosed ? 'text-muted-foreground' : 'text-foreground'}`}>{label}</span>
-                      <span className={`text-xs font-semibold sm:hidden ${isClosed ? 'text-muted-foreground' : 'text-foreground'}`}>{short}</span>
-                    </div>
-
-                    <label className="flex items-center gap-1.5 cursor-pointer flex-shrink-0 w-24 select-none">
-                      <input
-                        type="checkbox"
-                        checked={isClosed}
-                        onChange={(e) => {
-                          const next = { ...formData.opening_hours };
-                          next[key] = e.target.checked ? null : { open: '11:00', close: '23:00' };
-                          set('opening_hours', next);
-                        }}
-                        className="h-3 w-3 rounded accent-slate-400"
-                      />
-                      <span className={`text-[10px] font-semibold uppercase tracking-wide flex items-center gap-0.5 ${
-                        isClosed ? 'text-muted-foreground' : 'text-emerald-600'
-                      }`}>
-                        {isClosed
-                          ? <><XCircle style={{ height: 11, width: 11 }} /> Fechado</>
-                          : <><CheckCircle2 style={{ height: 11, width: 11 }} /> Aberto</>
-                        }
-                      </span>
-                    </label>
-
-                    {!isClosed ? (
-                      <div className="flex items-center gap-1.5 ml-auto">
-                        <Input
-                          type="time"
-                          value={slot?.open || '11:00'}
-                          onChange={(e) => {
-                            const next = { ...formData.opening_hours };
-                            next[key] = { open: e.target.value, close: next[key]?.close || '23:00' };
-                            set('opening_hours', next);
-                          }}
-                          className="h-8 w-[7rem] text-xs text-center"
-                        />
-                        <span className="text-xs text-muted-foreground flex-shrink-0">–</span>
-                        <Input
-                          type="time"
-                          value={slot?.close || '23:00'}
-                          onChange={(e) => {
-                            const next = { ...formData.opening_hours };
-                            next[key] = { open: next[key]?.open || '11:00', close: e.target.value };
-                            set('opening_hours', next);
-                          }}
-                          className="h-8 w-[7rem] text-xs text-center"
-                        />
-                      </div>
-                    ) : (
-                      <div className="ml-auto">
-                        <span className="text-[10px] text-muted-foreground italic">Sem atendimento</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
             </div>
           </div>
 

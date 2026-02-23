@@ -48,6 +48,7 @@ const AdminLoyalty          = lazyWithRetry(() => import('./pages/admin/Loyalty'
 const AdminOrders           = lazyWithRetry(() => import('./pages/admin/Orders'));
 const AdminSettings         = lazyWithRetry(() => import('./pages/admin/Settings'));
 const AdminDeliveryZones    = lazyWithRetry(() => import('./pages/admin/DeliveryZones'));
+const AdminHorarios         = lazyWithRetry(() => import('./pages/admin/Horarios'));
 const AdminCouriers         = lazyWithRetry(() => import('./pages/admin/Couriers'));
 const AdminBuffet           = lazyWithRetry(() => import('./pages/admin/Buffet'));
 const AdminCashier          = lazyWithRetry(() => import('./pages/admin/Cashier'));
@@ -185,6 +186,14 @@ const adminRoutes = (
             <AdminDeliveryZones />
           </RoleProtectedRoute>
         </ProtectedRoute>
+      }
+    />
+    <Route
+      path="horarios"
+      element={
+        <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
+          <AdminHorarios />
+        </RoleProtectedRoute>
       }
     />
     <Route
