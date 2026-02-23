@@ -1,24 +1,37 @@
 /**
- * Cashier — Comandas Digitais
+ * Caixa / PDV — Hub central de pagamentos da operação física
  *
- * Layout:
- *  • Esquerda — scanner + lista de comandas ativas em tempo real
- *  • Direita  — extrato da comanda selecionada, remoção de itens, encerramento
+ * Unifica: Mesas, Comandas Digitais e Comandas Físicas (Buffet).
+ * Exclui estritamente pedidos de Delivery.
  *
- * Ao "Marcar Concluído":
- *  - RPC cashier_complete_comanda → order.status = 'completed', is_paid = true
- *  - Comanda virtual → status = 'paid' (resetada para próximo cliente)
- *  - Dashboard BI alimentado automaticamente
+ * Layout split screen:
+ *  • Esquerda — Input gigante (barras/mesa/comanda) + Fila de contas em aberto
+ *  • Direita  — Terminal de pagamento (itens, multimoeda, troco, finalizar)
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
+import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { supabase } from '@/lib/supabase';
-import { formatCurrency, getComandaPublicUrl, type CurrencyCode } from '@/lib/utils';
+import {
+  formatCurrency,
+  getComandaPublicUrl,
+  type CurrencyCode,
+} from '@/lib/utils';
+import {
+  convertBetweenCurrencies,
+  getCurrencySymbol,
+  type ExchangeRates,
+} from '@/lib/priceHelper';
 import { FeatureGuard } from '@/components/auth/FeatureGuard';
 import { toast } from '@/hooks/use-toast';
+import { usePrinter } from '@/hooks/usePrinter';
+import { OrderReceipt } from '@/components/receipt/OrderReceipt';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -29,61 +42,92 @@ import { ptBR } from 'date-fns/locale';
 import { QRCodeSVG } from 'qrcode.react';
 import QRCodeLib from 'qrcode';
 import {
-  ScanBarcode, Receipt, CheckCircle2, X, Loader2,
-  Banknote, CreditCard, Smartphone, AlertCircle,
-  Trash2, User, Clock, ShoppingBag, RefreshCw,
-  ChevronRight, Wifi, WifiOff, QrCode,
-  Download, Printer, ExternalLink,
+  ScanBarcode,
+  CheckCircle2,
+  X,
+  Loader2,
+  AlertCircle,
+  ChevronRight,
+  Wifi,
+  WifiOff,
+  QrCode,
+  Download,
+  Printer,
+  Plus,
+  Trash2,
+  User,
+  Clock,
+  LayoutGrid,
+  ShoppingBag,
+  RefreshCw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-interface ComandaItem {
+type QueueItemType = 'comanda_digital' | 'comanda_buffet' | 'table';
+
+interface QueueItemBase {
   id: string;
-  product_name: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  notes: string | null;
+  type: QueueItemType;
+  label: string; // "Mesa 12" | "Comanda 450" | "CMD-A7F2"
+  customerName: string | null;
+  totalAmount: number; // na moeda base do restaurante (storage format)
+  createdAt: string;
 }
 
-interface ActiveComanda {
+interface QueueItemComandaDigital extends QueueItemBase {
+  type: 'comanda_digital';
+  virtualComandaId: string;
+  shortCode: string;
+  tableNumber: string | null;
+  items: { id: string; product_name: string; quantity: number; unit_price: number; total_price: number; notes: string | null }[];
+}
+
+interface QueueItemComandaBuffet extends QueueItemBase {
+  type: 'comanda_buffet';
+  comandaId: string;
+  number: number;
+  items: { id: string; description: string; quantity: number; unit_price: number; total_price: number }[];
+}
+
+interface QueueItemTable extends QueueItemBase {
+  type: 'table';
+  orderId: string;
+  tableNumber: number;
+  order: import('@/types').DatabaseOrder;
+}
+
+type CashierQueueItem = QueueItemComandaDigital | QueueItemComandaBuffet | QueueItemTable;
+
+type PaymentMethod = 'cash' | 'card' | 'pix' | 'bank_transfer';
+interface PaymentEntry {
   id: string;
-  short_code: string;
-  customer_name: string | null;
-  table_number: string | null;
-  total_amount: number;
-  created_at: string;
-  /** Fallback: soma dos itens quando total_amount está incorreto (ex: trigger falhou) */
-  virtual_comanda_items?: { total_price: number }[];
+  method: PaymentMethod;
+  currency: CurrencyCode;
+  amount: number; // storage format
+  displayValue: string;
 }
 
-interface SelectedComanda extends ActiveComanda {
-  items: ComandaItem[];
-}
-
-type PaymentMethod = 'cash' | 'card' | 'pix';
-
-const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: typeof Banknote }[] = [
-  { value: 'cash', label: 'Dinheiro', icon: Banknote },
-  { value: 'card', label: 'Cartão',   icon: CreditCard },
-  { value: 'pix',  label: 'PIX',      icon: Smartphone },
-];
+const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: 'Dinheiro',
+  card: 'Cartão',
+  pix: 'PIX',
+  bank_transfer: 'Transferência',
+};
 
 const SCANNER_PATTERN = /^CMD-[A-Z0-9]{4}$/i;
+const CURRENCIES: CurrencyCode[] = ['BRL', 'PYG', 'ARS', 'USD'];
 
-/** Total exibido: usa total_amount ou soma dos itens (quando total_amount está incorreto) */
 function getDisplayTotal(
   totalAmount: number,
-  items?: { total_price: number }[] | ComandaItem[]
+  items?: { total_price: number }[]
 ): number {
   if (totalAmount != null && totalAmount > 0) return totalAmount;
-  const list = items ?? [];
-  return list.reduce((s, i) => s + Number(i.total_price), 0);
+  return (items ?? []).reduce((s, i) => s + Number(i.total_price), 0);
 }
 
-// ─── Modal do QR Code da Comanda ─────────────────────────────────────────────
+// ─── Modal QR Code ────────────────────────────────────────────────────────────
 
 function QRModal({
   open,
@@ -106,7 +150,9 @@ function QRModal({
     setDownloading(true);
     try {
       const png = await QRCodeLib.toDataURL(url, {
-        type: 'image/png', margin: 2, width: 512,
+        type: 'image/png',
+        margin: 2,
+        width: 512,
         color: { dark: '#0f172a', light: '#00000000' },
         errorCorrectionLevel: 'H',
       });
@@ -114,14 +160,20 @@ function QRModal({
       a.href = png;
       a.download = `qrcode-comanda-${restaurantName.replace(/\s+/g, '-').toLowerCase()}.png`;
       a.click();
-    } catch (e) { console.error(e); } finally { setDownloading(false); }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handlePrint = async () => {
     setPrinting(true);
     try {
       const qrPng = await QRCodeLib.toDataURL(url, {
-        type: 'image/png', margin: 2, width: 280,
+        type: 'image/png',
+        margin: 2,
+        width: 280,
         color: { dark: '#0f172a', light: '#00000000' },
         errorCorrectionLevel: 'H',
       });
@@ -129,8 +181,12 @@ function QRModal({
         ? `<img src="${logo}" alt="" style="height:64px;width:64px;border-radius:16px;object-fit:cover;border:1px solid #e2e8f0;margin-bottom:12px" />`
         : '';
       const win = window.open('', '_blank');
-      if (!win) { alert('Permita pop-ups para imprimir.'); return; }
-      win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>QR Comanda</title>
+      if (!win) {
+        alert('Permita pop-ups para imprimir.');
+        return;
+      }
+      win.document.write(
+        `<!DOCTYPE html><html><head><meta charset="utf-8"><title>QR Comanda</title>
         <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff}
         .card{text-align:center;max-width:320px}.logo{margin-bottom:8px}.title{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#64748b;margin-bottom:4px}
         .name{font-size:18px;font-weight:700;color:#0f172a;margin-bottom:20px}.qr{padding:12px;border:2px solid #f1f5f9;border-radius:16px;display:inline-block;margin-bottom:14px}
@@ -138,9 +194,14 @@ function QRModal({
         </style></head><body><div class="card">${logoHtml}<p class="title">Escaneie para abrir sua comanda</p>
         <p class="name">${restaurantName}</p><div class="qr"><img src="${qrPng}" width="280" height="280"/></div>
         <p class="url">${url}</p><p class="hint">Aponte a câmera do celular. Nenhum aplicativo necessário.</p></div>
-        <script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}<\/script></body></html>`);
+        <script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}<\/script></body></html>`
+      );
       win.document.close();
-    } catch (e) { console.error(e); } finally { setPrinting(false); }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setPrinting(false);
+    }
   };
 
   const handleCopy = () => {
@@ -153,99 +214,31 @@ function QRModal({
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-[380px] p-0 overflow-hidden rounded-2xl border border-slate-200 shadow-2xl bg-white">
-
-        {/* Header */}
-        <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-slate-100">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center shadow-sm flex-shrink-0">
-            <QrCode className="h-4.5 w-4.5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <DialogTitle className="text-sm font-bold text-slate-900">QR Code da Comanda</DialogTitle>
-            <p className="text-[11px] text-slate-400 mt-0.5 truncate">{restaurantName}</p>
-          </div>
-        </div>
-
-        {/* QR Code area */}
-        <div className="px-5 py-5 flex flex-col items-center gap-4">
-
-          {/* Branding + QR */}
-          <div className="w-full rounded-2xl border border-slate-100 bg-slate-50 p-5 flex flex-col items-center gap-3">
-            {logo ? (
-              <img src={logo} alt={restaurantName} className="h-12 w-12 rounded-xl object-cover border border-slate-200 shadow-sm" />
-            ) : (
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center shadow-sm">
-                <QrCode className="h-6 w-6 text-white" />
-              </div>
-            )}
-
-            <div className="p-2 bg-white rounded-xl border border-slate-100 shadow-sm">
-              <QRCodeSVG
-                value={url}
-                size={196}
-                level="H"
-                includeMargin={false}
-                fgColor="#0f172a"
-                bgColor="#ffffff"
-                imageSettings={logo ? { src: logo, height: 32, width: 32, excavate: true } : undefined}
-              />
+        <div className="flex flex-col items-center gap-4 px-5 py-5">
+          <DialogTitle className="text-sm font-bold text-slate-900">QR Code da Comanda</DialogTitle>
+          {logo ? (
+            <img src={logo} alt={restaurantName} className="h-12 w-12 rounded-xl object-cover" />
+          ) : (
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center">
+              <QrCode className="h-6 w-6 text-white" />
             </div>
-
-            <div className="text-center">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                Aponte a câmera para abrir a comanda
-              </p>
-              <p className="text-[10px] text-slate-300 font-mono mt-1 break-all leading-relaxed">{url}</p>
-            </div>
+          )}
+          <div className="p-2 bg-white rounded-xl border">
+            <QRCodeSVG value={url} size={196} level="H" fgColor="#0f172a" bgColor="#ffffff" />
           </div>
-
-          {/* Ações primárias */}
-          <div className="w-full grid grid-cols-2 gap-2">
-            <button
-              onClick={handlePrint}
-              disabled={printing}
-              className="flex items-center justify-center gap-2 rounded-xl bg-[#F87116] hover:bg-orange-500 active:scale-[0.98] text-white text-xs font-semibold h-10 transition-all shadow-sm shadow-orange-200 disabled:opacity-50"
-            >
-              {printing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Printer className="h-3.5 w-3.5" />}
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handlePrint} disabled={printing}>
+              {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
               Imprimir
-            </button>
-            <button
-              onClick={handleDownload}
-              disabled={downloading}
-              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-700 text-xs font-semibold h-10 transition-all disabled:opacity-50"
-            >
-              {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-              Baixar PNG
-            </button>
-          </div>
-
-          {/* Ações secundárias */}
-          <div className="w-full grid grid-cols-2 gap-2">
-            <button
-              onClick={handleCopy}
-              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-medium h-9 transition-colors"
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                {copied ? (
-                  <motion.span key="ok" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                    className="flex items-center gap-1.5 text-emerald-600">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Copiado!
-                  </motion.span>
-                ) : (
-                  <motion.span key="copy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-1.5">
-                    <ScanBarcode className="h-3.5 w-3.5" /> Copiar link
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </button>
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-medium h-9 transition-colors"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Testar link
-            </a>
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleDownload} disabled={downloading}>
+              {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Baixar
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleCopy}>
+              {copied ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <ScanBarcode className="h-4 w-4" />}
+              {copied ? 'Copiado!' : 'Copiar'}
+            </Button>
           </div>
         </div>
       </DialogContent>
@@ -253,80 +246,68 @@ function QRModal({
   );
 }
 
-// ─── Componente: Card de comanda ativa ────────────────────────────────────────
+// ─── Card da fila ─────────────────────────────────────────────────────────────
 
-function ComandaCard({
-  comanda,
+function QueueCard({
+  item,
   selected,
   currency,
   onClick,
-  onDelete,
-  deleting,
 }: {
-  comanda: ActiveComanda;
+  item: CashierQueueItem;
   selected: boolean;
   currency: CurrencyCode;
   onClick: () => void;
-  onDelete: (e: React.MouseEvent) => void;
-  deleting: boolean;
 }) {
+  const total = getDisplayTotal(
+    item.totalAmount,
+    item.type === 'comanda_digital'
+      ? item.items
+      : item.type === 'comanda_buffet'
+        ? item.items
+        : undefined
+  );
+  const badgeClass =
+    item.type === 'table'
+      ? 'bg-blue-100 text-blue-700 border-blue-200'
+      : item.type === 'comanda_buffet'
+        ? 'bg-orange-100 text-orange-700 border-orange-200'
+        : 'bg-emerald-100 text-emerald-700 border-emerald-200';
+
   return (
-    <div
-      className={`relative w-full rounded-xl border-2 p-3 transition-all ${
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-left rounded-xl border-2 p-3 transition-all ${
         selected
           ? 'border-[#F87116] bg-orange-50/60'
           : 'border-border bg-card hover:border-slate-300 hover:shadow-sm'
       }`}
     >
-      <button
-        onClick={onClick}
-        className="w-full text-left focus:outline-none focus:ring-0"
-      >
-        <div className="flex items-start justify-between gap-2 pr-7">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className={`font-mono text-xs font-bold tracking-wider ${selected ? 'text-[#F87116]' : 'text-foreground'}`}>
-                {comanda.short_code}
-              </span>
-              {comanda.table_number && (
-                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
-                  Mesa {comanda.table_number}
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-1 mt-0.5">
-              <User className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-              <span className="text-xs text-muted-foreground truncate">
-                {comanda.customer_name || 'Sem nome'}
-              </span>
-            </div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Badge className={`text-[10px] font-bold ${badgeClass} border`}>{item.label}</Badge>
           </div>
-          <div className="flex-shrink-0 text-right">
-            <p className="text-sm font-bold text-foreground">
-              {formatCurrency(getDisplayTotal(comanda.total_amount, comanda.virtual_comanda_items), currency)}
-            </p>
-            <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 justify-end mt-0.5">
-              <Clock className="h-2.5 w-2.5" />
-              {formatDistanceToNow(new Date(comanda.created_at), { addSuffix: false, locale: ptBR })}
-            </p>
+          <div className="flex items-center gap-1 mt-0.5">
+            <User className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <span className="text-xs text-muted-foreground truncate">
+              {item.customerName || 'Sem nome'}
+            </span>
           </div>
         </div>
+        <div className="flex-shrink-0 text-right">
+          <p className="text-sm font-bold text-foreground">{formatCurrency(total, currency)}</p>
+          <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 justify-end mt-0.5">
+            <Clock className="h-2.5 w-2.5" />
+            {formatDistanceToNow(new Date(item.createdAt), { addSuffix: false, locale: ptBR })}
+          </p>
+        </div>
         {selected && (
-          <div className="flex items-center gap-1 mt-2 text-[11px] text-[#F87116] font-medium">
-            <ChevronRight className="h-3 w-3" />
-            Visualizando extrato
-          </div>
+          <ChevronRight className="h-4 w-4 text-[#F87116] flex-shrink-0 self-center" />
         )}
-      </button>
-      <button
-        onClick={onDelete}
-        disabled={deleting}
-        className="absolute right-2 top-2.5 h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground/50 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors"
-        title="Excluir comanda e seus dados"
-      >
-        {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-      </button>
-    </div>
+      </div>
+    </button>
   );
 }
 
@@ -334,206 +315,349 @@ function ComandaCard({
 
 function CashierContent() {
   const restaurantId = useAdminRestaurantId();
-  const currency     = useAdminCurrency();
-  const scannerRef   = useRef<HTMLInputElement>(null);
-
+  const currency = useAdminCurrency();
+  const scannerRef = useRef<HTMLInputElement>(null);
   const { data: restaurant } = useRestaurant(restaurantId);
+  const { printOrder, receiptData, secondReceiptData } = usePrinter();
   const comandaUrl = restaurant?.slug ? getComandaPublicUrl(restaurant.slug) : null;
+
   const [showQRModal, setShowQRModal] = useState(false);
-
-  // Estado da lista de comandas ativas
-  const [activeComandas, setActiveComandas] = useState<ActiveComanda[]>([]);
-  const [loadingList,    setLoadingList]    = useState(true);
-  const [isLive,         setIsLive]         = useState(false);
-
-  // Estado da comanda selecionada
-  const [selected,       setSelected]       = useState<SelectedComanda | null>(null);
-  const [loadingDetail,  setLoadingDetail]  = useState(false);
-  const [removingId,     setRemovingId]     = useState<string | null>(null);
-  const [closing,        setClosing]        = useState(false);
-  const [deletingComandaId, setDeletingComandaId] = useState<string | null>(null);
-  const [paymentMethod,  setPaymentMethod]  = useState<PaymentMethod>('cash');
-
-  // Scanner
-  const [scanInput,  setScanInput]  = useState('');
-  const [scanError,  setScanError]  = useState<string | null>(null);
+  const [queue, setQueue] = useState<CashierQueueItem[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [isLive, setIsLive] = useState(false);
+  const [selected, setSelected] = useState<CashierQueueItem | null>(null);
+  const [closing, setClosing] = useState(false);
   const [justClosed, setJustClosed] = useState(false);
+  const [scanInput, setScanInput] = useState('');
+  const [scanError, setScanError] = useState<string | null>(null);
 
-  // ── Carrega a lista de comandas abertas ────────────────────────────────────
+  const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
+  const { data: hasTables } = useFeatureAccess('feature_tables', restaurantId);
 
-  const loadActiveComandas = useCallback(async () => {
+  const exchangeRates: ExchangeRates = restaurant?.exchange_rates ?? {
+    pyg_per_brl: 3600,
+    ars_per_brl: 1150,
+    usd_per_brl: 0.18,
+  };
+  const baseCurrency: CurrencyCode = (restaurant?.currency as CurrencyCode) || 'BRL';
+
+  const [payments, setPayments] = useState<PaymentEntry[]>([]);
+  const [paymentInputs, setPaymentInputs] = useState<Record<string, string>>({});
+
+  const loadQueue = useCallback(async () => {
     if (!restaurantId) return;
-    const { data } = await supabase
-      .from('virtual_comandas')
-      .select('id, short_code, customer_name, table_number, total_amount, created_at, virtual_comanda_items(total_price)')
-      .eq('restaurant_id', restaurantId)
-      .eq('status', 'open')
-      .order('created_at', { ascending: true });
-    setActiveComandas((data ?? []) as ActiveComanda[]);
-    setLoadingList(false);
-  }, [restaurantId]);
+    setLoadingList(true);
+    try {
+      const items: CashierQueueItem[] = [];
 
-  useEffect(() => { loadActiveComandas(); }, [loadActiveComandas]);
+      const [vcRes, comandasRes, ordersRes] = await Promise.all([
+        supabase
+          .from('virtual_comandas')
+          .select('id, short_code, customer_name, table_number, total_amount, created_at, virtual_comanda_items(id, product_name, quantity, unit_price, total_price, notes)')
+          .eq('restaurant_id', restaurantId)
+          .eq('status', 'open')
+          .order('created_at', { ascending: true }),
+        !!hasBuffet
+          ? supabase
+              .from('comandas')
+              .select('id, number, total_amount, opened_at, comanda_items(id, description, quantity, unit_price, total_price)')
+              .eq('restaurant_id', restaurantId)
+              .eq('status', 'open')
+              .order('opened_at', { ascending: true })
+          : { data: [] },
+        !!hasTables
+          ? supabase
+              .from('orders')
+              .select(`
+                id, customer_name, total, created_at, table_id,
+                delivery_type, order_source,
+                order_items(id, product_name, quantity, unit_price, total_price, observations),
+                tables(number)
+              `)
+              .eq('restaurant_id', restaurantId)
+              .eq('is_paid', false)
+              .neq('status', 'cancelled')
+              .eq('order_source', 'table')
+          : { data: [] },
+      ]);
 
-  // ── Real-time: mudanças em virtual_comandas ────────────────────────────────
+      const vcData = (vcRes.data ?? []) as any[];
+      vcData.forEach((vc) => {
+        items.push({
+          id: `vc-${vc.id}`,
+          type: 'comanda_digital',
+          label: vc.short_code,
+          customerName: vc.customer_name,
+          totalAmount: vc.total_amount ?? 0,
+          createdAt: vc.created_at,
+          virtualComandaId: vc.id,
+          shortCode: vc.short_code,
+          tableNumber: vc.table_number,
+          items: (vc.virtual_comanda_items ?? []).map((i: any) => ({
+            id: i.id,
+            product_name: i.product_name,
+            quantity: i.quantity,
+            unit_price: i.unit_price,
+            total_price: i.total_price,
+            notes: i.notes,
+          })),
+        });
+      });
 
-  const handleComandasRealtime = useCallback(() => {
-    loadActiveComandas();
-  }, [loadActiveComandas]);
+      const comandasData = (comandasRes.data ?? []) as any[];
+      comandasData.forEach((c) => {
+        items.push({
+          id: `buf-${c.id}`,
+          type: 'comanda_buffet',
+          label: `Comanda ${c.number}`,
+          customerName: null,
+          totalAmount: c.total_amount ?? 0,
+          createdAt: c.opened_at,
+          comandaId: c.id,
+          number: c.number,
+          items: (c.comanda_items ?? []).map((i: any) => ({
+            id: i.id,
+            description: i.description,
+            quantity: i.quantity,
+            unit_price: i.unit_price,
+            total_price: i.total_price,
+          })),
+        });
+      });
+
+      const ordersData = (ordersRes.data ?? []) as any[];
+      const tableOrders = ordersData.filter(
+        (o: any) => (o.order_source === 'table' || o.table_id) && o.order_source !== 'delivery' && o.delivery_type !== 'delivery'
+      );
+      tableOrders.forEach((o: any) => {
+        const tableNum = o.tables?.number ?? o.table_id ?? '?';
+        items.push({
+          id: `ord-${o.id}`,
+          type: 'table',
+          label: `Mesa ${tableNum}`,
+          customerName: o.customer_name,
+          totalAmount: o.total ?? 0,
+          createdAt: o.created_at,
+          orderId: o.id,
+          tableNumber: Number(tableNum),
+          order: o,
+        });
+      });
+
+      setQueue(items);
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Erro ao carregar fila', variant: 'destructive' });
+    } finally {
+      setLoadingList(false);
+    }
+  }, [restaurantId, hasBuffet, hasTables]);
+
+  useEffect(() => {
+    loadQueue();
+  }, [loadQueue]);
 
   useEffect(() => {
     if (!restaurantId) return;
     const ch = supabase
-      .channel(`cashier-comandas-${restaurantId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'virtual_comandas',
-        filter: `restaurant_id=eq.${restaurantId}`,
-      }, handleComandasRealtime)
-      .subscribe((status, err) => {
-        setIsLive(status === 'SUBSCRIBED');
-        if (status === 'CHANNEL_ERROR' && import.meta.env.DEV && err) {
-          console.warn('[Cashier Realtime]', status, err);
-        }
-      });
+      .channel(`cashier-queue-${restaurantId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'virtual_comandas',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        loadQueue
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'comandas',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        loadQueue
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        loadQueue
+      )
+      .subscribe((status) => setIsLive(status === 'SUBSCRIBED'));
     return () => {
       supabase.removeChannel(ch);
       setIsLive(false);
     };
-  }, [restaurantId, handleComandasRealtime]);
+  }, [restaurantId, loadQueue]);
 
-  // Fallback: polling quando Realtime não está conectado (ex: tabela fora da publicação)
   useEffect(() => {
     if (!restaurantId || isLive) return;
-    const interval = setInterval(() => loadActiveComandas(), 8000);
-    return () => clearInterval(interval);
-  }, [restaurantId, isLive, loadActiveComandas]);
+    const t = setInterval(loadQueue, 8000);
+    return () => clearInterval(t);
+  }, [restaurantId, isLive, loadQueue]);
 
-  // ── Real-time: mudanças nos itens da comanda selecionada ──────────────────
+  const selectItem = useCallback(
+    async (item: CashierQueueItem) => {
+      if (selected?.id === item.id) return;
+      setScanError(null);
+      setSelected(item);
+      setPayments([]);
+      setPaymentInputs({});
+    },
+    [selected?.id]
+  );
 
-  useEffect(() => {
-    if (!selected) return;
-    const ch = supabase
-      .channel(`cashier-items-${restaurantId}-${selected.id}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'virtual_comanda_items',
-        filter: `comanda_id=eq.${selected.id}`,
-      }, async () => {
-        const [{ data: items }, { data: vc }] = await Promise.all([
-          supabase
-            .from('virtual_comanda_items')
-            .select('id, product_name, quantity, unit_price, total_price, notes')
-            .eq('comanda_id', selected.id)
-            .order('created_at', { ascending: true }),
-          supabase
-            .from('virtual_comandas')
-            .select('total_amount, customer_name')
-            .eq('id', selected.id)
-            .single(),
-        ]);
-        setSelected(prev => prev ? {
-          ...prev,
-          items: (items ?? []) as ComandaItem[],
-          total_amount: vc?.total_amount ?? prev.total_amount,
-          customer_name: vc?.customer_name ?? prev.customer_name,
-        } : null);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Seleciona e carrega uma comanda ───────────────────────────────────────
-
-  const selectComanda = async (comanda: ActiveComanda) => {
-    if (selected?.id === comanda.id) return;
-    setLoadingDetail(true);
-    setScanError(null);
-    try {
-      const { data: items } = await supabase
-        .from('virtual_comanda_items')
-        .select('id, product_name, quantity, unit_price, total_price, notes')
-        .eq('comanda_id', comanda.id)
-        .order('created_at', { ascending: true });
-      setSelected({ ...comanda, items: (items ?? []) as ComandaItem[] });
-      setJustClosed(false);
-    } finally {
-      setLoadingDetail(false);
-    }
-  };
-
-  // ── Scanner ───────────────────────────────────────────────────────────────
-
-  const handleScanKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== 'Enter') return;
+  const handleScanSubmit = useCallback(() => {
     const value = scanInput.trim().toUpperCase();
     setScanInput('');
     if (!value) return;
 
-    if (!SCANNER_PATTERN.test(value)) {
-      setScanError(`"${value}" não é um código de comanda válido. Formato esperado: CMD-XXXX`);
+    if (SCANNER_PATTERN.test(value)) {
+      const found = queue.find(
+        (q): q is QueueItemComandaDigital => q.type === 'comanda_digital' && q.shortCode === value
+      );
+      if (found) {
+        selectItem(found);
+      } else {
+        setScanError(`Comanda ${value} não encontrada ou já encerrada.`);
+      }
       return;
     }
 
-    const found = activeComandas.find(c => c.short_code === value);
-    if (found) {
-      selectComanda(found);
-    } else {
-      setScanError(`Comanda ${value} não encontrada ou já encerrada.`);
-    }
-  };
-
-  // ── Remover item da comanda ────────────────────────────────────────────────
-
-  const removeItem = async (itemId: string) => {
-    if (!selected) return;
-    setRemovingId(itemId);
-    try {
-      const { error } = await supabase
-        .from('virtual_comanda_items')
-        .delete()
-        .eq('id', itemId);
-      if (error) throw error;
-
-      // Atualiza UI local imediatamente
-      const newItems = selected.items.filter(i => i.id !== itemId);
-      const newTotal = newItems.reduce((s, i) => s + Number(i.total_price), 0);
-      setSelected(prev => prev ? { ...prev, items: newItems, total_amount: newTotal } : null);
-      setActiveComandas(prev =>
-        prev.map(c => c.id === selected.id ? { ...c, total_amount: newTotal } : c)
+    const num = parseInt(value, 10);
+    if (!isNaN(num)) {
+      const tableFound = queue.find(
+        (q): q is QueueItemTable => q.type === 'table' && q.tableNumber === num
       );
-    } catch (err: any) {
-      toast({ title: 'Erro ao remover item', description: err?.message, variant: 'destructive' });
-    } finally {
-      setRemovingId(null);
+      if (tableFound) {
+        selectItem(tableFound);
+        return;
+      }
+      const bufFound = queue.find(
+        (q): q is QueueItemComandaBuffet => q.type === 'comanda_buffet' && q.number === num
+      );
+      if (bufFound) {
+        selectItem(bufFound);
+        return;
+      }
+      setScanError(`Mesa ou Comanda #${num} não encontrada.`);
+    } else {
+      setScanError(`Formato inválido. Use CMD-XXXX, número da Mesa ou Comanda.`);
     }
+  }, [scanInput, queue, selectItem]);
+
+  const handleScanKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') handleScanSubmit();
   };
 
-  // ── Marcar comanda como concluída ─────────────────────────────────────────
+  const totalToPay = selected ? getDisplayTotal(selected.totalAmount, selected.type === 'comanda_digital' ? selected.items : selected.type === 'comanda_buffet' ? selected.items : undefined) : 0;
 
-  const handleComplete = async () => {
-    if (!selected || closing) return;
+  const totalReceivedBRL = useMemo(() => {
+    let sum = 0;
+    payments.forEach((p) => {
+      const val = p.amount;
+      const inBRL = convertBetweenCurrencies(val, p.currency, 'BRL', exchangeRates);
+      sum += inBRL / 100;
+    });
+    return sum * 100;
+  }, [payments, exchangeRates]);
+
+  const totalToPayBRL = baseCurrency === 'BRL' ? totalToPay : convertBetweenCurrencies(totalToPay, baseCurrency, 'BRL', exchangeRates);
+  const remaining = totalToPayBRL - totalReceivedBRL;
+  const changeAmount = remaining < 0 ? -remaining : 0;
+
+  const addPayment = () => {
+    const id = `pay-${Date.now()}`;
+    setPayments((prev) => [...prev, { id, method: 'cash' as PaymentMethod, currency: baseCurrency, amount: 0, displayValue: '' }]);
+    setPaymentInputs((prev) => ({ ...prev, [id]: '' }));
+  };
+
+  const updatePaymentAmount = (id: string, displayValue: string, curr: CurrencyCode) => {
+    setPaymentInputs((prev) => ({ ...prev, [id]: displayValue }));
+    const parsed = curr === 'PYG' ? parseFloat(displayValue.replace(/\./g, '').replace(',', '.')) || 0 : parseFloat(displayValue.replace(',', '.')) || 0;
+    const amount = curr === 'PYG' ? Math.round(parsed) : Math.round(parsed * 100);
+    setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, currency: curr, amount, displayValue } : p)));
+  };
+
+  const removePayment = (id: string) => {
+    setPayments((prev) => prev.filter((p) => p.id !== id));
+    setPaymentInputs((prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    }));
+  };
+
+  const canFinalize = totalReceivedBRL >= totalToPayBRL && totalToPayBRL > 0;
+
+  const handleFinalize = async () => {
+    if (!selected || closing || !canFinalize) return;
     setClosing(true);
+    const primaryMethod = payments.length > 0 ? (payments[0].method as 'cash' | 'card' | 'pix') : 'cash';
     try {
-      const { error } = await supabase.rpc('cashier_complete_comanda', {
-        p_comanda_id:     selected.id,
-        p_payment_method: paymentMethod,
-      });
-      if (error) throw error;
-
-      const label = PAYMENT_OPTIONS.find(p => p.value === paymentMethod)?.label ?? paymentMethod;
-      const displayTotal = getDisplayTotal(selected.total_amount, selected.items);
-      toast({
-        title: 'Comanda concluída!',
-        description: `${selected.short_code} — ${formatCurrency(displayTotal, currency)} via ${label}`,
-      });
+      if (selected.type === 'comanda_digital') {
+        const { error } = await supabase.rpc('cashier_complete_comanda', {
+          p_comanda_id: selected.virtualComandaId,
+          p_payment_method: primaryMethod,
+        });
+        if (error) throw error;
+        const { data: fullOrder } = await supabase
+          .from('orders')
+          .select('*, order_items(*), delivery_zone:delivery_zones(*)')
+          .eq('virtual_comanda_id', selected.virtualComandaId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (fullOrder && restaurant && restaurant.print_auto_on_new_order !== false) {
+          printOrder(
+            fullOrder as any,
+            restaurant.name,
+            (restaurant.print_paper_width as '58mm' | '80mm') || '80mm',
+            currency,
+            (restaurant.print_settings_by_sector as any) ?? undefined
+          );
+        }
+        toast({ title: 'Comanda encerrada!', description: `${selected.shortCode} — ${formatCurrency(totalToPay, currency)}` });
+      } else if (selected.type === 'comanda_buffet') {
+        await supabase
+          .from('comandas')
+          .update({ status: 'closed', closed_at: new Date().toISOString() })
+          .eq('id', selected.comandaId);
+        toast({ title: 'Comanda fechada!', description: `Comanda #${selected.number} — ${formatCurrency(totalToPay, currency)}` });
+      } else if (selected.type === 'table') {
+        await supabase
+          .from('orders')
+          .update({ status: 'completed', is_paid: true, payment_method: primaryMethod })
+          .eq('id', selected.orderId);
+        const fullOrder = { ...selected.order, status: 'completed', is_paid: true };
+        if (restaurant && restaurant.print_auto_on_new_order !== false) {
+          printOrder(
+            fullOrder as any,
+            restaurant.name,
+            (restaurant.print_paper_width as '58mm' | '80mm') || '80mm',
+            currency,
+            (restaurant.print_settings_by_sector as any) ?? undefined
+          );
+        }
+        toast({ title: 'Pedido pago!', description: `Mesa ${selected.tableNumber} — ${formatCurrency(totalToPay, currency)}` });
+      }
 
       setSelected(null);
+      setPayments([]);
+      setPaymentInputs({});
       setJustClosed(true);
-      setActiveComandas(prev => prev.filter(c => c.id !== selected.id));
+      loadQueue();
       scannerRef.current?.focus();
     } catch (err: any) {
-      toast({ title: 'Erro ao encerrar comanda', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Erro ao encerrar', description: err?.message, variant: 'destructive' });
     } finally {
       setClosing(false);
     }
@@ -541,46 +665,23 @@ function CashierContent() {
 
   const handleClearSelection = () => {
     setSelected(null);
+    setPayments([]);
+    setPaymentInputs({});
     setScanError(null);
     scannerRef.current?.focus();
   };
 
-  // ── Excluir comanda (status → cancelled) ────────────────────────────────────
-
-  const handleDeleteComanda = async (comandaId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setDeletingComandaId(comandaId);
-    try {
-      const { error } = await supabase
-        .from('virtual_comandas')
-        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-        .eq('id', comandaId);
-
-      if (error) throw error;
-
-      if (selected?.id === comandaId) {
-        setSelected(null);
-      }
-      setActiveComandas(prev => prev.filter(c => c.id !== comandaId));
-      toast({ title: 'Comanda excluída', description: 'A comanda e seus dados foram removidos.', variant: 'default' });
-    } catch (err: any) {
-      toast({ title: 'Erro ao excluir comanda', description: err?.message, variant: 'destructive' });
-    } finally {
-      setDeletingComandaId(null);
-    }
-  };
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
-
-  const total = getDisplayTotal(selected?.total_amount ?? 0, selected?.items);
-  const hasItems = (selected?.items?.length ?? 0) > 0;
+  const itemsForDisplay =
+    selected?.type === 'comanda_digital'
+      ? selected.items.map((i) => ({ name: i.product_name, qty: i.quantity, price: i.total_price }))
+      : selected?.type === 'comanda_buffet'
+        ? selected.items.map((i) => ({ name: i.description, qty: i.quantity, price: i.total_price }))
+        : selected?.type === 'table'
+          ? (selected.order.order_items ?? []).map((i) => ({ name: i.product_name, qty: i.quantity, price: i.total_price }))
+          : [];
 
   return (
-    <div className="space-y-6 h-full">
-
-      {/* ── Modal QR Code ── */}
+    <div className="h-full flex flex-col">
       {comandaUrl && restaurant && (
         <QRModal
           open={showQRModal}
@@ -591,342 +692,265 @@ function CashierContent() {
         />
       )}
 
-      {/* ── Cabeçalho ── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Caixa — Comandas Digitais</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Selecione uma comanda ativa ou escaneie o código do cliente para encerrar.
+          <h1 className="text-2xl font-bold text-foreground">Caixa / PDV</h1>
+          <p className="text-muted-foreground mt-0.5 text-sm">
+            Hub central de pagamentos — Mesas, Comandas Digitais e Buffet
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Botão QR Code */}
           {comandaUrl && (
-            <motion.button
-              onClick={() => setShowQRModal(true)}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm transition-colors"
-            >
-              <QrCode className="h-3.5 w-3.5 text-[#F87116]" />
+            <Button variant="outline" size="sm" onClick={() => setShowQRModal(true)}>
+              <QrCode className="h-3.5 w-3.5 mr-1.5" />
               QR Code
-            </motion.button>
+            </Button>
           )}
-          {/* Indicador Ao Vivo */}
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
-            isLive
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-              : 'bg-muted border-border text-muted-foreground'
-          }`}>
-            {isLive ? (
-              <>
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <Wifi className="h-3 w-3" />
-                {loadingList ? '…' : activeComandas.length} aberta{activeComandas.length !== 1 ? 's' : ''}
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-3 w-3" />
-                Conectando…
-              </>
-            )}
-          </div>
-          <button
-            onClick={loadActiveComandas}
-            className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-            title="Atualizar lista"
+          <div
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold ${
+              isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-muted border-border text-muted-foreground'
+            }`}
           >
+            {isLive ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+            {loadingList ? '…' : queue.length} em aberto
+          </div>
+          <Button variant="ghost" size="icon" onClick={loadQueue}>
             <RefreshCw className={`h-4 w-4 ${loadingList ? 'animate-spin' : ''}`} />
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
-
-        {/* ══ COLUNA ESQUERDA: Scanner + Lista de comandas ══ */}
-        <div className="lg:col-span-2 space-y-4">
-
-          {/* Scanner */}
-          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-5 min-h-0">
+        {/* COLUNA ESQUERDA: Busca + Fila */}
+        <div className="lg:col-span-2 flex flex-col min-h-0 gap-4">
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3 flex-shrink-0">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <ScanBarcode className="h-4 w-4 text-slate-500" />
-              </div>
+              <ScanBarcode className="h-5 w-5 text-muted-foreground" />
               <div>
-                <h2 className="text-sm font-semibold text-foreground leading-tight">Leitor de Código</h2>
+                <h2 className="text-sm font-semibold">Mesa, Comanda ou CMD-XXXX</h2>
                 <p className="text-[11px] text-muted-foreground">
-                  Escaneie ou digite o código CMD-XXXX
+                  Digite ou escaneie o código de barras
                 </p>
               </div>
             </div>
-
-            <div className="relative">
-              <input
-                ref={scannerRef}
-                value={scanInput}
-                onChange={(e) => { setScanInput(e.target.value); setScanError(null); }}
-                onKeyDown={handleScanKeyDown}
-                placeholder="CMD-XXXX"
-                autoFocus
-                autoComplete="off"
-                spellCheck={false}
-                className="w-full h-12 px-4 rounded-xl border border-input bg-background font-mono text-lg tracking-widest text-center placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-[#F87116]/30 focus:border-[#F87116] transition-colors"
-              />
-              {loadingDetail && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-              )}
-            </div>
-
+            <input
+              ref={scannerRef}
+              value={scanInput}
+              onChange={(e) => {
+                setScanInput(e.target.value);
+                setScanError(null);
+              }}
+              onKeyDown={handleScanKeyDown}
+              placeholder="Ex: 12, 450, CMD-A7F2"
+              autoFocus
+              autoComplete="off"
+              spellCheck={false}
+              className="w-full h-14 px-4 rounded-xl border border-input bg-background text-lg font-mono tracking-wide focus:outline-none focus:ring-2 focus:ring-[#F87116]/30 focus:border-[#F87116]"
+            />
             {scanError && (
-              <div className="flex items-start gap-2 rounded-xl bg-red-50 border border-red-200 p-2.5 text-xs text-red-700">
+              <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-2.5 text-xs text-red-700">
                 <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-                <span>{scanError}</span>
+                {scanError}
               </div>
             )}
-
             {justClosed && !selected && (
-              <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 p-2.5 text-xs text-emerald-700">
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 p-2.5 text-xs text-emerald-700">
                 <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
-                Comanda encerrada! Aguardando próxima leitura.
+                Conta encerrada. Aguardando próxima.
               </div>
             )}
           </div>
 
-          {/* Lista de Comandas Ativas */}
-          <div className="rounded-xl border border-border bg-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Comandas Abertas</h2>
-              {!loadingList && activeComandas.length > 0 && (
-                <Badge className="bg-[#F87116]/10 text-[#F87116] border-0 text-xs">
-                  {activeComandas.length}
-                </Badge>
+          <div className="rounded-xl border border-border bg-card overflow-hidden flex-1 min-h-0 flex flex-col">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between flex-shrink-0">
+              <h2 className="text-sm font-semibold">Fila do Caixa</h2>
+              {queue.length > 0 && (
+                <Badge className="bg-[#F87116]/10 text-[#F87116] border-0">{queue.length}</Badge>
               )}
             </div>
-
-            <div className="max-h-[calc(100vh-420px)] overflow-y-auto">
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {loadingList ? (
-                <div className="flex items-center justify-center py-12 gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Carregando…
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : activeComandas.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-3 px-4 text-center">
-                  <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
-                    <Receipt className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Nenhuma comanda aberta</p>
-                    <p className="text-xs text-muted-foreground/70 mt-0.5">
-                      Quando clientes abrirem comandas, elas aparecem aqui.
-                    </p>
-                  </div>
+              ) : queue.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                  <LayoutGrid className="h-10 w-10 text-muted-foreground/50" />
+                  <p className="text-sm text-muted-foreground">Nenhuma conta em aberto</p>
                 </div>
               ) : (
-                <div className="p-3 space-y-2">
-                  {activeComandas.map(comanda => (
-                    <ComandaCard
-                      key={comanda.id}
-                      comanda={comanda}
-                      selected={selected?.id === comanda.id}
-                      currency={currency}
-                      onClick={() => selectComanda(comanda)}
-                      onDelete={(e) => handleDeleteComanda(comanda.id, e)}
-                      deleting={deletingComandaId === comanda.id}
-                    />
-                  ))}
-                </div>
+                queue.map((item) => (
+                  <QueueCard
+                    key={item.id}
+                    item={item}
+                    selected={selected?.id === item.id}
+                    currency={currency}
+                    onClick={() => selectItem(item)}
+                  />
+                ))
               )}
             </div>
           </div>
         </div>
 
-        {/* ══ COLUNA DIREITA: Extrato + Encerramento ══ */}
+        {/* COLUNA DIREITA: Terminal de Pagamento */}
         <div className="lg:col-span-3">
           {!selected ? (
-            /* ── Empty state ── */
-            <div className="flex flex-col items-center justify-center min-h-[480px] rounded-xl border-2 border-dashed border-muted bg-muted/20 gap-5 p-8 text-center">
-              <div className="h-20 w-20 rounded-2xl bg-muted flex items-center justify-center">
-                <ShoppingBag className="h-9 w-9 text-muted-foreground/40" />
-              </div>
-              <div>
-                <p className="text-base font-semibold text-muted-foreground">
-                  Nenhuma comanda selecionada
-                </p>
-                <p className="text-sm text-muted-foreground/70 mt-1.5 max-w-xs">
-                  Selecione uma comanda da lista ao lado ou escaneie o código do cliente.
-                </p>
-              </div>
-              <div className="flex flex-col gap-1 text-xs text-muted-foreground/60 mt-2">
-                <p className="flex items-center gap-1.5 justify-center">
-                  <ScanBarcode className="h-3.5 w-3.5" />
-                  Escaneie o código de barras no celular do cliente
-                </p>
-                <p className="flex items-center gap-1.5 justify-center">
-                  <Receipt className="h-3.5 w-3.5" />
-                  Ou clique em uma comanda da lista
-                </p>
-              </div>
+            <div className="flex flex-col items-center justify-center min-h-[400px] rounded-xl border-2 border-dashed border-muted bg-muted/20 gap-4 p-8 text-center">
+              <ShoppingBag className="h-16 w-16 text-muted-foreground/40" />
+              <p className="text-base font-semibold text-muted-foreground">Nenhuma conta selecionada</p>
+              <p className="text-sm text-muted-foreground/70 max-w-xs">
+                Selecione na fila ou escaneie Mesa/Comanda/CMD-XXXX
+              </p>
             </div>
           ) : (
-            /* ── Extrato da comanda ── */
-            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                <div>
+                  <span className="font-mono text-lg font-bold">{selected.label}</span>
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    {selected.customerName || 'Sem nome'}
+                  </span>
+                </div>
+                <Button variant="ghost" size="icon" onClick={handleClearSelection}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
 
-              {/* Header */}
-              <div className="px-5 py-4 bg-gradient-to-r from-slate-50 to-slate-50/60 border-b border-border">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-lg font-black text-foreground tracking-wider">
-                        {selected.short_code}
-                      </span>
-                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] font-semibold">
-                        Aberta
-                      </Badge>
-                      {selected.table_number && (
-                        <Badge variant="outline" className="text-[10px]">
-                          Mesa {selected.table_number}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <User className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="truncate">
-                        {selected.customer_name || <em className="opacity-60">Sem nome</em>}
-                      </span>
-                      <span className="text-muted-foreground/40 mx-1">·</span>
-                      <Clock className="h-3 w-3 flex-shrink-0" />
-                      <span className="text-xs">
-                        {formatDistanceToNow(new Date(selected.created_at), { addSuffix: true, locale: ptBR })}
-                      </span>
-                    </div>
+              <div className="divide-y divide-border max-h-48 overflow-y-auto">
+                {itemsForDisplay.map((it, i) => (
+                  <div key={i} className="px-4 py-3 flex justify-between items-center">
+                    <span className="text-sm truncate flex-1">
+                      {Number(it.qty) % 1 === 0 ? `${it.qty}×` : it.qty} {it.name}
+                    </span>
+                    <span className="text-sm font-semibold tabular-nums">
+                      {formatCurrency(Number(it.price), currency)}
+                    </span>
                   </div>
-                  <button
-                    onClick={handleClearSelection}
-                    className="flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-slate-200 hover:text-foreground transition-colors"
-                    title="Fechar extrato"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                ))}
+              </div>
+
+              <div className="px-5 py-4 bg-slate-50 border-t border-border">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold">Total a pagar</span>
+                  <span className="text-2xl font-black tabular-nums">
+                    {formatCurrency(totalToPay, currency)}
+                  </span>
                 </div>
               </div>
 
-              {/* Itens */}
-              <div className="divide-y divide-border/60 max-h-72 overflow-y-auto">
-                {selected.items.length === 0 ? (
-                  <div className="px-5 py-10 text-center">
-                    <p className="text-sm text-muted-foreground">Esta comanda não possui itens.</p>
-                  </div>
-                ) : (
-                  selected.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="px-4 py-3 flex items-center gap-3 group hover:bg-muted/30 transition-colors"
-                    >
-                      <span className="flex-shrink-0 w-7 text-right text-xs font-bold text-muted-foreground font-mono">
-                        {Number(item.quantity) % 1 === 0
-                          ? `${item.quantity}×`
-                          : `${Number(item.quantity).toFixed(3)}`}
-                      </span>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground leading-snug">
-                          {item.product_name}
-                        </p>
-                        {item.notes && (
-                          <p className="text-[11px] text-muted-foreground italic">{item.notes}</p>
-                        )}
-                        <p className="text-[11px] text-muted-foreground">
-                          {formatCurrency(Number(item.unit_price), currency)} / un.
-                        </p>
-                      </div>
-
-                      <span className="flex-shrink-0 text-sm font-semibold text-foreground">
-                        {formatCurrency(Number(item.total_price), currency)}
-                      </span>
-
-                      <button
-                        onClick={() => removeItem(item.id)}
-                        disabled={!!removingId}
-                        className="flex-shrink-0 h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground/50 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-30"
-                        title="Remover item"
+              <div className="px-5 py-4 space-y-4 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                    Pagamento múltiplo
+                  </Label>
+                  <Button variant="outline" size="sm" onClick={addPayment}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Adicionar
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <AnimatePresence>
+                    {payments.map((p) => (
+                      <motion.div
+                        key={p.id}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="flex gap-2 items-center flex-wrap"
                       >
-                        {removingId === item.id
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : <Trash2 className="h-3.5 w-3.5" />
-                        }
-                      </button>
-                    </div>
-                  ))
+                        <select
+                          value={p.method}
+                          onChange={(e) => {
+                            const m = e.target.value as PaymentMethod;
+                            setPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, method: m } : x)));
+                          }}
+                          className="h-9 rounded-lg border px-2 text-sm w-28"
+                        >
+                          {(Object.entries(PAYMENT_METHOD_LABELS) as [PaymentMethod, string][]).map(([v, l]) => (
+                            <option key={v} value={v}>{l}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={p.currency}
+                          onChange={(e) => {
+                            const c = e.target.value as CurrencyCode;
+                            setPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, currency: c } : x)));
+                          }}
+                          className="h-9 rounded-lg border px-2 text-sm w-20"
+                        >
+                          {CURRENCIES.map((c) => (
+                            <option key={c} value={c}>{getCurrencySymbol(c)}</option>
+                          ))}
+                        </select>
+                        <Input
+                          value={paymentInputs[p.id] ?? ''}
+                          onChange={(e) => updatePaymentAmount(p.id, e.target.value, p.currency)}
+                          placeholder={p.currency === 'PYG' ? '0' : '0,00'}
+                          className="flex-1 min-w-[100px] font-mono"
+                        />
+                        <Button variant="ghost" size="icon" onClick={() => removePayment(p.id)}>
+                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Recebido</span>
+                  <span className="font-semibold tabular-nums">
+                    {formatCurrency(totalReceivedBRL, baseCurrency)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Saldo restante</span>
+                  <span
+                    className={`font-bold tabular-nums ${
+                      remaining <= 0 ? 'text-emerald-600' : 'text-amber-600'
+                    }`}
+                  >
+                    {formatCurrency(remaining, baseCurrency)}
+                  </span>
+                </div>
+                {changeAmount > 0 && (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                    <p className="text-xs font-semibold text-amber-800 mb-1">Troco sugerido</p>
+                    <p className="text-sm font-bold text-amber-900">
+                      {formatCurrency(changeAmount, baseCurrency)}
+                    </p>
+                    {baseCurrency !== 'PYG' && (
+                      <p className="text-xs text-amber-700 mt-0.5">
+                        Ou {formatCurrency(convertBetweenCurrencies(changeAmount, 'BRL', 'PYG', exchangeRates), 'PYG')}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {/* Total */}
-              <div className="px-5 py-3.5 bg-slate-50 border-t border-border flex items-center justify-between">
-                <span className="text-sm font-semibold text-foreground">Total</span>
-                <span className="text-2xl font-black text-foreground tabular-nums">
-                  {formatCurrency(total, currency)}
-                </span>
-              </div>
-
-              {/* Forma de pagamento */}
-              <div className="px-5 py-4 border-t border-border/60 space-y-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Forma de Pagamento
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {PAYMENT_OPTIONS.map(({ value, label, icon: Icon }) => (
-                    <button
-                      key={value}
-                      onClick={() => setPaymentMethod(value)}
-                      className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all ${
-                        paymentMethod === value
-                          ? 'border-[#F87116] bg-orange-50 text-[#F87116] shadow-sm'
-                          : 'border-border bg-background text-muted-foreground hover:border-slate-300 hover:text-foreground'
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Botão: Marcar Concluído */}
-              <div className="px-5 pb-5 space-y-2">
-                <motion.button
-                  onClick={handleComplete}
-                  disabled={closing || !hasItems}
-                  whileHover={!closing && hasItems ? { scale: 1.015 } : {}}
-                  whileTap={!closing && hasItems ? { scale: 0.97 } : {}}
-                  transition={{ duration: 0.15 }}
-                  className="w-full flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#F87116] to-orange-500 disabled:from-slate-200 disabled:to-slate-200 dark:disabled:from-slate-700 dark:disabled:to-slate-700 disabled:cursor-not-allowed text-white disabled:text-slate-400 text-base font-bold py-4 rounded-xl shadow-md shadow-orange-200/40 hover:brightness-105 transition-all"
+              <div className="px-5 pb-5">
+                <Button
+                  className="w-full h-12 text-base font-bold"
+                  disabled={closing || !canFinalize}
+                  onClick={handleFinalize}
                 >
                   {closing ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
                   ) : (
-                    <CheckCircle2 className="h-5 w-5" />
+                    <CheckCircle2 className="h-5 w-5 mr-2" />
                   )}
-                  {closing
-                    ? 'Encerrando…'
-                    : `Marcar Concluído — ${formatCurrency(total, currency)}`
-                  }
-                </motion.button>
-
-                {!hasItems && (
-                  <p className="text-center text-xs text-muted-foreground">
-                    A comanda está vazia. Adicione itens antes de encerrar.
-                  </p>
-                )}
+                  Finalizar Pagamento e Encerrar
+                </Button>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      <OrderReceipt data={receiptData} />
+      <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />
     </div>
   );
 }
-
-// ─── Export com FeatureGuard ──────────────────────────────────────────────────
 
 export default function Cashier() {
   return (

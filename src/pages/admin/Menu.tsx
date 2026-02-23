@@ -93,6 +93,7 @@ import {
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
 import CategoryIconPicker from '@/components/admin/CategoryIconPicker';
+import { getCategoryIconComponent } from '@/lib/categoryIcons';
 import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/ProductAddonsSection';
 import ProductAllergensLabelsSection from '@/components/admin/ProductAllergensLabelsSection';
 import { useProductUpsells, useSaveProductUpsells, useProductComboItems, useProductAddons, useSaveProductAddons } from '@/hooks/queries';
@@ -197,7 +198,14 @@ function SortableCategoryItem({ category, count, isSelected, onSelect, onEdit, o
         </span>
         {category.image_url ? (
           <img src={category.image_url} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0 border border-border/60" />
-        ) : null}
+        ) : (
+          <span className={`flex-shrink-0 flex items-center justify-center w-6 h-6 rounded ${isSelected ? 'text-primary-foreground/90' : 'text-muted-foreground'}`}>
+            {(() => {
+              const IconComp = getCategoryIconComponent(category.icon);
+              return <IconComp className="h-3.5 w-3.5" strokeWidth={2} />;
+            })()}
+          </span>
+        )}
         <span className={`truncate text-sm font-medium flex-1 ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
           {category.name}
         </span>
@@ -2136,17 +2144,22 @@ export default function AdminMenu() {
 
       {/* ── New Category Modal ──────────────────────────────────────────────── */}
       <Dialog open={showCategoryModal} onOpenChange={(open) => { if (!open) setCategoryFormImageUrl(''); setShowCategoryModal(open); }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Nova Categoria</DialogTitle></DialogHeader>
-          <div className="grid md:grid-cols-2 gap-6 py-2">
+          <div className="space-y-6 py-2">
+            {/* Identidade */}
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Nome da categoria</Label>
-                <Input placeholder="Ex: Pizza, Bebidas, Esfihas, Arguile" value={categoryFormName} onChange={(e) => setCategoryFormName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()} />
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Identidade</p>
+              <div className="grid sm:grid-cols-[1fr_auto] gap-4 items-start">
+                <div className="space-y-2">
+                  <Label>Nome da categoria</Label>
+                  <Input placeholder="Ex: Pizza, Bebidas, Esfihas, Arguile" value={categoryFormName} onChange={(e) => setCategoryFormName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()} />
+                </div>
+                <CategoryIconPicker value={categoryFormIcon} onChange={setCategoryFormIcon} label="Ícone" compact />
               </div>
               <div className="space-y-2">
-                <Label>Imagem da categoria (para cardápio com categorias primeiro)</Label>
+                <Label>Imagem (para cardápio com categorias primeiro)</Label>
                 <input type="file" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" className="hidden" id="cat-image-add"
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
@@ -2163,80 +2176,61 @@ export default function AdminMenu() {
                       e.target.value = '';
                     }
                   }} />
-                <label htmlFor="cat-image-add" className={`flex flex-col items-center justify-center w-full h-24 rounded-xl border-2 cursor-pointer transition-colors ${
+                <label htmlFor="cat-image-add" className={`flex flex-col items-center justify-center w-full h-20 rounded-xl border-2 cursor-pointer transition-colors ${
                   categoryFormImageUrl ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40 hover:bg-muted/60'
                 }`}>
-                  {categoryImageUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : categoryFormImageUrl ? (
+                  {categoryImageUploading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : categoryFormImageUrl ? (
                     <img src={categoryFormImageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
                   ) : (
-                    <><Upload className="h-6 w-6 text-muted-foreground mb-1" /><span className="text-xs text-muted-foreground">Clique para enviar</span></>
+                    <><Upload className="h-5 w-5 text-muted-foreground mb-1" /><span className="text-xs text-muted-foreground">Clique para enviar</span></>
                   )}
                 </label>
                 {categoryFormImageUrl && (
                   <button type="button" onClick={() => setCategoryFormImageUrl('')} className="text-xs text-muted-foreground hover:text-destructive">Remover imagem</button>
                 )}
               </div>
-              <CategoryIconPicker value={categoryFormIcon} onChange={setCategoryFormIcon} />
-            </div>
-            <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Tipo / Comportamento</Label>
-              <Select value={categoryFormType} onValueChange={setCategoryFormType}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CATEGORY_TYPES.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            {/* Destino de Impressão */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                <Printer className="h-3.5 w-3.5 text-muted-foreground" />
-                Destino de Impressão
-              </Label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCategoryFormDest('kitchen')}
-                  className={`flex items-center gap-2 rounded-lg border p-3 text-sm font-medium transition-all ${
-                    categoryFormDest === 'kitchen'
-                      ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-950/40 dark:text-blue-300'
-                      : 'border-border hover:bg-muted/40 text-foreground'
-                  }`}
-                >
-                  <ChefHat className="h-4 w-4 flex-shrink-0" />
-                  <span>Cozinha Central</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCategoryFormDest('bar')}
-                  className={`flex items-center gap-2 rounded-lg border p-3 text-sm font-medium transition-all ${
-                    categoryFormDest === 'bar'
-                      ? 'border-orange-400 bg-orange-50 text-orange-700 dark:border-orange-600 dark:bg-orange-950/40 dark:text-orange-300'
-                      : 'border-border hover:bg-muted/40 text-foreground'
-                  }`}
-                >
-                  <Wine className="h-4 w-4 flex-shrink-0" />
-                  <span>Garçom / Bar</span>
-                </button>
-              </div>
             </div>
 
-            {/* Toggle de estoque */}
-            <div className={`flex items-start gap-3 rounded-lg border p-3.5 transition-colors cursor-pointer ${categoryFormInventory ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/40'}`}
-              onClick={() => setCategoryFormInventory((v) => !v)}>
-              <Switch checked={categoryFormInventory} onCheckedChange={setCategoryFormInventory} className="mt-0.5 flex-shrink-0" />
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <Boxes className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                  <span className="text-sm font-medium">Controle de Estoque</span>
+            {/* Configurações */}
+            <div className="space-y-4 border-t border-border pt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Configurações</p>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tipo / Comportamento</Label>
+                  <Select value={categoryFormType} onValueChange={setCategoryFormType}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CATEGORY_TYPES.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Ativa o gerenciamento de quantidade, custo e validade para os produtos desta categoria.
-                </p>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5"><Printer className="h-3.5 w-3.5 text-muted-foreground" /> Destino de Impressão</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setCategoryFormDest('kitchen')}
+                      className={`flex items-center gap-2 rounded-lg border p-2.5 text-sm font-medium transition-all ${
+                        categoryFormDest === 'kitchen' ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-950/40 dark:text-blue-300' : 'border-border hover:bg-muted/40 text-foreground'
+                      }`}>
+                      <ChefHat className="h-4 w-4 flex-shrink-0" /><span>Cozinha Central</span>
+                    </button>
+                    <button type="button" onClick={() => setCategoryFormDest('bar')}
+                      className={`flex items-center gap-2 rounded-lg border p-2.5 text-sm font-medium transition-all ${
+                        categoryFormDest === 'bar' ? 'border-orange-400 bg-orange-50 text-orange-700 dark:border-orange-600 dark:bg-orange-950/40 dark:text-orange-300' : 'border-border hover:bg-muted/40 text-foreground'
+                      }`}>
+                      <Wine className="h-4 w-4 flex-shrink-0" /><span>Garçom / Bar</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer ${categoryFormInventory ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/40'}`}
+                onClick={() => setCategoryFormInventory((v) => !v)}>
+                <Switch checked={categoryFormInventory} onCheckedChange={setCategoryFormInventory} className="mt-0.5 flex-shrink-0" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5"><Boxes className="h-3.5 w-3.5 text-primary flex-shrink-0" /><span className="text-sm font-medium">Controle de Estoque</span></div>
+                  <p className="text-xs text-muted-foreground mt-0.5">Ativa o gerenciamento de quantidade, custo e validade para os produtos desta categoria.</p>
+                </div>
               </div>
             </div>
-          </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCategoryModal(false)}>Cancelar</Button>
@@ -2247,19 +2241,24 @@ export default function AdminMenu() {
 
       {/* ── Edit Category Modal ─────────────────────────────────────────────── */}
       <Dialog open={showEditCategoryModal} onOpenChange={(open) => { if (!open) setEditingCategory(null); setShowEditCategoryModal(open); }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Editar Categoria</DialogTitle></DialogHeader>
           {editingCategory && (
-            <div className="grid md:grid-cols-2 gap-6 py-2">
+            <div className="space-y-6 py-2">
+              {/* Identidade */}
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Nome da categoria</Label>
-                  <Input
-                    placeholder="Ex: Pizza, Bebidas, Esfihas, Arguile"
-                    value={editCategoryForm.name}
-                    onChange={(e) => setEditCategoryForm((f) => ({ ...f, name: e.target.value }))}
-                    onKeyDown={(e) => e.key === 'Enter' && handleUpdateCategory()}
-                  />
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Identidade</p>
+                <div className="grid sm:grid-cols-[1fr_auto] gap-4 items-start">
+                  <div className="space-y-2">
+                    <Label>Nome da categoria</Label>
+                    <Input
+                      placeholder="Ex: Pizza, Bebidas, Esfihas, Arguile"
+                      value={editCategoryForm.name}
+                      onChange={(e) => setEditCategoryForm((f) => ({ ...f, name: e.target.value }))}
+                      onKeyDown={(e) => e.key === 'Enter' && handleUpdateCategory()}
+                    />
+                  </div>
+                  <CategoryIconPicker value={editCategoryForm.icon} onChange={(v) => setEditCategoryForm((f) => ({ ...f, icon: v }))} label="Ícone" compact />
                 </div>
                 <div className="space-y-2">
                   <Label>Imagem da categoria</Label>
@@ -2279,56 +2278,60 @@ export default function AdminMenu() {
                         e.target.value = '';
                       }
                     }} />
-                  <label htmlFor="cat-image-edit" className={`flex flex-col items-center justify-center w-full h-24 rounded-xl border-2 cursor-pointer transition-colors ${
+                  <label htmlFor="cat-image-edit" className={`flex flex-col items-center justify-center w-full h-20 rounded-xl border-2 cursor-pointer transition-colors ${
                     editCategoryForm.image_url ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40 hover:bg-muted/60'
                   }`}>
-                    {editCategoryImageUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : editCategoryForm.image_url ? (
+                    {editCategoryImageUploading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : editCategoryForm.image_url ? (
                       <img src={editCategoryForm.image_url} alt="" className="w-full h-full object-cover rounded-lg" />
                     ) : (
-                      <><Upload className="h-6 w-6 text-muted-foreground mb-1" /><span className="text-xs text-muted-foreground">Clique para enviar</span></>
+                      <><Upload className="h-5 w-5 text-muted-foreground mb-1" /><span className="text-xs text-muted-foreground">Clique para enviar</span></>
                     )}
                   </label>
                   {editCategoryForm.image_url && (
                     <button type="button" onClick={() => setEditCategoryForm((f) => ({ ...f, image_url: '' }))} className="text-xs text-muted-foreground hover:text-destructive">Remover imagem</button>
                   )}
                 </div>
-                <CategoryIconPicker value={editCategoryForm.icon} onChange={(v) => setEditCategoryForm((f) => ({ ...f, icon: v }))} />
               </div>
-              <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Tipo / Comportamento</Label>
-                <Select value={editCategoryForm.type} onValueChange={(v) => setEditCategoryForm((f) => ({ ...f, type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CATEGORY_TYPES.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1.5"><Printer className="h-3.5 w-3.5" /> Destino de Impressão</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setEditCategoryForm((f) => ({ ...f, dest: 'kitchen' as const }))}
-                    className={`flex items-center gap-2 rounded-lg border p-3 text-sm font-medium transition-all ${
-                      editCategoryForm.dest === 'kitchen' ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-950/40 dark:text-blue-300' : 'border-border hover:bg-muted/40'
-                    }`}>
-                    <ChefHat className="h-4 w-4" /><span>Cozinha</span>
-                  </button>
-                  <button type="button" onClick={() => setEditCategoryForm((f) => ({ ...f, dest: 'bar' as const }))}
-                    className={`flex items-center gap-2 rounded-lg border p-3 text-sm font-medium transition-all ${
-                      editCategoryForm.dest === 'bar' ? 'border-orange-400 bg-orange-50 text-orange-700 dark:border-orange-600 dark:bg-orange-950/40 dark:text-orange-300' : 'border-border hover:bg-muted/40'
-                    }`}>
-                    <Wine className="h-4 w-4" /><span>Bar</span>
-                  </button>
+
+              {/* Configurações */}
+              <div className="space-y-4 border-t border-border pt-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Configurações</p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Tipo / Comportamento</Label>
+                    <Select value={editCategoryForm.type} onValueChange={(v) => setEditCategoryForm((f) => ({ ...f, type: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CATEGORY_TYPES.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5"><Printer className="h-3.5 w-3.5" /> Destino de Impressão</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => setEditCategoryForm((f) => ({ ...f, dest: 'kitchen' as const }))}
+                        className={`flex items-center gap-2 rounded-lg border p-2.5 text-sm font-medium transition-all ${
+                          editCategoryForm.dest === 'kitchen' ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-950/40 dark:text-blue-300' : 'border-border hover:bg-muted/40'
+                        }`}>
+                        <ChefHat className="h-4 w-4 flex-shrink-0" /><span>Cozinha</span>
+                      </button>
+                      <button type="button" onClick={() => setEditCategoryForm((f) => ({ ...f, dest: 'bar' as const }))}
+                        className={`flex items-center gap-2 rounded-lg border p-2.5 text-sm font-medium transition-all ${
+                          editCategoryForm.dest === 'bar' ? 'border-orange-400 bg-orange-50 text-orange-700 dark:border-orange-600 dark:bg-orange-950/40 dark:text-orange-300' : 'border-border hover:bg-muted/40'
+                        }`}>
+                        <Wine className="h-4 w-4 flex-shrink-0" /><span>Bar</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className={`flex items-start gap-3 rounded-lg border p-3.5 cursor-pointer ${editCategoryForm.inventory ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/40'}`}
-                onClick={() => setEditCategoryForm((f) => ({ ...f, inventory: !f.inventory }))}>
-                <Switch checked={editCategoryForm.inventory} onCheckedChange={(v) => setEditCategoryForm((f) => ({ ...f, inventory: v }))} className="mt-0.5" />
-                <div>
-                  <div className="flex items-center gap-1.5"><Boxes className="h-3.5 w-3.5 text-primary" /><span className="text-sm font-medium">Controle de Estoque</span></div>
-                  <p className="text-xs text-muted-foreground mt-0.5">Ativa gerenciamento de quantidade e custo para esta categoria.</p>
+                <div className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer ${editCategoryForm.inventory ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/40'}`}
+                  onClick={() => setEditCategoryForm((f) => ({ ...f, inventory: !f.inventory }))}>
+                  <Switch checked={editCategoryForm.inventory} onCheckedChange={(v) => setEditCategoryForm((f) => ({ ...f, inventory: v }))} className="mt-0.5" />
+                  <div>
+                    <div className="flex items-center gap-1.5"><Boxes className="h-3.5 w-3.5 text-primary" /><span className="text-sm font-medium">Controle de Estoque</span></div>
+                    <p className="text-xs text-muted-foreground mt-0.5">Ativa gerenciamento de quantidade e custo para esta categoria.</p>
+                  </div>
                 </div>
-              </div>
               </div>
             </div>
           )}

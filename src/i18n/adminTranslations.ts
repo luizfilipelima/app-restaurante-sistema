@@ -49,7 +49,7 @@ const pt = {
       orders:         'Pedidos',
       kitchen:        'Cozinha (KDS)',
       buffet:         'Buffet / Comandas',
-      cashier:        'Caixa / Comanda Digital',
+      cashier:        'Caixa / PDV',
       expo:           'Garçom (KDS)',
       menuCentral:    'Central do Cardápio',
       offers:         'Gestão de Ofertas',
