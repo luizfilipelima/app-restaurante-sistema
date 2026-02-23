@@ -981,15 +981,17 @@ export function TableOperationSheet({
               )}
             </section>
 
-            {/* Comandas Vinculadas (apenas modo operação, quando buffet + mesa ocupada) */}
-            {!isManagement && hasBuffet && (table.status !== 'free') && (
+            {/* Comandas Vinculadas — Central de Mesas (sempre) e Terminal (quando mesa ocupada) */}
+            {hasBuffet && (isManagement || table.status !== 'free') && (
               <section>
                 <h3 className="mb-2 flex items-center gap-2 font-semibold">
                   <Link2 className="h-4 w-4" />
                   Comandas Vinculadas
                 </h3>
                 <p className="text-xs text-muted-foreground mb-2">
-                  Bipar código ou digitar número da comanda física para vincular à mesa.
+                  {linkedComandas.length > 0
+                    ? 'Comandas vinculadas a esta mesa. Para vincular outra, digite o número abaixo.'
+                    : 'Bipar código ou digitar número da comanda física para vincular à mesa.'}
                 </p>
                 <div className="flex gap-2">
                   <Input
@@ -1021,8 +1023,10 @@ export function TableOperationSheet({
                           className="text-destructive h-8"
                           onClick={() => handleUnlinkComanda(l.id)}
                           disabled={unlinkComanda.isPending}
+                          title={isManagement ? 'Desvincular comanda da mesa' : undefined}
                         >
                           <Unlink className="h-4 w-4" />
+                          {isManagement && <span className="ml-1">Desvincular</span>}
                         </Button>
                       </li>
                     ))}
@@ -1073,6 +1077,21 @@ export function TableOperationSheet({
                 <QrCode className="h-5 w-5 mr-2" />
                 Exibir QR Code da Mesa
               </Button>
+
+              {/* Abrir cardápio da mesa */}
+              {baseUrl && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="min-h-[48px] touch-manipulation"
+                  asChild
+                >
+                  <a href={baseUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-5 w-5 mr-2" />
+                    Abrir cardápio da mesa
+                  </a>
+                </Button>
+              )}
 
               {/* Solicitar Fechamento (apenas operação) */}
               {!isManagement && !table.billRequested && table.orderIds.length > 0 && (

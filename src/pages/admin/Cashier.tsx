@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
-import { useRestaurant } from '@/hooks/queries';
+import { useRestaurant, useHallZones } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { supabase } from '@/lib/supabase';
 import {
@@ -37,7 +37,8 @@ import {
   DialogContent,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { formatDistanceToNow } from 'date-fns';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { format, formatDistanceToNow, differenceInMinutes, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { QRCodeSVG } from 'qrcode.react';
 import QRCodeLib from 'qrcode';
@@ -95,10 +96,26 @@ interface QueueItemTable extends QueueItemBase {
   type: 'table';
   orderId: string;
   tableNumber: number;
+  hallZoneId: string | null;
   order: import('@/types').DatabaseOrder;
 }
 
 type CashierQueueItem = QueueItemComandaDigital | QueueItemComandaBuffet | QueueItemTable;
+
+/** Conta concluída (paga) hoje — para histórico e tempo de permanência */
+interface CompletedItem {
+  id: string;
+  type: QueueItemType;
+  label: string;
+  totalAmount: number;
+  arrivalAt: string;
+  exitAt: string;
+  paymentMethods: string;
+  /** Order para recibo (table/comanda_digital) */
+  order?: import('@/types').DatabaseOrder;
+  /** Comanda buffet: itens e dados para recibo simples */
+  comandaBuffet?: { number: number; items: { description: string; quantity: number; total_price: number }[] };
+}
 
 type PaymentMethod = 'cash' | 'card' | 'pix' | 'bank_transfer';
 interface PaymentEntry {
@@ -246,6 +263,57 @@ function QRModal({
   );
 }
 
+// ─── Card de conta concluída ───────────────────────────────────────────────────
+
+function CompletedCard({
+  item,
+  currency,
+  onClick,
+  selected,
+}: {
+  item: CompletedItem;
+  currency: CurrencyCode;
+  onClick: () => void;
+  selected: boolean;
+}) {
+  const durationMin = differenceInMinutes(new Date(item.exitAt), new Date(item.arrivalAt));
+  const durationStr = durationMin >= 60
+    ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`
+    : `${durationMin}m`;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-left rounded-xl border-2 p-3 transition-all ${
+        selected
+          ? 'border-[#F87116] bg-orange-50/60'
+          : 'border-border bg-card hover:border-slate-300 hover:shadow-sm'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <Badge className="text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+            {item.label}
+          </Badge>
+          <p className="text-[11px] text-muted-foreground mt-1.5 leading-tight">
+            Chegada: {format(new Date(item.arrivalAt), 'HH:mm', { locale: ptBR })} |
+            Saída: {format(new Date(item.exitAt), 'HH:mm', { locale: ptBR })} |
+            Duração: {durationStr}
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            {item.paymentMethods}
+          </p>
+        </div>
+        <div className="flex-shrink-0 text-right">
+          <p className="text-sm font-bold text-foreground">{formatCurrency(item.totalAmount, currency)}</p>
+          {selected && <ChevronRight className="h-4 w-4 text-[#F87116] mt-1 ml-auto" />}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 // ─── Card da fila ─────────────────────────────────────────────────────────────
 
 function QueueCard({
@@ -330,9 +398,14 @@ function CashierContent() {
   const [justClosed, setJustClosed] = useState(false);
   const [scanInput, setScanInput] = useState('');
   const [scanError, setScanError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'open' | 'completed'>('open');
+  const [completedList, setCompletedList] = useState<CompletedItem[]>([]);
+  const [loadingCompleted, setLoadingCompleted] = useState(false);
+  const [selectedCompleted, setSelectedCompleted] = useState<CompletedItem | null>(null);
 
   const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
   const { data: hasTables } = useFeatureAccess('feature_tables', restaurantId);
+  const { data: hallZones = [] } = useHallZones(restaurantId);
 
   const exchangeRates: ExchangeRates = restaurant?.exchange_rates ?? {
     pyg_per_brl: 3600,
@@ -372,7 +445,7 @@ function CashierContent() {
                 id, customer_name, total, created_at, table_id,
                 delivery_type, order_source,
                 order_items(id, product_name, quantity, unit_price, total_price, observations, customer_name),
-                tables(number)
+                tables(number, hall_zone_id)
               `)
               .eq('restaurant_id', restaurantId)
               .eq('is_paid', false)
@@ -430,7 +503,8 @@ function CashierContent() {
         (o: any) => (o.order_source === 'table' || o.table_id) && o.order_source !== 'delivery' && o.delivery_type !== 'delivery'
       );
       tableOrders.forEach((o: any) => {
-        const tableNum = o.tables?.number ?? o.table_id ?? '?';
+        const t = o.tables;
+        const tableNum = t?.number ?? o.table_id ?? '?';
         items.push({
           id: `ord-${o.id}`,
           type: 'table',
@@ -440,6 +514,7 @@ function CashierContent() {
           createdAt: o.created_at,
           orderId: o.id,
           tableNumber: Number(tableNum),
+          hallZoneId: t?.hall_zone_id ?? null,
           order: o,
         });
       });
@@ -453,9 +528,125 @@ function CashierContent() {
     }
   }, [restaurantId, hasBuffet, hasTables]);
 
+  const todayStart = useMemo(() => startOfDay(new Date()).toISOString(), []);
+
+  const loadCompletedToday = useCallback(async () => {
+    if (!restaurantId) return;
+    setLoadingCompleted(true);
+    try {
+      const items: CompletedItem[] = [];
+      const pmLabel = (m: string) => PAYMENT_METHOD_LABELS[m as PaymentMethod] ?? m;
+
+      const [ordersRes, vcRes, comandasRes] = await Promise.all([
+        hasTables
+          ? supabase
+              .from('orders')
+              .select(`
+                id, customer_name, total, created_at, updated_at, payment_method,
+                table_id, order_source,
+                order_items(id, product_name, quantity, unit_price, total_price, observations, customer_name),
+                tables(number)
+              `)
+              .eq('restaurant_id', restaurantId)
+              .eq('is_paid', true)
+              .eq('order_source', 'table')
+              .gte('updated_at', todayStart)
+          : { data: [] },
+        supabase
+          .from('virtual_comandas')
+          .select('id, short_code, customer_name, created_at, closed_at, total_amount')
+          .eq('restaurant_id', restaurantId)
+          .in('status', ['paid', 'closed'])
+          .gte('closed_at', todayStart)
+          .order('closed_at', { ascending: false }),
+        hasBuffet
+          ? supabase
+              .from('comandas')
+              .select('id, number, total_amount, opened_at, closed_at, comanda_items(id, description, quantity, unit_price, total_price)')
+              .eq('restaurant_id', restaurantId)
+              .eq('status', 'closed')
+              .gte('closed_at', todayStart)
+              .order('closed_at', { ascending: false })
+          : { data: [] },
+      ]);
+
+      const ordersData = (ordersRes.data ?? []) as any[];
+      ordersData.forEach((o) => {
+        items.push({
+          id: `ord-${o.id}`,
+          type: 'table',
+          label: `Mesa ${o.tables?.number ?? o.table_id ?? '?'}`,
+          totalAmount: o.total ?? 0,
+          arrivalAt: o.created_at,
+          exitAt: o.updated_at,
+          paymentMethods: pmLabel(o.payment_method ?? 'cash'),
+          order: o,
+        });
+      });
+
+      const vcData = (vcRes.data ?? []) as any[];
+      for (const vc of vcData) {
+        const { data: ord } = await supabase
+          .from('orders')
+          .select(`
+            id, restaurant_id, customer_name, customer_phone, total, subtotal, delivery_fee, payment_method,
+            delivery_type, delivery_address, order_source, notes, created_at, status, is_paid, updated_at,
+            order_items(id, product_name, quantity, unit_price, total_price, observations),
+            delivery_zone:delivery_zones(id, location_name, fee)
+          `)
+          .eq('virtual_comanda_id', vc.id)
+          .eq('is_paid', true)
+          .maybeSingle();
+        items.push({
+          id: `vc-${vc.id}`,
+          type: 'comanda_digital',
+          label: vc.short_code ?? `VC-${vc.id.slice(0, 8)}`,
+          totalAmount: vc.total_amount ?? 0,
+          arrivalAt: vc.created_at,
+          exitAt: vc.closed_at ?? vc.created_at,
+          paymentMethods: ord ? pmLabel(ord.payment_method ?? 'cash') : '—',
+          order: ord ? (ord as unknown as import('@/types').DatabaseOrder) : undefined,
+        });
+      }
+
+      const comandasData = (comandasRes.data ?? []) as any[];
+      comandasData.forEach((c) => {
+        items.push({
+          id: `buf-${c.id}`,
+          type: 'comanda_buffet',
+          label: `Comanda ${c.number}`,
+          totalAmount: c.total_amount ?? 0,
+          arrivalAt: c.opened_at,
+          exitAt: c.closed_at ?? c.opened_at,
+          paymentMethods: 'Finalizado',
+          comandaBuffet: {
+            number: c.number,
+            items: (c.comanda_items ?? []).map((i: any) => ({
+              description: i.description,
+              quantity: i.quantity,
+              total_price: i.total_price,
+            })),
+          },
+        });
+      });
+
+      items.sort((a, b) => new Date(b.exitAt).getTime() - new Date(a.exitAt).getTime());
+      setCompletedList(items);
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Erro ao carregar concluídos', variant: 'destructive' });
+    } finally {
+      setLoadingCompleted(false);
+    }
+  }, [restaurantId, hasTables, hasBuffet, todayStart]);
+
   useEffect(() => {
     loadQueue();
   }, [loadQueue]);
+
+  useEffect(() => {
+    if (activeTab === 'completed') loadCompletedToday();
+  }, [activeTab, loadCompletedToday]);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -509,50 +700,71 @@ function CashierContent() {
       if (selected?.id === item.id) return;
       setScanError(null);
       setSelected(item);
+      setSelectedCompleted(null);
       setPayments([]);
       setPaymentInputs({});
     },
     [selected?.id]
   );
 
+  const selectCompletedItem = useCallback((item: CompletedItem) => {
+    setSelected(null);
+    setSelectedCompleted(item);
+  }, []);
+
   const handleScanSubmit = useCallback(() => {
     const value = scanInput.trim().toUpperCase();
-    setScanInput('');
     if (!value) return;
 
-    if (SCANNER_PATTERN.test(value)) {
-      const found = queue.find(
-        (q): q is QueueItemComandaDigital => q.type === 'comanda_digital' && q.shortCode === value
-      );
-      if (found) {
-        selectItem(found);
+    if (activeTab === 'open') {
+      setScanInput('');
+      if (SCANNER_PATTERN.test(value)) {
+        const found = queue.find(
+          (q): q is QueueItemComandaDigital => q.type === 'comanda_digital' && q.shortCode === value
+        );
+        if (found) {
+          selectItem(found);
+        } else {
+          setScanError(`Comanda ${value} não encontrada ou já encerrada.`);
+        }
+        return;
+      }
+      const num = parseInt(value, 10);
+      if (!isNaN(num)) {
+        const tableFound = queue.find(
+          (q): q is QueueItemTable => q.type === 'table' && q.tableNumber === num
+        );
+        if (tableFound) {
+          selectItem(tableFound);
+          return;
+        }
+        const bufFound = queue.find(
+          (q): q is QueueItemComandaBuffet => q.type === 'comanda_buffet' && q.number === num
+        );
+        if (bufFound) {
+          selectItem(bufFound);
+          return;
+        }
+        setScanError(`Mesa ou Comanda #${num} não encontrada.`);
       } else {
-        setScanError(`Comanda ${value} não encontrada ou já encerrada.`);
+        setScanError(`Formato inválido. Use CMD-XXXX, número da Mesa ou Comanda.`);
       }
-      return;
-    }
-
-    const num = parseInt(value, 10);
-    if (!isNaN(num)) {
-      const tableFound = queue.find(
-        (q): q is QueueItemTable => q.type === 'table' && q.tableNumber === num
-      );
-      if (tableFound) {
-        selectItem(tableFound);
-        return;
-      }
-      const bufFound = queue.find(
-        (q): q is QueueItemComandaBuffet => q.type === 'comanda_buffet' && q.number === num
-      );
-      if (bufFound) {
-        selectItem(bufFound);
-        return;
-      }
-      setScanError(`Mesa ou Comanda #${num} não encontrada.`);
     } else {
-      setScanError(`Formato inválido. Use CMD-XXXX, número da Mesa ou Comanda.`);
+      const term = value.toLowerCase();
+      const found = completedList.find(
+        (c) =>
+          c.label.toLowerCase().includes(term) ||
+          (term.match(/^\d+$/) && c.label.includes(term))
+      );
+      if (found) selectCompletedItem(found);
     }
-  }, [scanInput, queue, selectItem]);
+  }, [scanInput, queue, completedList, activeTab, selectItem, selectCompletedItem]);
+
+  const completedFiltered = useMemo(() => {
+    const v = scanInput.trim().toLowerCase();
+    if (!v) return completedList;
+    return completedList.filter((c) => c.label.toLowerCase().includes(v));
+  }, [completedList, scanInput]);
 
   const handleScanKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') handleScanSubmit();
@@ -573,6 +785,29 @@ function CashierContent() {
   const totalToPayBRL = baseCurrency === 'BRL' ? totalToPay : convertBetweenCurrencies(totalToPay, baseCurrency, 'BRL', exchangeRates);
   const remaining = totalToPayBRL - totalReceivedBRL;
   const changeAmount = remaining < 0 ? -remaining : 0;
+
+  const totalToReceive = useMemo(() => {
+    return queue.reduce((sum, q) => sum + getDisplayTotal(q.totalAmount, q.type === 'comanda_digital' ? q.items : q.type === 'comanda_buffet' ? q.items : undefined), 0);
+  }, [queue]);
+
+  const totalReceivedToday = useMemo(() => {
+    return completedList.reduce((sum, c) => sum + c.totalAmount, 0);
+  }, [completedList]);
+
+  const queueGroupedByZone = useMemo(() => {
+    const groups: { zoneName: string; items: CashierQueueItem[] }[] = [];
+    const tableItems = queue.filter((q): q is QueueItemTable => q.type === 'table');
+    const nonTableItems = queue.filter((q) => q.type !== 'table');
+    for (const z of hallZones) {
+      const items = tableItems.filter((t) => t.hallZoneId === z.id);
+      if (items.length > 0) groups.push({ zoneName: z.name, items });
+    }
+    const noZone = tableItems.filter((t) => !t.hallZoneId);
+    if (noZone.length > 0) groups.push({ zoneName: 'Sem zona', items: noZone });
+    if (nonTableItems.length > 0) groups.push({ zoneName: 'Comandas Avulsas', items: nonTableItems });
+    if (groups.length === 0 && queue.length > 0) groups.push({ zoneName: 'Todos', items: queue });
+    return groups;
+  }, [queue, hallZones]);
 
   const addPayment = () => {
     const id = `pay-${Date.now()}`;
@@ -651,10 +886,12 @@ function CashierContent() {
       }
 
       setSelected(null);
+      setSelectedCompleted(null);
       setPayments([]);
       setPaymentInputs({});
       setJustClosed(true);
       loadQueue();
+      loadCompletedToday();
       scannerRef.current?.focus();
     } catch (err: any) {
       toast({ title: 'Erro ao encerrar', description: err?.message, variant: 'destructive' });
@@ -665,6 +902,7 @@ function CashierContent() {
 
   const handleClearSelection = () => {
     setSelected(null);
+    setSelectedCompleted(null);
     setPayments([]);
     setPaymentInputs({});
     setScanError(null);
@@ -714,31 +952,52 @@ function CashierContent() {
         />
       )}
 
-      <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Caixa / PDV</h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            Hub central de pagamentos — Mesas, Comandas Digitais e Buffet
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {comandaUrl && (
-            <Button variant="outline" size="sm" onClick={() => setShowQRModal(true)}>
-              <QrCode className="h-3.5 w-3.5 mr-1.5" />
-              QR Code
-            </Button>
-          )}
-          <div
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold ${
-              isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-muted border-border text-muted-foreground'
-            }`}
-          >
-            {isLive ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-            {loadingList ? '…' : queue.length} em aberto
+      <div className="space-y-4 mb-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Caixa / PDV</h1>
+            <p className="text-muted-foreground mt-0.5 text-sm">
+              Hub central de pagamentos — Mesas, Comandas Digitais e Buffet
+            </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={loadQueue}>
-            <RefreshCw className={`h-4 w-4 ${loadingList ? 'animate-spin' : ''}`} />
-          </Button>
+          <div className="flex items-center gap-2">
+            {comandaUrl && (
+              <Button variant="outline" size="sm" onClick={() => setShowQRModal(true)}>
+                <QrCode className="h-3.5 w-3.5 mr-1.5" />
+                QR Code
+              </Button>
+            )}
+            <div
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold ${
+                isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-muted border-border text-muted-foreground'
+              }`}
+            >
+              {isLive ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+              {loadingList ? '…' : queue.length} em aberto
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => { loadQueue(); loadCompletedToday(); }}>
+              <RefreshCw className={`h-4 w-4 ${loadingList ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+        </div>
+        {/* KPIs do turno */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs font-medium text-muted-foreground">Contas em Aberto</p>
+            <p className="text-2xl font-bold text-foreground mt-0.5">{loadingList ? '…' : queue.length}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs font-medium text-muted-foreground">Total a Receber</p>
+            <p className="text-2xl font-bold text-foreground mt-0.5">
+              {formatCurrency(totalToReceive, baseCurrency)}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs font-medium text-muted-foreground">Total Recebido (Hoje)</p>
+            <p className="text-2xl font-bold text-emerald-600 mt-0.5">
+              {formatCurrency(totalReceivedToday, baseCurrency)}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -784,40 +1043,156 @@ function CashierContent() {
           </div>
 
           <div className="rounded-xl border border-border bg-card overflow-hidden flex-1 min-h-0 flex flex-col">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between flex-shrink-0">
-              <h2 className="text-sm font-semibold">Fila do Caixa</h2>
-              {queue.length > 0 && (
-                <Badge className="bg-[#F87116]/10 text-[#F87116] border-0">{queue.length}</Badge>
-              )}
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {loadingList ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : queue.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-                  <LayoutGrid className="h-10 w-10 text-muted-foreground/50" />
-                  <p className="text-sm text-muted-foreground">Nenhuma conta em aberto</p>
-                </div>
-              ) : (
-                queue.map((item) => (
-                  <QueueCard
-                    key={item.id}
-                    item={item}
-                    selected={selected?.id === item.id}
-                    currency={currency}
-                    onClick={() => selectItem(item)}
-                  />
-                ))
-              )}
+            <div className="px-4 py-3 border-b border-border flex-shrink-0">
+              <h2 className="text-sm font-semibold mb-2">Fila do Caixa</h2>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'open' | 'completed')}>
+                <TabsList className="w-full grid grid-cols-2">
+                  <TabsTrigger value="open" className="text-xs">
+                    Aguardando Pagamento
+                    {queue.length > 0 && (
+                      <Badge className="ml-1.5 h-5 px-1.5 bg-[#F87116]/20 text-[#F87116] border-0">{queue.length}</Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="completed" className="text-xs">
+                    Concluídos Hoje
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="open" className="mt-3 flex-1 overflow-y-auto min-h-0">
+                  {loadingList ? (
+                    <div className="flex justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : queue.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                      <LayoutGrid className="h-10 w-10 text-muted-foreground/50" />
+                      <p className="text-sm text-muted-foreground">Nenhuma conta em aberto</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 p-1">
+                      {queueGroupedByZone.map((group) => (
+                        <div key={group.zoneName}>
+                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 px-1">{group.zoneName}</p>
+                          <div className="space-y-2">
+                            {group.items.map((item) => (
+                              <QueueCard
+                                key={item.id}
+                                item={item}
+                                selected={selected?.id === item.id}
+                                currency={currency}
+                                onClick={() => selectItem(item)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="completed" className="mt-3 flex-1 overflow-y-auto min-h-0 p-3">
+                  {loadingCompleted ? (
+                    <div className="flex justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : completedFiltered.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                      <CheckCircle2 className="h-10 w-10 text-emerald-500/50" />
+                      <p className="text-sm text-muted-foreground">
+                        {scanInput.trim() ? 'Nenhum resultado para a busca.' : 'Nenhuma conta concluída hoje.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {completedFiltered.map((item) => (
+                        <CompletedCard
+                          key={item.id}
+                          item={item}
+                          currency={currency}
+                          selected={selectedCompleted?.id === item.id}
+                          onClick={() => selectCompletedItem(item)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </div>
 
-        {/* COLUNA DIREITA: Terminal de Pagamento */}
+        {/* COLUNA DIREITA: Terminal de Pagamento ou Recibo (somente leitura) */}
         <div className="lg:col-span-3">
-          {!selected ? (
+          {selectedCompleted ? (
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                <span className="font-mono font-bold">{selectedCompleted.label}</span>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedCompleted(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="p-5 overflow-y-auto max-h-[60vh]">
+                {selectedCompleted.order ? (
+                  <>
+                    <OrderReceipt
+                      data={{
+                        order: selectedCompleted.order,
+                        restaurantName: restaurant?.name ?? '',
+                        paperWidth: (restaurant?.print_paper_width as '58mm' | '80mm') || '80mm',
+                        currency: baseCurrency,
+                      }}
+                    />
+                    <Button
+                      className="w-full mt-4"
+                      onClick={() => {
+                        if (selectedCompleted.order && restaurant)
+                          printOrder(
+                            selectedCompleted.order as any,
+                            restaurant.name,
+                            (restaurant.print_paper_width as '58mm' | '80mm') || '80mm',
+                            currency,
+                            (restaurant.print_settings_by_sector as any) ?? undefined
+                          );
+                        toast({ title: 'Impressão enviada!' });
+                      }}
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Reimprimir Recibo
+                    </Button>
+                  </>
+                ) : selectedCompleted.comandaBuffet ? (
+                  <div className="space-y-4">
+                    <div className="text-sm">
+                      <p className="font-semibold mb-2">Comanda {selectedCompleted.comandaBuffet.number}</p>
+                      <div className="border rounded-lg divide-y">
+                        {selectedCompleted.comandaBuffet.items.map((i, idx) => (
+                          <div key={idx} className="flex justify-between px-3 py-2">
+                            <span>{i.description} x{i.quantity}</span>
+                            <span>{formatCurrency(i.total_price, baseCurrency)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="font-bold mt-2 text-right">
+                        Total: {formatCurrency(selectedCompleted.totalAmount, baseCurrency)}
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Chegada: {format(new Date(selectedCompleted.arrivalAt), 'HH:mm', { locale: ptBR })} |
+                      Saída: {format(new Date(selectedCompleted.exitAt), 'HH:mm', { locale: ptBR })}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-sm font-semibold">{selectedCompleted.label}</p>
+                    <p className="text-lg font-bold">{formatCurrency(selectedCompleted.totalAmount, baseCurrency)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Chegada: {format(new Date(selectedCompleted.arrivalAt), 'HH:mm', { locale: ptBR })} |
+                      Saída: {format(new Date(selectedCompleted.exitAt), 'HH:mm', { locale: ptBR })} |
+                      Pagamento: {selectedCompleted.paymentMethods}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : !selected ? (
             <div className="flex flex-col items-center justify-center min-h-[400px] rounded-xl border-2 border-dashed border-muted bg-muted/20 gap-4 p-8 text-center">
               <ShoppingBag className="h-16 w-16 text-muted-foreground/40" />
               <p className="text-base font-semibold text-muted-foreground">Nenhuma conta selecionada</p>
