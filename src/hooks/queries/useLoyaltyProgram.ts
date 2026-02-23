@@ -27,11 +27,19 @@ export function useLoyaltyProgram(restaurantId: string | null) {
 // ─── Salvar programa ──────────────────────────────────────────────────────────
 
 async function saveLoyaltyProgram(program: LoyaltyProgram): Promise<void> {
-  const { restaurant_id, enabled, orders_required, reward_description } = program;
+  const { restaurant_id, enabled, orders_required, reward_description, scoring_channels, points_validity_days } = program;
   const { error } = await supabase
     .from('loyalty_programs')
     .upsert(
-      { restaurant_id, enabled, orders_required, reward_description, updated_at: new Date().toISOString() },
+      {
+        restaurant_id,
+        enabled,
+        orders_required,
+        reward_description,
+        scoring_channels: scoring_channels ?? { delivery: true, table: true, buffet: true },
+        points_validity_days: points_validity_days ?? null,
+        updated_at: new Date().toISOString(),
+      },
       { onConflict: 'restaurant_id' }
     );
   if (error) throw error;
@@ -77,28 +85,41 @@ export function useLoyaltyStatus(restaurantId: string | null, phone: string | nu
 export interface LoyaltyMetrics {
   totalRedeemed: number;
   activeClients: number;
+  totalPointsDistributed: number;
   topClients: Array<LoyaltyPoints & { name?: string }>;
 }
 
-async function fetchLoyaltyMetrics(restaurantId: string | null): Promise<LoyaltyMetrics> {
-  if (!restaurantId) return { totalRedeemed: 0, activeClients: 0, topClients: [] };
+async function fetchLoyaltyMetrics(
+  restaurantId: string | null,
+  ordersRequired: number = 10
+): Promise<LoyaltyMetrics> {
+  if (!restaurantId) return { totalRedeemed: 0, activeClients: 0, totalPointsDistributed: 0, topClients: [] };
   const { data, error } = await supabase
     .from('loyalty_points')
     .select('customer_phone, points, redeemed_count')
     .eq('restaurant_id', restaurantId)
     .order('points', { ascending: false })
-    .limit(20);
+    .limit(500);
   if (error) throw error;
   const rows = (data ?? []) as LoyaltyPoints[];
   const totalRedeemed = rows.reduce((s, r) => s + r.redeemed_count, 0);
   const activeClients = rows.filter((r) => r.points > 0 || r.redeemed_count > 0).length;
-  return { totalRedeemed, activeClients, topClients: rows.slice(0, 10) };
+  const totalPointsDistributed = rows.reduce(
+    (s, r) => s + r.points + r.redeemed_count * ordersRequired,
+    0
+  );
+  return {
+    totalRedeemed,
+    activeClients,
+    totalPointsDistributed,
+    topClients: rows.slice(0, 10),
+  };
 }
 
-export function useLoyaltyMetrics(restaurantId: string | null) {
+export function useLoyaltyMetrics(restaurantId: string | null, ordersRequired = 10) {
   return useQuery({
-    queryKey: ['loyaltyMetrics', restaurantId],
-    queryFn: () => fetchLoyaltyMetrics(restaurantId),
+    queryKey: ['loyaltyMetrics', restaurantId, ordersRequired],
+    queryFn: () => fetchLoyaltyMetrics(restaurantId, ordersRequired),
     enabled: !!restaurantId,
     staleTime: 60_000,
   });

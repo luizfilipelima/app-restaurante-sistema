@@ -137,8 +137,8 @@ export default function AdminDashboard() {
     enabled: !!prevRange,
   });
 
-  const { data: loyaltyMetrics } = useLoyaltyMetrics(restaurantId);
   const { data: loyaltyProgram } = useLoyaltyProgram(restaurantId);
+  const { data: loyaltyMetrics } = useLoyaltyMetrics(restaurantId, loyaltyProgram?.orders_required ?? 10);
 
   const metrics = useMemo(() => {
     const k = analytics?.kpis ?? kpisData;

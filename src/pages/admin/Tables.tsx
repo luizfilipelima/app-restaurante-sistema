@@ -867,69 +867,73 @@ export function TableCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex min-h-[120px] sm:min-h-[130px] flex-col items-stretch justify-between rounded-xl border-2 bg-white p-4 text-left shadow-sm transition-all touch-manipulation active:scale-[0.98] hover:shadow-md dark:bg-card',
+        'flex min-h-[140px] sm:min-h-[150px] w-full flex-col items-stretch rounded-xl border-2 bg-white p-4 text-left shadow-sm transition-all touch-manipulation active:scale-[0.98] hover:shadow-md dark:bg-card overflow-hidden',
         borderColor
       )}
     >
-      {/* Topo: Número + Status + Sino (apenas quando chamando) */}
-      <div className="flex w-full items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="text-xl font-bold sm:text-2xl truncate">Mesa {table.number}</span>
-          {isOccupied && (
-            <span
-              className={cn(
-                'h-2 w-2 shrink-0 rounded-full',
-                isCalling && 'bg-amber-500 animate-pulse',
-                !isCalling && table.status === 'occupied' && 'bg-blue-500',
-                !isCalling && table.status === 'awaiting_closure' && 'bg-red-500'
-              )}
-              aria-hidden
-            />
+      <div className="flex flex-col gap-3 flex-1 min-h-0">
+        {/* Topo: Número + Status + Sino (apenas quando chamando) */}
+        <div className="flex w-full items-center justify-between gap-2 min-h-[32px] shrink-0">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="text-xl font-bold sm:text-2xl truncate">Mesa {table.number}</span>
+            {isOccupied && (
+              <span
+                className={cn(
+                  'h-2 w-2 shrink-0 rounded-full',
+                  isCalling && 'bg-amber-500 animate-pulse',
+                  !isCalling && table.status === 'occupied' && 'bg-blue-500',
+                  !isCalling && table.status === 'awaiting_closure' && 'bg-red-500'
+                )}
+                aria-hidden
+              />
+            )}
+          </div>
+          {isCalling && (
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 animate-pulse dark:bg-amber-900/40 dark:text-amber-400" aria-label="Chamando garçom">
+              <Bell className="h-4 w-4" />
+            </span>
           )}
         </div>
-        {isCalling && (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 animate-pulse dark:bg-amber-900/40 dark:text-amber-400" aria-label="Chamando garçom">
-            <Bell className="h-4 w-4" />
-          </span>
-        )}
-      </div>
 
-      {/* Centro: Valor total + itens (apenas quando ocupada) */}
-      <div className="flex-1 flex flex-col justify-center min-h-[44px]">
-        {isOccupied ? (
-          <>
-            {table.totalAmount > 0 && (
-              <p className="text-lg font-bold text-foreground sm:text-xl">
-                {formatPrice(table.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
-              </p>
-            )}
-            {table.itemsCount > 0 && (
-              <p className="text-xs text-muted-foreground mt-0.5">{table.itemsCount} itens</p>
-            )}
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground/70">Livre</p>
-        )}
-      </div>
+        {/* Centro: Valor total + itens (apenas quando ocupada) */}
+        <div className="flex flex-col justify-center gap-1 flex-1 min-h-[48px]">
+          {isOccupied ? (
+            <>
+              {table.totalAmount > 0 && (
+                <p className="text-lg font-bold text-foreground sm:text-xl leading-tight">
+                  {formatPrice(table.totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
+                </p>
+              )}
+              {table.itemsCount > 0 && (
+                <p className="text-sm text-muted-foreground">{table.itemsCount} itens</p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Livre</p>
+          )}
+        </div>
 
-      {/* Rodapé: Tag zona (esquerda) + Tempo (direita) */}
-      <div className="flex w-full items-center justify-between gap-2 pt-1 border-t border-border/50 mt-auto">
-        {zoneName ? (
-          <Badge
-            variant="outline"
-            className={cn('text-[10px] font-semibold uppercase tracking-wide border-0', getZoneBadgeStyle(zoneName))}
-          >
-            {zoneName}
-          </Badge>
-        ) : (
-          <span />
-        )}
-        {isOccupied && table.openedAt && (
-          <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
-            <Clock className="h-3 w-3" />
-            {formatDistanceToNow(new Date(table.openedAt), { addSuffix: true, locale: ptBR })}
-          </span>
-        )}
+        {/* Rodapé: Tag zona (esquerda) + Tempo (direita) */}
+        <div className="flex w-full items-center justify-between gap-3 pt-2 mt-auto border-t border-border/50 shrink-0">
+          {zoneName ? (
+            <Badge
+              variant="outline"
+              className={cn('text-[10px] font-semibold uppercase tracking-wide border-0 truncate max-w-[60%]', getZoneBadgeStyle(zoneName))}
+            >
+              {zoneName}
+            </Badge>
+          ) : (
+            <span className="flex-1" />
+          )}
+          {isOccupied && table.openedAt ? (
+            <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
+              <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+              {formatDistanceToNow(new Date(table.openedAt), { addSuffix: true, locale: ptBR })}
+            </span>
+          ) : (
+            <span className="shrink-0" />
+          )}
+        </div>
       </div>
     </button>
   );

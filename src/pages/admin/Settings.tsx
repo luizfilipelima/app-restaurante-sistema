@@ -24,10 +24,10 @@ import {
   Save, Upload, Loader2, Clock, Instagram, Printer,
   Phone, Globe, ImageIcon, CheckCircle2, XCircle,
   Sun, AlarmClock, X, Wifi, Languages, Store,
-  Gift, Star, Trophy, Users, ExternalLink, Link2,
+  Users, ExternalLink, Link2,
   MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode,
 } from 'lucide-react';
-import { useLoyaltyProgram, useSaveLoyaltyProgram, useLoyaltyMetrics, useRestaurant } from '@/hooks/queries';
+import { useRestaurant } from '@/hooks/queries';
 import { useCanAccess } from '@/hooks/useUserRole';
 import RestaurantUsersPanel from '@/components/admin/RestaurantUsersPanel';
 
@@ -276,19 +276,6 @@ export default function AdminSettings() {
   const [logoUploading, setLogoUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Fidelidade ──
-  const { data: loyaltyProgram } = useLoyaltyProgram(restaurantId);
-  const { data: loyaltyMetrics } = useLoyaltyMetrics(restaurantId);
-  const saveLoyaltyMutation = useSaveLoyaltyProgram();
-  const [loyaltySaving, setLoyaltySaving] = useState(false);
-  const [loyaltyForm, setLoyaltyForm] = useState<{ enabled: boolean; orders_required: number; reward_description: string }>({
-    enabled: false,
-    orders_required: 10,
-    reward_description: '',
-  });
-  const setLoyalty = <K extends keyof typeof loyaltyForm>(k: K, v: (typeof loyaltyForm)[K]) =>
-    setLoyaltyForm(f => ({ ...f, [k]: v }));
-
   // Local state mirrors the store so the Select shows correctly
   const [panelLangLocal, setPanelLangLocal] = useState<PanelLanguage>(panelLanguage);
 
@@ -321,7 +308,7 @@ export default function AdminSettings() {
   const set = <K extends keyof typeof formData>(k: K, v: (typeof formData)[K]) =>
     setFormData(f => ({ ...f, [k]: v }));
 
-  const hashTab = location.hash === '#cambio' ? 'cambio' : location.hash === '#fidelidade' ? 'fidelidade' : null;
+  const hashTab = location.hash === '#cambio' ? 'cambio' : null;
   const [activeTab, setActiveTab] = useState<string>(hashTab || 'perfil');
   useEffect(() => {
     if (hashTab) setActiveTab(hashTab);
@@ -330,16 +317,6 @@ export default function AdminSettings() {
   useEffect(() => {
     if (restaurantId) loadRestaurant();
   }, [restaurantId]);
-
-  useEffect(() => {
-    if (loyaltyProgram) {
-      setLoyaltyForm({
-        enabled: loyaltyProgram.enabled,
-        orders_required: loyaltyProgram.orders_required,
-        reward_description: loyaltyProgram.reward_description,
-      });
-    }
-  }, [loyaltyProgram]);
 
   const loadRestaurant = async () => {
     if (!restaurantId) return;
@@ -497,7 +474,6 @@ export default function AdminSettings() {
               { value: 'horarios',     icon: Clock,   label: 'Horários'                   },
               { value: 'impressao',    icon: Printer, label: 'Impressão'                  },
               { value: 'cambio',       icon: Repeat,  label: 'Câmbio'                     },
-              { value: 'fidelidade',   icon: Gift,    label: t('loyalty.tabLabel')        },
               ...(canAccessUsers ? [{ value: 'usuarios', icon: Users, label: t('settings.tabs.users') }] : []),
             ].map(({ value, icon: Icon, label }) => (
               <TabsTrigger
@@ -1552,148 +1528,6 @@ export default function AdminSettings() {
           <div className="flex justify-end">
             <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
           </div>
-        </TabsContent>
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            ABA 6 — Fidelidade
-        ══════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="fidelidade" className="mt-0 space-y-5">
-
-          {/* Config do programa */}
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-5">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-violet-100 dark:bg-violet-950/40 flex items-center justify-center flex-shrink-0">
-                <Gift className="h-[18px] w-[18px] text-violet-600" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">{t('loyalty.sectionTitle')}</h2>
-                <p className="text-[11px] text-muted-foreground">{t('loyalty.sectionDesc')}</p>
-              </div>
-            </div>
-
-            {/* Toggle ativar */}
-            <ToggleRow
-              label={t('loyalty.toggleLabel')}
-              description={t('loyalty.toggleDesc')}
-              checked={loyaltyForm.enabled}
-              onChange={(v) => setLoyalty('enabled', v)}
-              icon={Star}
-              activeColor="bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800"
-            />
-
-            {/* Campos de configuração */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FieldGroup>
-                <SectionLabel>{t('loyalty.ordersRequired')}</SectionLabel>
-                <Input
-                  type="number"
-                  min={2}
-                  max={100}
-                  value={loyaltyForm.orders_required}
-                  onChange={(e) => setLoyalty('orders_required', Math.max(2, Math.min(100, parseInt(e.target.value) || 10)))}
-                />
-                <p className="text-[10px] text-muted-foreground">{t('loyalty.ordersRequiredHint')}</p>
-              </FieldGroup>
-
-              <FieldGroup>
-                <SectionLabel>{t('loyalty.rewardLabel')}</SectionLabel>
-                <Input
-                  value={loyaltyForm.reward_description}
-                  onChange={(e) => setLoyalty('reward_description', e.target.value)}
-                  placeholder={t('loyalty.rewardPlaceholder')}
-                  maxLength={120}
-                />
-                <p className="text-[10px] text-muted-foreground">{t('loyalty.rewardHint')}</p>
-              </FieldGroup>
-            </div>
-
-            {/* Preview dos selos */}
-            {loyaltyForm.orders_required >= 2 && (
-              <div className="rounded-xl bg-muted/40 border border-border p-3 space-y-2">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Preview do cartão</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {Array.from({ length: Math.min(loyaltyForm.orders_required, 10) }).map((_, i) => (
-                    <div key={i} className={`h-6 w-6 rounded-full flex items-center justify-center ${i < 3 ? 'bg-violet-500' : 'bg-muted border border-border'}`}>
-                      <Star className={`h-3 w-3 ${i < 3 ? 'text-white' : 'text-muted-foreground/30'}`} />
-                    </div>
-                  ))}
-                  {loyaltyForm.orders_required > 10 && (
-                    <span className="text-[10px] text-muted-foreground self-center">+{loyaltyForm.orders_required - 10}</span>
-                  )}
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  3 de {loyaltyForm.orders_required} pedidos — faltam {loyaltyForm.orders_required - 3} para ganhar: {loyaltyForm.reward_description || '—'}
-                </p>
-              </div>
-            )}
-
-            <div className="flex justify-end">
-              <SaveButton
-                saving={loyaltySaving}
-                label={t('loyalty.saveBtn')}
-                savingLabel={t('common.saving')}
-                onClick={async () => {
-                  if (!restaurantId) return;
-                  setLoyaltySaving(true);
-                  try {
-                    await saveLoyaltyMutation.mutateAsync({ restaurant_id: restaurantId, ...loyaltyForm });
-                    toast({ title: t('common.success'), description: t('loyalty.sectionTitle') });
-                  } catch {
-                    toast({ title: t('common.error'), variant: 'destructive' });
-                  } finally {
-                    setLoyaltySaving(false);
-                  }
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Métricas de Fidelidade */}
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-amber-100 dark:bg-amber-950/40 flex items-center justify-center flex-shrink-0">
-                <Trophy className="h-[18px] w-[18px] text-amber-600" />
-              </div>
-              <h2 className="text-sm font-semibold text-foreground">{t('loyalty.metricsTitle')}</h2>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-muted/40 border border-border p-3 text-center">
-                <p className="text-2xl font-bold text-foreground">{loyaltyMetrics?.totalRedeemed ?? 0}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{t('loyalty.totalRedeemed')}</p>
-              </div>
-              <div className="rounded-xl bg-muted/40 border border-border p-3 text-center">
-                <p className="text-2xl font-bold text-foreground">{loyaltyMetrics?.activeClients ?? 0}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center justify-center gap-1"><Users className="h-3 w-3" />{t('loyalty.activeClients')}</p>
-              </div>
-            </div>
-
-            {/* Top clientes */}
-            {(loyaltyMetrics?.topClients ?? []).length > 0 && (
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{t('loyalty.topClientsTitle')}</p>
-                <div className="space-y-1.5">
-                  {loyaltyMetrics!.topClients.map((c, i) => (
-                    <div key={c.customer_phone} className="flex items-center justify-between gap-3 rounded-lg bg-muted/30 px-3 py-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className={`text-xs font-bold w-5 text-center ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-slate-400' : i === 2 ? 'text-amber-600' : 'text-muted-foreground'}`}>
-                          {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}
-                        </span>
-                        <span className="text-xs font-mono text-foreground truncate">{c.customer_phone}</span>
-                      </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        <span className="text-[11px] text-violet-600 font-semibold">{c.points} pts</span>
-                        {c.redeemed_count > 0 && (
-                          <span className="text-[11px] text-amber-600 font-semibold">{c.redeemed_count}x 🎁</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
         </TabsContent>
 
         {/* ══════════════════════════════════════════════════════════════════════

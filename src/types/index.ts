@@ -136,6 +136,8 @@ export interface Restaurant {
   whatsapp_templates?: WhatsAppTemplates | null;
   /** Override manual da receita mensal em BRL (Super Admin). Se definido, usado no Dashboard BI em vez do preço do plano. */
   manual_monthly_revenue_brl?: number | null;
+  /** Preço padrão por Kg para buffet (moeda nativa: centavos BRL, inteiro PYG). Usado na pesagem quando produto não tem preço. */
+  buffet_price_per_kg?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -578,12 +580,22 @@ export interface ValidateCouponResult {
 
 // ==================== LOYALTY ====================
 
+export type LoyaltyScoringChannels = {
+  delivery?: boolean;
+  table?: boolean;
+  buffet?: boolean;
+};
+
 export interface LoyaltyProgram {
   id?: string;
   restaurant_id: string;
   enabled: boolean;
   orders_required: number;
   reward_description: string;
+  /** Canais onde o cliente pontua. Default: todos true. */
+  scoring_channels?: LoyaltyScoringChannels | null;
+  /** Dias até pontos expirarem. Null = nunca expira. */
+  points_validity_days?: number | null;
   created_at?: string;
   updated_at?: string;
 }

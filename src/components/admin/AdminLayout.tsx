@@ -21,7 +21,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { getCardapioPublicUrl } from '@/lib/utils';
 import { prefetchRoute } from '@/lib/routePrefetch';
-import RestaurantUsersPanel from '@/components/admin/RestaurantUsersPanel';
 import { supabase } from '@/lib/supabase';
 import {
   LayoutDashboard,
@@ -41,10 +40,7 @@ import {
   ExternalLink,
   Lock,
   Sparkles,
-  CreditCard,
   ScanBarcode,
-  Users,
-  Repeat,
   Boxes,
   ConciergeBell,
   Smartphone,
@@ -52,7 +48,6 @@ import {
   Tag,
   Ticket,
   Gift,
-  Printer,
   MoreHorizontal,
   Link2,
   Eye,
@@ -300,37 +295,9 @@ const buildNavSections = (
       {
         kind: 'leaf',
         name: t('nav.items.loyalty'),
-        href: `${base}/settings#fidelidade`,
+        href: `${base}/loyalty`,
         icon: Gift,
         roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
-      },
-    ],
-  },
-  // 7. GESTÃO & CONFIGURAÇÃO
-  {
-    kind: 'group',
-    label: t('nav.groups.settings'),
-    items: [
-      {
-        kind: 'leaf',
-        name: t('nav.items.settingsGeneral'),
-        href: `${base}/settings`,
-        icon: Settings,
-        roleRequired: ['restaurant_admin', 'super_admin'],
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.settingsPrint'),
-        href: `${base}/settings#impressao`,
-        icon: Printer,
-        roleRequired: ['restaurant_admin', 'super_admin'],
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.usersTeam'),
-        href: `${base}/settings#usuarios`,
-        icon: Users,
-        roleRequired: ['restaurant_admin', 'super_admin'],
       },
     ],
   },
@@ -530,8 +497,6 @@ export default function AdminLayout({
   // restaurant_admin = todos os usuários de restaurante não-cozinha (owner, manager, etc.)
   // O backend e as páginas individuais aplicam o controle granular.
   const canManageUsers = user?.role === 'restaurant_admin' || user?.role === 'super_admin';
-
-  const [usersPanelOpen, setUsersPanelOpen] = useState(false);
 
   const base = basePath || '/admin';
   const navSections = buildNavSections(base, restaurantId, t, restaurant?.slug);
@@ -840,43 +805,16 @@ export default function AdminLayout({
               </DropdownMenu>
             )}
 
-            {/* Utilitários: Câmbio, Settings, Plano, Usuários */}
+            {/* Utilitários: Configurações (único acesso) */}
             <div className="flex items-center gap-1">
               {canManageUsers && (
-                <>
-                  <Link
-                    to={`${base}/settings#cambio`}
-                    title="Câmbio"
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-                  >
-                    <Repeat className="h-4 w-4" />
-                  </Link>
-                  <Link
-                    to={`${base}/settings`}
-                    title="Configurações"
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Link>
-                  <Link
-                    to={`${base}/upgrade`}
-                    title="Meu Plano"
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-                  >
-                    <CreditCard className="h-4 w-4" />
-                  </Link>
-                </>
-              )}
-              {(isSuperAdminView || canManageUsers) && (
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-9 w-9 border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
-                  onClick={() => setUsersPanelOpen(true)}
-                  title="Gerenciar usuários"
+                <Link
+                  to={`${base}/settings`}
+                  title="Configurações"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
                 >
-                  <Users className="h-4 w-4" />
-                </Button>
+                  <Settings className="h-4 w-4" />
+                </Link>
               )}
             </div>
           </div>
@@ -1004,31 +942,11 @@ export default function AdminLayout({
                   <DropdownMenuLabel className="text-xs text-slate-500">Configurações</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {canManageUsers && (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link to={`${base}/settings#cambio`} className="gap-2 cursor-pointer">
-                          <Repeat className="h-4 w-4" />
-                          Câmbio
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={`${base}/settings`} className="gap-2 cursor-pointer">
-                          <Settings className="h-4 w-4" />
-                          Configurações
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={`${base}/upgrade`} className="gap-2 cursor-pointer">
-                          <CreditCard className="h-4 w-4" />
-                          Meu Plano
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  {(isSuperAdminView || canManageUsers) && (
-                    <DropdownMenuItem onClick={() => setUsersPanelOpen(true)} className="gap-2 cursor-pointer">
-                      <Users className="h-4 w-4" />
-                      Gerenciar Usuários
+                    <DropdownMenuItem asChild>
+                      <Link to={`${base}/settings`} className="gap-2 cursor-pointer">
+                        <Settings className="h-4 w-4" />
+                        Configurações
+                      </Link>
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -1088,16 +1006,6 @@ export default function AdminLayout({
         </div>
 
       </div>{/* fecha min-h-screen */}
-
-      {/* ── Painel de Gestão de Usuários (proprietário ou super-admin) ─────────────── */}
-      {(isSuperAdminView || canManageUsers) && restaurantId && (
-        <RestaurantUsersPanel
-          open={usersPanelOpen}
-          onClose={() => setUsersPanelOpen(false)}
-          restaurantId={restaurantId}
-          restaurantName={restaurant?.name}
-        />
-      )}
 
     </AdminRestaurantContext.Provider>
   );

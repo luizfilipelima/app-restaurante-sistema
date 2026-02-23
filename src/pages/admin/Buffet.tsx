@@ -1,11 +1,20 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { useRestaurant } from '@/hooks/queries';
 import { useComandas } from '@/hooks/useComandas';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { supabase } from '@/lib/supabase';
 import { Product, ComandaWithItems } from '@/types';
 import { offlineDB } from '@/lib/offline-db';
 import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import {
+  convertPriceToStorage,
+  convertPriceFromStorage,
+  convertBetweenCurrencies,
+  formatPrice,
+  type ExchangeRates,
+} from '@/lib/priceHelper';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -36,6 +45,8 @@ import {
   Zap,
   AlertCircle,
   AlertTriangle,
+  Settings2,
+  Save,
 } from 'lucide-react';
 
 // ─── Padrão CMD-XXXX ──────────────────────────────────────────────────────────
@@ -77,6 +88,24 @@ const URGENCY_STYLES: Record<TimeUrgency, { bar: string; badge: string; text: st
   normal: { bar: 'bg-amber-400',   badge: 'bg-amber-100 text-amber-700 border-amber-200',       text: 'text-amber-700'   },
   urgent: { bar: 'bg-red-500',     badge: 'bg-red-100 text-red-700 border-red-200',             text: 'text-red-700'     },
 };
+
+/** Exibe total na moeda base e nas moedas configuradas no câmbio */
+function formatTotalMultiCurrency(
+  totalAmount: number,
+  baseCurrency: CurrencyCode,
+  exchangeRates: ExchangeRates,
+  paymentCurrencies: string[]
+): string {
+  const parts: string[] = [formatPrice(totalAmount, baseCurrency)];
+  const others = (paymentCurrencies ?? [])
+    .filter((c): c is CurrencyCode => ['BRL', 'PYG', 'ARS', 'USD'].includes(c))
+    .filter((c) => c !== baseCurrency);
+  for (const to of others) {
+    const converted = convertBetweenCurrencies(totalAmount, baseCurrency, to, exchangeRates);
+    parts.push(formatPrice(converted, to));
+  }
+  return parts.join(' · ');
+}
 
 // ─── Componente: Status Bar ───────────────────────────────────────────────────
 
@@ -165,6 +194,9 @@ function ScannerPanel({
   selectedProduct, selectedComanda, activeVirtualComanda,
   onDeselectComanda, onDeselectVirtual, loadingVirtual, currency,
   products, onProductClick, onRemoveItem: _onRemoveItem,
+  buffetPricePerKg,
+  exchangeRates,
+  paymentCurrencies,
 }: {
   scannerRef: React.RefObject<HTMLInputElement>;
   weightRef: React.RefObject<HTMLInputElement>;
@@ -185,6 +217,9 @@ function ScannerPanel({
   onProductClick: (p: Product) => void;
   /** Reservado para remoção de itens individuais da comanda */
   onRemoveItem?: (itemId: string) => void;
+  buffetPricePerKg?: number | null;
+  exchangeRates?: ExchangeRates | null;
+  paymentCurrencies?: string[] | null;
 }) {
   const [productSearch, setProductSearch] = useState('');
   const filteredProducts = useMemo(() =>
@@ -245,7 +280,7 @@ function ScannerPanel({
                   <Scale className="h-3.5 w-3.5" />
                   {selectedProduct.name}
                   <span className="ml-auto font-normal text-amber-600">
-                    {formatCurrency(selectedProduct.price_sale || selectedProduct.price, currency)}/kg
+                    {formatCurrency(selectedProduct.price_sale ?? selectedProduct.price ?? buffetPricePerKg ?? 0, currency)}/kg
                   </span>
                 </div>
                 <div className="flex gap-2">
@@ -289,10 +324,12 @@ function ScannerPanel({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-[#F87116]">
-                    {formatCurrency(selectedComanda.total_amount, currency)}
+                  <span className="text-sm font-bold text-[#F87116] text-right">
+                    {exchangeRates && paymentCurrencies?.length
+                      ? formatTotalMultiCurrency(selectedComanda.total_amount, currency, exchangeRates, paymentCurrencies)
+                      : formatCurrency(selectedComanda.total_amount, currency)}
                   </span>
-                  <button onClick={onDeselectComanda} className="h-6 w-6 flex items-center justify-center rounded-md text-slate-400 hover:bg-orange-100 hover:text-slate-600 transition-colors">
+                  <button onClick={onDeselectComanda} className="h-6 w-6 flex-shrink-0 flex items-center justify-center rounded-md text-slate-400 hover:bg-orange-100 hover:text-slate-600 transition-colors">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -330,13 +367,15 @@ function ScannerPanel({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-emerald-700">
+                    <span className="text-sm font-bold text-emerald-700 text-right">
                       {loadingVirtual
                         ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : formatCurrency(activeVirtualComanda.total_amount, currency)
+                        : exchangeRates && paymentCurrencies?.length
+                          ? formatTotalMultiCurrency(activeVirtualComanda.total_amount, currency, exchangeRates, paymentCurrencies)
+                          : formatCurrency(activeVirtualComanda.total_amount, currency)
                       }
                     </span>
-                    <button onClick={onDeselectVirtual} className="h-6 w-6 flex items-center justify-center rounded-md text-emerald-400 hover:bg-emerald-100 hover:text-emerald-700 transition-colors">
+                    <button onClick={onDeselectVirtual} className="h-6 w-6 flex-shrink-0 flex items-center justify-center rounded-md text-emerald-400 hover:bg-emerald-100 hover:text-emerald-700 transition-colors">
                       <Link2Off className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -400,7 +439,7 @@ function ScannerPanel({
                   {product.name}
                 </p>
                 <p className="text-[10px] text-slate-500">
-                  {formatCurrency(product.price_sale || product.price, currency)}
+                  {formatCurrency(product.price_sale ?? product.price ?? buffetPricePerKg ?? 0, currency)}
                   {product.is_by_weight && <span className="text-amber-600 font-medium">/kg</span>}
                   {product.sku && <span className="ml-2 text-slate-400 font-mono">{product.sku}</span>}
                 </p>
@@ -424,6 +463,8 @@ function ScannerPanel({
 
 function ComandaCard({
   comanda, isSelected, currency, onSelect, onDelete, deleting,
+  exchangeRates,
+  paymentCurrencies,
 }: {
   comanda: ComandaWithItems;
   isSelected: boolean;
@@ -431,6 +472,8 @@ function ComandaCard({
   onSelect: () => void;
   onDelete: (e: React.MouseEvent) => void;
   deleting: boolean;
+  exchangeRates?: ExchangeRates | null;
+  paymentCurrencies?: string[] | null;
 }) {
   const urgency   = getTimeUrgency(comanda.opened_at);
   const styles    = URGENCY_STYLES[urgency];
@@ -474,7 +517,9 @@ function ComandaCard({
         {/* Valor total */}
         <div className="text-right flex-shrink-0">
           <p className={`text-xl font-extrabold leading-none tabular-nums ${isSelected ? 'text-[#F87116]' : 'text-slate-900'}`}>
-            {formatCurrency(comanda.total_amount, currency)}
+            {exchangeRates && paymentCurrencies?.length
+              ? formatTotalMultiCurrency(comanda.total_amount, currency, exchangeRates, paymentCurrencies)
+              : formatCurrency(comanda.total_amount, currency)}
           </p>
         </div>
       </div>
@@ -566,6 +611,8 @@ function ComandaCard({
 export default function Buffet() {
   const restaurantId = useAdminRestaurantId();
   const currency     = useAdminCurrency();
+  const queryClient  = useQueryClient();
+  const { data: restaurant } = useRestaurant(restaurantId);
   const {
     comandas, loading, isLive,
     createComanda, addItemToComanda, refresh,
@@ -573,6 +620,8 @@ export default function Buffet() {
   const { pendingCount, isOnline, isSyncing } = useOfflineSync(restaurantId || '');
 
   const [products,           setProducts]           = useState<Product[]>([]);
+  const [buffetPriceInput,   setBuffetPriceInput]   = useState('');
+  const [savingBuffetPrice,  setSavingBuffetPrice]  = useState(false);
   const [selectedComandaId,  setSelectedComandaId]  = useState<string | null>(null);
   const [scannerInput,       setScannerInput]        = useState('');
   const [weightInput,        setWeightInput]         = useState('');
@@ -606,6 +655,23 @@ export default function Buffet() {
       .eq('restaurant_id', restaurantId).eq('is_active', true).order('name')
       .then(({ data }) => setProducts(data ?? []));
   }, [restaurantId]);
+
+  // Sincronizar input do preço do Kg com restaurante
+  useEffect(() => {
+    const val = restaurant?.buffet_price_per_kg;
+    if (val != null && val > 0) {
+      setBuffetPriceInput(convertPriceFromStorage(val, currency));
+    } else {
+      setBuffetPriceInput('');
+    }
+  }, [restaurant?.buffet_price_per_kg, currency]);
+
+  const exchangeRates: ExchangeRates = restaurant?.exchange_rates ?? {
+    pyg_per_brl: 3600,
+    ars_per_brl: 1150,
+    usd_per_brl: 0.18,
+  };
+  const paymentCurrencies = restaurant?.payment_currencies ?? [];
 
   // Focus scanner quando não há comanda selecionada
   useEffect(() => {
@@ -684,7 +750,11 @@ export default function Buffet() {
   };
 
   const handleAddProduct = async (product: Product, quantity: number) => {
-    const unitPrice = product.price_sale || product.price;
+    const unitPrice = product.price_sale ?? product.price ?? (restaurant?.buffet_price_per_kg ?? 0);
+    if (unitPrice <= 0) {
+      toast({ title: 'Configure o preço do produto ou o preço do Kg padrão', variant: 'destructive' });
+      return;
+    }
 
     if (activeVirtualComanda) {
       try {
@@ -830,11 +900,60 @@ export default function Buffet() {
         onNewComanda={handleNewComanda}
       />
 
+      {/* ── Config: Preço do Kg ──────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm flex flex-wrap items-end gap-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <Settings2 className="h-4 w-4 text-slate-500 flex-shrink-0" />
+          <div>
+            <label className="block text-xs font-semibold text-slate-700">Preço do Kg (padrão)</label>
+            <p className="text-[11px] text-slate-500">Usado na pesagem quando o produto não tem preço definido</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-1 min-w-[180px]">
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={buffetPriceInput}
+            onChange={(e) => setBuffetPriceInput(e.target.value)}
+            placeholder={currency === 'PYG' ? '65.000' : '45,90'}
+            className="max-w-[140px] font-mono"
+          />
+          <Button
+            size="sm"
+            disabled={savingBuffetPrice || !restaurantId || !isOnline}
+            onClick={async () => {
+              if (!restaurantId) return;
+              setSavingBuffetPrice(true);
+              try {
+                const storage = buffetPriceInput.trim()
+                  ? convertPriceToStorage(buffetPriceInput, currency)
+                  : null;
+                const { error } = await supabase
+                  .from('restaurants')
+                  .update({ buffet_price_per_kg: storage })
+                  .eq('id', restaurantId);
+                if (error) throw error;
+                await queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
+                toast({ title: storage != null ? 'Preço do Kg salvo!' : 'Preço do Kg removido.' });
+              } catch {
+                toast({ title: 'Erro ao salvar', variant: 'destructive' });
+              } finally {
+                setSavingBuffetPrice(false);
+              }
+            }}
+            className="gap-1.5"
+          >
+            {savingBuffetPrice ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            Salvar
+          </Button>
+        </div>
+      </div>
+
       {/* ── Métricas rápidas ───────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Abertas', value: String(comandas.length), icon: Receipt, color: 'text-[#F87116]', bg: 'bg-orange-50' },
-          { label: 'Total aberto', value: formatCurrency(totalAberto, currency), icon: ShoppingBag, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Total aberto', value: paymentCurrencies.length ? formatTotalMultiCurrency(totalAberto, currency, exchangeRates, paymentCurrencies) : formatCurrency(totalAberto, currency), icon: ShoppingBag, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: 'Selecionada', value: selectedComanda ? `#${selectedComanda.number}` : '—', icon: Zap, color: 'text-indigo-600', bg: 'bg-indigo-50' },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className="rounded-xl border border-slate-100 bg-white px-4 py-3 flex items-center gap-3 shadow-sm">
@@ -872,6 +991,9 @@ export default function Buffet() {
           products={products}
           onProductClick={handleProductClick}
           onRemoveItem={handleRemoveItem}
+          buffetPricePerKg={restaurant?.buffet_price_per_kg}
+          exchangeRates={restaurant?.exchange_rates}
+          paymentCurrencies={restaurant?.payment_currencies}
         />
 
         {/* Coluna direita: grid de comandas */}
@@ -914,6 +1036,8 @@ export default function Buffet() {
                   comanda={comanda}
                   isSelected={selectedComandaId === comanda.id}
                   currency={currency}
+                  exchangeRates={restaurant?.exchange_rates}
+                  paymentCurrencies={restaurant?.payment_currencies}
                   onSelect={() => {
                     setSelectedComandaId(comanda.id);
                     setActiveVirtualComanda(null);
@@ -943,7 +1067,9 @@ export default function Buffet() {
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
                 <p className="text-xs text-slate-500 mb-1">Comanda #{deletingComanda.number}</p>
                 <p className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                  {formatCurrency(deletingComanda.total_amount, currency)}
+                  {paymentCurrencies.length
+                    ? formatTotalMultiCurrency(deletingComanda.total_amount, currency, exchangeRates, paymentCurrencies)
+                    : formatCurrency(deletingComanda.total_amount, currency)}
                 </p>
                 <p className="text-xs text-slate-400 mt-1">
                   {deletingComanda.items?.length ?? 0} item(s) · {formatTimeOpen(deletingComanda.opened_at)} aberta
