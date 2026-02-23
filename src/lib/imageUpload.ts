@@ -55,21 +55,22 @@ export async function uploadProductImage(
     throw new Error('Formato não suportado. Use PNG, JPG, GIF ou WebP.');
   }
 
-  // Se já for WebP, usa diretamente; caso contrário, converte
-  let blob: Blob;
-  if (file.type === 'image/webp') {
-    blob = file;
-  } else {
-    blob = await convertToWebP(file);
-  }
-  
   const ext = 'webp';
   const fileName = `${crypto.randomUUID()}.${ext}`;
   const path = `${restaurantId}/${fileName}`;
 
+  // Se já for WebP, usa diretamente; caso contrário, converte para WebP
+  let body: Blob | File;
+  if (file.type === 'image/webp') {
+    body = file;
+  } else {
+    const blob = await convertToWebP(file);
+    body = new File([blob], fileName, { type: 'image/webp', lastModified: Date.now() });
+  }
+
   const { data, error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, blob, {
+    .upload(path, body, {
       contentType: 'image/webp',
       upsert: false,
     });
@@ -95,19 +96,21 @@ export async function uploadRestaurantLogo(
     throw new Error('Formato não suportado. Use PNG, JPG, GIF ou WebP.');
   }
 
-  // Se já for WebP, usa diretamente; caso contrário, converte
-  let blob: Blob;
+  // Se já for WebP, usa diretamente; caso contrário, converte para WebP
+  let body: Blob | File;
   if (file.type === 'image/webp') {
-    blob = file;
+    body = file;
   } else {
-    blob = await convertToWebP(file);
+    const blob = await convertToWebP(file);
+    // Usa File em vez de Blob para evitar rejeição por validações do storage (Content-Security-Policy)
+    body = new File([blob], 'logo.webp', { type: 'image/webp', lastModified: Date.now() });
   }
-  
+
   const path = `${restaurantId}/logo.webp`;
 
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, blob, {
+    .upload(path, body, {
       contentType: 'image/webp',
       upsert: true,
     });

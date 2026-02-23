@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { DashboardKPIs } from '@/types/dashboard-analytics';
+import { isUUID } from '@/hooks/useResolveRestaurantId';
 
 export interface UseDashboardKPIsParams {
   tenantId: string | null;
@@ -18,7 +19,7 @@ async function fetchDashboardKPIs({
   endDate,
   areaFilter = 'all',
 }: UseDashboardKPIsParams): Promise<DashboardKPIs> {
-  if (!tenantId) {
+  if (!tenantId || !isUUID(tenantId)) {
     return { total_faturado: 0, total_pedidos: 0, ticket_medio: 0, pedidos_pendentes: 0 };
   }
   const { data, error } = await supabase.rpc('get_dashboard_kpis', {
@@ -45,7 +46,7 @@ export function useDashboardKPIs({
   return useQuery({
     queryKey: ['dashboard-kpis', tenantId, startKey, endKey, areaFilter],
     queryFn: () => fetchDashboardKPIs({ tenantId, startDate, endDate, areaFilter }),
-    enabled: !!tenantId && enabled,
+    enabled: !!tenantId && isUUID(tenantId) && enabled,
     staleTime: 60 * 1000, // 1 min - KPIs podem ser recarregados menos
     retry: 1, // Se a RPC não existir (migração não aplicada), fallback usa useDashboardStats
     throwOnError: false, // Silencioso: fallback para useDashboardStats quando RPC não existe

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { DashboardAnalyticsResponse } from '@/types/dashboard-analytics';
+import { isUUID } from '@/hooks/useResolveRestaurantId';
 
 export interface UseDashboardAnalyticsParams {
   tenantId: string | null;
@@ -19,7 +20,7 @@ async function fetchDashboardAnalytics({
   endDate,
   areaFilter = 'all',
 }: UseDashboardAnalyticsParams): Promise<DashboardAnalyticsResponse> {
-  if (!tenantId) {
+  if (!tenantId || !isUUID(tenantId)) {
     return {
       kpis: { total_faturado: 0, total_pedidos: 0, ticket_medio: 0, pedidos_pendentes: 0 },
       retention: { clientes_novos: 0, clientes_recorrentes: 0 },
@@ -56,6 +57,6 @@ export function useDashboardAnalytics({
   return useQuery({
     queryKey: ['dashboard-analytics', tenantId, startKey, endKey, areaFilter],
     queryFn: () => fetchDashboardAnalytics({ tenantId, startDate, endDate, areaFilter }),
-    enabled: !!tenantId && enabled,
+    enabled: !!tenantId && isUUID(tenantId) && enabled,
   });
 }
