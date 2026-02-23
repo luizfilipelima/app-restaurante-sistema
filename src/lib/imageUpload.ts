@@ -81,8 +81,9 @@ export async function uploadProductImage(
 }
 
 /**
- * Faz upload da logo do restaurante: converte para WebP 80% e envia para o bucket.
- * Substitui a logo anterior (upsert) no path {restaurantId}/logo.webp.
+ * Faz upload da logo do restaurante.
+ * Envia o arquivo original (sem conversão) para evitar rejeição por validações do storage (CSP).
+ * Substitui a logo anterior (upsert) no path {restaurantId}/logo.{ext}.
  * @param restaurantId ID do restaurante
  * @param file Arquivo de imagem (PNG, JPG, JPEG, GIF ou WebP)
  * @returns URL pública da logo ou erro
@@ -96,22 +97,13 @@ export async function uploadRestaurantLogo(
     throw new Error('Formato não suportado. Use PNG, JPG, GIF ou WebP.');
   }
 
-  // Se já for WebP, usa diretamente; caso contrário, converte para WebP
-  let body: Blob | File;
-  if (file.type === 'image/webp') {
-    body = file;
-  } else {
-    const blob = await convertToWebP(file);
-    // Usa File em vez de Blob para evitar rejeição por validações do storage (Content-Security-Policy)
-    body = new File([blob], 'logo.webp', { type: 'image/webp', lastModified: Date.now() });
-  }
-
-  const path = `${restaurantId}/logo.webp`;
+  const ext = file.type === 'image/jpeg' ? 'jpg' : file.type.split('/')[1] || 'png';
+  const path = `${restaurantId}/logo.${ext}`;
 
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, body, {
-      contentType: 'image/webp',
+    .upload(path, file, {
+      contentType: file.type,
       upsert: true,
     });
 

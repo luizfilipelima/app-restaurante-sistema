@@ -550,7 +550,7 @@ export default function AdminSettings() {
                   try {
                     const url = await uploadRestaurantLogo(restaurantId, file);
                     set('logo', url);
-                    toast({ title: 'Logo enviada!', description: 'Otimizada em WebP (80%).' });
+                    toast({ title: 'Logo enviada!', description: 'Upload concluído.' });
                   } catch (err) {
                     toast({ title: 'Erro ao enviar logo', description: err instanceof Error ? err.message : 'Tente outro arquivo.', variant: 'destructive' });
                   } finally {
