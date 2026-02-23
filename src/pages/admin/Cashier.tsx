@@ -22,6 +22,7 @@ import {
 import {
   convertBetweenCurrencies,
   getCurrencySymbol,
+  convertPriceFromStorage,
   type ExchangeRates,
 } from '@/lib/priceHelper';
 import { FeatureGuard } from '@/components/auth/FeatureGuard';
@@ -134,7 +135,7 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 };
 
 const SCANNER_PATTERN = /^CMD-[A-Z0-9]{4}$/i;
-const CURRENCIES: CurrencyCode[] = ['BRL', 'PYG', 'ARS', 'USD'];
+const ALL_CURRENCIES: CurrencyCode[] = ['BRL', 'PYG', 'ARS', 'USD'];
 
 function getDisplayTotal(
   totalAmount: number,
@@ -413,13 +414,20 @@ function CashierContent() {
     usd_per_brl: 0.18,
   };
   const baseCurrency: CurrencyCode = (restaurant?.currency as CurrencyCode) || 'BRL';
+  const paymentCurrencies: CurrencyCode[] = (() => {
+    const arr = (restaurant as { payment_currencies?: string[] })?.payment_currencies;
+    if (!Array.isArray(arr) || arr.length === 0) return [baseCurrency];
+    const valid = arr.filter((c): c is CurrencyCode => ALL_CURRENCIES.includes(c as CurrencyCode));
+    const withBase = valid.includes(baseCurrency) ? valid : [baseCurrency, ...valid];
+    return [...new Set(withBase)];
+  })();
 
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
   const [paymentInputs, setPaymentInputs] = useState<Record<string, string>>({});
 
-  const loadQueue = useCallback(async () => {
+  const loadQueue = useCallback(async (showLoading = false) => {
     if (!restaurantId) return;
-    setLoadingList(true);
+    if (showLoading) setLoadingList(true);
     try {
       const items: CashierQueueItem[] = [];
 
@@ -640,8 +648,19 @@ function CashierContent() {
     }
   }, [restaurantId, hasTables, hasBuffet, todayStart]);
 
+  const loadQueueRef = useRef(loadQueue);
+  loadQueueRef.current = loadQueue;
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedLoadQueue = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      debounceTimerRef.current = null;
+      loadQueueRef.current(false);
+    }, 500);
+  }, []);
+
   useEffect(() => {
-    loadQueue();
+    loadQueue(true);
   }, [loadQueue]);
 
   useEffect(() => {
@@ -660,7 +679,7 @@ function CashierContent() {
           table: 'virtual_comandas',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        loadQueue
+        debouncedLoadQueue
       )
       .on(
         'postgres_changes',
@@ -670,7 +689,7 @@ function CashierContent() {
           table: 'comandas',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        loadQueue
+        debouncedLoadQueue
       )
       .on(
         'postgres_changes',
@@ -680,31 +699,34 @@ function CashierContent() {
           table: 'orders',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        loadQueue
+        debouncedLoadQueue
       )
       .subscribe((status) => setIsLive(status === 'SUBSCRIBED'));
     return () => {
       supabase.removeChannel(ch);
       setIsLive(false);
     };
-  }, [restaurantId, loadQueue]);
+  }, [restaurantId, debouncedLoadQueue]);
 
   useEffect(() => {
     if (!restaurantId || isLive) return;
-    const t = setInterval(loadQueue, 8000);
+    const t = setInterval(() => loadQueueRef.current(false), 15000);
     return () => clearInterval(t);
-  }, [restaurantId, isLive, loadQueue]);
+  }, [restaurantId, isLive]);
 
   const selectItem = useCallback(
-    async (item: CashierQueueItem) => {
+    (item: CashierQueueItem) => {
       if (selected?.id === item.id) return;
       setScanError(null);
       setSelected(item);
       setSelectedCompleted(null);
-      setPayments([]);
-      setPaymentInputs({});
+      const total = getDisplayTotal(item.totalAmount, item.type === 'comanda_digital' ? item.items : item.type === 'comanda_buffet' ? item.items : undefined);
+      const id = `pay-${Date.now()}`;
+      const displayVal = convertPriceFromStorage(total, baseCurrency);
+      setPayments([{ id, method: 'cash', currency: baseCurrency, amount: total, displayValue: displayVal }]);
+      setPaymentInputs({ [id]: displayVal });
     },
-    [selected?.id]
+    [selected?.id, baseCurrency]
   );
 
   const selectCompletedItem = useCallback((item: CompletedItem) => {
@@ -814,6 +836,19 @@ function CashierContent() {
     setPayments((prev) => [...prev, { id, method: 'cash' as PaymentMethod, currency: baseCurrency, amount: 0, displayValue: '' }]);
     setPaymentInputs((prev) => ({ ...prev, [id]: '' }));
   };
+
+  const receivedInBase = useMemo(
+    () => convertBetweenCurrencies(totalReceivedBRL, 'BRL', baseCurrency, exchangeRates),
+    [totalReceivedBRL, baseCurrency, exchangeRates]
+  );
+  const remainingInBase = useMemo(
+    () => convertBetweenCurrencies(Math.max(0, remaining), 'BRL', baseCurrency, exchangeRates),
+    [remaining, baseCurrency, exchangeRates]
+  );
+  const changeInBase = useMemo(
+    () => (changeAmount > 0 ? convertBetweenCurrencies(changeAmount, 'BRL', baseCurrency, exchangeRates) : 0),
+    [changeAmount, baseCurrency, exchangeRates]
+  );
 
   const updatePaymentAmount = (id: string, displayValue: string, curr: CurrencyCode) => {
     setPaymentInputs((prev) => ({ ...prev, [id]: displayValue }));
@@ -968,33 +1003,33 @@ function CashierContent() {
               </Button>
             )}
             <div
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold ${
-                isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-muted border-border text-muted-foreground'
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+                isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800' : 'bg-muted border-border text-muted-foreground'
               }`}
             >
               {isLive ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-              {loadingList ? '…' : queue.length} em aberto
+              {loadingList && queue.length === 0 ? '…' : queue.length} em aberto
             </div>
-            <Button variant="ghost" size="icon" onClick={() => { loadQueue(); loadCompletedToday(); }}>
-              <RefreshCw className={`h-4 w-4 ${loadingList ? 'animate-spin' : ''}`} />
+            <Button variant="ghost" size="icon" onClick={() => { loadQueue(false); loadCompletedToday(); }} title="Atualizar">
+              <RefreshCw className={`h-4 w-4 ${loadingList && queue.length === 0 ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </div>
         {/* KPIs do turno */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-xs font-medium text-muted-foreground">Contas em Aberto</p>
-            <p className="text-2xl font-bold text-foreground mt-0.5">{loadingList ? '…' : queue.length}</p>
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Contas em Aberto</p>
+            <p className="text-2xl font-bold text-foreground mt-1 tabular-nums">{loadingList && queue.length === 0 ? '…' : queue.length}</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-xs font-medium text-muted-foreground">Total a Receber</p>
-            <p className="text-2xl font-bold text-foreground mt-0.5">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total a Receber</p>
+            <p className="text-2xl font-bold text-foreground mt-1 tabular-nums">
               {formatCurrency(totalToReceive, baseCurrency)}
             </p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-xs font-medium text-muted-foreground">Total Recebido (Hoje)</p>
-            <p className="text-2xl font-bold text-emerald-600 mt-0.5">
+          <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 p-4 shadow-sm">
+            <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">Total Recebido (Hoje)</p>
+            <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1 tabular-nums">
               {formatCurrency(totalReceivedToday, baseCurrency)}
             </p>
           </div>
@@ -1252,17 +1287,17 @@ function CashierContent() {
                 </div>
               </div>
 
-              <div className="px-5 py-4 space-y-4 border-t border-border">
+              <div className="px-5 py-4 space-y-4 border-t border-border bg-slate-50/50 dark:bg-slate-900/30">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                    Pagamento múltiplo
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Forma de pagamento
                   </Label>
-                  <Button variant="outline" size="sm" onClick={addPayment}>
-                    <Plus className="h-3.5 w-3.5 mr-1" />
+                  <Button variant="outline" size="sm" onClick={addPayment} className="gap-1.5">
+                    <Plus className="h-3.5 w-3.5" />
                     Adicionar
                   </Button>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <AnimatePresence>
                     {payments.map((p) => (
                       <motion.div
@@ -1270,7 +1305,7 @@ function CashierContent() {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="flex gap-2 items-center flex-wrap"
+                        className="flex gap-2 items-center flex-wrap p-2.5 rounded-xl bg-white dark:bg-slate-800/50 border border-border"
                       >
                         <select
                           value={p.method}
@@ -1278,7 +1313,8 @@ function CashierContent() {
                             const m = e.target.value as PaymentMethod;
                             setPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, method: m } : x)));
                           }}
-                          className="h-9 rounded-lg border px-2 text-sm w-28"
+                          className="h-9 rounded-lg border border-input bg-background px-3 text-sm w-[110px] font-medium"
+                          title="Forma de pagamento"
                         >
                           {(Object.entries(PAYMENT_METHOD_LABELS) as [PaymentMethod, string][]).map(([v, l]) => (
                             <option key={v} value={v}>{l}</option>
@@ -1290,9 +1326,10 @@ function CashierContent() {
                             const c = e.target.value as CurrencyCode;
                             setPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, currency: c } : x)));
                           }}
-                          className="h-9 rounded-lg border px-2 text-sm w-20"
+                          className="h-9 rounded-lg border border-input bg-background px-3 text-sm w-[72px] font-medium"
+                          title="Moeda"
                         >
-                          {CURRENCIES.map((c) => (
+                          {paymentCurrencies.map((c) => (
                             <option key={c} value={c}>{getCurrencySymbol(c)}</option>
                           ))}
                         </select>
@@ -1300,9 +1337,10 @@ function CashierContent() {
                           value={paymentInputs[p.id] ?? ''}
                           onChange={(e) => updatePaymentAmount(p.id, e.target.value, p.currency)}
                           placeholder={p.currency === 'PYG' ? '0' : '0,00'}
-                          className="flex-1 min-w-[100px] font-mono"
+                          className="flex-1 min-w-[100px] font-mono h-9 text-base"
+                          aria-label="Valor recebido"
                         />
-                        <Button variant="ghost" size="icon" onClick={() => removePayment(p.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => removePayment(p.id)} className="h-9 w-9 shrink-0" title="Remover">
                           <Trash2 className="h-4 w-4 text-muted-foreground" />
                         </Button>
                       </motion.div>
@@ -1312,7 +1350,7 @@ function CashierContent() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Recebido</span>
                   <span className="font-semibold tabular-nums">
-                    {formatCurrency(totalReceivedBRL, baseCurrency)}
+                    {formatCurrency(receivedInBase, baseCurrency)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -1322,29 +1360,37 @@ function CashierContent() {
                       remaining <= 0 ? 'text-emerald-600' : 'text-amber-600'
                     }`}
                   >
-                    {formatCurrency(remaining, baseCurrency)}
+                    {formatCurrency(remainingInBase, baseCurrency)}
                   </span>
                 </div>
                 {changeAmount > 0 && (
-                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
-                    <p className="text-xs font-semibold text-amber-800 mb-1">Troco sugerido</p>
-                    <p className="text-sm font-bold text-amber-900">
-                      {formatCurrency(changeAmount, baseCurrency)}
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800 p-3">
+                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-1">Troco sugerido</p>
+                    <p className="text-sm font-bold text-amber-900 dark:text-amber-100">
+                      {formatCurrency(changeInBase, baseCurrency)}
                     </p>
-                    {baseCurrency !== 'PYG' && (
-                      <p className="text-xs text-amber-700 mt-0.5">
-                        Ou {formatCurrency(convertBetweenCurrencies(changeAmount, 'BRL', 'PYG', exchangeRates), 'PYG')}
+                    {paymentCurrencies.length > 1 && paymentCurrencies.some((c) => c !== baseCurrency) && (
+                      <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                        Ou em outras moedas conforme conversão
                       </p>
                     )}
                   </div>
                 )}
               </div>
 
-              <div className="px-5 pb-5">
+              <div className="px-5 pb-5 pt-1">
+                {!canFinalize && payments.length > 0 && remaining > 0 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mb-3 text-center">
+                    Informe o valor recebido (total ou parcial) para habilitar o botão.
+                  </p>
+                )}
                 <Button
-                  className="w-full h-12 text-base font-bold"
+                  className={`w-full h-12 text-base font-bold transition-all ${
+                    canFinalize ? 'bg-emerald-600 hover:bg-emerald-700 shadow-md' : ''
+                  }`}
                   disabled={closing || !canFinalize}
                   onClick={handleFinalize}
+                  variant={canFinalize ? 'default' : 'secondary'}
                 >
                   {closing ? (
                     <Loader2 className="h-5 w-5 animate-spin mr-2" />

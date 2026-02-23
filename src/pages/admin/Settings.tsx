@@ -1295,119 +1295,88 @@ export default function AdminSettings() {
               </div>
             </div>
 
-            {/* Cotações — formato intuitivo baseado na moeda nativa */}
+            {/* Cotações — moeda nativa sempre como base: "Quantos [nativa] = 1 [outra]?" */}
             <div className="space-y-4">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cotações de câmbio</h3>
+              <p className="text-sm text-muted-foreground -mt-1">
+                Quanto da moeda nativa equivale a 1 unidade de cada moeda estrangeira.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* 1 BRL = X PYG (sempre) */}
-                <div className="rounded-xl border border-border bg-background/60 p-4 space-y-2">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <span className="text-muted-foreground">1 BRL</span>
-                    <span className="text-foreground">=</span>
-                    <span className="text-foreground">quantos Gs.?</span>
-                  </Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    step={100}
-                    value={formData.exchange_rates.pyg_per_brl}
-                    onChange={(e) => {
-                      const v = Math.max(1, Number(e.target.value) || 3600);
-                      set('exchange_rates', { ...formData.exchange_rates, pyg_per_brl: v });
-                    }}
-                    placeholder="3600"
-                    className="h-11 font-mono"
-                  />
-                  <p className="text-[11px] text-muted-foreground">Guaraníes por 1 Real</p>
-                </div>
+                {(['BRL', 'ARS', 'USD'] as const)
+                  .filter((fc) => fc !== formData.currency)
+                  .map((foreignCurr) => {
+                    const native = formData.currency;
+                    const r = formData.exchange_rates;
+                    const pyg = r.pyg_per_brl ?? 3600;
+                    const ars = r.ars_per_brl ?? 1150;
+                    const usd = r.usd_per_brl ?? 0.18;
 
-                {/* 1 BRL = X ARS (sempre) */}
-                <div className="rounded-xl border border-border bg-background/60 p-4 space-y-2">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <span className="text-muted-foreground">1 BRL</span>
-                    <span className="text-foreground">=</span>
-                    <span className="text-foreground">quantos ARS?</span>
-                  </Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    step={10}
-                    value={formData.exchange_rates.ars_per_brl}
-                    onChange={(e) => {
-                      const v = Math.max(1, Number(e.target.value) || 1150);
-                      set('exchange_rates', { ...formData.exchange_rates, ars_per_brl: v });
-                    }}
-                    placeholder="1150"
-                    className="h-11 font-mono"
-                  />
-                  <p className="text-[11px] text-muted-foreground">Pesos argentinos por 1 Real</p>
-                </div>
+                    const NATIVE_LABELS: Record<string, string> = { BRL: 'Reais', PYG: 'Gs.', ARS: 'Pesos', USD: 'US$' };
+                    const FOREIGN_LABELS: Record<string, string> = { BRL: 'Real', PYG: 'Gs.', ARS: 'Peso', USD: 'Dólar' };
+                    const nativeUnit = NATIVE_LABELS[native] ?? native;
+                    const foreignUnit = FOREIGN_LABELS[foreignCurr] ?? foreignCurr;
 
-                {/* USD: 1 USD = X [moeda nativa] */}
-                {formData.currency !== 'USD' ? (
-                  <div className="rounded-xl border border-border bg-background/60 p-4 space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <span className="text-muted-foreground">1 US$</span>
-                      <span className="text-foreground">=</span>
-                      <span className="text-foreground">
-                        quantos {formData.currency === 'BRL' ? 'Reais?' : formData.currency === 'PYG' ? 'Gs.?' : 'ARS?'}
-                      </span>
-                    </Label>
-                    <Input
-                      type="number"
-                      min={0.01}
-                      step={formData.currency === 'PYG' ? 100 : 0.1}
-                      value={(() => {
-                        const r = formData.exchange_rates;
-                        const usd = r.usd_per_brl ?? 0.18;
-                        if (formData.currency === 'BRL') return (1 / usd).toFixed(2);
-                        if (formData.currency === 'PYG') return Math.round((r.pyg_per_brl ?? 3600) / usd);
-                        return Math.round(((r.ars_per_brl ?? 1150) / usd) * 100) / 100;
-                      })()}
-                      onChange={(e) => {
-                        const raw = Number(e.target.value) || 0.01;
-                        const displayVal = Math.max(0.01, raw);
-                        const r = formData.exchange_rates;
-                        let usd_per_brl: number;
-                        if (formData.currency === 'BRL') {
-                          usd_per_brl = 1 / displayVal;
-                        } else if (formData.currency === 'PYG') {
-                          usd_per_brl = (r.pyg_per_brl ?? 3600) / displayVal;
-                        } else {
-                          usd_per_brl = (r.ars_per_brl ?? 1150) / displayVal;
-                        }
-                        usd_per_brl = Math.max(0.01, Math.min(100, usd_per_brl));
-                        set('exchange_rates', { ...r, usd_per_brl });
-                      }}
-                      placeholder={formData.currency === 'BRL' ? '5.50' : formData.currency === 'PYG' ? '20000' : '1150'}
-                      className="h-11 font-mono"
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      {formData.currency === 'BRL' ? 'Reais por 1 Dólar' : formData.currency === 'PYG' ? 'Guaraníes por 1 Dólar' : 'Pesos argentinos por 1 Dólar'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-border bg-background/60 p-4 space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <span className="text-muted-foreground">1 BRL</span>
-                      <span className="text-foreground">=</span>
-                      <span className="text-foreground">quantos US$?</span>
-                    </Label>
-                    <Input
-                      type="number"
-                      min={0.01}
-                      step={0.01}
-                      value={formData.exchange_rates.usd_per_brl}
-                      onChange={(e) => {
-                        const v = Math.max(0.01, Number(e.target.value) || 0.18);
-                        set('exchange_rates', { ...formData.exchange_rates, usd_per_brl: v });
-                      }}
-                      placeholder="0.18"
-                      className="h-11 font-mono"
-                    />
-                    <p className="text-[11px] text-muted-foreground">Dólares por 1 Real</p>
-                  </div>
-                )}
+                    let displayVal: number;
+                    let step: number;
+                    let placeholder: string;
+                    let min: number;
+
+                    if (foreignCurr === 'BRL') {
+                      displayVal = native === 'PYG' ? pyg : native === 'ARS' ? ars : 1 / usd;
+                      step = native === 'PYG' ? 100 : native === 'USD' ? 0.01 : 10;
+                      placeholder = native === 'PYG' ? '3600' : native === 'ARS' ? '1150' : '5.50';
+                      min = native === 'USD' ? 0.01 : 1;
+                    } else if (foreignCurr === 'ARS') {
+                      displayVal = native === 'PYG' ? pyg / ars : native === 'BRL' ? 1 / ars : ars / usd;
+                      step = displayVal < 10 ? 0.01 : 1;
+                      placeholder = native === 'PYG' ? '0.96' : native === 'BRL' ? '0.0009' : '6.40';
+                      min = 0.0001;
+                    } else {
+                      displayVal = native === 'PYG' ? pyg / usd : native === 'BRL' ? 1 / usd : ars / usd;
+                      step = native === 'PYG' ? 100 : 0.01;
+                      placeholder = native === 'PYG' ? '20000' : native === 'BRL' ? '5.50' : '6.40';
+                      min = 0.01;
+                    }
+
+                    const onCurrChange = (raw: number) => {
+                      const val = Math.max(min, raw);
+                      if (foreignCurr === 'BRL') {
+                        if (native === 'PYG') set('exchange_rates', { ...r, pyg_per_brl: Math.round(val) });
+                        else if (native === 'ARS') set('exchange_rates', { ...r, ars_per_brl: Math.max(1, Math.round(val)) });
+                        else set('exchange_rates', { ...r, usd_per_brl: Math.max(0.01, Math.min(100, 1 / val)) });
+                      } else if (foreignCurr === 'ARS') {
+                        if (native === 'PYG') set('exchange_rates', { ...r, ars_per_brl: pyg / val });
+                        else if (native === 'BRL') set('exchange_rates', { ...r, ars_per_brl: 1 / val });
+                        else set('exchange_rates', { ...r, usd_per_brl: ars / val });
+                      } else {
+                        if (native === 'PYG') set('exchange_rates', { ...r, usd_per_brl: pyg / val });
+                        else if (native === 'BRL') set('exchange_rates', { ...r, usd_per_brl: 1 / val });
+                        else set('exchange_rates', { ...r, usd_per_brl: ars / val });
+                      }
+                    };
+
+                    return (
+                      <div key={foreignCurr} className="rounded-xl border border-border bg-background/60 p-4 space-y-2">
+                        <Label className="text-sm font-medium flex flex-wrap items-center gap-1">
+                          <span className="text-muted-foreground">Quantos {nativeUnit}</span>
+                          <span className="text-foreground">=</span>
+                          <span className="text-foreground">1 {foreignUnit}?</span>
+                        </Label>
+                        <Input
+                          type="number"
+                          min={min}
+                          step={step}
+                          value={displayVal}
+                          onChange={(e) => onCurrChange(Number(e.target.value) || min)}
+                          placeholder={placeholder}
+                          className="h-11 font-mono"
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          {nativeUnit} necessários para 1 {foreignUnit}
+                        </p>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
 
