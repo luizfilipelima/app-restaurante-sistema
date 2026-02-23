@@ -134,7 +134,7 @@ const buildNavSections = (
   t: TFn,
   restaurantSlug?: string | null,
 ): NavSection[] => [
-  // 1. VISÃO GERAL (Acompanhamento) — Métricas e BI, Kanban unificado
+  // 1. VISÃO GERAL — Dashboard BI Global
   {
     kind: 'group',
     label: t('nav.groups.overview'),
@@ -146,19 +146,12 @@ const buildNavSections = (
         icon: LayoutDashboard,
         roleRequired: ['owner', 'restaurant_admin', 'super_admin'],
       },
-      {
-        kind: 'leaf',
-        name: t('nav.items.orders'),
-        href: `${base}/orders`,
-        icon: ClipboardList,
-        roleRequired: ['waiter'],
-      },
     ],
   },
-  // 2. FRENTE DE CAIXA E SALÃO (Operação Diária — Front of House)
+  // 2. SALÃO & PDV (Frente de Loja)
   {
     kind: 'group',
-    label: t('nav.groups.frontOfHouse'),
+    label: t('nav.groups.hallAndPDV'),
     items: [
       {
         kind: 'leaf',
@@ -166,15 +159,6 @@ const buildNavSections = (
         href: `${base}/cashier`,
         icon: ScanBarcode,
         featureFlag: 'feature_virtual_comanda',
-        featureLabel: 'Plano Enterprise',
-        roleRequired: ['cashier'],
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.buffet'),
-        href: `${base}/buffet`,
-        icon: Scale,
-        featureFlag: 'feature_buffet_module',
         featureLabel: 'Plano Enterprise',
         roleRequired: ['cashier'],
       },
@@ -192,12 +176,62 @@ const buildNavSections = (
         featureLabel: 'Plano Standard',
         roleRequired: ['waiter'],
       },
+      {
+        kind: 'leaf',
+        name: t('nav.items.buffet'),
+        href: `${base}/buffet`,
+        icon: Scale,
+        featureFlag: 'feature_buffet_module',
+        featureLabel: 'Plano Enterprise',
+        roleRequired: ['cashier'],
+      },
+      {
+        kind: 'leaf',
+        name: t('nav.items.tablesCentral'),
+        href: `${base}/tables`,
+        icon: LayoutGrid,
+        featureFlag: 'feature_tables',
+        featureLabel: 'Plano Standard',
+        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
+      },
     ],
   },
-  // 3. COZINHA E LOGÍSTICA (Back of House)
+  // 3. DELIVERY & LOGÍSTICA (Hub exclusivo)
   {
     kind: 'group',
-    label: t('nav.groups.kitchenLogistics'),
+    label: t('nav.groups.deliveryLogistics'),
+    items: [
+      {
+        kind: 'leaf',
+        name: t('nav.items.ordersDelivery'),
+        href: `${base}/orders`,
+        icon: ClipboardList,
+        roleRequired: ['waiter'],
+      },
+      {
+        kind: 'leaf',
+        name: t('nav.items.couriers'),
+        href: `${base}/couriers`,
+        icon: Bike,
+        featureFlag: 'feature_couriers',
+        featureLabel: 'Plano Standard',
+        roleRequired: ['manager'],
+      },
+      {
+        kind: 'leaf',
+        name: t('nav.items.deliveryAreas'),
+        href: `${base}/delivery-zones`,
+        icon: MapPin,
+        featureFlag: 'feature_delivery_zones',
+        featureLabel: 'Plano Standard',
+        roleRequired: ['manager'],
+      },
+    ],
+  },
+  // 4. COZINHA (Produção)
+  {
+    kind: 'group',
+    label: t('nav.groups.kitchen'),
     items: [
       {
         kind: 'leaf',
@@ -212,7 +246,7 @@ const buildNavSections = (
       },
     ],
   },
-  // 4. CARDÁPIO E ESTOQUE (Gestão de Insumos)
+  // 5. CARDÁPIO & ESTOQUE
   {
     kind: 'group',
     label: t('nav.groups.menuStock'),
@@ -233,7 +267,7 @@ const buildNavSections = (
       },
     ],
   },
-  // 5. MARKETING E VENDAS (Growth)
+  // 6. MARKETING & VENDAS
   {
     kind: 'group',
     label: t('nav.groups.marketingSales'),
@@ -261,44 +295,17 @@ const buildNavSections = (
       },
     ],
   },
-  // 6. GESTÃO E CONFIGURAÇÕES (Estrutura do Negócio)
+  // 7. GESTÃO & CONFIGURAÇÃO
   {
     kind: 'group',
     label: t('nav.groups.settings'),
     items: [
       {
         kind: 'leaf',
-        name: t('nav.items.couriers'),
-        href: `${base}/couriers`,
-        icon: Bike,
-        featureFlag: 'feature_couriers',
-        featureLabel: 'Plano Standard',
-        roleRequired: ['manager'],
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.tablesCentral'),
-        href: `${base}/tables`,
-        icon: LayoutGrid,
-        featureFlag: 'feature_tables',
-        featureLabel: 'Plano Standard',
-        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
-      },
-      {
-        kind: 'leaf',
         name: t('nav.items.settingsGeneral'),
         href: `${base}/settings`,
         icon: Settings,
         roleRequired: ['restaurant_admin', 'super_admin'],
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.settingsDeliveryZones'),
-        href: `${base}/delivery-zones`,
-        icon: MapPin,
-        featureFlag: 'feature_delivery_zones',
-        featureLabel: 'Plano Standard',
-        roleRequired: ['manager'],
       },
       {
         kind: 'leaf',

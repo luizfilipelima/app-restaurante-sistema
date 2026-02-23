@@ -20,8 +20,8 @@ const ORDERS_SELECT = `
 
 const ORDER_TAB_STATUSES = ['pending', 'preparing', 'ready', 'delivering', 'completed'];
 
-/** Filtro de origem: all | table (mesas) | delivery (cardápio interativo) */
-export type OrderSourceFilter = 'all' | 'table' | 'delivery';
+/** Filtro de origem: all | table (mesas) | delivery (cardápio) | delivery_pickup_only (Kanban) */
+export type OrderSourceFilter = 'all' | 'table' | 'delivery' | 'delivery_pickup_only';
 
 export interface UseOrdersParams {
   restaurantId: string | null;
@@ -29,8 +29,19 @@ export interface UseOrdersParams {
   page?: number;
   /** Itens por página. Default 50. */
   limit?: number;
-  /** Filtro por origem: mesas ou delivery. Default 'all'. */
+  /** Filtro por origem. delivery_pickup_only = Kanban (apenas Delivery e Retirada). Default 'all'. */
   orderSourceFilter?: OrderSourceFilter;
+}
+
+/** Indica se o pedido é de Delivery ou Retirada (exclui Mesa, Comanda, Buffet). */
+export function isDeliveryOrPickupOrder(order: { order_source?: string | null; delivery_type?: string | null; table_id?: string | null; virtual_comanda_id?: string | null }): boolean {
+  if (order.order_source === 'table' || order.order_source === 'comanda' || order.order_source === 'buffet') return false;
+  if (order.table_id != null || order.virtual_comanda_id != null) return false;
+  return (
+    order.order_source === 'delivery' ||
+    order.order_source === 'pickup' ||
+    (order.order_source == null && (order.delivery_type === 'delivery' || order.delivery_type === 'pickup'))
+  );
 }
 
 /** Busca pedidos ativos (exclui cancelados) com paginação. Isolamento por tenant via restaurant_id. */
@@ -56,6 +67,12 @@ async function fetchOrders({
     query = query.or('order_source.eq.table,table_id.not.is.null');
   } else if (orderSourceFilter === 'delivery') {
     query = query.is('table_id', null);
+  } else if (orderSourceFilter === 'delivery_pickup_only') {
+    // Kanban: APENAS Delivery e Retirada. Exclui Mesa, Comanda Digital e Buffet.
+    query = query
+      .is('table_id', null)
+      .is('virtual_comanda_id', null)
+      .or('order_source.eq.delivery,order_source.eq.pickup,and(order_source.is.null,delivery_type.in.(delivery,pickup))');
   }
 
   const { data, error } = await query;

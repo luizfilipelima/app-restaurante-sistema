@@ -26,7 +26,7 @@ import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
 import type { WhatsAppTemplates } from '@/types';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { ROLES_CANCEL_ORDER } from '@/hooks/useUserRole';
-import { useCouriers, useOrders, usePrintSettings, useProductPrintDestinations, creditLoyaltyPoint } from '@/hooks/queries';
+import { useCouriers, useOrders, usePrintSettings, useProductPrintDestinations, creditLoyaltyPoint, isDeliveryOrPickupOrder } from '@/hooks/queries';
 import { isUUID } from '@/hooks/useResolveRestaurantId';
 import { usePrinter } from '@/hooks/usePrinter';
 import type { DualReceiptSlot } from '@/hooks/usePrinter';
@@ -136,6 +136,7 @@ export default function AdminOrders() {
     restaurantId,
     page: 0,
     limit: 100,
+    orderSourceFilter: 'delivery_pickup_only', // Kanban exclusivo: Delivery e Retirada
   });
   const orders = ordersData?.orders ?? [];
   const { data: printSettings } = usePrintSettings(restaurantId);
@@ -218,6 +219,8 @@ export default function AdminOrders() {
           .single();
         if (!error && fullOrder) {
           const order = fullOrder as DatabaseOrder;
+          // Auto-print só para pedidos Delivery/Retirada (Kanban não exibe Mesa/Comanda/Buffet)
+          if (!isDeliveryOrPickupOrder(order)) return;
           printOrder(
             order,
             settings.name,
@@ -438,13 +441,7 @@ export default function AdminOrders() {
   };
 
   const getOrdersByStatus = (status: OrderStatus) => {
-    const COMANDA_INTERMEDIATE = [OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.DELIVERING];
-    return orders.filter((order) => {
-      if (order.status !== status) return false;
-      // Pedidos de comanda só aparecem nas colunas Pendentes e Concluídos
-      if (order.order_source === 'comanda' && COMANDA_INTERMEDIATE.includes(status)) return false;
-      return true;
-    });
+    return orders.filter((order) => order.status === status);
   };
 
   const paymentMethodLabels: Record<string, string> = {
@@ -497,11 +494,11 @@ export default function AdminOrders() {
         {/* ── Cabeçalho ── */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold mb-1 text-foreground">Gestão de Pedidos</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold mb-1 text-foreground">Gestão de Delivery e Retiradas</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
               {view === 'kanban'
-                ? 'Acompanhe e gerencie os pedidos em tempo real'
-                : 'Histórico de pedidos concluídos com exportação CSV'}
+                ? 'Quartel-general do Delivery e Retirada — acompanhe em tempo real'
+                : 'Histórico de pedidos concluídos (Delivery e Retirada) com exportação CSV'}
             </p>
           </div>
 

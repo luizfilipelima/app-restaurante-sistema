@@ -46,6 +46,9 @@ async function fetchCompletedOrders({
     .select(COMPLETED_ORDERS_SELECT)
     .eq('restaurant_id', restaurantId)
     .eq('status', 'completed')
+    .is('table_id', null)
+    .is('virtual_comanda_id', null)
+    .or('order_source.eq.delivery,order_source.eq.pickup,and(order_source.is.null,delivery_type.in.(delivery,pickup))')
     .gte('created_at', start.toISOString())
     .lte('created_at', end.toISOString())
     .order('created_at', { ascending: false });

@@ -35,6 +35,7 @@ export { useWaiterCalls } from './useWaiterCalls';
 export { useAdminProducts } from './useAdminProducts';
 export { useOrders } from './useOrders';
 export type { UseOrdersParams, OrderSourceFilter } from './useOrders';
+export { isDeliveryOrPickupOrder } from './useOrders';
 export { usePrintSettings } from './usePrintSettings';
 export { useCategoryDestinations, useProductPrintDestinations } from './useCategoryDestinations';
 export type { CategoryDestination } from './useCategoryDestinations';
