@@ -671,27 +671,30 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
                     </SelectContent>
                   </Select>
                 </div>
-                {!formImageUrl && (
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Ícone (quando não há imagem)</Label>
-                    <Select value={formIcon || 'Utensils'} onValueChange={setFormIcon}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Padrão" /></SelectTrigger>
-                      <SelectContent>
-                        {CATEGORY_ICON_OPTIONS.map((opt) => {
-                          const IconComp = getCategoryIconComponent(opt.id);
-                          return (
-                            <SelectItem key={opt.id} value={opt.id}>
-                              <span className="flex items-center gap-2">
-                                <IconComp className="h-4 w-4 text-muted-foreground" />
-                                {opt.label}
-                              </span>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Ícone da categoria (quando não há imagem)</Label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {CATEGORY_ICON_OPTIONS.map((opt) => {
+                      const IconComp = getCategoryIconComponent(opt.id);
+                      const selected = (formIcon || 'Utensils') === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setFormIcon(opt.id)}
+                          title={opt.label}
+                          className={`flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all ${
+                            selected
+                              ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
+                              : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50 text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          <IconComp className="h-5 w-5" strokeWidth={1.8} />
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
@@ -763,27 +766,30 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
                     </SelectContent>
                   </Select>
                 </div>
-                {!editForm.image_url && (
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Ícone (quando não há imagem)</Label>
-                    <Select value={editForm.icon || 'Utensils'} onValueChange={(v) => setEditForm((f) => ({ ...f, icon: v }))}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Padrão" /></SelectTrigger>
-                      <SelectContent>
-                        {CATEGORY_ICON_OPTIONS.map((opt) => {
-                          const IconComp = getCategoryIconComponent(opt.id);
-                          return (
-                            <SelectItem key={opt.id} value={opt.id}>
-                              <span className="flex items-center gap-2">
-                                <IconComp className="h-4 w-4 text-muted-foreground" />
-                                {opt.label}
-                              </span>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Ícone da categoria (quando não há imagem)</Label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {CATEGORY_ICON_OPTIONS.map((opt) => {
+                      const IconComp = getCategoryIconComponent(opt.id);
+                      const selected = (editForm.icon || 'Utensils') === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setEditForm((f) => ({ ...f, icon: opt.id }))}
+                          title={opt.label}
+                          className={`flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all ${
+                            selected
+                              ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
+                              : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50 text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          <IconComp className="h-5 w-5" strokeWidth={1.8} />
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>

@@ -92,6 +92,7 @@ import {
   ShoppingCart,
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
+import { CATEGORY_ICON_OPTIONS, getCategoryIconComponent } from '@/lib/categoryIcons';
 import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/ProductAddonsSection';
 import ProductAllergensLabelsSection from '@/components/admin/ProductAllergensLabelsSection';
 import { useProductUpsells, useSaveProductUpsells, useProductComboItems, useProductAddons, useSaveProductAddons } from '@/hooks/queries';
@@ -398,6 +399,7 @@ export default function AdminMenu() {
   const [categoryFormName, setCategoryFormName] = useState('');
   const [categoryFormType, setCategoryFormType] = useState<string>(CATEGORY_TYPES[0].id);
   const [categoryFormImageUrl, setCategoryFormImageUrl] = useState('');
+  const [categoryFormIcon, setCategoryFormIcon] = useState<string>('Utensils');
   const [categoryFormInventory, setCategoryFormInventory] = useState(false);
   const [categoryFormDest, setCategoryFormDest] = useState<'kitchen' | 'bar'>('kitchen');
   const [categoryImageUploading, setCategoryImageUploading] = useState(false);
@@ -409,9 +411,10 @@ export default function AdminMenu() {
     name: string;
     type: string;
     image_url: string;
+    icon: string;
     inventory: boolean;
     dest: 'kitchen' | 'bar';
-  }>({ name: '', type: CATEGORY_TYPES[0].id, image_url: '', inventory: false, dest: 'kitchen' });
+  }>({ name: '', type: CATEGORY_TYPES[0].id, image_url: '', icon: 'Utensils', inventory: false, dest: 'kitchen' });
   const [editCategoryImageUploading, setEditCategoryImageUploading] = useState(false);
 
   // Menu display mode (exibição do cardápio)
@@ -1031,12 +1034,14 @@ export default function AdminMenu() {
         print_destination: categoryFormDest,
         extra_field: preset.extra_field, extra_label: preset.extra_label, extra_placeholder: preset.extra_placeholder,
         image_url: categoryFormImageUrl.trim() || null,
+        icon: categoryFormIcon.trim() || null,
       });
       if (error) throw error;
       setShowCategoryModal(false);
       setCategoryFormName('');
       setCategoryFormType(CATEGORY_TYPES[0].id);
       setCategoryFormImageUrl('');
+      setCategoryFormIcon('Utensils');
       setCategoryFormInventory(false);
       setCategoryFormDest('kitchen');
       await loadCategoriesAndSubcategories();
@@ -1052,6 +1057,7 @@ export default function AdminMenu() {
       name: cat.name,
       type: typeId,
       image_url: cat.image_url || '',
+      icon: cat.icon || 'Utensils',
       inventory: cat.has_inventory ?? false,
       dest: (cat.print_destination as 'kitchen' | 'bar') || 'kitchen',
     });
@@ -1075,6 +1081,7 @@ export default function AdminMenu() {
         print_destination: editCategoryForm.dest,
         extra_field: preset.extra_field, extra_label: preset.extra_label, extra_placeholder: preset.extra_placeholder,
         image_url: editCategoryForm.image_url.trim() || null,
+        icon: editCategoryForm.icon.trim() || null,
       }).eq('id', editingCategory.id).eq('restaurant_id', restaurantId!);
       if (error) throw error;
       await supabase.from('products').update({ category: name }).eq('restaurant_id', restaurantId!).eq('category', editingCategory.name);
@@ -2169,6 +2176,31 @@ export default function AdminMenu() {
                 <button type="button" onClick={() => setCategoryFormImageUrl('')} className="text-xs text-muted-foreground hover:text-destructive">Remover imagem</button>
               )}
             </div>
+            {/* Ícone (usado quando não há imagem) */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Ícone da categoria (quando não há imagem)</Label>
+              <div className="grid grid-cols-5 sm:grid-cols-5 gap-2">
+                {CATEGORY_ICON_OPTIONS.map((opt) => {
+                  const IconComp = getCategoryIconComponent(opt.id);
+                  const selected = categoryFormIcon === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setCategoryFormIcon(opt.id)}
+                      title={opt.label}
+                      className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border transition-all ${
+                        selected
+                          ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
+                          : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50 text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <IconComp className="h-5 w-5" strokeWidth={1.8} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="space-y-2">
               <Label>Tipo / Comportamento</Label>
               <Select value={categoryFormType} onValueChange={setCategoryFormType}>
@@ -2280,6 +2312,31 @@ export default function AdminMenu() {
                 {editCategoryForm.image_url && (
                   <button type="button" onClick={() => setEditCategoryForm((f) => ({ ...f, image_url: '' }))} className="text-xs text-muted-foreground hover:text-destructive">Remover imagem</button>
                 )}
+              </div>
+              {/* Ícone (usado quando não há imagem) */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Ícone da categoria (quando não há imagem)</Label>
+                <div className="grid grid-cols-5 sm:grid-cols-5 gap-2">
+                  {CATEGORY_ICON_OPTIONS.map((opt) => {
+                    const IconComp = getCategoryIconComponent(opt.id);
+                    const selected = editCategoryForm.icon === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setEditCategoryForm((f) => ({ ...f, icon: opt.id }))}
+                        title={opt.label}
+                        className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border transition-all ${
+                          selected
+                            ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
+                            : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50 text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <IconComp className="h-5 w-5" strokeWidth={1.8} />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Tipo / Comportamento</Label>
