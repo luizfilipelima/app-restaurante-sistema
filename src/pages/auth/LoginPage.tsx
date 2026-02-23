@@ -19,7 +19,13 @@ export default function LoginPage() {
     try {
       await signIn(loginOrEmail, password);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao fazer login. Verifique suas credenciais.');
+      const msg = err instanceof Error ? err.message : 'Erro ao fazer login. Verifique suas credenciais.';
+      const isSchemaError = /database error querying schema|querying schema/i.test(String(msg));
+      setError(
+        isSchemaError
+          ? 'Erro de configuração da conta. O administrador deve executar a migration 20260313 no Supabase (SQL Editor) para corrigir.'
+          : msg
+      );
     }
   };
 
