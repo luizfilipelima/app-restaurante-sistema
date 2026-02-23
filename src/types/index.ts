@@ -387,8 +387,31 @@ export interface Order {
   loyalty_points_credited?: boolean;
   /** Idioma em que o cliente navegou no cardápio (pt/es). Usado para templates WhatsApp. */
   customer_language?: 'pt' | 'es' | null;
+  /** Se true, conta solicitada (Pedir a Conta); bloqueia novos pedidos na mesa. */
+  bill_requested?: boolean | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Zona/setor do salão (Varanda, Salão Principal, etc.). Diferente de delivery_zones. */
+export interface HallZone {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Vínculo mesa ↔ comanda física (buffet). */
+export interface TableComandaLink {
+  id: string;
+  table_id: string;
+  comanda_id: string;
+  restaurant_id: string;
+  created_at: string;
+  /** Populated via join */
+  comandas?: { id: string; number: number; status: string } | null;
 }
 
 export interface Table {
@@ -398,6 +421,7 @@ export interface Table {
   name?: string | null;
   is_active: boolean;
   order_index: number;
+  hall_zone_id?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -15,7 +15,24 @@ export { useDeliveryZones } from './useDeliveryZones';
 export { useRestaurantMenuData } from './useRestaurantMenuData';
 export type { RestaurantMenuData } from './useRestaurantMenuData';
 export { useTables } from './useTables';
+export { useTableStatuses } from './useTableStatuses';
+export type { TableWithStatus, TableStatus } from './useTableStatuses';
+export { useTableOrders } from './useTableOrders';
+export {
+  useHallZones,
+  useCreateHallZone,
+  useUpdateHallZone,
+  useDeleteHallZone,
+} from './useHallZones';
+export {
+  useTableComandaLinks,
+  useLinkComandaToTable,
+  useUnlinkComandaFromTable,
+} from './useTableComandaLinks';
+export type { TableComandaLinkWithComanda } from './useTableComandaLinks';
+export type { TableOrderWithItems } from './useTableOrders';
 export { useWaiterCalls } from './useWaiterCalls';
+export { useAdminProducts } from './useAdminProducts';
 export { useOrders } from './useOrders';
 export type { UseOrdersParams, OrderSourceFilter } from './useOrders';
 export { usePrintSettings } from './usePrintSettings';
