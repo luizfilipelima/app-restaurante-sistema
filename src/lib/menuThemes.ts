@@ -1,6 +1,6 @@
 /**
- * Temas pré-definidos do cardápio.
- * Cada tema possui paleta completa (HSL para Tailwind) e previewColors para a UI de seleção.
+ * Temas do cardápio: padrão (fixo) e minimalistas claro/escuro com cor de detalhe editável.
+ * Paletas em HSL para Tailwind; temas minimalistas usam neutros + primary/accent da cor escolhida.
  */
 
 export interface ThemePalette {
@@ -27,10 +27,28 @@ export interface MenuTheme {
   id: string;
   name: string;
   mode: 'light' | 'dark';
-  category: 'restaurant' | 'festive';
   palette: ThemePalette;
-  /** Cores hex para preview visual nos cards (4-5 cores) */
   previewColors: string[];
+}
+
+/** Opção de cor para temas minimalistas (monocromática nos detalhes) */
+export interface MenuThemeAccentOption {
+  id: string;
+  name: string;
+  /** Matiz HSL (0-360) para primary/accent */
+  hue: number;
+  /** Cor hex para preview no seletor */
+  hex: string;
+}
+
+/** Opção de tema na configuração */
+export interface MenuThemeOption {
+  id: 'default_light' | 'minimal_light' | 'minimal_dark';
+  name: string;
+  description: string;
+  /** Se false, tema padrão não mostra seletor de cor */
+  accentEditable: boolean;
+  mode: 'light' | 'dark';
 }
 
 const baseLightMuted = '210 40% 96.1%';
@@ -83,282 +101,140 @@ function makePalette(
   };
 }
 
-/** Dicionário completo de temas pré-definidos */
+/** Tema padrão (único fixo, não editável) */
+export const DEFAULT_THEME: MenuTheme = {
+  id: 'default_light',
+  name: 'Padrão',
+  mode: 'light',
+  previewColors: ['#f97316', '#ea580c', '#f1f5f9', '#0f172a', '#e2e8f0'],
+  palette: makePalette(
+    'light',
+    '24 95% 48%',
+    '0 0% 100%',
+    '24 95% 44%',
+    '0 0% 100%',
+    '0 0% 99%',
+    '222.2 84% 4.9%',
+    '24 100% 96%',
+    '24 95% 48%',
+    baseLightMuted,
+    baseLightMutedFg,
+    baseLightBorder
+  ),
+};
+
+/** Temas fixos (apenas padrão; minimalistas são gerados por getMinimalPalette) */
 export const MENU_THEMES: Record<string, MenuTheme> = {
-  // ─── Restaurante: Terroso (tons quentes, natural) ──────────────────────────
-  earthy_light: {
-    id: 'earthy_light',
-    name: 'Terroso',
-    mode: 'light',
-    category: 'restaurant',
-    previewColors: ['#c2410c', '#4d7c0f', '#78350f', '#fef3c7', '#e7e5e4'],
-    palette: makePalette(
-      'light',
-      '24 89% 42%',     // terracotta
-      '0 0% 100%',
-      '84 64% 26%',     // olive
-      '0 0% 100%',
-      '40 20% 97%',     // warm cream
-      '24 10% 15%',
-      '24 80% 95%',     // light terracotta tint
-      '24 89% 42%',
-      baseLightMuted,
-      baseLightMutedFg,
-      baseLightBorder
-    ),
-  },
-  earthy_dark: {
-    id: 'earthy_dark',
-    name: 'Terroso',
-    mode: 'dark',
-    category: 'restaurant',
-    previewColors: ['#c2410c', '#4d7c0f', '#422006', '#1c1917', '#292524'],
-    palette: makePalette(
-      'dark',
-      '24 89% 55%',
-      '0 0% 100%',
-      '84 64% 35%',
-      '0 0% 100%',
-      '24 10% 8%',
-      '40 20% 95%',
-      baseDarkMuted,
-      '40 20% 95%',
-      baseDarkMuted,
-      baseDarkMutedFg,
-      baseDarkBorder
-    ),
-  },
+  default_light: DEFAULT_THEME,
+};
 
-  // ─── Restaurante: Vibrante (fast-food, chamativo) ──────────────────────────
-  vibrant_light: {
-    id: 'vibrant_light',
-    name: 'Vibrante',
-    mode: 'light',
-    category: 'restaurant',
-    previewColors: ['#ea580c', '#dc2626', '#fbbf24', '#fef3c7', '#fef2f2'],
-    palette: makePalette(
+/** Opções de tema na UI */
+export const MENU_THEME_OPTIONS: MenuThemeOption[] = [
+  { id: 'default_light', name: 'Padrão', description: 'Cores padrão do sistema (laranja)', accentEditable: false, mode: 'light' },
+  { id: 'minimal_light', name: 'Claro minimalista', description: 'Tons brancos e neutros', accentEditable: true, mode: 'light' },
+  { id: 'minimal_dark', name: 'Escuro minimalista', description: 'Fundo escuro, detalhes na cor escolhida', accentEditable: true, mode: 'dark' },
+];
+
+/** Cores de detalhe para temas minimalistas */
+export const MENU_THEME_ACCENT_OPTIONS: MenuThemeAccentOption[] = [
+  { id: 'orange', name: 'Laranja', hue: 24, hex: '#f97316' },
+  { id: 'blue', name: 'Azul', hue: 217, hex: '#3b82f6' },
+  { id: 'emerald', name: 'Verde', hue: 160, hex: '#10b981' },
+  { id: 'violet', name: 'Violeta', hue: 263, hex: '#8b5cf6' },
+  { id: 'rose', name: 'Rosa', hue: 350, hex: '#f43f5e' },
+  { id: 'amber', name: 'Âmbar', hue: 38, hex: '#f59e0b' },
+];
+
+const DEFAULT_ACCENT_ID = 'orange';
+
+function getAccentHue(accentId: string | null | undefined): number {
+  const opt = MENU_THEME_ACCENT_OPTIONS.find((a) => a.id === accentId);
+  return opt?.hue ?? 24; // orange
+}
+
+/** Gera paleta minimalista: fundos neutros + primary/accent em uma cor só */
+export function getMinimalPalette(
+  mode: 'light' | 'dark',
+  accentId: string | null | undefined
+): ThemePalette {
+  const hue = getAccentHue(accentId);
+  const primary = `${hue} 95% ${mode === 'light' ? '48%' : '55%'}`;
+  const primaryFg = '0 0% 100%';
+  const accent = mode === 'light' ? `${hue} 100% 96%` : `${hue} 30% 18%`;
+  const accentFg = mode === 'light' ? `${hue} 95% 48%` : '0 0% 98%';
+
+  if (mode === 'light') {
+    return makePalette(
       'light',
-      '24 95% 48%',     // orange
-      '0 0% 100%',
-      '0 72% 51%',      // red
-      '0 0% 100%',
+      primary,
+      primaryFg,
+      primary,
+      primaryFg,
       '0 0% 99%',
-      '0 0% 9%',
-      '24 100% 96%',
-      '24 95% 48%',
+      '222.2 47% 11%',
+      accent,
+      accentFg,
       baseLightMuted,
       baseLightMutedFg,
       baseLightBorder
-    ),
-  },
-  vibrant_dark: {
-    id: 'vibrant_dark',
-    name: 'Vibrante',
-    mode: 'dark',
-    category: 'restaurant',
-    previewColors: ['#ea580c', '#dc2626', '#1c1917', '#292524', '#450a0a'],
-    palette: makePalette(
-      'dark',
-      '24 95% 53%',
-      '0 0% 100%',
-      '0 72% 55%',
-      '0 0% 100%',
-      '0 0% 7%',
-      '0 0% 98%',
-      baseDarkMuted,
-      '0 0% 98%',
-      baseDarkMuted,
-      baseDarkMutedFg,
-      baseDarkBorder
-    ),
-  },
+    );
+  }
 
-  // ─── Restaurante: Minimalista Gourmet (elegante, clean) ────────────────────
-  minimal_light: {
-    id: 'minimal_light',
-    name: 'Minimalista',
-    mode: 'light',
-    category: 'restaurant',
-    previewColors: ['#334155', '#64748b', '#f1f5f9', '#0f172a', '#e2e8f0'],
-    palette: makePalette(
-      'light',
-      '215 28% 27%',    // slate-700
-      '0 0% 100%',
-      '43 74% 43%',     // amber-600
-      '0 0% 100%',
-      '210 40% 98%',
-      '222.2 84% 4.9%',
-      '215 20% 96%',
-      '215 28% 27%',
-      baseLightMuted,
-      baseLightMutedFg,
-      baseLightBorder
-    ),
-  },
-  minimal_dark: {
-    id: 'minimal_dark',
-    name: 'Minimalista',
-    mode: 'dark',
-    category: 'restaurant',
-    previewColors: ['#64748b', '#94a3b8', '#0f172a', '#1e293b', '#334155'],
-    palette: makePalette(
-      'dark',
-      '215 20% 65%',
-      '222 47% 11%',
-      '43 74% 50%',
-      '222 47% 11%',
-      '222.2 84% 4.9%',
-      '210 40% 98%',
-      baseDarkMuted,
-      '210 40% 98%',
-      baseDarkMuted,
-      baseDarkMutedFg,
-      baseDarkBorder
-    ),
-  },
+  return makePalette(
+    'dark',
+    primary,
+    primaryFg,
+    primary,
+    primaryFg,
+    '240 10% 6%',
+    '0 0% 98%',
+    accent,
+    accentFg,
+    baseDarkMuted,
+    baseDarkMutedFg,
+    baseDarkBorder
+  );
+}
 
-  // ─── Festivo: Dia dos Namorados ────────────────────────────────────────────
-  valentine_light: {
-    id: 'valentine_light',
-    name: 'Namorados',
-    mode: 'light',
-    category: 'festive',
-    previewColors: ['#e11d48', '#ec4899', '#fce7f3', '#fdf2f8', '#fda4af'],
-    palette: makePalette(
-      'light',
-      '346 77% 50%',    // rose-600
-      '0 0% 100%',
-      '330 81% 60%',    // pink-500
-      '0 0% 100%',
-      '330 100% 98%',
-      '346 50% 15%',
-      '330 80% 96%',
-      '346 77% 50%',
-      '330 50% 96%',
-      '346 20% 45%',
-      '330 30% 90%'
-    ),
-  },
-  valentine_dark: {
-    id: 'valentine_dark',
-    name: 'Namorados',
-    mode: 'dark',
-    category: 'festive',
-    previewColors: ['#e11d48', '#ec4899', '#4c0519', '#831843', '#1f0a14'],
-    palette: makePalette(
-      'dark',
-      '346 77% 55%',
-      '330 50% 10%',
-      '330 81% 65%',
-      '330 50% 10%',
-      '330 40% 8%',
-      '330 30% 95%',
-      '330 40% 15%',
-      '330 30% 95%',
-      baseDarkMuted,
-      baseDarkMutedFg,
-      baseDarkBorder
-    ),
-  },
+export interface MenuThemeConfigResult {
+  palette: ThemePalette;
+  isDark: boolean;
+}
 
-  // ─── Festivo: Natal ────────────────────────────────────────────────────────
-  natal_light: {
-    id: 'natal_light',
-    name: 'Natal',
-    mode: 'light',
-    category: 'festive',
-    previewColors: ['#15803d', '#dc2626', '#fef3c7', '#14532d', '#fef2f2'],
-    palette: makePalette(
-      'light',
-      '142 71% 29%',    // green-700
-      '0 0% 100%',
-      '0 72% 51%',      // red
-      '0 0% 100%',
-      '142 30% 97%',
-      '142 50% 12%',
-      '142 50% 94%',
-      '142 71% 29%',
-      '142 25% 95%',
-      '142 20% 40%',
-      '142 20% 90%'
-    ),
-  },
-  natal_dark: {
-    id: 'natal_dark',
-    name: 'Natal',
-    mode: 'dark',
-    category: 'festive',
-    previewColors: ['#15803d', '#dc2626', '#052e16', '#450a0a', '#14532d'],
-    palette: makePalette(
-      'dark',
-      '142 71% 40%',
-      '142 50% 6%',
-      '0 72% 55%',
-      '142 50% 6%',
-      '142 50% 6%',
-      '142 30% 95%',
-      '142 40% 12%',
-      '142 30% 95%',
-      baseDarkMuted,
-      baseDarkMutedFg,
-      baseDarkBorder
-    ),
-  },
+/**
+ * Resolve tema + accent para a paleta efetiva.
+ * null/desconhecido → tema padrão. minimal_light/minimal_dark usam menu_theme_accent.
+ */
+export function getMenuThemeConfig(
+  menuTheme: string | null | undefined,
+  menuThemeAccent: string | null | undefined
+): MenuThemeConfigResult | null {
+  const theme = menuTheme ?? 'default_light';
+  if (theme === 'default_light') {
+    const t = MENU_THEMES.default_light;
+    return t ? { palette: t.palette, isDark: false } : null;
+  }
+  if (theme === 'minimal_light') {
+    return { palette: getMinimalPalette('light', menuThemeAccent), isDark: false };
+  }
+  if (theme === 'minimal_dark') {
+    return { palette: getMinimalPalette('dark', menuThemeAccent), isDark: true };
+  }
+  // fallback
+  const t = MENU_THEMES.default_light;
+  return t ? { palette: t.palette, isDark: false } : null;
+}
 
-  // ─── Festivo: Halloween ────────────────────────────────────────────────────
-  halloween_light: {
-    id: 'halloween_light',
-    name: 'Halloween',
-    mode: 'light',
-    category: 'festive',
-    previewColors: ['#ea580c', '#7c3aed', '#fef3c7', '#1e1b4b', '#f5f3ff'],
-    palette: makePalette(
-      'light',
-      '24 95% 48%',     // orange
-      '0 0% 100%',
-      '263 70% 58%',    // violet-600
-      '0 0% 100%',
-      '263 30% 98%',
-      '263 50% 15%',
-      '263 50% 96%',
-      '263 70% 58%',
-      '263 25% 95%',
-      '263 20% 45%',
-      '263 25% 90%'
-    ),
-  },
-  halloween_dark: {
-    id: 'halloween_dark',
-    name: 'Halloween',
-    mode: 'dark',
-    category: 'festive',
-    previewColors: ['#ea580c', '#7c3aed', '#1e1b4b', '#422006', '#312e81'],
-    palette: makePalette(
-      'dark',
-      '24 95% 53%',
-      '263 50% 8%',
-      '263 70% 62%',
-      '263 50% 8%',
-      '263 45% 8%',
-      '263 30% 95%',
-      '263 40% 15%',
-      '263 30% 95%',
-      baseDarkMuted,
-      baseDarkMutedFg,
-      baseDarkBorder
-    ),
-  },
-};
+/** IDs de tema válidos */
+export type MenuThemeId = 'default_light' | 'minimal_light' | 'minimal_dark';
 
-/** IDs de temas agrupados por categoria para a UI */
-export const THEME_IDS_BY_CATEGORY = {
-  restaurant: ['earthy_light', 'earthy_dark', 'vibrant_light', 'vibrant_dark', 'minimal_light', 'minimal_dark'] as const,
-  festive: ['valentine_light', 'valentine_dark', 'natal_light', 'natal_dark', 'halloween_light', 'halloween_dark'] as const,
-};
+/** Normaliza valor do banco para tema válido */
+export function normalizeMenuThemeId(theme: string | null | undefined): MenuThemeId {
+  if (theme === 'minimal_light' || theme === 'minimal_dark') return theme;
+  return 'default_light';
+}
 
-export type MenuThemeId = keyof typeof MENU_THEMES;
-
-/** Converte paleta em objeto de variáveis CSS para style inline */
+/** Converte paleta em variáveis CSS para style inline */
 export function paletteToCssVars(palette: ThemePalette): Record<string, string> {
   return {
     '--background': palette.background,
@@ -379,4 +255,13 @@ export function paletteToCssVars(palette: ThemePalette): Record<string, string> 
     '--input': palette.input,
     '--ring': palette.ring,
   };
+}
+
+/** Cores de preview para um tema minimalista com determinada cor */
+export function getMinimalPreviewColors(mode: 'light' | 'dark', accentId: string | null | undefined): string[] {
+  const opt = MENU_THEME_ACCENT_OPTIONS.find((a) => a.id === (accentId || DEFAULT_ACCENT_ID)) ?? MENU_THEME_ACCENT_OPTIONS[0];
+  if (mode === 'light') {
+    return [opt.hex, '#ffffff', '#f1f5f9', '#0f172a', '#e2e8f0'];
+  }
+  return [opt.hex, '#18181b', '#27272a', '#3f3f46', '#52525b'];
 }

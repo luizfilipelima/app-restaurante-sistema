@@ -148,8 +148,10 @@ export interface Restaurant {
   manual_monthly_revenue_brl?: number | null;
   /** Preço padrão por Kg para buffet (moeda nativa: centavos BRL, inteiro PYG). Usado na pesagem quando produto não tem preço. */
   buffet_price_per_kg?: number | null;
-  /** ID do tema pré-definido do cardápio (earthy_light, natal_dark, etc). NULL = tema padrão. */
+  /** Tema do cardápio: default_light (padrão), minimal_light ou minimal_dark. NULL = default_light. */
   menu_theme?: string | null;
+  /** Cor dos detalhes nos temas minimalistas (orange, blue, emerald, etc). NULL = orange. */
+  menu_theme_accent?: string | null;
   created_at: string;
   updated_at: string;
 }

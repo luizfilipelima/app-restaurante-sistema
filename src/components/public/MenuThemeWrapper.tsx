@@ -6,11 +6,12 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { MENU_THEMES, paletteToCssVars } from '@/lib/menuThemes';
+import { getMenuThemeConfig, paletteToCssVars } from '@/lib/menuThemes';
 
 export default function MenuThemeWrapper() {
   const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
   const [menuThemeId, setMenuThemeId] = useState<string | null | undefined>(undefined);
+  const [menuThemeAccent, setMenuThemeAccent] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (!restaurantSlug) {
@@ -21,26 +22,28 @@ export default function MenuThemeWrapper() {
       try {
         const { data } = await supabase
           .from('restaurants')
-          .select('menu_theme')
+          .select('menu_theme, menu_theme_accent')
           .eq('slug', restaurantSlug)
           .eq('is_active', true)
           .single();
         setMenuThemeId(data?.menu_theme ?? null);
+        setMenuThemeAccent(data?.menu_theme_accent ?? null);
       } catch {
         setMenuThemeId(null);
+        setMenuThemeAccent(null);
       }
     })();
   }, [restaurantSlug]);
 
   const themeConfig = useMemo(() => {
-    if (menuThemeId === undefined || !menuThemeId) return null;
-    const theme = MENU_THEMES[menuThemeId];
-    if (!theme) return null;
+    if (menuThemeId === undefined) return null;
+    const config = getMenuThemeConfig(menuThemeId, menuThemeAccent);
+    if (!config) return null;
     return {
-      style: paletteToCssVars(theme.palette) as React.CSSProperties,
-      isDark: theme.mode === 'dark',
+      style: paletteToCssVars(config.palette) as React.CSSProperties,
+      isDark: config.isDark,
     };
-  }, [menuThemeId]);
+  }, [menuThemeId, menuThemeAccent]);
 
   if (themeConfig) {
     return (

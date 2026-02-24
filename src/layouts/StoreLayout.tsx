@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import InitialSplashScreen from '@/components/public/InitialSplashScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { MENU_THEMES, paletteToCssVars } from '@/lib/menuThemes';
+import { getMenuThemeConfig, paletteToCssVars } from '@/lib/menuThemes';
 
 // Rotas públicas — lazy para reduzir bundle inicial (cardápio carrega só o necessário)
 const PublicMenu = lazyWithRetry(() => import('@/pages/public/Menu'));
@@ -34,6 +34,7 @@ interface StoreLayoutProps {
 export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [menuThemeId, setMenuThemeId] = useState<string | null>(null);
+  const [menuThemeAccent, setMenuThemeAccent] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tenantSlug) return;
@@ -42,7 +43,7 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
         const [restaurantRes, _] = await Promise.all([
           supabase
             .from('restaurants')
-            .select('logo, language, menu_theme')
+            .select('logo, language, menu_theme, menu_theme_accent')
             .eq('slug', tenantSlug)
             .eq('is_active', true)
             .single(),
@@ -51,6 +52,7 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
         const data = restaurantRes.data;
         setLogoUrl(data?.logo ?? null);
         setMenuThemeId(data?.menu_theme ?? null);
+        setMenuThemeAccent(data?.menu_theme_accent ?? null);
         const userHasChosen = hasStoredMenuLanguage();
         const lang = (userHasChosen ? getStoredMenuLanguage() : (data?.language === 'es' ? 'es' : 'pt')) as MenuLanguage;
         if (!userHasChosen) setStoredMenuLanguage(lang);
@@ -58,6 +60,7 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
       } catch {
         setLogoUrl(null);
         setMenuThemeId(null);
+        setMenuThemeAccent(null);
         i18n.changeLanguage('pt');
         setStoredMenuLanguage('pt');
       }
@@ -65,12 +68,13 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
   }, [tenantSlug]);
 
   const themeConfig = useMemo(() => {
-    if (!menuThemeId) return null;
-    const theme = MENU_THEMES[menuThemeId];
-    if (!theme) return null;
-    const vars = paletteToCssVars(theme.palette);
-    return { style: vars as React.CSSProperties, isDark: theme.mode === 'dark' };
-  }, [menuThemeId]);
+    const config = getMenuThemeConfig(menuThemeId, menuThemeAccent);
+    if (!config) return null;
+    return {
+      style: paletteToCssVars(config.palette) as React.CSSProperties,
+      isDark: config.isDark,
+    };
+  }, [menuThemeId, menuThemeAccent]);
 
   useDynamicFavicon(logoUrl);
 
@@ -97,7 +101,7 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        {themeConfig ? (
+        {themeConfig && (
           <div
             data-menu-theme
             className={`min-h-screen ${themeConfig.isDark ? 'dark' : ''}`}
@@ -105,9 +109,8 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
           >
             {content}
           </div>
-        ) : (
-          content
         )}
+        {!themeConfig && content}
       </BrowserRouter>
     </ErrorBoundary>
   );

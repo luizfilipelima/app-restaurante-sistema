@@ -2371,7 +2371,9 @@ export default function AdminMenu() {
             <MenuThemeSelector
               restaurantId={restaurantId}
               currentTheme={restaurant?.menu_theme}
-              onThemeChange={(themeId) => setRestaurant((prev) => prev ? { ...prev, menu_theme: themeId } : null)}
+              currentAccent={restaurant?.menu_theme_accent}
+              onThemeChange={(themeId) => setRestaurant((prev) => prev ? { ...prev, menu_theme: themeId ?? undefined } : null)}
+              onAccentChange={(accentId) => setRestaurant((prev) => prev ? { ...prev, menu_theme_accent: accentId ?? undefined } : null)}
               onInvalidateCache={() => invalidatePublicMenuCache(queryClient, slug || restaurant?.slug || ctxRestaurant?.slug)}
             />
             <div className="border-t border-border pt-5">
