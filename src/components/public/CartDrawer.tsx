@@ -108,7 +108,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
 
           {/* Bottom Sheet */}
           <motion.div
-            className="fixed bottom-0 left-0 right-0 z-50 flex flex-col bg-white rounded-t-[28px] shadow-2xl overflow-hidden"
+            className="fixed bottom-0 left-0 right-0 z-50 flex flex-col bg-card rounded-t-[28px] shadow-2xl overflow-hidden"
             style={{ maxHeight: '92svh', paddingBottom: 'env(safe-area-inset-bottom)' }}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
@@ -117,17 +117,17 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
           >
             {/* Drag indicator */}
             <div className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-grab active:cursor-grabbing" onClick={onClose}>
-              <div className="w-10 h-1 rounded-full bg-slate-200" />
+              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
 
             {/* Header */}
-            <div className="flex flex-col gap-1.5 px-5 py-3 border-b border-slate-100 flex-shrink-0">
+            <div className="flex flex-col gap-1.5 px-5 py-3 border-b border-border flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-sm">
                     <ShoppingBag className="h-4 w-4 text-primary-foreground" />
                   </div>
-                  <h2 className="text-lg font-bold text-slate-900">{t('cart.title')}</h2>
+                  <h2 className="text-lg font-bold text-foreground">{t('cart.title')}</h2>
                   {items.length > 0 && (
                     <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
                       {items.length}
@@ -136,7 +136,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                 </div>
                 <button
                   onClick={onClose}
-                  className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 active:scale-95 transition-all"
+                  className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted/80 active:scale-95 transition-all"
                 >
                   <span className="text-sm font-bold">✕</span>
                 </button>
@@ -159,10 +159,10 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
             <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3">
               {items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-4">
-                  <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center">
-                    <ShoppingBag className="h-7 w-7 text-slate-400" />
+                  <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+                    <ShoppingBag className="h-7 w-7 text-muted-foreground" />
                   </div>
-                  <p className="text-slate-500 text-sm font-medium">{t('cart.empty')}</p>
+                  <p className="text-muted-foreground text-sm font-medium">{t('cart.empty')}</p>
                 </div>
               ) : (
                 <>
@@ -179,14 +179,14 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                           if (!p) return null;
                           const price = Number(p.price_sale || p.price);
                           return (
-                            <div key={row.id} className="flex items-center gap-3 rounded-xl bg-white border border-amber-100 p-2.5">
+                            <div key={row.id} className="flex items-center gap-3 rounded-xl bg-card border border-border p-2.5">
                               {p.image_url ? (
                                 <img src={p.image_url} alt={p.name} width={44} height={44} className="w-11 h-11 rounded-xl object-cover flex-shrink-0" loading="lazy" />
                               ) : (
                                 <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center text-xl flex-shrink-0">🍽</div>
                               )}
                               <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold text-slate-800 truncate">{p.name}</p>
+                                <p className="text-xs font-bold text-foreground truncate">{p.name}</p>
                                 <p className="text-xs text-amber-700 font-semibold mt-0.5">{fmt(price)}</p>
                               </div>
                               <Button
@@ -207,12 +207,12 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                   {items.map((item, index) => {
                     const itemTotal = item.unitPrice * item.quantity;
                     return (
-                      <div key={index} className="bg-white border border-slate-100 rounded-2xl p-3.5 shadow-sm">
+                      <div key={index} className="bg-card border border-border rounded-2xl p-3.5 shadow-sm">
                         <div className="flex items-start justify-between gap-2 mb-3">
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-slate-900 text-sm leading-snug">{item.productName}</h4>
+                            <h4 className="font-semibold text-foreground text-sm leading-snug">{item.productName}</h4>
                             {item.isPizza && (
-                              <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                              <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
                                 {item.pizzaSize && <p>{t('cart.size')}: {item.pizzaSize}</p>}
                                 {item.pizzaFlavors && item.pizzaFlavors.length > 0 && (
                                   <p className="line-clamp-1">{t('cart.flavors')}: {item.pizzaFlavors.join(', ')}</p>
@@ -222,7 +222,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                               </div>
                             )}
                             {item.addons && item.addons.length > 0 && (
-                              <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                              <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
                                 {item.addons.map((a, i) => (
                                   <p key={i}>+ {a.name} {a.price > 0 ? `(+${fmt(a.price)})` : ''}</p>
                                 ))}
@@ -234,29 +234,29 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                           </div>
                           <button
                             onClick={() => removeItem(index)}
-                            className="h-7 w-7 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 active:scale-95 touch-manipulation transition-all flex-shrink-0"
+                            className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-95 touch-manipulation transition-all flex-shrink-0"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center bg-slate-100 rounded-xl overflow-hidden">
+                          <div className="flex items-center bg-muted rounded-xl overflow-hidden">
                             <button
-                              className="h-9 w-9 flex items-center justify-center text-slate-700 hover:bg-slate-200 active:scale-95 touch-manipulation transition-all"
+                              className="h-9 w-9 flex items-center justify-center text-foreground hover:bg-muted-foreground/20 active:scale-95 touch-manipulation transition-all"
                               onClick={() => updateQuantity(index, item.quantity - 1)}
                             >
                               <Minus className="h-3.5 w-3.5" />
                             </button>
-                            <span className="w-8 text-center text-sm font-bold text-slate-900">{item.quantity}</span>
+                            <span className="w-8 text-center text-sm font-bold text-foreground">{item.quantity}</span>
                             <button
-                              className="h-9 w-9 flex items-center justify-center text-slate-700 hover:bg-slate-200 active:scale-95 touch-manipulation transition-all"
+                              className="h-9 w-9 flex items-center justify-center text-foreground hover:bg-muted-foreground/20 active:scale-95 touch-manipulation transition-all"
                               onClick={() => updateQuantity(index, item.quantity + 1)}
                             >
                               <Plus className="h-3.5 w-3.5" />
                             </button>
                           </div>
-                          <span className="font-bold text-slate-900 text-sm">
+                          <span className="font-bold text-foreground text-sm">
                             {fmt(itemTotal)}
                           </span>
                         </div>
@@ -269,11 +269,11 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
 
             {/* Footer */}
             {items.length > 0 && (
-              <div className="flex-shrink-0 border-t border-slate-100 bg-white px-4 pt-3 pb-4 space-y-3">
+              <div className="flex-shrink-0 border-t border-border bg-card px-4 pt-3 pb-4 space-y-3">
                 {/* Subtotal + CTA */}
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm text-slate-500 font-medium">{t('cart.subtotal')}</span>
-                  <span className="text-xl font-bold text-slate-900">{fmt(getSubtotal())}</span>
+                  <span className="text-sm text-muted-foreground font-medium">{t('cart.subtotal')}</span>
+                  <span className="text-xl font-bold text-foreground">{fmt(getSubtotal())}</span>
                 </div>
                 <button
                   onClick={handleCheckout}

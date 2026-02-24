@@ -102,14 +102,14 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="w-[calc(100vw-2rem)] max-w-[400px] rounded-2xl p-0 overflow-hidden border border-slate-200/80 shadow-xl"
+        className="w-[calc(100vw-2rem)] max-w-[400px] rounded-2xl p-0 overflow-hidden border border-border shadow-xl"
         hideClose={false}
       >
-        <div className="bg-white">
+        <div className="bg-card">
           {/* Header: logo + nome */}
           <div className="p-5 sm:p-6 pb-4">
             <div className="flex flex-col items-center text-center gap-4">
-              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl overflow-hidden ring-1 ring-slate-200/80 bg-slate-50 flex-shrink-0">
+              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl overflow-hidden ring-1 ring-border bg-muted flex-shrink-0">
                 {restaurant.logo ? (
                   <img src={restaurant.logo} alt={restaurant.name} className="w-full h-full object-cover" />
                 ) : (
@@ -118,7 +118,7 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
                   </div>
                 )}
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight">{restaurant.name}</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">{restaurant.name}</h2>
             </div>
           </div>
 
@@ -131,7 +131,7 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
                   <Phone className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-0.5">{t.contact}</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">{t.contact}</p>
                   <a
                     href={waLink}
                     target="_blank"
@@ -151,7 +151,7 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
                   <Instagram className="h-5 w-5 text-pink-600" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-0.5">Instagram</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">Instagram</p>
                   <a
                     href={instagramHref}
                     target="_blank"
@@ -170,8 +170,8 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
                 <Clock className="h-5 w-5 text-amber-600" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-0.5">{t.hours}</p>
-                <p className="text-sm text-slate-800 whitespace-pre-line leading-relaxed">{hoursText}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">{t.hours}</p>
+                <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">{hoursText}</p>
               </div>
             </div>
 
@@ -187,10 +187,10 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
               </Link>
               <Link
                 to={`${base}/fila`}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 font-medium text-sm"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted hover:bg-muted/80 transition-colors text-foreground font-medium text-sm"
                 onClick={() => onOpenChange(false)}
               >
-                <Users className="h-5 w-5 text-slate-600" />
+                <Users className="h-5 w-5 text-muted-foreground" />
                 {lang === 'pt' ? 'Entrar na fila de espera' : 'Entrar en la fila de espera'}
               </Link>
             </div>
@@ -198,12 +198,12 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
             {/* Descrição */}
             {restaurant.description?.trim() && (
               <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-                  <FileText className="h-5 w-5 text-slate-600" />
+                <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-0.5">{t.description}</p>
-                  <p className="text-sm text-slate-700 leading-relaxed">{restaurant.description.trim()}</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">{t.description}</p>
+                  <p className="text-sm text-foreground leading-relaxed">{restaurant.description.trim()}</p>
                 </div>
               </div>
             )}

@@ -387,7 +387,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   return (
     <>
       <div
-        className={`min-h-screen bg-slate-100/80 font-sans antialiased transition-all duration-500 ease-out ${
+        className={`min-h-screen bg-background font-sans antialiased transition-all duration-500 ease-out ${
           menuVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
         } ${getItemsCount() > 0 ? 'pb-24 md:pb-28' : 'pb-8 md:pb-8'} safe-area-inset-bottom`}
       >
@@ -398,7 +398,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         </div>
       )}
       {/* Header - Layout referência: logo + nome/status à esquerda, carrinho à direita */}
-      <header className="bg-white/95 backdrop-blur-sm border-b border-slate-200/60 sticky top-0 z-20 safe-area-inset-top">
+      <header className="bg-card/95 backdrop-blur-sm border-b border-border sticky top-0 z-20 safe-area-inset-top">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-6xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -406,13 +406,13 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 <button
                   type="button"
                   onClick={() => (viewingCategoryId ? setViewingCategoryId(null) : navigate('/'))}
-                  className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 flex-shrink-0"
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground flex-shrink-0"
                 >
                   <ArrowLeft className="h-5 w-5" />
                   <span className="text-sm font-medium hidden sm:inline">Categorias</span>
                 </button>
               )}
-              <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl overflow-hidden ring-1 ring-slate-200/80 flex-shrink-0 bg-white shadow-sm">
+              <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl overflow-hidden ring-1 ring-border flex-shrink-0 bg-card shadow-sm">
                 {restaurant.logo ? (
                   <img src={restaurant.logo} alt={restaurant.name} width={56} height={56} className="w-full h-full object-cover" />
                 ) : (
@@ -422,13 +422,13 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="text-base sm:text-lg font-bold text-slate-900 truncate tracking-tight leading-tight">{restaurant.name}</h1>
+                <h1 className="text-base sm:text-lg font-bold text-foreground truncate tracking-tight leading-tight">{restaurant.name}</h1>
                 <span className={`inline-flex items-center gap-1.5 text-xs font-medium mt-0.5 ${isOpen ? 'text-emerald-600' : 'text-red-600'}`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-red-500'} ${isOpen ? 'animate-pulse' : ''}`} />
                   {isOpen ? t('menu.open') : t('menu.closed')}
                 </span>
                 {restaurant.description?.trim() && (
-                  <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">{restaurant.description.trim()}</p>
+                  <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">{restaurant.description.trim()}</p>
                 )}
               </div>
             </div>
@@ -439,7 +439,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 aria-label="Informações do restaurante"
                 title="Informações do restaurante"
                 onClick={() => setInfoModalOpen(true)}
-                className="flex items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-white border border-slate-200/80 text-slate-600 hover:text-slate-800 hover:bg-slate-50 hover:border-slate-300 active:scale-95 transition-all touch-manipulation flex-shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08),0_2px_4px_rgba(0,0,0,0.04)]"
+                className="flex items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted hover:border-border active:scale-95 transition-all touch-manipulation flex-shrink-0 shadow-sm hover:shadow-md"
               >
                 <Info className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
@@ -465,7 +465,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               >
                 <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6" />
                 {getItemsCount() > 0 && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-white text-primary text-xs font-bold flex items-center justify-center shadow-md ring-2 ring-primary">
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-card text-primary text-xs font-bold flex items-center justify-center shadow-md ring-2 ring-primary">
                     {getItemsCount()}
                   </span>
                 )}
@@ -512,7 +512,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         {/* ── Modo categorias primeiro: cards com imagem no topo (16:9), bordas arredondadas ── */}
         {categoriesFirst && !viewingSingleCategory && (
           <div className="space-y-4">
-            <h2 className="text-base font-semibold text-slate-700">{t('menu.all')}</h2>
+            <h2 className="text-base font-semibold text-foreground">{t('menu.all')}</h2>
             <div className="flex flex-col gap-3 sm:gap-4">
               {categoriesFromDb
                 .filter((cat) => categories.includes(cat.name))
@@ -521,17 +521,17 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                     key={cat.id}
                     type="button"
                     onClick={() => setViewingCategoryId(cat.id)}
-                    className="group w-full text-left flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:ring-2 hover:ring-slate-200/60 transition-all duration-200 active:scale-[0.99] cursor-pointer"
+                    className="group w-full text-left flex flex-col rounded-2xl overflow-hidden bg-card border border-border shadow-sm hover:shadow-lg hover:border-border hover:ring-2 hover:ring-border transition-all duration-200 active:scale-[0.99] cursor-pointer"
                   >
                     {cat.image_url ? (
                       <>
-                        <div className="relative w-full aspect-video bg-slate-100 overflow-hidden rounded-t-2xl">
+                        <div className="relative w-full aspect-video bg-muted overflow-hidden rounded-t-2xl">
                           <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                         </div>
                         <div className="flex items-center justify-between gap-3 p-4 sm:p-5">
-                          <span className="font-semibold text-slate-800 text-base sm:text-lg truncate flex-1">{cat.name}</span>
-                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-primary/10 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-primary transition-colors">
+                          <span className="font-semibold text-foreground text-base sm:text-lg truncate flex-1">{cat.name}</span>
+                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-muted group-hover:bg-primary/10 px-3 py-2 text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">
                             {t('menu.viewProducts')}
                             <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                           </span>
@@ -539,15 +539,15 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       </>
                     ) : (
                       <div className="flex items-center gap-4 w-full p-4 sm:p-5">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center ring-1 ring-slate-200/60 group-hover:from-primary/10 group-hover:to-primary/20 group-hover:ring-primary/30 transition-all duration-200">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-2xl bg-gradient-to-br from-muted to-muted/80 flex items-center justify-center ring-1 ring-border group-hover:from-primary/10 group-hover:to-primary/20 group-hover:ring-primary/30 transition-all duration-200">
                           {(() => {
                             const IconComp = getCategoryIconComponent(cat.icon);
-                            return <IconComp className="h-8 w-8 sm:h-10 sm:w-10 text-slate-500 group-hover:text-primary transition-colors" />;
+                            return <IconComp className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground group-hover:text-primary transition-colors" />;
                           })()}
                         </div>
                         <div className="flex-1 min-w-0 flex items-center justify-between gap-3">
-                          <span className="font-semibold text-slate-800 text-base sm:text-lg truncate">{cat.name}</span>
-                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-primary/10 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-primary transition-colors duration-200">
+                          <span className="font-semibold text-foreground text-base sm:text-lg truncate">{cat.name}</span>
+                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-muted group-hover:bg-primary/10 px-3 py-2 text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors duration-200">
                             {t('menu.viewProducts')}
                             <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                           </span>
@@ -562,15 +562,15 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
         {/* Busca e categorias — layout referência: busca em destaque + pills horizontais (não no modo categorias-first inicial) */}
         {(!categoriesFirst || viewingSingleCategory) && (
-        <div className={`sticky z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-white/95 backdrop-blur-sm rounded-b-xl ${tableNumber != null && onCallWaiter ? 'top-[115px] sm:top-[125px] md:top-[135px]' : 'top-[65px] sm:top-[73px] md:top-[81px]'}`}>
+        <div className={`sticky z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-card/95 backdrop-blur-sm rounded-b-xl ${tableNumber != null && onCallWaiter ? 'top-[115px] sm:top-[125px] md:top-[135px]' : 'top-[65px] sm:top-[73px] md:top-[81px]'}`}>
           <div className="space-y-2.5">
             <div className="relative">
-              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none z-10" />
+              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
               <Input
                 placeholder={t('menu.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-3 sm:pr-4 bg-white border border-slate-200 rounded-xl border-slate-200/80 focus-visible:border-slate-300 focus-visible:ring-2 focus-visible:ring-slate-200/50 text-base text-slate-900 placeholder:text-slate-400 transition-colors touch-manipulation"
+                className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-3 sm:pr-4 bg-card border border-input rounded-xl focus-visible:ring-2 focus-visible:ring-ring text-base text-foreground placeholder:text-muted-foreground transition-colors touch-manipulation"
               />
             </div>
 
@@ -583,7 +583,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
                   selectedCategory === 'all'
                     ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    : 'bg-card text-muted-foreground border border-border hover:bg-muted'
                 }`}
               >
                 <Utensils className="h-4 w-4 flex-shrink-0" />
@@ -599,7 +599,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
                       selectedCategory === category
                         ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                        : 'bg-card text-muted-foreground border border-border hover:bg-muted'
                     }`}
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
@@ -621,7 +621,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             {savedPhone ? (
               <div className="space-y-1">
                 {savedName && (
-                  <p className="text-xs text-slate-600 font-medium">
+                  <p className="text-xs text-muted-foreground font-medium">
                     {t('menu.loyalty.greeting', { name: savedName })}
                   </p>
                 )}
@@ -685,7 +685,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             // Estrutura pré-computada via useMemo — sem filtros inline a cada render
             groupedByCategory.map(({ categoryName, categoryProducts, subcatsForCategory, productsWithSub, productsWithoutSub, hasSubs }) => (
               <div key={categoryName} className="space-y-2 sm:space-y-3">
-                <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
+                <h2 className="text-sm-mobile-block sm:text-base font-semibold text-muted-foreground uppercase tracking-wider px-1">
                   {categoryName}
                 </h2>
                 {hasSubs ? (
@@ -695,7 +695,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       if (subProducts.length === 0) return null;
                       return (
                         <div key={sub.id} className="space-y-2">
-                          <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
+                          <h3 className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wider px-1">{sub.name}</h3>
                           <div className="flex flex-col gap-3 sm:gap-4">
                             {subProducts.map((product) => {
                               const offer = productIdToOffer.get(product.id);
@@ -757,7 +757,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           ) : (
             // Exibir apenas produtos da categoria selecionada
             <div className="space-y-2 sm:space-y-3">
-              <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
+              <h2 className="text-sm-mobile-block sm:text-base font-semibold text-muted-foreground uppercase tracking-wider px-1">
                 {viewingSingleCategory && currentCategoryFromRoute ? currentCategoryFromRoute.name : selectedCategory}
               </h2>
               <div className="flex flex-col gap-3 sm:gap-4">
@@ -780,19 +780,19 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           )}
 
           {filteredProducts.length === 0 && (
-            <div className="text-center py-12 sm:py-16 bg-white/60 rounded-xl sm:rounded-2xl border border-dashed border-slate-200 mx-1">
-              <p className="text-slate-500 text-base sm:text-sm text-sm-mobile-block">{t('menu.noProductsInCategory')}</p>
+            <div className="text-center py-12 sm:py-16 bg-card/80 rounded-xl sm:rounded-2xl border border-dashed border-border mx-1">
+              <p className="text-muted-foreground text-base sm:text-sm text-sm-mobile-block">{t('menu.noProductsInCategory')}</p>
             </div>
           )}
         </section>
 
         {/* Rodapé */}
-        <footer className="pt-8 pb-6 text-center border-t border-slate-200/60">
+        <footer className="pt-8 pb-6 text-center border-t border-border">
           <a
             href="https://quiero.food"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex flex-col items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors"
+            className="inline-flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <img src="/quierofood-logo-f.svg" alt="Quiero.food" width={80} height={28} loading="lazy" className="h-7 w-auto object-contain opacity-80 hover:opacity-100" />
             <span className="text-xs">{t('menu.developedBy')}</span>
@@ -815,7 +815,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         >
           <div className="px-3 pb-3">
             <Button
-              className="w-full h-16 rounded-3xl bg-slate-900 text-white shadow-xl shadow-slate-900/30 hover:bg-slate-800 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch"
+              className="w-full h-16 rounded-3xl bg-primary text-primary-foreground shadow-xl shadow-primary/30 hover:bg-primary/90 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch"
               onClick={() => setCartOpen(true)}
             >
               {/* Left Side: Info */}
@@ -826,13 +826,13 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                    </div>
                 </div>
                 <div className="flex flex-col items-start justify-center">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold leading-tight">{t('menu.total')}</span>
+                  <span className="text-[10px] uppercase tracking-wider text-primary-foreground/80 font-semibold leading-tight">{t('menu.total')}</span>
                   <span className="text-base font-bold text-white leading-tight">{formatForDisplay(getSubtotal())}</span>
                 </div>
               </div>
 
               {/* Divider */}
-              <div className="w-[1px] bg-white/10 my-3"></div>
+              <div className="w-[1px] bg-primary-foreground/20 my-3"></div>
 
               {/* Right Side: CTA — cor sólida alinhada ao botão Finalizar Pedido */}
               <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-200">
@@ -848,7 +848,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       <Dialog open={showWelcomeModal} onOpenChange={() => {}}>
         <DialogContent
           hideClose
-          className="w-[calc(100vw-2rem)] max-w-[380px] rounded-3xl border-0 shadow-2xl overflow-hidden p-0 gap-0 bg-white sm:mx-4 safe-area-inset"
+          className="w-[calc(100vw-2rem)] max-w-[380px] rounded-3xl border-0 shadow-2xl overflow-hidden p-0 gap-0 bg-card sm:mx-4 safe-area-inset"
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
@@ -857,10 +857,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               <UtensilsCrossed className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
             </div>
             <DialogHeader className="text-center space-y-2 pb-6">
-              <DialogTitle className="text-xl sm:text-2xl font-bold text-slate-900">
+              <DialogTitle className="text-xl sm:text-2xl font-bold text-foreground">
                 {tableNumber ? `Bem-vindo à Mesa ${tableNumber}!` : 'Bem-vindo!'}
               </DialogTitle>
-              <DialogDescription className="text-slate-500 text-sm sm:text-base leading-relaxed max-w-[280px] mx-auto">
+              <DialogDescription className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-[280px] mx-auto">
                 Qual seu nome? Assim podemos identificar seu pedido na divisão da conta.
               </DialogDescription>
             </DialogHeader>
@@ -870,7 +870,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 value={welcomeNameInput}
                 onChange={(e) => setWelcomeNameInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && welcomeNameInput.trim() && (setTableCustomerName(welcomeNameInput.trim()), setWelcomeNameInput(''))}
-                className="h-14 text-base rounded-2xl border-2 border-slate-200 bg-slate-50 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 px-4"
+                className="h-14 text-base rounded-2xl border-2 border-border bg-muted focus:bg-card focus:border-primary focus:ring-2 focus:ring-primary/20 px-4"
                 autoFocus
               />
               <Button

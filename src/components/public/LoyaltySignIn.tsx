@@ -84,29 +84,29 @@ export default function LoyaltySignIn({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="loyalty-name" className="text-xs font-semibold text-slate-600">
+        <Label htmlFor="loyalty-name" className="text-xs font-semibold text-muted-foreground">
           {t('checkout.yourName')}
         </Label>
         <div className="relative">
-          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             id="loyalty-name"
             value={name}
             onChange={(e) => { setName(e.target.value); setError(null); }}
             placeholder={t('checkout.namePlaceholder')}
-            className="pl-10 h-11 bg-white border-slate-200 rounded-xl"
+            className="pl-10 h-11 bg-card border-border rounded-xl"
             autoComplete="name"
           />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="loyalty-phone" className="text-xs font-semibold text-slate-600">
+        <Label htmlFor="loyalty-phone" className="text-xs font-semibold text-muted-foreground">
           {t('checkout.phoneLabel')}
         </Label>
         <div className="flex gap-2">
           <Select value={phoneCountry} onValueChange={(v) => setPhoneCountry(v as PhoneCountry)}>
-            <SelectTrigger className="w-[72px] h-11 shrink-0 bg-white border-slate-200 rounded-xl px-2">
+            <SelectTrigger className="w-[72px] h-11 shrink-0 bg-card border-border rounded-xl px-2">
               <span className="text-lg">
                 {COUNTRY_OPTIONS.find((c) => c.value === phoneCountry)?.flag ?? '🇧🇷'}
               </span>
@@ -120,7 +120,7 @@ export default function LoyaltySignIn({
             </SelectContent>
           </Select>
           <div className="relative flex-1">
-            <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               id="loyalty-phone"
               value={phone}
@@ -130,7 +130,7 @@ export default function LoyaltySignIn({
                 : phoneCountry === 'PY' ? '981 123 456'
                 : '11 1234-5678'
               }
-              className="pl-10 h-11 bg-white border-slate-200 rounded-xl"
+              className="pl-10 h-11 bg-card border-border rounded-xl"
               type="tel"
               inputMode="tel"
               autoComplete="tel"

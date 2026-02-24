@@ -35,7 +35,7 @@ function MenuLanguageSelector({
     <DropdownMenu>
       <DropdownMenuTrigger
         asChild
-        className="outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 rounded-lg"
+        className="outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-1 rounded-lg"
       >
         <button
           type="button"
@@ -44,7 +44,7 @@ function MenuLanguageSelector({
           className={`
             flex items-center justify-center gap-1
             h-9 min-w-[36px] px-1.5 rounded-lg
-            text-slate-500 hover:text-slate-700 hover:bg-slate-100/80
+            text-muted-foreground hover:text-foreground hover:bg-muted/80
             transition-colors touch-manipulation
             ${className}
           `}
@@ -66,9 +66,9 @@ function MenuLanguageSelector({
               className="flex items-center gap-3 cursor-pointer py-2.5"
             >
               <span className="text-lg flex-shrink-0">{lang.flag}</span>
-              <span className="flex-1 font-medium text-slate-800">{lang.label}</span>
+              <span className="flex-1 font-medium text-foreground">{lang.label}</span>
               {isNative && (
-                <span className="text-[10px] text-slate-400" title="Idioma do restaurante">
+                <span className="text-[10px] text-muted-foreground" title="Idioma do restaurante">
                   •
                 </span>
               )}

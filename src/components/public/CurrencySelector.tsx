@@ -25,7 +25,7 @@ function CurrencySelector({ value, options, onChange, baseCurrency, className = 
 
   return (
     <div
-      className={`flex items-center gap-0.5 p-0.5 bg-slate-100 rounded-lg ${className}`}
+      className={`flex items-center gap-0.5 p-0.5 bg-muted rounded-lg ${className}`}
       role="group"
       aria-label="Selecionar moeda"
     >
@@ -40,8 +40,8 @@ function CurrencySelector({ value, options, onChange, baseCurrency, className = 
             title={isBase ? `${CURRENCY_LABELS[c]} (moeda do restaurante)` : `Ver preços em ${CURRENCY_LABELS[c]}`}
             className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all touch-manipulation min-w-[36px] ${
               isSelected
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
             }`}
           >
             {CURRENCY_LABELS[c]}

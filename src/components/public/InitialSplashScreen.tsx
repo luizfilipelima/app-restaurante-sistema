@@ -21,7 +21,7 @@ export default function InitialSplashScreen({ exiting = false, className }: Init
       aria-label="Carregando cardápio"
       className={cn(
         'h-screen w-screen fixed inset-0 z-50 flex items-center justify-center',
-        'bg-gradient-to-br from-slate-50 via-orange-50/30 to-slate-50 dark:from-slate-950 dark:via-orange-950/10 dark:to-slate-950',
+        'bg-gradient-to-br from-background via-primary/5 to-background',
         'transition-opacity duration-500 ease-out',
         exiting ? 'opacity-0' : 'opacity-100',
         className

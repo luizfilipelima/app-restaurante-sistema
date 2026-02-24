@@ -105,14 +105,14 @@ export default function MapAddressPicker({
 
   return (
     <div className="space-y-2">
-      <p className="flex items-center gap-1.5 text-xs text-slate-500 select-none">
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground select-none">
         <span className="text-sm leading-none">✋</span>
         {instruction}
       </p>
 
       <div
         data-testid="map-address-picker"
-        className="map-address-picker relative overflow-hidden rounded-xl border border-slate-200 isolate cursor-grab active:cursor-grabbing bg-slate-100"
+        className="map-address-picker relative overflow-hidden rounded-xl border border-border isolate cursor-grab active:cursor-grabbing bg-muted"
         style={{ height }}
       >
         <MapContainer
