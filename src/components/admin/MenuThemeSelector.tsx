@@ -8,6 +8,8 @@ import {
   MENU_THEME_ACCENT_OPTIONS,
   normalizeMenuThemeId,
   getMinimalPreviewColors,
+  getPalettePreviewColors,
+  getMinimalPalette,
 } from '@/lib/menuThemes';
 import type { MenuThemeId } from '@/lib/menuThemes';
 
@@ -120,8 +122,8 @@ export default function MenuThemeSelector({
             const isSelected = selectedTheme === opt.id;
             const previewColors =
               opt.id === 'default_light'
-                ? MENU_THEMES.default_light?.previewColors ?? []
-                : getMinimalPreviewColors(opt.mode, showAccentPicker ? selectedAccent : DEFAULT_ACCENT);
+                ? (MENU_THEMES.default_light?.previewColors ?? []).slice(0, 5)
+                : getPalettePreviewColors(getMinimalPalette(opt.mode, showAccentPicker ? selectedAccent : DEFAULT_ACCENT));
 
             return (
               <button
@@ -140,10 +142,10 @@ export default function MenuThemeSelector({
                   </span>
                 )}
                 <div className="flex gap-0.5 mb-2">
-                  {previewColors.slice(0, 5).map((color, i) => (
+                  {previewColors.map((color, i) => (
                     <div
                       key={i}
-                      className="flex-1 h-5 rounded-sm border border-white/50 shadow-sm"
+                      className="flex-1 h-5 rounded-sm border border-white/50 dark:border-black/20 shadow-sm"
                       style={{ backgroundColor: color }}
                       title={color}
                     />
@@ -161,7 +163,7 @@ export default function MenuThemeSelector({
 
       {/* Seletor de cor (só para minimal claro/escuro) */}
       {showAccentPicker && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <p className="text-[10px] font-semibold text-muted-foreground">
             Cor dos detalhes e ícones
           </p>
@@ -181,13 +183,42 @@ export default function MenuThemeSelector({
                   title={acc.name}
                 >
                   <span
-                    className="w-3.5 h-3.5 rounded-full shrink-0 border border-white/80 shadow-sm"
+                    className="w-3.5 h-3.5 rounded-full shrink-0 border border-white/80 dark:border-black/30 shadow-sm"
                     style={{ backgroundColor: acc.hex }}
                   />
                   {acc.name}
                 </button>
               );
             })}
+          </div>
+          {/* Visualização tema claro vs escuro com a cor escolhida */}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="rounded-lg border border-border p-2 space-y-1.5">
+              <p className="text-[10px] font-medium text-muted-foreground">Tema claro</p>
+              <div className="flex gap-0.5">
+                {getMinimalPreviewColors('light', selectedAccent).map((color, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 h-4 rounded-sm border border-white/50 shadow-sm"
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border p-2 space-y-1.5">
+              <p className="text-[10px] font-medium text-muted-foreground">Tema escuro</p>
+              <div className="flex gap-0.5">
+                {getMinimalPreviewColors('dark', selectedAccent).map((color, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 h-4 rounded-sm border border-white/10 shadow-sm"
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}

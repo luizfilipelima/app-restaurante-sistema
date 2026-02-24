@@ -138,8 +138,9 @@ export const MENU_THEME_ACCENT_OPTIONS: MenuThemeAccentOption[] = [
   { id: 'blue', name: 'Azul', hue: 217, hex: '#3b82f6' },
   { id: 'emerald', name: 'Verde', hue: 160, hex: '#10b981' },
   { id: 'violet', name: 'Violeta', hue: 263, hex: '#8b5cf6' },
-  { id: 'rose', name: 'Rosa', hue: 350, hex: '#f43f5e' },
+  { id: 'rose', name: 'Rosa', hue: 350, hex: '#fb7185' },
   { id: 'amber', name: 'Âmbar', hue: 38, hex: '#f59e0b' },
+  { id: 'red', name: 'Vermelho', hue: 0, hex: '#ef4444' },
   { id: 'gold', name: 'Dourado', hue: 43, hex: '#d4af37' },
 ];
 
@@ -316,11 +317,25 @@ export function getSemanticCssVarsForCustomTheme(palette: ThemePalette): Record<
   };
 }
 
-/** Cores de preview para um tema minimalista com determinada cor */
+/** Converte HSL da paleta (formato "H S% L%") para string CSS hsl(H, S%, L%) */
+export function paletteHslToCss(s: string): string {
+  if (!s || !s.includes('%')) return s;
+  return `hsl(${s.replace(/ /g, ', ')})`;
+}
+
+/** Retorna 5 cores da paleta para preview, em formato CSS (hsl) para uso em style */
+export function getPalettePreviewColors(palette: ThemePalette): string[] {
+  return [
+    paletteHslToCss(palette.primary),
+    paletteHslToCss(palette.background),
+    paletteHslToCss(palette.card),
+    paletteHslToCss(palette.foreground),
+    paletteHslToCss(palette.border),
+  ];
+}
+
+/** Cores de preview para um tema minimalista com determinada cor (usa paleta real) */
 export function getMinimalPreviewColors(mode: 'light' | 'dark', accentId: string | null | undefined): string[] {
-  const opt = MENU_THEME_ACCENT_OPTIONS.find((a) => a.id === (accentId || DEFAULT_ACCENT_ID)) ?? MENU_THEME_ACCENT_OPTIONS[0];
-  if (mode === 'light') {
-    return [opt.hex, '#ffffff', '#f8fafc', '#0f172a', '#e2e8f0'];
-  }
-  return [opt.hex, '#18181b', '#27272a', '#3f3f46', '#52525b'];
+  const palette = getMinimalPalette(mode, accentId ?? DEFAULT_ACCENT_ID);
+  return getPalettePreviewColors(palette);
 }
