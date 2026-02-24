@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAdminRestaurantId, useAdminCurrency, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
+import { useAdminRestaurantId, useAdminCurrency, useAdminBasePath, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
+import { useRestaurant } from '@/hooks/queries';
+import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
 import { useDiscountCoupons } from '@/hooks/queries/useDiscountCoupons';
 import type { DiscountCoupon } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -36,12 +40,17 @@ import { ptBR } from 'date-fns/locale';
 type StatusFilter = 'all' | 'active' | 'inactive';
 
 export default function AdminCoupons() {
+  const queryClient = useQueryClient();
   const restaurantId = useAdminRestaurantId();
+  const restaurant = useAdminRestaurant()?.restaurant ?? null;
+  const { data: restaurantData } = useRestaurant(restaurantId);
   const currency = useAdminCurrency();
   const basePath = useAdminBasePath();
   const { t } = useAdminTranslation();
   const { coupons, loading, createCoupon, updateCoupon, deleteCoupon, refetch } = useDiscountCoupons(restaurantId);
 
+  const discountCouponsEnabled = (restaurantData as { discount_coupons_enabled?: boolean | null })?.discount_coupons_enabled !== false;
+  const [togglingGlobal, setTogglingGlobal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<DiscountCoupon | null>(null);
@@ -174,6 +183,27 @@ export default function AdminCoupons() {
     }
   };
 
+  const toggleDiscountCouponsEnabled = async () => {
+    if (!restaurantId) return;
+    setTogglingGlobal(true);
+    try {
+      const newValue = !discountCouponsEnabled;
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ discount_coupons_enabled: newValue, updated_at: new Date().toISOString() })
+        .eq('id', restaurantId);
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
+      invalidatePublicMenuCache(queryClient, restaurant?.slug);
+      toast({ title: newValue ? 'Cupons de desconto ativados' : 'Cupons de desconto desativados' });
+    } catch (err) {
+      console.error('Erro ao alterar status:', err);
+      toast({ title: 'Erro ao atualizar', variant: 'destructive' });
+    } finally {
+      setTogglingGlobal(false);
+    }
+  };
+
   const stats = {
     all: coupons.length,
     active: coupons.filter((c) => c.is_active).length,
@@ -224,12 +254,60 @@ export default function AdminCoupons() {
               <ArrowRight className="h-4 w-4 ml-1" />
             </Link>
           </Button>
-          <Button onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            {t('coupons.addCoupon')}
-          </Button>
         </div>
       </div>
+
+      {/* Card de ações: Status dos cupons + Novo Cupom */}
+      <Card className="border-slate-200 shadow-sm overflow-hidden">
+        <CardContent className="p-6 space-y-5">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-slate-700">Status dos cupons no checkout</Label>
+            <div
+              role="group"
+              aria-label="Ativar ou desativar cupons de desconto"
+              className="inline-flex rounded-xl bg-slate-100 p-1"
+            >
+              <button
+                type="button"
+                onClick={() => discountCouponsEnabled && toggleDiscountCouponsEnabled()}
+                disabled={togglingGlobal}
+                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                  !discountCouponsEnabled
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-200/80'
+                }`}
+              >
+                {togglingGlobal && discountCouponsEnabled ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Desativado
+              </button>
+              <button
+                type="button"
+                onClick={() => !discountCouponsEnabled && toggleDiscountCouponsEnabled()}
+                disabled={togglingGlobal}
+                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                  discountCouponsEnabled
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-200/80'
+                }`}
+              >
+                {togglingGlobal && !discountCouponsEnabled ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Ativado
+              </button>
+            </div>
+            <p className="text-xs text-slate-500">
+              {discountCouponsEnabled
+                ? 'Os clientes podem aplicar cupons no checkout.'
+                : 'A seção de cupom não aparece no checkout.'}
+            </p>
+          </div>
+          <div className="border-t border-slate-100 pt-5">
+            <Button onClick={openCreate} className="w-full sm:w-auto bg-[#F87116] hover:bg-orange-600 text-white shadow-md">
+              <Plus className="h-4 w-4 mr-2" />
+              {t('coupons.addCoupon')}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {coupons.length === 0 ? (
         <Card>

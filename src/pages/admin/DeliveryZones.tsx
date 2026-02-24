@@ -227,75 +227,78 @@ export default function AdminDeliveryZones() {
 
   return (
     <div className="space-y-8 pb-10">
-      {/* ── Hero + Ações ───────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl bg-gradient-to-br from-orange-500/10 via-amber-50/50 to-transparent border border-orange-200/60 p-6 sm:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-          <div className="flex items-start gap-4">
-            <div className="h-12 w-12 rounded-xl bg-orange-500/15 flex items-center justify-center flex-shrink-0">
-              <Truck className="h-6 w-6 text-orange-600" />
+      {/* ── Hero + Título ─────────────────────────────────────────────────────── */}
+      <div className="flex items-start gap-4">
+        <div className="h-12 w-12 rounded-xl bg-orange-500/15 flex items-center justify-center flex-shrink-0">
+          <Truck className="h-6 w-6 text-orange-600" />
+        </div>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+            Zonas de Entrega
+          </h1>
+          <p className="text-slate-600 mt-1 text-sm sm:text-base max-w-xl">
+            Configure bairros e taxas de entrega. No checkout, o cliente escolhe a zona ou envia a localização via WhatsApp.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Card de ações: Status (vertical) + Nova Zona ───────────────────────── */}
+      <Card className="border-slate-200 shadow-sm overflow-hidden">
+        <CardContent className="p-6 space-y-5">
+          {/* Status das zonas — alternador */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-slate-700">Status das zonas no checkout</Label>
+            <div
+              role="group"
+              aria-label="Ativar ou desativar zonas de entrega"
+              className="inline-flex rounded-xl bg-slate-100 p-1"
+            >
+              <button
+                type="button"
+                onClick={() => deliveryZonesEnabled && toggleDeliveryZonesEnabled()}
+                disabled={togglingGlobal}
+                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                  !deliveryZonesEnabled
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-200/80'
+                }`}
+              >
+                {togglingGlobal && deliveryZonesEnabled ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Desativado
+              </button>
+              <button
+                type="button"
+                onClick={() => !deliveryZonesEnabled && toggleDeliveryZonesEnabled()}
+                disabled={togglingGlobal}
+                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                  deliveryZonesEnabled
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-200/80'
+                }`}
+              >
+                {togglingGlobal && !deliveryZonesEnabled ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Ativado
+              </button>
             </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-                Zonas de Entrega
-              </h1>
-              <p className="text-slate-600 mt-1 text-sm sm:text-base max-w-xl">
-                Configure bairros e taxas de entrega. No checkout, o cliente escolhe a zona ou envia a localização via WhatsApp.
-              </p>
-            </div>
+            <p className="text-xs text-slate-500">
+              {deliveryZonesEnabled
+                ? 'O cliente escolhe a zona e vê a taxa no checkout.'
+                : 'O checkout exibe um card pedindo a localização via WhatsApp após o pedido.'}
+            </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 flex-shrink-0">
-            {/* Alternador Desativado / Ativado */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-slate-600 whitespace-nowrap">Status:</span>
-              <div
-                role="group"
-                aria-label="Ativar ou desativar zonas de entrega"
-                className="inline-flex rounded-xl bg-white border border-slate-200 p-1 shadow-sm"
-              >
-                <button
-                  type="button"
-                  onClick={() => deliveryZonesEnabled && toggleDeliveryZonesEnabled()}
-                  disabled={togglingGlobal}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    !deliveryZonesEnabled
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {togglingGlobal && deliveryZonesEnabled ? <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> : null}
-                  Desativado
-                </button>
-                <button
-                  type="button"
-                  onClick={() => !deliveryZonesEnabled && toggleDeliveryZonesEnabled()}
-                  disabled={togglingGlobal}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    deliveryZonesEnabled
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {togglingGlobal && !deliveryZonesEnabled ? <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> : null}
-                  Ativado
-                </button>
-              </div>
-              <span className="text-xs text-slate-500 max-w-[140px]">
-                {deliveryZonesEnabled ? 'Checkout exibe zonas' : 'Checkout exibe card WhatsApp'}
-              </span>
-            </div>
-
+          <div className="border-t border-slate-100 pt-5">
             <Button
               onClick={() => { resetForm(); setShowForm(true); setFormData(emptyForm(baseCurrency)); }}
               data-testid="delivery-zone-new"
-              className="bg-[#F87116] hover:bg-orange-600 text-white shadow-md"
+              className="w-full sm:w-auto bg-[#F87116] hover:bg-orange-600 text-white shadow-md"
             >
               <Plus className="h-4 w-4 mr-2" />
               Nova Zona
             </Button>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* ── Formulário Nova/Editar Zona ────────────────────────────────────────── */}
       {showForm && (

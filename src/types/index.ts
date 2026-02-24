@@ -136,6 +136,8 @@ export interface Restaurant {
   description?: string | null;
   /** Quando false, desativa todas as zonas no checkout (mostra card WhatsApp). Quando true, respeita is_active de cada zona. */
   delivery_zones_enabled?: boolean | null;
+  /** Quando false, esconde a seção de cupom no checkout. Quando true, cupons disponíveis. */
+  discount_coupons_enabled?: boolean | null;
   /** Templates personalizáveis de mensagens WhatsApp */
   whatsapp_templates?: WhatsAppTemplates | null;
   /** Override manual da receita mensal em BRL (Super Admin). Se definido, usado no Dashboard BI em vez do preço do plano. */

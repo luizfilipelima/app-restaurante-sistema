@@ -11,16 +11,16 @@ interface RestaurantMeta {
 
 /**
  * Define meta tags Open Graph e Twitter Card para compartilhamento de link.
- * Usa a logo do restaurante como imagem destacada (og:image) quando disponível.
+ * og:title = nome do restaurante (consistente com aba do navegador).
+ * og:image = SEMPRE a foto de perfil do restaurante (logo).
  */
 export function useSharingMeta(restaurant: RestaurantMeta | null) {
   useEffect(() => {
-    const title = restaurant?.name
-      ? `${restaurant.name} · Cardápio`
-      : 'Cardápio · Quiero.food';
+    const title = restaurant?.name ? restaurant.name : 'Cardápio · Quiero.food';
     const description = restaurant?.name
       ? `Confira o cardápio de ${restaurant.name}`
       : 'Cardápio digital';
+    // Sempre usa a logo (foto de perfil) do restaurante como imagem destacada
     const imageUrl =
       restaurant?.logo?.trim() &&
       (restaurant.logo.startsWith('http://') || restaurant.logo.startsWith('https://'))

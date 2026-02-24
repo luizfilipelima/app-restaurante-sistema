@@ -284,7 +284,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
   const deliveryFee = deliveryType === DeliveryType.DELIVERY ? (selectedZone?.fee || 0) : 0;
   const subtotal = getSubtotal();
-  const discountAmount = appliedCoupon?.discountAmount ?? 0;
+  const couponsEnabled = (currentRestaurant as { discount_coupons_enabled?: boolean | null })?.discount_coupons_enabled !== false;
+  const discountAmount = couponsEnabled ? (appliedCoupon?.discountAmount ?? 0) : 0;
   const total = Math.max(0, subtotal + deliveryFee - discountAmount);
   const totalItemCount = items.reduce((acc, i) => acc + i.quantity, 0);
 
@@ -356,7 +357,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     // do usuário tem mais chance de sucesso do que abrir janela em branco.
     const finalDeliveryType = isTableOrder ? DeliveryType.PICKUP : deliveryType;
     const finalDeliveryFee = isTableOrder ? 0 : deliveryFee;
-    const finalDiscount = appliedCoupon?.discountAmount ?? 0;
+    const finalDiscount = couponsEnabled ? (appliedCoupon?.discountAmount ?? 0) : 0;
     const finalTotal = Math.max(0, subtotal + finalDeliveryFee - finalDiscount);
 
     let whatsappWin: Window | null = null;
@@ -461,7 +462,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         delivery_fee: finalDeliveryFee,
         subtotal,
         total: finalTotal,
-        discount_coupon_id: appliedCoupon?.id ?? null,
+        discount_coupon_id: couponsEnabled ? (appliedCoupon?.id ?? null) : null,
         discount_amount: finalDiscount,
         payment_method: isTableOrder ? PaymentMethod.TABLE : paymentMethod,
         payment_change_for: isTableOrder ? null : (paymentMethod === PaymentMethod.CASH && changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null),
@@ -1156,7 +1157,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
         )}
 
-        {/* ── 7. Cupom de desconto ── */}
+        {/* ── 7. Cupom de desconto (apenas quando cupons habilitados) ── */}
+        {(currentRestaurant as { discount_coupons_enabled?: boolean | null })?.discount_coupons_enabled !== false && (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
               <div className="h-6 w-6 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
@@ -1217,6 +1219,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               )}
             </div>
           </div>
+        )}
 
         {/* ── 8. Fidelidade ── */}
         {!isTableOrder && loyaltyStatus?.enabled && (

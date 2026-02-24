@@ -60,11 +60,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
 
   // Atualizar título e meta tags de compartilhamento (logo do restaurante como imagem destacada)
   useEffect(() => {
-    if (restaurant?.name) {
-      document.title = `${restaurant.name} - ${t('menu.title')}`;
-    } else {
-      document.title = t('menu.title');
-    }
+    document.title = restaurant?.name ? restaurant.name : t('menu.title');
   }, [restaurant?.name, t]);
   useSharingMeta(restaurant ? { name: restaurant.name, logo: restaurant.logo } : null);
 
