@@ -11,11 +11,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle2, Users, AlertCircle } from 'lucide-react';
+import { normalizePhoneWithCountryCode } from '@/lib/utils';
+import { PhoneCountryInput } from '@/components/ui/PhoneCountryInput';
 
 interface Restaurant {
   id: string;
   name: string;
   logo: string | null;
+  phone_country?: 'BR' | 'PY' | 'AR' | null;
 }
 
 type Step = 'form' | 'success';
@@ -34,6 +37,7 @@ export default function PublicWaitingQueue({ tenantSlug: slugFromLayout }: Publi
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerPhoneCountry, setCustomerPhoneCountry] = useState<'BR' | 'PY' | 'AR'>('BR');
   const [submitting, setSubmitting] = useState(false);
   const [position, setPosition] = useState<number | null>(null);
 
@@ -45,7 +49,7 @@ export default function PublicWaitingQueue({ tenantSlug: slugFromLayout }: Publi
       try {
         const { data: rest, error: restErr } = await supabase
           .from('restaurants')
-          .select('id, name, logo')
+          .select('id, name, logo, phone_country')
           .eq('slug', restaurantSlug)
           .eq('is_active', true)
           .single();
@@ -62,6 +66,12 @@ export default function PublicWaitingQueue({ tenantSlug: slugFromLayout }: Publi
     })();
   }, [restaurantSlug]);
 
+  useEffect(() => {
+    if (restaurant?.phone_country && ['BR', 'PY', 'AR'].includes(restaurant.phone_country)) {
+      setCustomerPhoneCountry(restaurant.phone_country);
+    }
+  }, [restaurant?.phone_country]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantSlug || !customerName.trim()) {
@@ -71,10 +81,12 @@ export default function PublicWaitingQueue({ tenantSlug: slugFromLayout }: Publi
     setSubmitting(true);
     setError(null);
     try {
+      const phoneVal = customerPhone.trim();
+      const phoneNormalized = phoneVal ? normalizePhoneWithCountryCode(phoneVal, customerPhoneCountry) : null;
       const { data, error: rpcErr } = await supabase.rpc('add_to_waiting_queue_by_slug', {
         p_restaurant_slug: restaurantSlug,
         p_customer_name: customerName.trim(),
-        p_customer_phone: customerPhone.trim() || null,
+        p_customer_phone: phoneNormalized,
       });
       if (rpcErr) {
         setError(rpcErr.message ?? 'Erro ao entrar na fila.');
@@ -180,11 +192,12 @@ export default function PublicWaitingQueue({ tenantSlug: slugFromLayout }: Publi
           </div>
           <div>
             <Label>WhatsApp (para aviso quando a mesa estiver pronta)</Label>
-            <Input
+            <PhoneCountryInput
               value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              placeholder="+55 11 99999-9999"
-              type="tel"
+              country={customerPhoneCountry}
+              onValueChange={(phone, country) => { setCustomerPhone(phone); setCustomerPhoneCountry(country); }}
+              showWhatsAppIcon
+              className="mt-1"
             />
           </div>
           {error && (

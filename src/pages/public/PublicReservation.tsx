@@ -18,11 +18,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, CheckCircle2, CalendarClock, AlertCircle } from 'lucide-react';
+import { normalizePhoneWithCountryCode } from '@/lib/utils';
+import { PhoneCountryInput } from '@/components/ui/PhoneCountryInput';
 
 interface Restaurant {
   id: string;
   name: string;
   logo: string | null;
+  phone_country?: 'BR' | 'PY' | 'AR' | null;
 }
 
 interface TableOption {
@@ -47,6 +50,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerPhoneCountry, setCustomerPhoneCountry] = useState<'BR' | 'PY' | 'AR'>('BR');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [tableId, setTableId] = useState('');
@@ -57,6 +61,12 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
   const [result, setResult] = useState<{ short_code: string; table_number: string; scheduled_at: string } | null>(null);
 
   useEffect(() => {
+    if (restaurant?.phone_country && ['BR', 'PY', 'AR'].includes(restaurant.phone_country)) {
+      setCustomerPhoneCountry(restaurant.phone_country);
+    }
+  }, [restaurant?.phone_country]);
+
+  useEffect(() => {
     if (!restaurantSlug) return;
     (async () => {
       setLoading(true);
@@ -64,7 +74,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
       try {
         const { data: rest, error: restErr } = await supabase
           .from('restaurants')
-          .select('id, name, logo')
+          .select('id, name, logo, phone_country')
           .eq('slug', restaurantSlug)
           .eq('is_active', true)
           .single();
@@ -119,11 +129,13 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
     setError(null);
     try {
       const dt = `${scheduledDate}T${scheduledTime}:00`;
+      const phoneVal = customerPhone.trim();
+      const phoneNormalized = phoneVal ? normalizePhoneWithCountryCode(phoneVal, customerPhoneCountry) : null;
       const { data, error: rpcErr } = await supabase.rpc('create_reservation_by_slug', {
         p_restaurant_slug: restaurantSlug,
         p_table_id: tableId,
         p_customer_name: customerName.trim(),
-        p_customer_phone: customerPhone.trim() || null,
+        p_customer_phone: phoneNormalized,
         p_scheduled_at: dt,
         p_late_tolerance_mins: 15,
         p_notes: notes.trim() || null,
@@ -230,11 +242,12 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
           </div>
           <div>
             <Label>WhatsApp / Telefone</Label>
-            <Input
+            <PhoneCountryInput
               value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              placeholder="+55 11 99999-9999"
-              type="tel"
+              country={customerPhoneCountry}
+              onValueChange={(phone, country) => { setCustomerPhone(phone); setCustomerPhoneCountry(country); }}
+              showWhatsAppIcon
+              className="mt-1"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">

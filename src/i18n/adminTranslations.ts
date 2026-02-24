@@ -223,6 +223,8 @@ const pt = {
     statusActivated:      'Ativada',
     statusCancelled:      'Cancelada',
     reserva:              'Reserva',
+    linkReservation:      'Reservar',
+    linkWaitingQueue:     'Fila de espera',
   },
 
   cashier: {
@@ -627,6 +629,8 @@ const es: typeof pt = {
     statusActivated:      'Activada',
     statusCancelled:      'Cancelada',
     reserva:              'Reserva',
+    linkReservation:      'Reservar',
+    linkWaitingQueue:     'Fila de espera',
   },
 
   cashier: {
@@ -1031,6 +1035,8 @@ const en: typeof pt = {
     statusActivated:      'Activated',
     statusCancelled:      'Cancelled',
     reserva:              'Reservation',
+    linkReservation:      'Make reservation',
+    linkWaitingQueue:     'Waiting queue',
   },
 
   cashier: {

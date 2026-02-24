@@ -43,12 +43,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, CalendarClock, Loader2, X, User, Clock, MapPin, Users, MessageCircle } from 'lucide-react';
+import { Plus, CalendarClock, Loader2, X, User, Clock, MapPin, Users, MessageCircle, Link2 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
-import { generateWhatsAppLink, ensurePhoneForWhatsApp } from '@/lib/utils';
+import { PhoneCountryInput } from '@/components/ui/PhoneCountryInput';
+import { generateWhatsAppLink, ensurePhoneForWhatsApp, normalizePhoneWithCountryCode, getCardapioPublicUrl } from '@/lib/utils';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
@@ -62,7 +63,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 function ReservationsContent() {
   const restaurantId = useAdminRestaurantId();
-  useAdminRestaurant();
+  const { restaurant } = useAdminRestaurant();
   const { t, lang } = useAdminTranslation();
   const dateLocale = DATE_LOCALES[lang] ?? ptBR;
   const queryClient = useQueryClient();
@@ -83,9 +84,11 @@ function ReservationsContent() {
   const [showWaitingQueue, setShowWaitingQueue] = useState(false);
   const [queueName, setQueueName] = useState('');
   const [queuePhone, setQueuePhone] = useState('');
+  const [queuePhoneCountry, setQueuePhoneCountry] = useState<'BR' | 'PY' | 'AR'>('BR');
   const [notifyTableId, setNotifyTableId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerPhoneCountry, setCustomerPhoneCountry] = useState<'BR' | 'PY' | 'AR'>('BR');
   const [tableId, setTableId] = useState<string>('');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
@@ -117,10 +120,12 @@ function ReservationsContent() {
       ? `${scheduledDate}T${scheduledTime}:00`
       : new Date().toISOString();
     try {
+      const phoneVal = customerPhone.trim();
+      const phoneNormalized = phoneVal ? normalizePhoneWithCountryCode(phoneVal, customerPhoneCountry) : undefined;
       const res = await createReservation.mutateAsync({
         table_id: tableId,
         customer_name: customerName.trim(),
-        customer_phone: customerPhone.trim() || undefined,
+        customer_phone: phoneNormalized,
         scheduled_at: dateTime,
         late_tolerance_minutes: lateTolerance,
         notes: notes.trim() || undefined,
@@ -128,6 +133,7 @@ function ReservationsContent() {
       setShowCreate(false);
       setCustomerName('');
       setCustomerPhone('');
+      setCustomerPhoneCountry('BR');
       setTableId('');
       setScheduledDate('');
       setScheduledTime('');
@@ -165,6 +171,9 @@ function ReservationsContent() {
   }, [restaurantId, hasReservations, queryClient]);
 
   const today = new Date().toISOString().slice(0, 10);
+  const basePublicUrl = restaurant?.slug ? getCardapioPublicUrl(restaurant.slug) : '';
+  const linkReservar = basePublicUrl ? `${basePublicUrl.replace(/\/$/, '')}/reservar` : '';
+  const linkFila = basePublicUrl ? `${basePublicUrl.replace(/\/$/, '')}/fila` : '';
 
   return (
     <div className="space-y-6 pb-8">
@@ -172,6 +181,28 @@ function ReservationsContent() {
         <div>
           <h1 className="text-2xl font-bold">{t('reservations.title')}</h1>
           <p className="text-muted-foreground mt-0.5 text-sm">{t('reservations.subtitle')}</p>
+          {!!hasReservations && linkReservar && (
+            <div className="flex items-center gap-2 mt-2">
+              <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+              <a
+                href={linkReservar}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+              >
+                {t('reservations.linkReservation')}
+              </a>
+              <span className="text-muted-foreground">·</span>
+              <a
+                href={linkFila}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+              >
+                {t('reservations.linkWaitingQueue')}
+              </a>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {!!hasReservations && (
@@ -256,10 +287,11 @@ function ReservationsContent() {
             </div>
             <div>
               <Label>{t('reservations.customerPhone')}</Label>
-              <Input
+              <PhoneCountryInput
                 value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="+55 11 99999-9999"
+                country={customerPhoneCountry}
+                onValueChange={(phone, country) => { setCustomerPhone(phone); setCustomerPhoneCountry(country); }}
+                showWhatsAppIcon
                 className="mt-1"
               />
             </div>
@@ -350,31 +382,38 @@ function ReservationsContent() {
               e.preventDefault();
               if (!queueName.trim()) return;
               try {
-                await addToQueue.mutateAsync({ customer_name: queueName.trim(), customer_phone: queuePhone.trim() || undefined });
+                const phoneVal = queuePhone.trim();
+                const phoneNormalized = phoneVal ? normalizePhoneWithCountryCode(phoneVal, queuePhoneCountry) : undefined;
+                await addToQueue.mutateAsync({ customer_name: queueName.trim(), customer_phone: phoneNormalized });
                 setQueueName('');
                 setQueuePhone('');
+                setQueuePhoneCountry('BR');
                 toast({ title: t('cashier.addToQueue') + ' ✓' });
               } catch (err: any) {
                 toast({ title: err?.message, variant: 'destructive' });
               }
             }}
-            className="flex gap-2"
+            className="space-y-2"
           >
             <Input
               placeholder={t('cashier.queueCustomerName')}
               value={queueName}
               onChange={(e) => setQueueName(e.target.value)}
-              className="flex-1"
+              className="w-full"
             />
-            <Input
-              placeholder={t('cashier.queueCustomerPhone')}
-              value={queuePhone}
-              onChange={(e) => setQueuePhone(e.target.value)}
-              className="flex-1"
-            />
-            <Button type="submit" disabled={!queueName.trim() || addToQueue.isPending}>
-              {addToQueue.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            </Button>
+            <div className="flex gap-2">
+              <PhoneCountryInput
+                value={queuePhone}
+                country={queuePhoneCountry}
+                onValueChange={(phone, country) => { setQueuePhone(phone); setQueuePhoneCountry(country); }}
+                placeholder={t('cashier.queueCustomerPhone')}
+                showWhatsAppIcon
+                className="flex-1"
+              />
+              <Button type="submit" disabled={!queueName.trim() || addToQueue.isPending}>
+                {addToQueue.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              </Button>
+            </div>
           </form>
           <div className="space-y-2">
             {waitingQueue.length === 0 ? (
