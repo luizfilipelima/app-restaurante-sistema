@@ -1099,7 +1099,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                         <div className="mt-2 px-1 space-y-2">
                           {bankAccountSnapshot && hasBankAccountData(bankAccountSnapshot) ? (
                             <div className="p-3 rounded-xl bg-info/10 border border-info/30">
-                              <p className="text-xs font-semibold text-info mb-2">
+                              <p className="text-xs font-semibold text-foreground mb-2">
                                 Envie a transferência para{displayCurrency === 'PYG' ? ' (Guaraní)' : ' (Peso Argentino)'}:
                               </p>
                               <div className="space-y-1.5 text-sm text-foreground">
@@ -1108,7 +1108,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                                   const label = idx >= 0 ? line.slice(0, idx) : line;
                                   const value = idx >= 0 ? line.slice(idx + 2) : '';
                                   return (
-                                    <p key={label}><span className="text-info">{label}:</span> {value}</p>
+                                    <p key={label}><span className="text-foreground">{label}:</span> {value}</p>
                                   );
                                 })}
                               </div>
@@ -1134,7 +1134,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                           ) : (
                             <div className="flex items-start gap-2 p-2.5 rounded-xl bg-warning/10 border border-warning/20">
                               <Info className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
-                              <p className="text-xs text-warning">
+                              <p className="text-xs text-foreground">
                                 O restaurante ainda não configurou os dados bancários. Entre em contato pelo WhatsApp.
                               </p>
                             </div>
@@ -1146,7 +1146,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                         <div className="mt-2 px-1">
                           <div className="flex items-start gap-2 p-2.5 rounded-xl bg-warning/10 border border-warning/20">
                             <Info className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
-                            <p className="text-xs text-warning">Pague via QR Code no momento da entrega.</p>
+                            <p className="text-xs text-foreground">Pague via QR Code no momento da entrega.</p>
                           </div>
                         </div>
                       )}
@@ -1396,14 +1396,14 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             className={`w-full font-bold h-14 rounded-2xl shadow-lg flex items-center justify-center gap-2.5 text-base touch-manipulation active:scale-[0.98] transition-all ${
               isTableOrder
                 ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
-                : 'bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white'
+                : 'bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white dark:text-[hsl(var(--background))]'
             }`}
             onClick={handleCheckout}
             disabled={loading}
           >
             {loading ? (
               <>
-                <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span className="h-5 w-5 border-2 border-white dark:border-[hsl(var(--background))] border-t-transparent rounded-full animate-spin" />
                 <span>{t('checkout.sending')}</span>
               </>
             ) : (
@@ -1412,7 +1412,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   {isTableOrder ? 'Enviar pedido para a cozinha' : t('checkout.sendWhatsApp')}
                 </span>
                 {!isTableOrder && (
-                  <span className="bg-white/20 px-2.5 py-1 rounded-lg text-sm font-bold tabular-nums">
+                  <span className="bg-white/20 dark:bg-[hsl(var(--background))]/30 px-2.5 py-1 rounded-lg text-sm font-bold tabular-nums">
                     {formatCurrency(convertForDisplay(total), displayCurrency)}
                   </span>
                 )}

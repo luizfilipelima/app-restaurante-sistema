@@ -415,14 +415,28 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
         )}
 
         {/* Rodapé */}
-        <footer className="pt-8 pb-6 text-center border-t border-slate-200/60">
+        <footer className="pt-8 pb-6 text-center border-t border-border">
           <a
             href="https://quiero.food"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex flex-col items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors"
+            className="inline-flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
-            <img src="/quierofood-logo-f.svg" alt="Quiero.food" width={80} height={28} loading="lazy" className="h-7 w-auto object-contain opacity-80 hover:opacity-100" />
+            <span
+              className="inline-block h-7 w-20 bg-primary opacity-90 hover:opacity-100 transition-opacity shrink-0"
+              style={{
+                maskImage: 'url(/quierofood-logo-f.svg)',
+                maskSize: 'contain',
+                maskRepeat: 'no-repeat',
+                maskPosition: 'center',
+                WebkitMaskImage: 'url(/quierofood-logo-f.svg)',
+                WebkitMaskSize: 'contain',
+                WebkitMaskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center',
+              }}
+              aria-hidden
+            />
+            <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="sr-only" width={80} height={28} />
             <span className="text-xs">{t('menu.developedBy')}</span>
           </a>
         </footer>

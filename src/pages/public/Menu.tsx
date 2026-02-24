@@ -791,7 +791,21 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             rel="noopener noreferrer"
             className="inline-flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
-            <img src="/quierofood-logo-f.svg" alt="Quiero.food" width={80} height={28} loading="lazy" className="h-7 w-auto object-contain opacity-80 hover:opacity-100" />
+            <span
+              className="inline-block h-7 w-20 bg-primary opacity-90 hover:opacity-100 transition-opacity shrink-0"
+              style={{
+                maskImage: 'url(/quierofood-logo-f.svg)',
+                maskSize: 'contain',
+                maskRepeat: 'no-repeat',
+                maskPosition: 'center',
+                WebkitMaskImage: 'url(/quierofood-logo-f.svg)',
+                WebkitMaskSize: 'contain',
+                WebkitMaskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center',
+              }}
+              aria-hidden
+            />
+            <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="sr-only" width={80} height={28} />
             <span className="text-xs">{t('menu.developedBy')}</span>
           </a>
         </footer>
@@ -812,13 +826,13 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         >
           <div className="px-3 pb-3">
             <Button
-              className="w-full h-16 rounded-3xl bg-primary text-primary-foreground shadow-xl shadow-primary/30 hover:bg-primary/90 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch"
+              className="w-full h-16 rounded-3xl bg-primary text-primary-foreground shadow-xl shadow-primary/30 dark:shadow-none hover:bg-primary/90 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch"
               onClick={() => setCartOpen(true)}
             >
               {/* Left Side: Info */}
               <div className="flex-1 flex items-center justify-start px-4 gap-3.5">
                 <div className="relative">
-                   <div className="bg-primary h-9 w-9 rounded-full flex items-center justify-center border border-primary/50 shadow-md">
+                   <div className="bg-primary h-9 w-9 rounded-full flex items-center justify-center border border-primary/50 shadow-md dark:shadow-none">
                       <span className="text-sm font-bold text-primary-foreground">{getItemsCount()}</span>
                    </div>
                 </div>
@@ -832,9 +846,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               <div className="w-[1px] bg-primary-foreground/20 my-3"></div>
 
               {/* Right Side: CTA — cor sólida alinhada ao botão Finalizar Pedido */}
-              <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-200">
-                <span className="text-sm font-bold drop-shadow-sm">{t('menu.viewBag')}</span>
-                <ChevronRight className="h-4 w-4 drop-shadow-sm" aria-hidden />
+              <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg dark:shadow-none transition-all duration-200">
+                <span className="text-sm font-bold drop-shadow-sm dark:drop-shadow-none">{t('menu.viewBag')}</span>
+                <ChevronRight className="h-4 w-4 drop-shadow-sm dark:drop-shadow-none" aria-hidden />
               </div>
             </Button>
           </div>

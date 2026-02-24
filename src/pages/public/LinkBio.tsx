@@ -403,13 +403,21 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
             mounted ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          <img
-            src="/quierofood-logo-f.svg"
-            alt="Quiero.food"
-            width={80}
-            height={18}
-            className="h-[18px] w-auto object-contain opacity-20 group-hover:opacity-35 transition-opacity duration-300"
+          <span
+            className="inline-block h-[18px] w-12 bg-primary opacity-70 group-hover:opacity-90 transition-opacity duration-300 shrink-0"
+            style={{
+              maskImage: 'url(/quierofood-logo-f.svg)',
+              maskSize: 'contain',
+              maskRepeat: 'no-repeat',
+              maskPosition: 'center',
+              WebkitMaskImage: 'url(/quierofood-logo-f.svg)',
+              WebkitMaskSize: 'contain',
+              WebkitMaskRepeat: 'no-repeat',
+              WebkitMaskPosition: 'center',
+            }}
+            aria-hidden
           />
+          <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="sr-only" width={80} height={18} />
         </a>
       </div>
     </div>
