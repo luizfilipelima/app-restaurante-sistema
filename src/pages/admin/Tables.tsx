@@ -1031,8 +1031,8 @@ export function TableCard({
           )}
         </div>
 
-        {/* 2. Status */}
-        <div className="shrink-0">
+        {/* 2. Status + Reserva */}
+        <div className="shrink-0 flex items-center gap-1.5 flex-wrap">
           <span
             className={cn(
               'inline-flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-semibold uppercase tracking-wide',
@@ -1042,6 +1042,11 @@ export function TableCard({
             <span className={cn('h-2 w-2 rounded-full shrink-0', cfg.dotClass)} aria-hidden />
             {cfg.label}
           </span>
+          {table.hasReservation && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold uppercase tracking-wide bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-900/40 dark:text-violet-300 dark:border-violet-800">
+              {t('reservations.reserva')}
+            </span>
+          )}
         </div>
 
         {/* 3. Valor (quando ocupada) */}

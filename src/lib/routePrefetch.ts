@@ -14,6 +14,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   buffet: () => import('@/pages/admin/Buffet'),
   products: () => import('@/pages/admin/ProductsInventory'),
   tables: () => import('@/pages/admin/Tables'),
+  reservations: () => import('@/pages/admin/Reservations'),
   'delivery-zones': () => import('@/pages/admin/DeliveryZones'),
   couriers: () => import('@/pages/admin/Couriers'),
   settings: () => import('@/pages/admin/Settings'),

@@ -28,12 +28,17 @@ export interface TableWithStatus extends Table {
   hasPendingWaiterCall: boolean;
   /** Se bloqueou novos pedidos (bill_requested) */
   billRequested: boolean;
+  /** Se tem reserva pendente/confirmada */
+  hasReservation?: boolean;
+  /** Dados da reserva quando hasReservation */
+  reservationAt?: string | null;
+  reservationCustomerName?: string | null;
 }
 
 async function fetchTableStatuses(restaurantId: string | null): Promise<TableWithStatus[]> {
   if (!restaurantId) return [];
 
-  const [tablesRes, ordersRes, waiterCallsRes] = await Promise.all([
+  const [tablesRes, ordersRes, waiterCallsRes, reservationsRes] = await Promise.all([
     supabase
       .from('tables')
       .select('id, restaurant_id, number, name, is_active, order_index, hall_zone_id, created_at, updated_at')
@@ -55,6 +60,19 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
       .select('id, table_id, status')
       .eq('restaurant_id', restaurantId)
       .eq('status', 'pending'),
+    // Reservations: pode não existir se migração não foi executada
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('reservations')
+          .select('id, table_id, customer_name, scheduled_at, status')
+          .eq('restaurant_id', restaurantId)
+          .in('status', ['pending', 'confirmed']);
+        return data ?? [];
+      } catch {
+        return [];
+      }
+    })(),
   ]);
 
   const tables = (tablesRes.data ?? []) as Table[];
@@ -64,6 +82,14 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
   const pendingTableIds = new Set(
     waiterCalls.map((c) => c.table_id).filter(Boolean) as string[]
   );
+
+  const reservationsByTable = new Map<string, { customer_name: string; scheduled_at: string }[]>();
+  (Array.isArray(reservationsRes) ? reservationsRes : []).forEach((r: any) => {
+    if (!r.table_id) return;
+    const list = reservationsByTable.get(r.table_id) ?? [];
+    list.push({ customer_name: r.customer_name, scheduled_at: r.scheduled_at });
+    reservationsByTable.set(r.table_id, list);
+  });
 
   const ordersByTable = new Map<string, any[]>();
   orders.forEach((o) => {
@@ -99,6 +125,9 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
       status = 'calling_waiter';
     }
 
+    const resList = reservationsByTable.get(t.id) ?? [];
+    const nextRes = resList[0];
+
     return {
       ...t,
       status,
@@ -108,6 +137,9 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
       orderIds: tableOrders.map((o: any) => o.id),
       hasPendingWaiterCall,
       billRequested,
+      hasReservation: resList.length > 0,
+      reservationAt: nextRes?.scheduled_at ?? null,
+      reservationCustomerName: nextRes?.customer_name ?? null,
     } satisfies TableWithStatus;
   });
 }

@@ -4,8 +4,9 @@
  */
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link, useLocation } from 'react-router-dom';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Phone, Clock, FileText, Instagram } from 'lucide-react';
+import { Phone, Clock, FileText, Instagram, CalendarClock, Users } from 'lucide-react';
 import { generateWhatsAppLink } from '@/lib/utils';
 import type { Restaurant } from '@/types';
 import type { DayKey } from '@/types';
@@ -69,7 +70,10 @@ interface RestaurantInfoModalProps {
 
 function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoModalProps) {
   const { i18n } = useTranslation();
+  const location = useLocation();
   const lang = (i18n.language === 'es' ? 'es' : 'pt') as 'pt' | 'es';
+  const slug = restaurant?.slug ?? '';
+  const base = slug && location.pathname.startsWith(`/${slug}`) ? `/${slug}` : '';
 
   if (!restaurant) return null;
 
@@ -169,6 +173,26 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-0.5">{t.hours}</p>
                 <p className="text-sm text-slate-800 whitespace-pre-line leading-relaxed">{hoursText}</p>
               </div>
+            </div>
+
+            {/* Reserva e Fila */}
+            <div className="flex flex-col gap-2">
+              <Link
+                to={`${base}/reservar`}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-violet-50 hover:bg-violet-100 transition-colors text-violet-700 font-medium text-sm"
+                onClick={() => onOpenChange(false)}
+              >
+                <CalendarClock className="h-5 w-5 text-violet-600" />
+                {lang === 'pt' ? 'Fazer reserva' : 'Hacer reserva'}
+              </Link>
+              <Link
+                to={`${base}/fila`}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 font-medium text-sm"
+                onClick={() => onOpenChange(false)}
+              >
+                <Users className="h-5 w-5 text-slate-600" />
+                {lang === 'pt' ? 'Entrar na fila de espera' : 'Entrar en la fila de espera'}
+              </Link>
             </div>
 
             {/* Descrição */}

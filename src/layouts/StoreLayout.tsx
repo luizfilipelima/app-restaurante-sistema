@@ -15,6 +15,8 @@ const PublicCheckout = lazyWithRetry(() => import('@/pages/public/Checkout'));
 const MenuViewOnly = lazyWithRetry(() => import('@/pages/public/MenuViewOnly'));
 const MenuTable = lazyWithRetry(() => import('@/pages/public/MenuTable'));
 const VirtualComanda = lazyWithRetry(() => import('@/pages/public/VirtualComanda'));
+const PublicReservation = lazyWithRetry(() => import('@/pages/public/PublicReservation'));
+const PublicWaitingQueue = lazyWithRetry(() => import('@/pages/public/PublicWaitingQueue'));
 const OrderTracking = lazyWithRetry(() => import('@/pages/public/OrderTracking'));
 const OrderConfirmation = lazyWithRetry(() => import('@/pages/public/OrderConfirmation'));
 const LinkBio = lazyWithRetry(() => import('@/pages/public/LinkBio'));
@@ -83,6 +85,8 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
         <Route path="/checkout" element={<PublicCheckout tenantSlug={tenantSlug} />} />
         <Route path="/order-confirmed" element={<OrderConfirmation tenantSlug={tenantSlug} />} />
         <Route path="/comanda" element={<VirtualComanda tenantSlug={tenantSlug} />} />
+        <Route path="/reservar" element={<PublicReservation tenantSlug={tenantSlug} />} />
+        <Route path="/fila" element={<PublicWaitingQueue tenantSlug={tenantSlug} />} />
         <Route path="/track/:orderId" element={<OrderTracking tenantSlug={tenantSlug} />} />
           <Route path="/bio" element={<LinkBio tenantSlug={tenantSlug} />} />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant, useHallZones } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
@@ -17,6 +18,8 @@ import { supabase } from '@/lib/supabase';
 import {
   formatCurrency,
   getComandaPublicUrl,
+  generateWhatsAppLink,
+  ensurePhoneForWhatsApp,
   type CurrencyCode,
 } from '@/lib/utils';
 import {
@@ -33,12 +36,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
   DialogTitle,
+  DialogHeader,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
-import { formatDistanceToNow, startOfDay } from 'date-fns';
+import { format, formatDistanceToNow, startOfDay } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
 import { QRCodeSVG } from 'qrcode.react';
@@ -63,10 +70,19 @@ import {
   ShoppingBag,
   RefreshCw,
   ListChecks,
+  Users,
+  MessageCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
 import { CashierCompletedView } from '@/components/cashier/CashierCompletedView';
+import {
+  useWaitingQueue,
+  useAddToWaitingQueue,
+  useNotifyQueueItem,
+  useTables,
+  useTableStatuses,
+} from '@/hooks/queries';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
@@ -83,12 +99,24 @@ interface QueueItemBase {
   createdAt: string;
 }
 
+/** Dados da reserva quando a comanda é de uma reserva pendente */
+interface ReservationInfo {
+  id: string;
+  customer_name: string;
+  scheduled_at: string;
+  late_tolerance_minutes: number;
+  table_id: string;
+  status: string;
+}
+
 interface QueueItemComandaDigital extends QueueItemBase {
   type: 'comanda_digital';
   virtualComandaId: string;
   shortCode: string;
   tableNumber: string | null;
   items: { id: string; product_name: string; quantity: number; unit_price: number; total_price: number; notes: string | null }[];
+  /** Preenchido quando a comanda é de uma reserva (status pending/confirmed) */
+  reservation?: ReservationInfo;
 }
 
 interface QueueItemComandaBuffet extends QueueItemBase {
@@ -367,6 +395,7 @@ function QueueCard({
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 function CashierContent() {
+  const queryClient = useQueryClient();
   const restaurantId = useAdminRestaurantId();
   const currency = useAdminCurrency();
   const { t, lang } = useAdminTranslation();
@@ -386,13 +415,25 @@ function CashierContent() {
   const [closing, setClosing] = useState(false);
   const [justClosed, setJustClosed] = useState(false);
   const [scanInput, setScanInput] = useState('');
+  const scanBufferRef = useRef('');
   const [scanError, setScanError] = useState<string | null>(null);
+  const [showWaitingQueue, setShowWaitingQueue] = useState(false);
+  const [queueName, setQueueName] = useState('');
+  const [queuePhone, setQueuePhone] = useState('');
+  const [notifyTableId, setNotifyTableId] = useState('');
+  const [reservationAction, setReservationAction] = useState<'idle' | 'activating' | 'cancelling' | null>(null);
   const [mainView, setMainView] = useState<'cashier' | 'completed'>('cashier');
   const [completedList, setCompletedList] = useState<CompletedItem[]>([]);
 
   const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
   const { data: hasTables } = useFeatureAccess('feature_tables', restaurantId);
+  const { data: hasReservations } = useFeatureAccess('feature_reservations', restaurantId);
   const { data: hallZones = [] } = useHallZones(restaurantId);
+  const { data: waitingQueue = [], refetch: refetchWaitingQueue } = useWaitingQueue(hasReservations ? restaurantId : null);
+  const addToQueue = useAddToWaitingQueue(restaurantId);
+  const notifyQueue = useNotifyQueueItem(restaurantId);
+  const { data: tables = [] } = useTables(restaurantId);
+  const { data: tableStatuses = [] } = useTableStatuses(restaurantId);
 
   const exchangeRates: ExchangeRates = restaurant?.exchange_rates ?? {
     pyg_per_brl: 3600,
@@ -420,7 +461,11 @@ function CashierContent() {
       const [vcRes, comandasRes, ordersRes] = await Promise.all([
         supabase
           .from('virtual_comandas')
-          .select('id, short_code, customer_name, table_number, total_amount, created_at, virtual_comanda_items(id, product_name, quantity, unit_price, total_price, notes)')
+          .select(`
+            id, short_code, customer_name, table_number, total_amount, created_at,
+            virtual_comanda_items(id, product_name, quantity, unit_price, total_price, notes),
+            reservations(id, customer_name, scheduled_at, late_tolerance_minutes, table_id, status)
+          `)
           .eq('restaurant_id', restaurantId)
           .eq('status', 'open')
           .order('created_at', { ascending: true }),
@@ -450,10 +495,16 @@ function CashierContent() {
 
       const vcData = (vcRes.data ?? []) as any[];
       vcData.forEach((vc) => {
+        const resList = vc.reservations;
+        const res = Array.isArray(resList) && resList.length > 0 ? resList[0] : null;
+        const reservation = res && ['pending', 'confirmed'].includes(res.status)
+          ? { id: res.id, customer_name: res.customer_name, scheduled_at: res.scheduled_at, late_tolerance_minutes: res.late_tolerance_minutes ?? 15, table_id: res.table_id, status: res.status }
+          : undefined;
+        const label = reservation ? `${vc.short_code} · Reserva` : vc.short_code;
         items.push({
           id: `vc-${vc.id}`,
           type: 'comanda_digital',
-          label: vc.short_code,
+          label,
           customerName: vc.customer_name,
           totalAmount: vc.total_amount ?? 0,
           createdAt: vc.created_at,
@@ -468,6 +519,7 @@ function CashierContent() {
             total_price: i.total_price,
             notes: i.notes,
           })),
+          reservation,
         });
       });
 
@@ -685,12 +737,22 @@ function CashierContent() {
         },
         debouncedLoadQueue
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'waiting_queue',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        () => queryClient.invalidateQueries({ queryKey: ['waitingQueue', restaurantId] })
+      )
       .subscribe((status) => setIsLive(status === 'SUBSCRIBED'));
     return () => {
       supabase.removeChannel(ch);
       setIsLive(false);
     };
-  }, [restaurantId, debouncedLoadQueue]);
+  }, [restaurantId, debouncedLoadQueue, queryClient]);
 
   useEffect(() => {
     if (!restaurantId || isLive) return;
@@ -773,50 +835,67 @@ function CashierContent() {
     return groups;
   }, [queue, hallZones, t]);
 
-  const handleScanSubmit = useCallback(() => {
-    const value = scanInput.trim().toUpperCase();
-    if (!value) return;
-
-    if (mainView === 'cashier') {
-      setScanInput('');
-      if (SCANNER_PATTERN.test(value)) {
-        const found = queue.find(
-          (q): q is QueueItemComandaDigital => q.type === 'comanda_digital' && q.shortCode === value
+  const processScanValue = useCallback((value: string) => {
+    const v = value.trim().toUpperCase();
+    if (!v) return;
+    setScanError(null);
+    if (mainView !== 'cashier') return;
+    if (SCANNER_PATTERN.test(v)) {
+      const found = queue.find(
+        (q): q is QueueItemComandaDigital => q.type === 'comanda_digital' && q.shortCode === v
+      );
+      if (found) {
+        selectItem(found);
+      } else {
+        setScanError(t('cashier.comandaNotFound', { code: v }));
+      }
+      return;
+    }
+    const num = parseInt(v, 10);
+    if (!isNaN(num)) {
+      for (const group of queueGroupedByZone) {
+        const found = group.items.find(
+          (i) => (isTableGroup(i) ? i.tableNumber === num : i.type === 'table' && i.tableNumber === num)
         );
         if (found) {
           selectItem(found);
-        } else {
-          setScanError(t('cashier.comandaNotFound', { code: value }));
-        }
-        return;
-      }
-      const num = parseInt(value, 10);
-      if (!isNaN(num)) {
-        for (const group of queueGroupedByZone) {
-          const found = group.items.find(
-            (i) => (isTableGroup(i) ? i.tableNumber === num : i.type === 'table' && i.tableNumber === num)
-          );
-          if (found) {
-            selectItem(found);
-            return;
-          }
-        }
-        const bufFound = queue.find(
-          (q): q is QueueItemComandaBuffet => q.type === 'comanda_buffet' && q.number === num
-        );
-        if (bufFound) {
-          selectItem(bufFound);
           return;
         }
-        setScanError(t('cashier.tableOrComandaNotFound', { num }));
-      } else {
-        setScanError(t('cashier.invalidFormat'));
       }
+      const bufFound = queue.find(
+        (q): q is QueueItemComandaBuffet => q.type === 'comanda_buffet' && q.number === num
+      );
+      if (bufFound) {
+        selectItem(bufFound);
+        return;
+      }
+      setScanError(t('cashier.tableOrComandaNotFound', { num: String(num) }));
+    } else {
+      setScanError(t('cashier.invalidFormat'));
     }
-  }, [scanInput, queue, queueGroupedByZone, mainView, selectItem, t]);
+  }, [queue, queueGroupedByZone, mainView, selectItem, t]);
+
+  const handleScanSubmit = useCallback(() => {
+    const value = scanBufferRef.current.trim() || scanInput.trim();
+    if (value) {
+      scanBufferRef.current = '';
+      setScanInput('');
+      processScanValue(value);
+    }
+  }, [scanInput, processScanValue]);
 
   const handleScanKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') handleScanSubmit();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const value = scanBufferRef.current.trim() || scanInput.trim();
+      if (value) {
+        scanBufferRef.current = '';
+        setScanInput('');
+        processScanValue(value);
+      }
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      scanBufferRef.current += e.key;
+    }
   };
 
   const totalToPay = selected
@@ -973,7 +1052,45 @@ function CashierContent() {
     setPayments([]);
     setPaymentInputs({});
     setScanError(null);
+    setReservationAction(null);
     scannerRef.current?.focus();
+  };
+
+  const isSelectedReservation =
+    selected?.type === 'comanda_digital' &&
+    (selected as QueueItemComandaDigital).reservation &&
+    totalToPay === 0;
+
+  const handleActivateReservation = async () => {
+    if (!selected || selected.type !== 'comanda_digital' || !(selected as QueueItemComandaDigital).reservation) return;
+    const res = (selected as QueueItemComandaDigital).reservation!;
+    setReservationAction('activating');
+    try {
+      await supabase.rpc('activate_reservation', { p_reservation_id: res.id });
+      toast({ title: t('cashier.reservationActivated') });
+      handleClearSelection();
+      loadQueue();
+    } catch (err: any) {
+      toast({ title: t('cashier.errorActivateReservation'), description: err?.message, variant: 'destructive' });
+    } finally {
+      setReservationAction(null);
+    }
+  };
+
+  const handleCancelReservation = async () => {
+    if (!selected || selected.type !== 'comanda_digital' || !(selected as QueueItemComandaDigital).reservation) return;
+    const res = (selected as QueueItemComandaDigital).reservation!;
+    setReservationAction('cancelling');
+    try {
+      await supabase.rpc('cancel_reservation', { p_reservation_id: res.id });
+      toast({ title: t('cashier.reservationCancelled') });
+      handleClearSelection();
+      loadQueue();
+    } catch (err: any) {
+      toast({ title: t('cashier.errorCancelReservation'), description: err?.message, variant: 'destructive' });
+    } finally {
+      setReservationAction(null);
+    }
   };
 
   const itemsForDisplay = (() => {
@@ -1065,6 +1182,12 @@ function CashierContent() {
               <Button variant="outline" size="sm" onClick={() => setShowQRModal(true)}>
                 <QrCode className="h-3.5 w-3.5 mr-1.5" />
                 {t('cashier.qrCode')}
+              </Button>
+            )}
+            {!!hasReservations && (
+              <Button variant="outline" size="sm" onClick={() => setShowWaitingQueue(true)}>
+                <Users className="h-3.5 w-3.5 mr-1.5" />
+                {t('cashier.waitingQueue')}
               </Button>
             )}
             <div
@@ -1237,6 +1360,45 @@ function CashierContent() {
                 </Button>
               </div>
 
+              {isSelectedReservation ? (
+                <div className="px-5 py-6 space-y-4">
+                  <div className="rounded-xl border-2 border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/30 p-4 space-y-2">
+                    <h3 className="font-semibold text-amber-900 dark:text-amber-100">{t('cashier.reservationTitle')}</h3>
+                    <p className="text-sm text-amber-800 dark:text-amber-200">{t('cashier.reservationDesc')}</p>
+                    {selected.type === 'comanda_digital' && (selected as QueueItemComandaDigital).reservation && (
+                      <div className="text-sm space-y-1 pt-2">
+                        <p><strong>{(selected as QueueItemComandaDigital).reservation!.customer_name}</strong></p>
+                        <p className="text-muted-foreground">
+                          {format(new Date((selected as QueueItemComandaDigital).reservation!.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: dateLocale })}
+                        </p>
+                        <p className="text-muted-foreground">
+                          Mesa {selected.tableNumber} · Tolerância {(selected as QueueItemComandaDigital).reservation!.late_tolerance_minutes} min
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                      onClick={handleActivateReservation}
+                      disabled={!!reservationAction}
+                    >
+                      {reservationAction === 'activating' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                      {t('cashier.activateReservation')}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={handleCancelReservation}
+                      disabled={!!reservationAction}
+                    >
+                      {reservationAction === 'cancelling' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <X className="h-4 w-4 mr-2" />}
+                      {t('cashier.cancelReservation')}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
               <div className="divide-y divide-border max-h-64 overflow-y-auto">
                 {tableItemsGrouped ? (
                   tableItemsGrouped.map((group) => (
@@ -1388,11 +1550,116 @@ function CashierContent() {
                   {t('cashier.finalize')}
                 </Button>
               </div>
+                </>
+              )}
             </div>
           )}
         </div>
       </div>
       )}
+
+      {/* Fila de Espera Modal */}
+      <Dialog open={showWaitingQueue} onOpenChange={setShowWaitingQueue}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t('cashier.waitingQueue')}</DialogTitle>
+            <DialogDescription>{t('cashier.addToQueue')}</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!queueName.trim()) return;
+              try {
+                await addToQueue.mutateAsync({ customer_name: queueName.trim(), customer_phone: queuePhone.trim() || undefined });
+                setQueueName('');
+                setQueuePhone('');
+                toast({ title: t('cashier.addToQueue') + ' ✓' });
+              } catch (err: any) {
+                toast({ title: err?.message, variant: 'destructive' });
+              }
+            }}
+            className="flex gap-2"
+          >
+            <Input
+              placeholder={t('cashier.queueCustomerName')}
+              value={queueName}
+              onChange={(e) => setQueueName(e.target.value)}
+              className="flex-1"
+            />
+            <Input
+              placeholder={t('cashier.queueCustomerPhone')}
+              value={queuePhone}
+              onChange={(e) => setQueuePhone(e.target.value)}
+              className="flex-1"
+            />
+            <Button type="submit" disabled={!queueName.trim() || addToQueue.isPending}>
+              {addToQueue.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            </Button>
+          </form>
+          <div className="space-y-2">
+            {waitingQueue.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">{t('cashier.queueEmpty')}</p>
+            ) : (
+              waitingQueue.map((item) => (
+                <div key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                  <div>
+                    <p className="font-medium">{item.customer_name}</p>
+                    {item.customer_phone && <p className="text-xs text-muted-foreground">{item.customer_phone}</p>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">#{item.position}</span>
+                    <Select value={notifyTableId} onValueChange={setNotifyTableId}>
+                      <SelectTrigger className="w-[120px] h-8">
+                        <SelectValue placeholder={t('cashier.callNext')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tableStatuses
+                          .filter((t) => t.status === 'free')
+                          .map((t) => (
+                            <SelectItem key={t.id} value={t.id}>
+                              Mesa {t.number}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        const freeTables = tableStatuses.filter((t) => t.status === 'free');
+                        if (freeTables.length === 0) {
+                          toast({ title: 'Nenhuma mesa livre', variant: 'destructive' });
+                          return;
+                        }
+                        const tid = notifyTableId || freeTables[0]?.id;
+                        if (!tid) return;
+                        try {
+                          const res = await notifyQueue.mutateAsync({ queue_id: item.id, table_id: tid }) as { short_code: string; table_number: string };
+                          setNotifyTableId('');
+                          refetchWaitingQueue();
+                          loadQueue();
+                          const tableNum = freeTables.find((t) => t.id === tid)?.number ?? res?.table_number ?? '?';
+                          toast({ title: t('cashier.callNext') + ' ✓', description: `Mesa ${tableNum} — ${res?.short_code ?? ''}` });
+                          if (item.customer_phone && res?.short_code) {
+                            const phone = ensurePhoneForWhatsApp(item.customer_phone, 'BR');
+                            const msg = `Olá ${item.customer_name}! Sua mesa está pronta. 🍽️ Apresente o código *${res.short_code}* na recepção. Mesa ${tableNum}.`;
+                            window.open(generateWhatsAppLink(phone, msg), '_blank');
+                          }
+                        } catch (err: any) {
+                          toast({ title: err?.message, variant: 'destructive' });
+                        }
+                      }}
+                      disabled={notifyQueue.isPending || tableStatuses.filter((t) => t.status === 'free').length === 0}
+                    >
+                      {notifyQueue.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : item.customer_phone ? <MessageCircle className="h-3 w-3 mr-1" /> : null}
+                      {notifyQueue.isPending ? null : t('cashier.callNext')}
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <OrderReceipt data={receiptData} />
       <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />

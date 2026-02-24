@@ -16,6 +16,18 @@ export { useRestaurantMenuData } from './useRestaurantMenuData';
 export type { RestaurantMenuData } from './useRestaurantMenuData';
 export { useTables } from './useTables';
 export { useTableStatuses } from './useTableStatuses';
+export {
+  useReservations,
+  useCreateReservation,
+  useCancelReservation,
+} from './useReservations';
+export type { Reservation, ReservationWithDetails, ReservationStatus } from './useReservations';
+export {
+  useWaitingQueue,
+  useAddToWaitingQueue,
+  useNotifyQueueItem,
+} from './useWaitingQueue';
+export type { WaitingQueueItem } from './useWaitingQueue';
 export type { TableWithStatus, TableStatus } from './useTableStatuses';
 export { useTableOrders } from './useTableOrders';
 export {

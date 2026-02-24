@@ -57,6 +57,7 @@ const AdminComandaQRCode    = lazyWithRetry(() => import('./pages/admin/ComandaQ
 const AdminProductsInventory = lazyWithRetry(() => import('./pages/admin/ProductsInventory'));
 const AdminInventory         = lazyWithRetry(() => import('./pages/admin/Inventory'));
 const AdminTables           = lazyWithRetry(() => import('./pages/admin/Tables'));
+const AdminReservations     = lazyWithRetry(() => import('./pages/admin/Reservations'));
 const WaiterTerminal        = lazyWithRetry(() => import('./pages/admin/WaiterTerminal'));
 const UpgradePage           = lazyWithRetry(() => import('./pages/admin/UpgradePage'));
 
@@ -71,6 +72,8 @@ const MenuViewOnly          = lazyWithRetry(() => import('./pages/public/MenuVie
 const MenuTable             = lazyWithRetry(() => import('./pages/public/MenuTable'));
 const VirtualComanda        = lazyWithRetry(() => import('./pages/public/VirtualComanda'));
 const OrderTracking         = lazyWithRetry(() => import('./pages/public/OrderTracking'));
+const PublicReservation     = lazyWithRetry(() => import('./pages/public/PublicReservation'));
+const PublicWaitingQueue    = lazyWithRetry(() => import('./pages/public/PublicWaitingQueue'));
 const OrderConfirmation     = lazyWithRetry(() => import('./pages/public/OrderConfirmation'));
 const LinkBio               = lazyWithRetry(() => import('./pages/public/LinkBio'));
 
@@ -175,6 +178,17 @@ const adminRoutes = (
         <ProtectedRoute requiredFeature="feature_tables">
           <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
             <AdminTables />
+          </RoleProtectedRoute>
+        </ProtectedRoute>
+      }
+    />
+    {/* Reservas — gerente e acima + feature flag */}
+    <Route
+      path="reservations"
+      element={
+        <ProtectedRoute requiredFeature="feature_reservations">
+          <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin', 'cashier']}>
+            <AdminReservations />
           </RoleProtectedRoute>
         </ProtectedRoute>
       }
@@ -512,6 +526,9 @@ function App() {
           <Route path="order-confirmed" element={<OrderConfirmation />} />
           {/* Comanda Digital (Enterprise): cliente abre e acompanha a sua comanda */}
           <Route path="comanda" element={<VirtualComanda />} />
+          {/* Reserva e Fila de Espera — Fase 2 e 3 */}
+          <Route path="reservar" element={<PublicReservation />} />
+          <Route path="fila" element={<PublicWaitingQueue />} />
           {/* Rastreamento de Pedido — rota pública para acompanhamento em tempo real */}
           <Route path="track/:orderId" element={<OrderTracking />} />
           {/* Link da Bio para Instagram */}
