@@ -2,6 +2,29 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { DiscountCoupon } from '@/types';
 
+/** Verifica se o restaurante tem ao menos um cupom ativo (checkout: esconder card se nenhum ativo). */
+export async function fetchHasActiveCoupons(restaurantId: string | null): Promise<boolean> {
+  if (!restaurantId) return false;
+  const { data, error } = await supabase
+    .from('discount_coupons')
+    .select('id')
+    .eq('restaurant_id', restaurantId)
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle();
+  if (error) return false;
+  return data != null;
+}
+
+/** Hook para saber se existe cupom ativo (usado no checkout para esconder o card quando todos desativados). */
+export function useHasActiveCoupons(restaurantId: string | null) {
+  return useQuery({
+    queryKey: ['has-active-coupons', restaurantId],
+    queryFn: () => fetchHasActiveCoupons(restaurantId),
+    enabled: !!restaurantId,
+  });
+}
+
 /** Busca cupons do restaurante (admin) */
 async function fetchCoupons(restaurantId: string | null): Promise<DiscountCoupon[]> {
   if (!restaurantId) return [];
@@ -68,7 +91,10 @@ export function useDiscountCoupons(restaurantId: string | null) {
   });
 
   const queryClient = useQueryClient();
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['discount-coupons', restaurantId] });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['discount-coupons', restaurantId] });
+    queryClient.invalidateQueries({ queryKey: ['has-active-coupons', restaurantId] });
+  };
 
   const createCoupon = useMutation({
     mutationFn: async (payload: Omit<DiscountCoupon, 'id' | 'use_count' | 'created_at' | 'updated_at'>) => {

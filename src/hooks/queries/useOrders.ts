@@ -44,6 +44,16 @@ export function isDeliveryOrPickupOrder(order: { order_source?: string | null; d
   );
 }
 
+export type OrderSectorKey = 'delivery' | 'table' | 'pickup' | 'buffet';
+
+/** Retorna o setor do pedido para config de impressão por setor. */
+export function getOrderSector(order: { order_source?: string | null; delivery_type?: string | null }): OrderSectorKey {
+  const src = order.order_source;
+  if (src === 'delivery' || src === 'pickup' || src === 'table' || src === 'buffet') return src;
+  if (src === 'comanda') return 'table';
+  return order.delivery_type === 'pickup' ? 'pickup' : 'delivery';
+}
+
 /** Busca pedidos ativos (exclui cancelados) com paginação. Isolamento por tenant via restaurant_id. */
 async function fetchOrders({
   restaurantId,

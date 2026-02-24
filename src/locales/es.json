@@ -58,7 +58,10 @@
     "redeemNo": "Canjear después",
     "redeemSuccess": "¡Premio canjeado con éxito!",
     "redeemSuccessDesc": "¡Disfruta tu {{reward}}! El restaurante ya fue notificado.",
-    "redemptionLabel": "🎁 Canje de Fidelidad"
+    "redemptionLabel": "🎁 Canje de Fidelidad",
+    "addFreeReward": "Añadir {{name}} gratis",
+    "addedToOrder": "en el pedido",
+    "removeReward": "Quitar item de fidelidad"
   },
   "checkout": {
     "title": "Finalizar Pedido",

@@ -66,7 +66,7 @@ const SECTOR_KEYS = ['delivery', 'table', 'pickup', 'buffet'] as const;
 type SectorKey = typeof SECTOR_KEYS[number];
 
 function defaultSectorSettings(): PrintSettingsBySector {
-  const empty: SectorPrintSettings = { waiter_tip_enabled: false, waiter_tip_pct: 10 };
+  const empty: SectorPrintSettings = { auto_print_enabled: true, waiter_tip_enabled: false, waiter_tip_pct: 10 };
   return SECTOR_KEYS.reduce((acc, k) => ({ ...acc, [k]: { ...empty } }), {} as PrintSettingsBySector);
 }
 
@@ -122,8 +122,9 @@ function parseSectorSettings(raw: unknown): PrintSettingsBySector {
   for (const k of SECTOR_KEYS) {
     const v = obj[k];
     if (v && typeof v === 'object' && 'waiter_tip_enabled' in v && 'waiter_tip_pct' in v) {
-      const s = v as { waiter_tip_enabled: boolean; waiter_tip_pct: number };
+      const s = v as { auto_print_enabled?: boolean; waiter_tip_enabled: boolean; waiter_tip_pct: number };
       out[k] = {
+        auto_print_enabled: s.auto_print_enabled !== false,
         waiter_tip_enabled: !!s.waiter_tip_enabled,
         waiter_tip_pct: Math.max(0, Math.min(100, Number(s.waiter_tip_pct) || 10)),
       };
@@ -1068,122 +1069,150 @@ export default function AdminSettings() {
         {/* ══════════════════════════════════════════════════════════════════════
             ABA 5 — Impressão
         ══════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="impressao" className="mt-0 space-y-5">
+        <TabsContent value="impressao" className="mt-0 space-y-6">
 
-          {/* Config geral de impressão */}
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-5">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                <Printer className="h-[18px] w-[18px] text-muted-foreground" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">Configurações de Impressão</h2>
-                <p className="text-[11px] text-muted-foreground">
-                  Cupom não fiscal para impressoras térmicas via navegador
-                </p>
+          {/* Card 1: Configurações gerais */}
+          <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+            <div className="p-5 pb-4 border-b border-border/60 bg-muted/20">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-[#F87116]/10 flex items-center justify-center flex-shrink-0">
+                  <Printer className="h-5 w-5 text-[#F87116]" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">{t('settings.operation.print')}</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {t('settings.operation.printDesc')}
+                  </p>
+                </div>
               </div>
             </div>
-
-            <ToggleRow
-              label="Impressão automática"
-              description="Abre janela de impressão ao receber novo pedido."
-              checked={formData.print_auto_on_new_order}
-              onChange={(v) => set('print_auto_on_new_order', v)}
-              icon={AlarmClock}
-            />
-
-            <FieldGroup>
-              <SectionLabel>{t('settings.operation.paperWidth')}</SectionLabel>
-              <div className="grid grid-cols-2 gap-3">
-                {(['58mm', '80mm'] as PrintPaperWidth[]).map(w => (
-                  <button
-                    key={w}
-                    type="button"
-                    onClick={() => set('print_paper_width', w)}
-                    className={`flex items-center gap-3 py-3.5 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${
-                      formData.print_paper_width === w
-                        ? 'border-[#F87116] bg-orange-50 text-[#F87116]'
-                        : 'border-border bg-background text-muted-foreground hover:border-slate-300'
-                    }`}
-                  >
-                    <Printer className="h-4 w-4 flex-shrink-0" />
-                    <div className="text-left">
-                      <div>{w}</div>
-                      <div className="text-[10px] font-normal mt-0.5">
-                        {w === '58mm' ? t('settings.operation.narrow') : t('settings.operation.standard')}
+            <div className="p-5 space-y-5">
+              <ToggleRow
+                label={t('settings.operation.autoPrint')}
+                description={t('settings.operation.autoPrintDesc')}
+                checked={formData.print_auto_on_new_order}
+                onChange={(v) => set('print_auto_on_new_order', v)}
+                icon={AlarmClock}
+              />
+              <FieldGroup>
+                <SectionLabel>{t('settings.operation.paperWidth')}</SectionLabel>
+                <div className="grid grid-cols-2 gap-3">
+                  {(['58mm', '80mm'] as PrintPaperWidth[]).map(w => (
+                    <button
+                      key={w}
+                      type="button"
+                      onClick={() => set('print_paper_width', w)}
+                      className={`flex items-center gap-3 py-3.5 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${
+                        formData.print_paper_width === w
+                          ? 'border-[#F87116] bg-orange-50 dark:bg-orange-950/30 text-[#F87116]'
+                          : 'border-border bg-background text-muted-foreground hover:border-muted-foreground/30'
+                      }`}
+                    >
+                      <Printer className="h-4 w-4 flex-shrink-0" />
+                      <div className="text-left">
+                        <div>{w}</div>
+                        <div className="text-[10px] font-normal mt-0.5 text-muted-foreground">
+                          {w === '58mm' ? t('settings.operation.narrow') : t('settings.operation.standard')}
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </FieldGroup>
+                    </button>
+                  ))}
+                </div>
+              </FieldGroup>
+            </div>
           </div>
 
-          {/* Impressão por setor — taxa de garçom por canal */}
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                <Printer className="h-[18px] w-[18px] text-muted-foreground" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">{t('settings.operation.printBySector')}</h2>
-                <p className="text-[11px] text-muted-foreground">
-                  {t('settings.operation.printBySectorDesc')}
-                </p>
+          {/* Card 2: Impressão e taxa por setor */}
+          <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+            <div className="p-5 pb-4 border-b border-border/60 bg-muted/20">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-[#F87116]/10 flex items-center justify-center flex-shrink-0">
+                  <Printer className="h-5 w-5 text-[#F87116]" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">{t('settings.operation.printBySector')}</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {t('settings.operation.printBySectorDesc')}
+                  </p>
+                </div>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {SECTOR_KEYS.map((sector) => {
-                const sectorLabels: Record<SectorKey, string> = {
-                  delivery: t('settings.operation.sectorDelivery'),
-                  table:    t('settings.operation.sectorTable'),
-                  pickup:   t('settings.operation.sectorPickup'),
-                  buffet:   t('settings.operation.sectorBuffet'),
-                };
-                const sectorLabel = sectorLabels[sector];
-                const cfg = formData.print_settings_by_sector[sector] ?? { waiter_tip_enabled: false, waiter_tip_pct: 10 };
-                const enabled = cfg.waiter_tip_enabled;
-                const pct = cfg.waiter_tip_pct;
-                return (
-                  <div
-                    key={sector}
-                    className={`rounded-xl border p-4 transition-colors ${
-                      enabled ? 'bg-orange-50/50 border-orange-200' : 'bg-muted/30 border-border'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-semibold text-foreground">{sectorLabel}</span>
-                      <Toggle
-                        checked={enabled}
-                        onChange={(v) => {
-                          const next = { ...formData.print_settings_by_sector };
-                          next[sector] = { ...cfg, waiter_tip_enabled: v };
-                          set('print_settings_by_sector', next);
-                        }}
-                      />
+            <div className="p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {SECTOR_KEYS.map((sector) => {
+                  const sectorLabels: Record<SectorKey, string> = {
+                    delivery: t('settings.operation.sectorDelivery'),
+                    table:    t('settings.operation.sectorTable'),
+                    pickup:   t('settings.operation.sectorPickup'),
+                    buffet:   t('settings.operation.sectorBuffet'),
+                  };
+                  const sectorLabel = sectorLabels[sector];
+                  const cfg = formData.print_settings_by_sector[sector] ?? { auto_print_enabled: true, waiter_tip_enabled: false, waiter_tip_pct: 10 };
+                  const autoPrint = cfg.auto_print_enabled !== false;
+                  const waiterEnabled = cfg.waiter_tip_enabled;
+                  const pct = cfg.waiter_tip_pct;
+                  return (
+                    <div
+                      key={sector}
+                      className="rounded-xl border border-border bg-background/50 p-4 space-y-4 transition-colors hover:border-muted-foreground/20"
+                    >
+                      <div className="flex items-center gap-2 pb-2 border-b border-border/60">
+                        <span className="text-sm font-semibold text-foreground">{sectorLabel}</span>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">{t('settings.operation.sectorAutoPrint')}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.operation.sectorAutoPrintDesc')}</p>
+                          </div>
+                          <Toggle
+                            checked={autoPrint}
+                            onChange={(v) => {
+                              const next = { ...formData.print_settings_by_sector };
+                              next[sector] = { ...cfg, auto_print_enabled: v };
+                              set('print_settings_by_sector', next);
+                            }}
+                          />
+                        </div>
+                        <div className={`rounded-lg border p-3 transition-colors ${waiterEnabled ? 'border-orange-200/60 bg-orange-50/30 dark:bg-orange-950/20' : 'border-border/60 bg-muted/20'}`}>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground">{t('settings.operation.waiterTipToggle')}</p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.operation.waiterTipPct')}</p>
+                            </div>
+                            <Toggle
+                              checked={waiterEnabled}
+                              onChange={(v) => {
+                                const next = { ...formData.print_settings_by_sector };
+                                next[sector] = { ...cfg, waiter_tip_enabled: v };
+                                set('print_settings_by_sector', next);
+                              }}
+                            />
+                          </div>
+                          {waiterEnabled && (
+                            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/60">
+                              <Input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={pct}
+                                onChange={(e) => {
+                                  const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                                  const next = { ...formData.print_settings_by_sector };
+                                  next[sector] = { ...cfg, waiter_tip_pct: v };
+                                  set('print_settings_by_sector', next);
+                                }}
+                                className="h-8 w-16 text-xs"
+                              />
+                              <span className="text-xs text-muted-foreground">%</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-[11px] text-muted-foreground shrink-0">{t('settings.operation.waiterTipPct')}</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={pct}
-                        onChange={(e) => {
-                          const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
-                          const next = { ...formData.print_settings_by_sector };
-                          next[sector] = { ...cfg, waiter_tip_pct: v };
-                          set('print_settings_by_sector', next);
-                        }}
-                        className="h-8 w-16 text-xs"
-                        disabled={!enabled}
-                      />
-                      <span className="text-[11px] text-muted-foreground">%</span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
 

@@ -80,6 +80,8 @@ export type PrintPaperWidth = '58mm' | '80mm';
 
 /** Config de impressão por setor (delivery, table, pickup, buffet) */
 export interface SectorPrintSettings {
+  /** Se true, abre janela de impressão ao receber novo pedido deste setor (quando a impressão automática global está ativa). */
+  auto_print_enabled?: boolean;
   waiter_tip_enabled: boolean;
   waiter_tip_pct: number;
 }
@@ -483,6 +485,8 @@ export interface CartItem {
   observations?: string;
   /** Item adicionado via sugestão de upsell */
   isUpsell?: boolean;
+  /** Item adicionado como prêmio do plano de fidelidade (preço 0) */
+  isLoyaltyReward?: boolean;
   // Pizza específico
   isPizza?: boolean;
   pizzaSize?: string;
@@ -602,6 +606,8 @@ export interface LoyaltyProgram {
   enabled: boolean;
   orders_required: number;
   reward_description: string;
+  /** Produto do cardápio dado grátis ao resgatar. Null = apenas descrição textual. */
+  reward_product_id?: string | null;
   /** Canais onde o cliente pontua. Default: todos true. */
   scoring_channels?: LoyaltyScoringChannels | null;
   /** Dias até pontos expirarem. Null = nunca expira. */
@@ -623,6 +629,10 @@ export interface LoyaltyStatus {
   orders_required: number;
   reward_description: string;
   enabled: boolean;
+  /** ID do produto do cardápio dado grátis ao resgatar (quando configurado). */
+  reward_product_id?: string | null;
+  /** Nome do produto para exibir no checkout. */
+  reward_product_name?: string | null;
 }
 
 export interface Category {

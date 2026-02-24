@@ -26,7 +26,7 @@ import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
 import type { WhatsAppTemplates } from '@/types';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { ROLES_CANCEL_ORDER } from '@/hooks/useUserRole';
-import { useCouriers, useOrders, usePrintSettings, useProductPrintDestinations, creditLoyaltyPoint, isDeliveryOrPickupOrder } from '@/hooks/queries';
+import { useCouriers, useOrders, usePrintSettings, useProductPrintDestinations, creditLoyaltyPoint, getOrderSector } from '@/hooks/queries';
 import { isUUID } from '@/hooks/useResolveRestaurantId';
 import { usePrinter } from '@/hooks/usePrinter';
 import type { DualReceiptSlot } from '@/hooks/usePrinter';
@@ -219,8 +219,9 @@ export default function AdminOrders() {
           .single();
         if (!error && fullOrder) {
           const order = fullOrder as DatabaseOrder;
-          // Auto-print só para pedidos Delivery/Retirada (Kanban não exibe Mesa/Comanda/Buffet)
-          if (!isDeliveryOrPickupOrder(order)) return;
+          const sector = getOrderSector(order);
+          const sectorCfg = settings.print_settings_by_sector?.[sector];
+          if (sectorCfg?.auto_print_enabled === false) return;
           printOrder(
             order,
             settings.name,

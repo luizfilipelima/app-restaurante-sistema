@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCartStore } from '@/store/cartStore';
 import { supabase } from '@/lib/supabase';
 import { getSubdomain } from '@/lib/subdomain';
-import { PaymentMethod, DeliveryType } from '@/types';
+import type { LoyaltyStatus, PaymentMethod, DeliveryType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,7 +37,7 @@ import {
   QrCode, Landmark, Info, Copy, AlertCircle, Ticket, Loader2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones, validateCoupon } from '@/hooks/queries';
+import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones, useHasActiveCoupons, validateCoupon } from '@/hooks/queries';
 
 const MapAddressPicker = lazy(() => import('@/components/public/MapAddressPicker'));
 import LoyaltyCard from '@/components/public/LoyaltyCard';
@@ -65,7 +65,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
 
   const navigate = useNavigate();
-  const { items, restaurantId, updateQuantity, getSubtotal, clearCart, orderNotes, setOrderNotes } = useCartStore();
+  const { items, restaurantId, addItem, updateQuantity, removeItem, getSubtotal, clearCart, orderNotes, setOrderNotes } = useCartStore();
   const { t } = useTranslation();
   const { currentRestaurant } = useRestaurantStore();
 
@@ -90,7 +90,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const [phoneCountry, setPhoneCountry] = useState<'BR' | 'PY' | 'AR'>('BR');
 
   // ── Fidelidade ──
-  const [loyaltyStatus, setLoyaltyStatus] = useState<{ points: number; orders_required: number; reward_description: string; enabled: boolean; redeemed_count: number } | null>(null);
+  const [loyaltyStatus, setLoyaltyStatus] = useState<LoyaltyStatus | null>(null);
   const [showRedeemDialog, setShowRedeemDialog] = useState(false);
   const [loyaltyRedeemed, setLoyaltyRedeemed] = useState(false);
 
@@ -112,6 +112,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   // ── Entrega ──
   const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
   const { data: rawZones = [] } = useDeliveryZones(restaurantId ?? null);
+  const { data: hasActiveCoupons = false } = useHasActiveCoupons(restaurantId ?? null);
   const r = currentRestaurant as { delivery_zones_enabled?: boolean | null; delivery_zones_mode?: 'disabled' | 'zones' | 'kilometers' | null };
   const mode = r?.delivery_zones_mode ?? (r?.delivery_zones_enabled === false ? 'disabled' : 'zones');
   const deliveryZonesEnabled = mode !== 'disabled';
@@ -287,9 +288,42 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const deliveryFee = deliveryType === DeliveryType.DELIVERY ? (selectedZone?.fee || 0) : 0;
   const subtotal = getSubtotal();
   const couponsEnabled = (currentRestaurant as { discount_coupons_enabled?: boolean | null })?.discount_coupons_enabled !== false;
-  const discountAmount = couponsEnabled ? (appliedCoupon?.discountAmount ?? 0) : 0;
+  const showCouponCard = couponsEnabled && hasActiveCoupons;
+  const discountAmount = showCouponCard ? (appliedCoupon?.discountAmount ?? 0) : 0;
   const total = Math.max(0, subtotal + deliveryFee - discountAmount);
   const totalItemCount = items.reduce((acc, i) => acc + i.quantity, 0);
+
+  const hasLoyaltyItemInCart = items.some((i) => i.isLoyaltyReward === true);
+  const canAddLoyaltyReward =
+    loyaltyStatus?.enabled &&
+    (loyaltyStatus.points ?? 0) >= (loyaltyStatus.orders_required ?? 0) &&
+    !!loyaltyStatus.reward_product_id &&
+    !!loyaltyStatus.reward_product_name &&
+    !hasLoyaltyItemInCart;
+
+  useEffect(() => {
+    if (!hasLoyaltyItemInCart && loyaltyRedeemed && loyaltyStatus?.reward_product_id) {
+      setLoyaltyRedeemed(false);
+    }
+  }, [hasLoyaltyItemInCart, loyaltyStatus?.reward_product_id]);
+
+  const handleAddLoyaltyReward = () => {
+    if (!loyaltyStatus?.reward_product_id || !loyaltyStatus?.reward_product_name) return;
+    addItem({
+      productId: loyaltyStatus.reward_product_id,
+      productName: loyaltyStatus.reward_product_name,
+      quantity: 1,
+      unitPrice: 0,
+      isLoyaltyReward: true,
+    });
+    setLoyaltyRedeemed(true);
+  };
+
+  const handleRemoveLoyaltyReward = () => {
+    const index = items.findIndex((i) => i.isLoyaltyReward === true);
+    if (index >= 0) removeItem(index);
+    setLoyaltyRedeemed(false);
+  };
 
   const handleCheckout = async () => {
     setFormError(null);
@@ -319,7 +353,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       } catch { /* ignore */ }
     }
 
-    if (!isTableOrder && loyaltyStatus?.enabled && loyaltyStatus.points >= loyaltyStatus.orders_required && !loyaltyRedeemed) {
+    if (!isTableOrder && loyaltyStatus?.enabled && (loyaltyStatus.points ?? 0) >= (loyaltyStatus.orders_required ?? 0) && !loyaltyRedeemed && !loyaltyStatus.reward_product_id) {
       setShowRedeemDialog(true);
       return;
     }
@@ -359,7 +393,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     // do usuário tem mais chance de sucesso do que abrir janela em branco.
     const finalDeliveryType = isTableOrder ? DeliveryType.PICKUP : deliveryType;
     const finalDeliveryFee = isTableOrder ? 0 : deliveryFee;
-    const finalDiscount = couponsEnabled ? (appliedCoupon?.discountAmount ?? 0) : 0;
+    const finalDiscount = showCouponCard ? (appliedCoupon?.discountAmount ?? 0) : 0;
     const finalTotal = Math.max(0, subtotal + finalDeliveryFee - finalDiscount);
 
     let whatsappWin: Window | null = null;
@@ -464,7 +498,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         delivery_fee: finalDeliveryFee,
         subtotal,
         total: finalTotal,
-        discount_coupon_id: couponsEnabled ? (appliedCoupon?.id ?? null) : null,
+        discount_coupon_id: showCouponCard ? (appliedCoupon?.id ?? null) : null,
         discount_amount: finalDiscount,
         payment_method: isTableOrder ? PaymentMethod.TABLE : paymentMethod,
         payment_change_for: isTableOrder ? null : (paymentMethod === PaymentMethod.CASH && changeFor ? (parseFloat(changeFor.replace(/\D/g, '')) || null) : null),
@@ -707,8 +741,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   {/* Preço */}
                   {!isTableOrder && (
                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0 ml-1">
-                      <span className="text-sm font-bold text-slate-900 tabular-nums">
-                        {formatCurrency(convertForDisplay(itemTotal), displayCurrency)}
+                      <span className={`text-sm font-bold tabular-nums ${item.isLoyaltyReward ? 'text-amber-600' : 'text-slate-900'}`}>
+                        {item.isLoyaltyReward ? t('checkout.free') : formatCurrency(convertForDisplay(itemTotal), displayCurrency)}
                       </span>
                       {item.quantity > 1 && (
                         <span className="text-[10px] text-slate-400 tabular-nums">
@@ -1159,8 +1193,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
         )}
 
-        {/* ── 7. Cupom de desconto (apenas quando cupons habilitados) ── */}
-        {(currentRestaurant as { discount_coupons_enabled?: boolean | null })?.discount_coupons_enabled !== false && (
+        {/* ── 7. Cupom de desconto (apenas quando habilitado e existe ao menos um cupom ativo) ── */}
+        {showCouponCard && (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
               <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -1225,7 +1259,25 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 8. Fidelidade ── */}
         {!isTableOrder && loyaltyStatus?.enabled && (
-          loyaltyRedeemed ? (
+          hasLoyaltyItemInCart ? (
+            <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-300">
+              <Gift className="h-5 w-5 text-amber-600 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-amber-800">{t('loyalty.redemptionLabel')}</p>
+                <p className="text-xs text-amber-700 truncate">
+                  {loyaltyStatus.reward_product_name ?? loyaltyStatus.reward_description} {t('loyalty.addedToOrder')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemoveLoyaltyReward}
+                className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-100 transition-colors touch-manipulation flex-shrink-0"
+                aria-label={t('loyalty.removeReward')}
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
+            </div>
+          ) : loyaltyRedeemed && !loyaltyStatus.reward_product_id ? (
             <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-300">
               <Gift className="h-5 w-5 text-amber-600 flex-shrink-0" />
               <div className="flex-1 min-w-0">
@@ -1242,7 +1294,20 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               </button>
             </div>
           ) : (
-            <LoyaltyCard status={loyaltyStatus} />
+            <div className="space-y-3">
+              <LoyaltyCard status={loyaltyStatus} />
+              {canAddLoyaltyReward && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-2 h-12 rounded-xl border-2 border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold"
+                  onClick={handleAddLoyaltyReward}
+                >
+                  <Gift className="h-5 w-5" />
+                  {t('loyalty.addFreeReward', { name: loyaltyStatus.reward_product_name ?? loyaltyStatus.reward_description })}
+                </Button>
+              )}
+            </div>
           )
         )}
 

@@ -10,12 +10,19 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAdminRestaurantId, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
-import { useRestaurant, useLoyaltyProgram, useLoyaltyMetrics, useSaveLoyaltyProgram } from '@/hooks/queries';
+import { useRestaurant, useLoyaltyProgram, useLoyaltyMetrics, useSaveLoyaltyProgram, useAdminProducts } from '@/hooks/queries';
 import type { LoyaltyProgram, LoyaltyScoringChannels } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import {
   Gift,
@@ -57,12 +64,14 @@ export default function AdminLoyalty() {
     restaurantId,
     program?.orders_required ?? 10
   );
+  const { data: products = [] } = useAdminProducts(restaurantId);
   const saveMutation = useSaveLoyaltyProgram();
 
   const [form, setForm] = useState<Partial<LoyaltyProgram>>({
     enabled: program?.enabled ?? false,
     orders_required: program?.orders_required ?? 10,
     reward_description: program?.reward_description ?? '1 produto grátis',
+    reward_product_id: program?.reward_product_id ?? undefined,
     scoring_channels: program?.scoring_channels ?? defaultChannels,
     points_validity_days: program?.points_validity_days ?? undefined,
   });
@@ -78,7 +87,7 @@ export default function AdminLoyalty() {
         points_validity_days: program.points_validity_days ?? undefined,
       });
     }
-  }, [program?.id, program?.enabled, program?.orders_required, program?.reward_description, program?.scoring_channels, program?.points_validity_days]);
+  }, [program?.id, program?.enabled, program?.orders_required, program?.reward_description, program?.reward_product_id, program?.scoring_channels, program?.points_validity_days]);
 
   const handleSave = async () => {
     if (!restaurantId) return;
@@ -88,6 +97,7 @@ export default function AdminLoyalty() {
         enabled: form.enabled ?? false,
         orders_required: Math.max(2, Math.min(100, form.orders_required ?? 10)),
         reward_description: (form.reward_description || '1 produto grátis').slice(0, 120),
+        reward_product_id: form.reward_product_id || null,
         scoring_channels: form.scoring_channels ?? defaultChannels,
         points_validity_days: form.points_validity_days && form.points_validity_days > 0
           ? form.points_validity_days
@@ -281,6 +291,26 @@ export default function AdminLoyalty() {
                 className="mt-1"
               />
               <p className="text-[10px] text-slate-500 mt-0.5">{t('loyalty.rewardHint')}</p>
+            </div>
+            <div className="sm:col-span-2">
+              <Label className="text-xs font-medium">{t('loyalty.rewardProductLabel')}</Label>
+              <Select
+                value={form.reward_product_id ?? 'none'}
+                onValueChange={(v) => setForm({ ...form, reward_product_id: v === 'none' ? undefined : v })}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder={t('loyalty.rewardProductPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t('loyalty.rewardProductNone')}</SelectItem>
+                  {products.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-slate-500 mt-0.5">{t('loyalty.rewardProductHint')}</p>
             </div>
           </div>
           <div className="mb-5">

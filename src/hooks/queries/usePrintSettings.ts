@@ -17,8 +17,9 @@ function parseSectorSettings(raw: unknown): PrintSettingsBySector {
   for (const k of sectors) {
     const v = obj[k];
     if (v && typeof v === 'object' && 'waiter_tip_enabled' in v && 'waiter_tip_pct' in v) {
-      const s = v as { waiter_tip_enabled: boolean; waiter_tip_pct: number };
+      const s = v as { auto_print_enabled?: boolean; waiter_tip_enabled: boolean; waiter_tip_pct: number };
       out[k] = {
+        auto_print_enabled: s.auto_print_enabled !== false,
         waiter_tip_enabled: !!s.waiter_tip_enabled,
         waiter_tip_pct: Math.max(0, Math.min(100, Number(s.waiter_tip_pct) || 0)),
       };

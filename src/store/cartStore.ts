@@ -43,6 +43,7 @@ export const useCartStore = create<CartState>()(
         // Verifica se é um item idêntico (incluindo personalizações de pizza e marmita)
         const existingIndex = items.findIndex((i) => {
           if (i.productId !== item.productId) return false;
+          if (i.isLoyaltyReward !== item.isLoyaltyReward) return false;
           if (i.isPizza && item.isPizza) {
             const sameFlavors = (JSON.stringify(i.pizzaFlavors ?? []) === JSON.stringify(item.pizzaFlavors ?? []));
             return (

@@ -27,7 +27,7 @@ export function useLoyaltyProgram(restaurantId: string | null) {
 // ─── Salvar programa ──────────────────────────────────────────────────────────
 
 async function saveLoyaltyProgram(program: LoyaltyProgram): Promise<void> {
-  const { restaurant_id, enabled, orders_required, reward_description, scoring_channels, points_validity_days } = program;
+  const { restaurant_id, enabled, orders_required, reward_description, reward_product_id, scoring_channels, points_validity_days } = program;
   const { error } = await supabase
     .from('loyalty_programs')
     .upsert(
@@ -36,6 +36,7 @@ async function saveLoyaltyProgram(program: LoyaltyProgram): Promise<void> {
         enabled,
         orders_required,
         reward_description,
+        reward_product_id: reward_product_id ?? null,
         scoring_channels: scoring_channels ?? { delivery: true, table: true, buffet: true },
         points_validity_days: points_validity_days ?? null,
         updated_at: new Date().toISOString(),

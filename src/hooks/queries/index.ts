@@ -9,7 +9,7 @@ export { useProductUpsells, useSaveProductUpsells, fetchUpsellsForProducts } fro
 export { useProductComboItems, useProductComboItemsMap, useSaveProductComboItems } from './useProductComboItems';
 export { useProductAddons, useProductAddonsMap, useSaveProductAddons } from './useProductAddons';
 export { useProductOffers, useActiveOffers, useActiveOffersByRestaurantId, fetchActiveOffersBySlug } from './useProductOffers';
-export { useDiscountCoupons, validateCoupon } from './useDiscountCoupons';
+export { useDiscountCoupons, validateCoupon, useHasActiveCoupons } from './useDiscountCoupons';
 export type { UpsellRow } from './useProductUpsells';
 export { useDeliveryZones } from './useDeliveryZones';
 export { useRestaurantMenuData } from './useRestaurantMenuData';
@@ -47,7 +47,8 @@ export { useWaiterCalls } from './useWaiterCalls';
 export { useAdminProducts } from './useAdminProducts';
 export { useOrders } from './useOrders';
 export type { UseOrdersParams, OrderSourceFilter } from './useOrders';
-export { isDeliveryOrPickupOrder } from './useOrders';
+export { isDeliveryOrPickupOrder, getOrderSector } from './useOrders';
+export type { OrderSectorKey } from './useOrders';
 export { usePrintSettings } from './usePrintSettings';
 export { useCategoryDestinations, useProductPrintDestinations } from './useCategoryDestinations';
 export type { CategoryDestination } from './useCategoryDestinations';

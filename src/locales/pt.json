@@ -56,7 +56,10 @@
     "redeemNo": "Resgatar depois",
     "redeemSuccess": "Prêmio resgatado com sucesso!",
     "redeemSuccessDesc": "Aproveite seu {{reward}}! O restaurante já foi notificado.",
-    "redemptionLabel": "🎁 Resgate de Fidelidade"
+    "redemptionLabel": "🎁 Resgate de Fidelidade",
+    "addFreeReward": "Adicionar {{name}} grátis",
+    "addedToOrder": "no pedido",
+    "removeReward": "Remover item de fidelidade"
   },
   "checkout": {
     "title": "Finalizar Pedido",
