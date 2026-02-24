@@ -1025,15 +1025,15 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             <div className="p-3 space-y-2">
               {(() => {
                 const baseOptions = [
-                  { value: PaymentMethod.PIX, icon: Smartphone, label: 'PIX', desc: 'Envie o comprovante após confirmar', iconBg: 'bg-success/20', iconColor: 'text-success', deliveryOnly: false },
-                  { value: PaymentMethod.BANK_TRANSFER, icon: Landmark, label: 'Transferência Bancária', desc: displayCurrency === 'PYG' ? 'Banco, titular, alias' : displayCurrency === 'ARS' ? 'Banco, agência, conta' : 'Disponível em Guaraní ou Peso', iconBg: 'bg-info/20', iconColor: 'text-info', deliveryOnly: false },
-                  { value: PaymentMethod.CASH, icon: Banknote, label: t('checkout.cash'), desc: 'Pague na entrega / retirada', iconBg: 'bg-success/20', iconColor: 'text-success', deliveryOnly: false },
-                  { value: PaymentMethod.CARD, icon: CreditCard, label: t('checkout.cardOnDelivery'), desc: 'Débito ou crédito na entrega', iconBg: 'bg-info/20', iconColor: 'text-info', deliveryOnly: true },
-                  { value: PaymentMethod.QRCODE, icon: QrCode, label: 'QR Code', desc: 'Na entrega', iconBg: 'bg-warning/20', iconColor: 'text-warning', deliveryOnly: true },
+                  { value: PaymentMethod.PIX, icon: Smartphone, label: 'PIX', desc: 'Envie o comprovante após confirmar', deliveryOnly: false },
+                  { value: PaymentMethod.BANK_TRANSFER, icon: Landmark, label: 'Transferência Bancária', desc: displayCurrency === 'PYG' ? 'Banco, titular, alias' : displayCurrency === 'ARS' ? 'Banco, agência, conta' : 'Disponível em Guaraní ou Peso', deliveryOnly: false },
+                  { value: PaymentMethod.CASH, icon: Banknote, label: t('checkout.cash'), desc: 'Pague na entrega / retirada', deliveryOnly: false },
+                  { value: PaymentMethod.CARD, icon: CreditCard, label: t('checkout.cardOnDelivery'), desc: 'Débito ou crédito na entrega', deliveryOnly: true },
+                  { value: PaymentMethod.QRCODE, icon: QrCode, label: 'QR Code', desc: 'Na entrega', deliveryOnly: true },
                 ];
                 return baseOptions
                   .filter((o) => !o.deliveryOnly || deliveryType === DeliveryType.DELIVERY)
-                  .map(({ value, icon: Icon, label, desc, iconBg, iconColor }) => (
+                  .map(({ value, icon: Icon, label, desc }) => (
                     <div key={value}>
                       <button
                         type="button"
@@ -1042,11 +1042,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                           paymentMethod === value ? 'border-primary bg-primary/10' : 'border-border bg-muted/60 hover:border-border'
                         }`}
                       >
-                        <div className={`h-9 w-9 rounded-xl ${iconBg} flex items-center justify-center flex-shrink-0`}>
-                          <Icon className={`h-4 w-4 ${iconColor}`} />
+                        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Icon className="h-4 w-4 text-primary" />
                         </div>
                         <div className="flex-1 text-left">
-                          <p className="text-sm font-semibold text-foreground">{label}</p>
+                          <p className={`text-sm font-semibold ${paymentMethod === value ? 'text-primary' : 'text-foreground'}`}>{label}</p>
                           <p className="text-xs text-muted-foreground">{desc}</p>
                         </div>
                         <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
@@ -1062,7 +1062,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                             <div className="p-3 rounded-xl bg-success/10 border border-success/30">
                               <p className="text-xs font-semibold text-success mb-1.5">Envie o PIX para:</p>
                               <div className="flex items-center gap-2">
-                                <code className="flex-1 text-sm font-mono text-success break-all bg-card/80 px-2.5 py-2 rounded-lg border border-success/20">
+                                <code className="flex-1 text-sm font-mono text-foreground break-all bg-card/80 px-2.5 py-2 rounded-lg border border-success/20">
                                   {currentRestaurant.pix_key}
                                 </code>
                                 <button
@@ -1082,7 +1082,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                                   {pixCopied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
                                 </button>
                               </div>
-                              <p className="text-xs text-success mt-2">Após enviar o pedido no WhatsApp, envie o comprovante de pagamento.</p>
+                              <p className="text-xs text-foreground mt-2">Após enviar o pedido no WhatsApp, envie o comprovante de pagamento.</p>
                             </div>
                           ) : (
                             <div className="flex items-start gap-2 p-2.5 rounded-xl bg-warning/10 border border-warning/20">
@@ -1102,7 +1102,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                               <p className="text-xs font-semibold text-info mb-2">
                                 Envie a transferência para{displayCurrency === 'PYG' ? ' (Guaraní)' : ' (Peso Argentino)'}:
                               </p>
-                              <div className="space-y-1.5 text-sm text-info">
+                              <div className="space-y-1.5 text-sm text-foreground">
                                 {formatBankAccountLines(bankAccountSnapshot).map((line) => {
                                   const idx = line.indexOf(': ');
                                   const label = idx >= 0 ? line.slice(0, idx) : line;
@@ -1124,12 +1124,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                                     // silencioso — botão mostra estado visual
                                   }
                                 }}
-                                className="mt-2 flex items-center gap-2 text-xs font-medium text-info hover:text-info/90 transition-colors touch-manipulation"
+                                className="mt-2 flex items-center gap-2 text-xs font-medium text-primary hover:text-primary/90 transition-colors touch-manipulation"
                               >
                                 {bankCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                                 {bankCopied ? 'Copiado!' : 'Copiar dados'}
                               </button>
-                              <p className="text-xs text-info mt-2">Após enviar o pedido no WhatsApp, envie o comprovante de transferência.</p>
+                              <p className="text-xs text-foreground mt-2">Após enviar o pedido no WhatsApp, envie o comprovante de transferência.</p>
                             </div>
                           ) : (
                             <div className="flex items-start gap-2 p-2.5 rounded-xl bg-warning/10 border border-warning/20">

@@ -127,8 +127,8 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
             {/* Telefone */}
             {waLink && (
               <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                  <Phone className="h-5 w-5 text-emerald-600" />
+                <div className="h-10 w-10 rounded-xl bg-success/10 flex items-center justify-center flex-shrink-0">
+                  <Phone className="h-5 w-5 text-success" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">{t.contact}</p>
@@ -136,7 +136,7 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
                     href={waLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-base font-semibold text-emerald-600 hover:text-emerald-700 hover:underline break-all"
+                    className="text-base font-semibold text-success hover:text-success/90 hover:underline break-all"
                   >
                     {prefix} {restaurant.phone || restaurant.whatsapp || ''}
                   </a>
@@ -147,8 +147,8 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
             {/* Instagram */}
             {instagramHref && instagramHandle && (
               <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-xl bg-pink-50 flex items-center justify-center flex-shrink-0">
-                  <Instagram className="h-5 w-5 text-pink-600" />
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Instagram className="h-5 w-5 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">Instagram</p>
@@ -156,7 +156,7 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
                     href={instagramHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-base font-semibold text-pink-600 hover:text-pink-700 hover:underline break-all"
+                    className="text-base font-semibold text-primary hover:text-primary/90 hover:underline break-all"
                   >
                     @{instagramHandle}
                   </a>
@@ -166,8 +166,8 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
 
             {/* Horário */}
             <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
-                <Clock className="h-5 w-5 text-amber-600" />
+              <div className="h-10 w-10 rounded-xl bg-warning/10 flex items-center justify-center flex-shrink-0">
+                <Clock className="h-5 w-5 text-warning" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">{t.hours}</p>
@@ -179,10 +179,10 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
             <div className="flex flex-col gap-2">
               <Link
                 to={`${base}/reservar`}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-violet-50 hover:bg-violet-100 transition-colors text-violet-700 font-medium text-sm"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 transition-colors text-primary font-medium text-sm"
                 onClick={() => onOpenChange(false)}
               >
-                <CalendarClock className="h-5 w-5 text-violet-600" />
+                <CalendarClock className="h-5 w-5 text-primary" />
                 {lang === 'pt' ? 'Fazer reserva' : 'Hacer reserva'}
               </Link>
               <Link
