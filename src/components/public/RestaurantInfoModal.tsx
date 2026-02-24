@@ -5,7 +5,7 @@
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Phone, Clock, FileText } from 'lucide-react';
+import { Phone, Clock, FileText, Instagram } from 'lucide-react';
 import { generateWhatsAppLink } from '@/lib/utils';
 import type { Restaurant } from '@/types';
 import type { DayKey } from '@/types';
@@ -91,6 +91,10 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
     description: lang === 'pt' ? 'Sobre o estabelecimento' : 'Sobre el establecimiento',
   };
 
+  const instagramRaw = restaurant.instagram_url?.trim();
+  const instagramHref = instagramRaw?.startsWith('http') ? instagramRaw : instagramRaw ? `https://instagram.com/${instagramRaw.replace(/^@/, '')}` : null;
+  const instagramHandle = instagramRaw ? instagramRaw.replace(/^https?:\/\/(www\.)?instagram\.com\/?/i, '').replace(/^@/, '').replace(/\/$/, '') || instagramRaw : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -131,6 +135,26 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
                     className="text-base font-semibold text-emerald-600 hover:text-emerald-700 hover:underline break-all"
                   >
                     {prefix} {restaurant.phone || restaurant.whatsapp || ''}
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Instagram */}
+            {instagramHref && instagramHandle && (
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-pink-50 flex items-center justify-center flex-shrink-0">
+                  <Instagram className="h-5 w-5 text-pink-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-0.5">Instagram</p>
+                  <a
+                    href={instagramHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-base font-semibold text-pink-600 hover:text-pink-700 hover:underline break-all"
+                  >
+                    @{instagramHandle}
                   </a>
                 </div>
               </div>

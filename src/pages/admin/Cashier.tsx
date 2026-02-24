@@ -714,6 +714,65 @@ function CashierContent() {
     [selected?.id, baseCurrency]
   );
 
+  const queueGroupedByZone = useMemo(() => {
+    const groups: { zoneName: string; items: CashierDisplayItem[] }[] = [];
+    const tableItems = queue.filter((q): q is QueueItemTable => q.type === 'table');
+    const nonTableItems = queue.filter((q) => q.type !== 'table') as CashierDisplayItem[];
+
+    const groupTableItemsByTable = (items: QueueItemTable[], zoneName: string): CashierDisplayItem[] => {
+      const byTable = new Map<string, QueueItemTable[]>();
+      for (const t of items) {
+        const key = `${t.hallZoneId ?? ''}::${t.tableNumber}`;
+        const arr = byTable.get(key) ?? [];
+        arr.push(t);
+        byTable.set(key, arr);
+      }
+      const result: CashierDisplayItem[] = [];
+      for (const arr of byTable.values()) {
+        if (arr.length === 1) {
+          result.push(arr[0]);
+        } else {
+          const first = arr[0];
+          const totalAmount = arr.reduce((s, x) => s + x.totalAmount, 0);
+          const oldest = arr.reduce((a, b) => (new Date(a.createdAt) < new Date(b.createdAt) ? a : b));
+          const customerLabel = arr.length > 1 ? `${arr.length} pedidos` : (first.customerName || null);
+          result.push({
+            type: 'table_group',
+            id: `table-group-${first.hallZoneId ?? 'none'}-${first.tableNumber}`,
+            tableNumber: first.tableNumber,
+            hallZoneId: first.hallZoneId,
+            zoneName,
+            items: arr,
+            label: first.label,
+            customerName: customerLabel,
+            totalAmount,
+            createdAt: oldest.createdAt,
+          });
+        }
+      }
+      return result;
+    };
+
+    for (const z of hallZones) {
+      const items = tableItems.filter((t) => t.hallZoneId === z.id);
+      if (items.length > 0) {
+        const displayItems = groupTableItemsByTable(items, z.name);
+        groups.push({ zoneName: z.name, items: displayItems });
+      }
+    }
+    const noZone = tableItems.filter((t) => !t.hallZoneId);
+    if (noZone.length > 0) {
+      const displayItems = groupTableItemsByTable(noZone, t('cashier.noZone'));
+      groups.push({ zoneName: t('cashier.noZone'), items: displayItems });
+    }
+    if (nonTableItems.length > 0) groups.push({ zoneName: t('cashier.standaloneComandas'), items: nonTableItems });
+    if (groups.length === 0 && queue.length > 0) {
+      const displayItems = groupTableItemsByTable(tableItems, t('cashier.all'));
+      groups.push({ zoneName: t('cashier.all'), items: [...displayItems, ...nonTableItems] });
+    }
+    return groups;
+  }, [queue, hallZones, t]);
+
   const handleScanSubmit = useCallback(() => {
     const value = scanInput.trim().toUpperCase();
     if (!value) return;
@@ -787,65 +846,6 @@ function CashierContent() {
   const totalReceivedToday = useMemo(() => {
     return completedList.reduce((sum, c) => sum + c.totalAmount, 0);
   }, [completedList]);
-
-  const queueGroupedByZone = useMemo(() => {
-    const groups: { zoneName: string; items: CashierDisplayItem[] }[] = [];
-    const tableItems = queue.filter((q): q is QueueItemTable => q.type === 'table');
-    const nonTableItems = queue.filter((q) => q.type !== 'table') as CashierDisplayItem[];
-
-    const groupTableItemsByTable = (items: QueueItemTable[], zoneName: string): CashierDisplayItem[] => {
-      const byTable = new Map<string, QueueItemTable[]>();
-      for (const t of items) {
-        const key = `${t.hallZoneId ?? ''}::${t.tableNumber}`;
-        const arr = byTable.get(key) ?? [];
-        arr.push(t);
-        byTable.set(key, arr);
-      }
-      const result: CashierDisplayItem[] = [];
-      for (const arr of byTable.values()) {
-        if (arr.length === 1) {
-          result.push(arr[0]);
-        } else {
-          const first = arr[0];
-          const totalAmount = arr.reduce((s, x) => s + x.totalAmount, 0);
-          const oldest = arr.reduce((a, b) => (new Date(a.createdAt) < new Date(b.createdAt) ? a : b));
-          const customerLabel = arr.length > 1 ? `${arr.length} pedidos` : (first.customerName || null);
-          result.push({
-            type: 'table_group',
-            id: `table-group-${first.hallZoneId ?? 'none'}-${first.tableNumber}`,
-            tableNumber: first.tableNumber,
-            hallZoneId: first.hallZoneId,
-            zoneName,
-            items: arr,
-            label: first.label,
-            customerName: customerLabel,
-            totalAmount,
-            createdAt: oldest.createdAt,
-          });
-        }
-      }
-      return result;
-    };
-
-    for (const z of hallZones) {
-      const items = tableItems.filter((t) => t.hallZoneId === z.id);
-      if (items.length > 0) {
-        const displayItems = groupTableItemsByTable(items, z.name);
-        groups.push({ zoneName: z.name, items: displayItems });
-      }
-    }
-    const noZone = tableItems.filter((t) => !t.hallZoneId);
-    if (noZone.length > 0) {
-      const displayItems = groupTableItemsByTable(noZone, t('cashier.noZone'));
-      groups.push({ zoneName: t('cashier.noZone'), items: displayItems });
-    }
-    if (nonTableItems.length > 0) groups.push({ zoneName: t('cashier.standaloneComandas'), items: nonTableItems });
-    if (groups.length === 0 && queue.length > 0) {
-      const displayItems = groupTableItemsByTable(tableItems, t('cashier.all'));
-      groups.push({ zoneName: t('cashier.all'), items: [...displayItems, ...nonTableItems] });
-    }
-    return groups;
-  }, [queue, hallZones, t]);
 
   const addPayment = () => {
     const id = `pay-${Date.now()}`;
