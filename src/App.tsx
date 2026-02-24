@@ -19,6 +19,7 @@ import SuperAdminLayout from './components/super-admin/SuperAdminLayout';
 
 // Componente de redirecionamento pós-login (resolve slug → /{slug}/painel)
 import AdminRedirect from './components/admin/AdminRedirect';
+import MenuThemeWrapper from './components/public/MenuThemeWrapper';
 
 // ─── Páginas — carregadas sob demanda (lazy) ─────────────────────────────────
 // Cada página gera um chunk JS separado no build, reduzindo o bundle inicial.
@@ -324,16 +325,18 @@ function App() {
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
           {/* Comanda Digital — rota pública para clientes que escaneiam QR (app. ou quiero.) */}
           {/* Cardápio público — ao clicar "Cardápio" no painel, abre em nova aba */}
-          <Route path="/:restaurantSlug" element={<PublicMenu />} />
-          <Route path="/:restaurantSlug/menu" element={<MenuViewOnly />} />
-          <Route path="/:restaurantSlug/cardapio/:tableNumber" element={<MenuTable />} />
-          <Route path="/:restaurantSlug/checkout" element={<PublicCheckout />} />
-          <Route path="/:restaurantSlug/order-confirmed" element={<OrderConfirmation />} />
-          <Route path="/:restaurantSlug/comanda" element={<VirtualComanda />} />
-          {/* Rastreamento de Pedido — rota pública para acompanhamento em tempo real */}
-          <Route path="/:restaurantSlug/track/:orderId" element={<OrderTracking />} />
-          {/* Link da Bio */}
-          <Route path="/:restaurantSlug/bio" element={<LinkBio />} />
+          <Route path="/:restaurantSlug" element={<MenuThemeWrapper />}>
+            <Route index element={<PublicMenu />} />
+            <Route path="menu" element={<MenuViewOnly />} />
+            <Route path="cardapio/:tableNumber" element={<MenuTable />} />
+            <Route path="checkout" element={<PublicCheckout />} />
+            <Route path="order-confirmed" element={<OrderConfirmation />} />
+            <Route path="comanda" element={<VirtualComanda />} />
+            {/* Rastreamento de Pedido — rota pública para acompanhamento em tempo real */}
+            <Route path="track/:orderId" element={<OrderTracking />} />
+            {/* Link da Bio */}
+            <Route path="bio" element={<LinkBio />} />
+          </Route>
           {/*
            * ── Super Admin Shell ───────────────────────────────────────────
            * SuperAdminLayout (dark sidebar) envolve as páginas de gestão do SaaS.
@@ -501,17 +504,19 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         {/* Página de vendas principal PT-BR (Hyper Professional Enterprise) */}
         <Route path="/pagina-ptbr" element={<PaginaPtBr />} />
-        <Route path="/:restaurantSlug" element={<PublicMenu />} />
-        <Route path="/:restaurantSlug/menu" element={<MenuViewOnly />} />
-        <Route path="/:restaurantSlug/cardapio/:tableNumber" element={<MenuTable />} />
-        <Route path="/:restaurantSlug/checkout" element={<PublicCheckout />} />
-        <Route path="/:restaurantSlug/order-confirmed" element={<OrderConfirmation />} />
-        {/* Comanda Digital (Enterprise): cliente abre e acompanha a sua comanda */}
-        <Route path="/:restaurantSlug/comanda" element={<VirtualComanda />} />
-        {/* Rastreamento de Pedido — rota pública para acompanhamento em tempo real */}
-        <Route path="/:restaurantSlug/track/:orderId" element={<OrderTracking />} />
-        {/* Link da Bio para Instagram */}
-        <Route path="/:restaurantSlug/bio" element={<LinkBio />} />
+        <Route path="/:restaurantSlug" element={<MenuThemeWrapper />}>
+          <Route index element={<PublicMenu />} />
+          <Route path="menu" element={<MenuViewOnly />} />
+          <Route path="cardapio/:tableNumber" element={<MenuTable />} />
+          <Route path="checkout" element={<PublicCheckout />} />
+          <Route path="order-confirmed" element={<OrderConfirmation />} />
+          {/* Comanda Digital (Enterprise): cliente abre e acompanha a sua comanda */}
+          <Route path="comanda" element={<VirtualComanda />} />
+          {/* Rastreamento de Pedido — rota pública para acompanhamento em tempo real */}
+          <Route path="track/:orderId" element={<OrderTracking />} />
+          {/* Link da Bio para Instagram */}
+          <Route path="bio" element={<LinkBio />} />
+        </Route>
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
 
         {/* Painel do restaurante — URL canônica com slug (domínio principal) */}

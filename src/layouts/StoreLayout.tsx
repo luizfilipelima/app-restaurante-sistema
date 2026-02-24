@@ -1,4 +1,4 @@
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import InitialSplashScreen from '@/components/public/InitialSplashScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { MENU_THEMES, paletteToCssVars } from '@/lib/menuThemes';
 
 // Rotas públicas — lazy para reduzir bundle inicial (cardápio carrega só o necessário)
 const PublicMenu = lazyWithRetry(() => import('@/pages/public/Menu'));
@@ -30,6 +31,7 @@ interface StoreLayoutProps {
  */
 export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [menuThemeId, setMenuThemeId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tenantSlug) return;
@@ -38,7 +40,7 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
         const [restaurantRes, _] = await Promise.all([
           supabase
             .from('restaurants')
-            .select('logo, language')
+            .select('logo, language, menu_theme')
             .eq('slug', tenantSlug)
             .eq('is_active', true)
             .single(),
@@ -46,25 +48,33 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
         ]);
         const data = restaurantRes.data;
         setLogoUrl(data?.logo ?? null);
+        setMenuThemeId(data?.menu_theme ?? null);
         const userHasChosen = hasStoredMenuLanguage();
         const lang = (userHasChosen ? getStoredMenuLanguage() : (data?.language === 'es' ? 'es' : 'pt')) as MenuLanguage;
         if (!userHasChosen) setStoredMenuLanguage(lang);
         i18n.changeLanguage(lang);
       } catch {
         setLogoUrl(null);
+        setMenuThemeId(null);
         i18n.changeLanguage('pt');
         setStoredMenuLanguage('pt');
       }
     })();
   }, [tenantSlug]);
 
+  const themeConfig = useMemo(() => {
+    if (!menuThemeId) return null;
+    const theme = MENU_THEMES[menuThemeId];
+    if (!theme) return null;
+    const vars = paletteToCssVars(theme.palette);
+    return { style: vars as React.CSSProperties, isDark: theme.mode === 'dark' };
+  }, [menuThemeId]);
+
   useDynamicFavicon(logoUrl);
 
-  return (
-    <ErrorBoundary>
-      <BrowserRouter>
-        <Suspense fallback={<InitialSplashScreen />}>
-          <Routes>
+  const content = (
+    <Suspense fallback={<InitialSplashScreen />}>
+      <Routes>
           <Route path="/" element={<PublicMenu tenantSlug={tenantSlug} />} />
         <Route path="/categoria/:categoryId" element={<PublicMenu tenantSlug={tenantSlug} />} />
         <Route path="/menu" element={<MenuViewOnly tenantSlug={tenantSlug} />} />
@@ -76,8 +86,24 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
         <Route path="/track/:orderId" element={<OrderTracking tenantSlug={tenantSlug} />} />
           <Route path="/bio" element={<LinkBio tenantSlug={tenantSlug} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
+      </Routes>
+    </Suspense>
+  );
+
+  return (
+    <ErrorBoundary>
+      <BrowserRouter>
+        {themeConfig ? (
+          <div
+            data-menu-theme
+            className={`min-h-screen ${themeConfig.isDark ? 'dark' : ''}`}
+            style={themeConfig.style}
+          >
+            {content}
+          </div>
+        ) : (
+          content
+        )}
       </BrowserRouter>
     </ErrorBoundary>
   );

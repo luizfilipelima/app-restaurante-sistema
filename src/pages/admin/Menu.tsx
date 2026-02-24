@@ -94,6 +94,7 @@ import {
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
 import MenuMobilePreview from '@/components/admin/MenuMobilePreview';
+import MenuThemeSelector from '@/components/admin/MenuThemeSelector';
 import CategoryIconPicker from '@/components/admin/CategoryIconPicker';
 import { getCategoryIconComponent } from '@/lib/categoryIcons';
 import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/ProductAddonsSection';
@@ -1258,6 +1259,15 @@ export default function AdminMenu() {
                 <p className="text-[10px] text-muted-foreground mt-1">
                   &quot;Categorias&quot; mostra cards de categorias na primeira tela.
                 </p>
+              </div>
+
+              <div className="mb-3 pb-3 border-b border-border/60">
+                <MenuThemeSelector
+                  restaurantId={restaurantId}
+                  currentTheme={restaurant?.menu_theme}
+                  onThemeChange={(themeId) => setRestaurant((prev) => prev ? { ...prev, menu_theme: themeId } : null)}
+                  onInvalidateCache={() => invalidatePublicMenuCache(queryClient, slug || restaurant?.slug || ctxRestaurant?.slug)}
+                />
               </div>
 
               {/* "Todas" */}
