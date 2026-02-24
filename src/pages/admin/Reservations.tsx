@@ -15,6 +15,10 @@ import {
   useCancelReservation,
   useTables,
   useHallZones,
+  useWaitingQueue,
+  useAddToWaitingQueue,
+  useNotifyQueueItem,
+  useTableStatuses,
   type ReservationWithDetails,
 } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
@@ -39,11 +43,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, CalendarClock, Loader2, X, User, Clock, MapPin } from 'lucide-react';
+import { Plus, CalendarClock, Loader2, X, User, Clock, MapPin, Users, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { generateWhatsAppLink, ensurePhoneForWhatsApp } from '@/lib/utils';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
@@ -69,8 +74,16 @@ function ReservationsContent() {
   const { data: hallZones = [] } = useHallZones(restaurantId);
   const createReservation = useCreateReservation(restaurantId);
   const cancelReservation = useCancelReservation(restaurantId);
+  const { data: waitingQueue = [], refetch: refetchWaitingQueue } = useWaitingQueue(hasReservations ? restaurantId : null);
+  const addToQueue = useAddToWaitingQueue(restaurantId);
+  const notifyQueue = useNotifyQueueItem(restaurantId);
+  const { data: tableStatuses = [] } = useTableStatuses(restaurantId);
 
   const [showCreate, setShowCreate] = useState(false);
+  const [showWaitingQueue, setShowWaitingQueue] = useState(false);
+  const [queueName, setQueueName] = useState('');
+  const [queuePhone, setQueuePhone] = useState('');
+  const [notifyTableId, setNotifyTableId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [tableId, setTableId] = useState<string>('');
@@ -160,14 +173,27 @@ function ReservationsContent() {
           <h1 className="text-2xl font-bold">{t('reservations.title')}</h1>
           <p className="text-muted-foreground mt-0.5 text-sm">{t('reservations.subtitle')}</p>
         </div>
-        <Button
-          size="lg"
-          onClick={() => setShowCreate(true)}
-          disabled={freeTables.length === 0 || !hasTables}
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          {t('reservations.newReservation')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {!!hasReservations && (
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => setShowWaitingQueue(true)}
+            >
+              <Users className="h-5 w-5 mr-2" />
+              {t('cashier.waitingQueue')}
+              <span className="ml-1.5 text-muted-foreground">({waitingQueue.length})</span>
+            </Button>
+          )}
+          <Button
+            size="lg"
+            onClick={() => setShowCreate(true)}
+            disabled={freeTables.length === 0 || !hasTables}
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            {t('reservations.newReservation')}
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
@@ -309,6 +335,109 @@ function ReservationsContent() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fila de Espera Modal */}
+      <Dialog open={showWaitingQueue} onOpenChange={setShowWaitingQueue}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t('cashier.waitingQueue')}</DialogTitle>
+            <DialogDescription>{t('cashier.addToQueue')}</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!queueName.trim()) return;
+              try {
+                await addToQueue.mutateAsync({ customer_name: queueName.trim(), customer_phone: queuePhone.trim() || undefined });
+                setQueueName('');
+                setQueuePhone('');
+                toast({ title: t('cashier.addToQueue') + ' ✓' });
+              } catch (err: any) {
+                toast({ title: err?.message, variant: 'destructive' });
+              }
+            }}
+            className="flex gap-2"
+          >
+            <Input
+              placeholder={t('cashier.queueCustomerName')}
+              value={queueName}
+              onChange={(e) => setQueueName(e.target.value)}
+              className="flex-1"
+            />
+            <Input
+              placeholder={t('cashier.queueCustomerPhone')}
+              value={queuePhone}
+              onChange={(e) => setQueuePhone(e.target.value)}
+              className="flex-1"
+            />
+            <Button type="submit" disabled={!queueName.trim() || addToQueue.isPending}>
+              {addToQueue.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            </Button>
+          </form>
+          <div className="space-y-2">
+            {waitingQueue.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">{t('cashier.queueEmpty')}</p>
+            ) : (
+              waitingQueue.map((item) => (
+                <div key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                  <div>
+                    <p className="font-medium">{item.customer_name}</p>
+                    {item.customer_phone && <p className="text-xs text-muted-foreground">{item.customer_phone}</p>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">#{item.position}</span>
+                    <Select value={notifyTableId} onValueChange={setNotifyTableId}>
+                      <SelectTrigger className="w-[120px] h-8">
+                        <SelectValue placeholder={t('cashier.callNext')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tableStatuses
+                          .filter((tbl) => tbl.status === 'free')
+                          .map((tbl) => (
+                            <SelectItem key={tbl.id} value={tbl.id}>
+                              {t('reservations.table')} {tbl.number}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        const freeTables = tableStatuses.filter((tbl) => tbl.status === 'free');
+                        if (freeTables.length === 0) {
+                          toast({ title: t('cashier.noFreeTables'), variant: 'destructive' });
+                          return;
+                        }
+                        const tid = notifyTableId || freeTables[0]?.id;
+                        if (!tid) return;
+                        try {
+                          const res = await notifyQueue.mutateAsync({ queue_id: item.id, table_id: tid }) as { short_code: string; table_number: string };
+                          setNotifyTableId('');
+                          refetchWaitingQueue();
+                          queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+                          const tableNum = freeTables.find((tbl) => tbl.id === tid)?.number ?? res?.table_number ?? '?';
+                          toast({ title: t('cashier.callNext') + ' ✓', description: `${t('reservations.table')} ${tableNum} — ${res?.short_code ?? ''}` });
+                          if (item.customer_phone && res?.short_code) {
+                            const phone = ensurePhoneForWhatsApp(item.customer_phone, 'BR');
+                            const msg = `Olá ${item.customer_name}! Sua mesa está pronta. 🍽️ Apresente o código *${res.short_code}* na recepção. Mesa ${tableNum}.`;
+                            window.open(generateWhatsAppLink(phone, msg), '_blank');
+                          }
+                        } catch (err: any) {
+                          toast({ title: err?.message, variant: 'destructive' });
+                        }
+                      }}
+                      disabled={notifyQueue.isPending || tableStatuses.filter((tbl) => tbl.status === 'free').length === 0}
+                    >
+                      {notifyQueue.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : item.customer_phone ? <MessageCircle className="h-3 w-3 mr-1" /> : null}
+                      {notifyQueue.isPending ? null : t('cashier.callNext')}
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -18,8 +18,6 @@ import { supabase } from '@/lib/supabase';
 import {
   formatCurrency,
   getComandaPublicUrl,
-  generateWhatsAppLink,
-  ensurePhoneForWhatsApp,
   type CurrencyCode,
 } from '@/lib/utils';
 import {
@@ -36,14 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogHeader,
-  DialogDescription,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { format, formatDistanceToNow, startOfDay } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
@@ -69,19 +60,11 @@ import {
   ShoppingBag,
   RefreshCw,
   ListChecks,
-  Users,
-  MessageCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
 import { CashierCompletedView } from '@/components/cashier/CashierCompletedView';
-import {
-  useWaitingQueue,
-  useAddToWaitingQueue,
-  useNotifyQueueItem,
-  useTables,
-  useTableStatuses,
-} from '@/hooks/queries';
+import { useTables } from '@/hooks/queries';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
@@ -416,23 +399,14 @@ function CashierContent() {
   const [scanInput, setScanInput] = useState('');
   const scanBufferRef = useRef('');
   const [scanError, setScanError] = useState<string | null>(null);
-  const [showWaitingQueue, setShowWaitingQueue] = useState(false);
-  const [queueName, setQueueName] = useState('');
-  const [queuePhone, setQueuePhone] = useState('');
-  const [notifyTableId, setNotifyTableId] = useState('');
   const [reservationAction, setReservationAction] = useState<'idle' | 'activating' | 'cancelling' | null>(null);
   const [mainView, setMainView] = useState<'cashier' | 'completed'>('cashier');
   const [completedList, setCompletedList] = useState<CompletedItem[]>([]);
 
   const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
   const { data: hasTables } = useFeatureAccess('feature_tables', restaurantId);
-  const { data: hasReservations } = useFeatureAccess('feature_reservations', restaurantId);
   const { data: hallZones = [] } = useHallZones(restaurantId);
-  const { data: waitingQueue = [], refetch: refetchWaitingQueue } = useWaitingQueue(hasReservations ? restaurantId : null);
-  const addToQueue = useAddToWaitingQueue(restaurantId);
-  const notifyQueue = useNotifyQueueItem(restaurantId);
   useTables(restaurantId);
-  const { data: tableStatuses = [] } = useTableStatuses(restaurantId);
 
   const exchangeRates: ExchangeRates = restaurant?.exchange_rates ?? {
     pyg_per_brl: 3600,
@@ -735,16 +709,6 @@ function CashierContent() {
           filter: `restaurant_id=eq.${restaurantId}`,
         },
         debouncedLoadQueue
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'waiting_queue',
-          filter: `restaurant_id=eq.${restaurantId}`,
-        },
-        () => queryClient.invalidateQueries({ queryKey: ['waitingQueue', restaurantId] })
       )
       .subscribe((status) => setIsLive(status === 'SUBSCRIBED'));
     return () => {
@@ -1178,12 +1142,6 @@ function CashierContent() {
                 {t('cashier.qrCode')}
               </Button>
             )}
-            {!!hasReservations && (
-              <Button variant="outline" size="sm" onClick={() => setShowWaitingQueue(true)}>
-                <Users className="h-3.5 w-3.5 mr-1.5" />
-                {t('cashier.waitingQueue')}
-              </Button>
-            )}
             <div
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
                 isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800' : 'bg-muted border-border text-muted-foreground'
@@ -1551,109 +1509,6 @@ function CashierContent() {
         </div>
       </div>
       )}
-
-      {/* Fila de Espera Modal */}
-      <Dialog open={showWaitingQueue} onOpenChange={setShowWaitingQueue}>
-        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t('cashier.waitingQueue')}</DialogTitle>
-            <DialogDescription>{t('cashier.addToQueue')}</DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!queueName.trim()) return;
-              try {
-                await addToQueue.mutateAsync({ customer_name: queueName.trim(), customer_phone: queuePhone.trim() || undefined });
-                setQueueName('');
-                setQueuePhone('');
-                toast({ title: t('cashier.addToQueue') + ' ✓' });
-              } catch (err: any) {
-                toast({ title: err?.message, variant: 'destructive' });
-              }
-            }}
-            className="flex gap-2"
-          >
-            <Input
-              placeholder={t('cashier.queueCustomerName')}
-              value={queueName}
-              onChange={(e) => setQueueName(e.target.value)}
-              className="flex-1"
-            />
-            <Input
-              placeholder={t('cashier.queueCustomerPhone')}
-              value={queuePhone}
-              onChange={(e) => setQueuePhone(e.target.value)}
-              className="flex-1"
-            />
-            <Button type="submit" disabled={!queueName.trim() || addToQueue.isPending}>
-              {addToQueue.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            </Button>
-          </form>
-          <div className="space-y-2">
-            {waitingQueue.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">{t('cashier.queueEmpty')}</p>
-            ) : (
-              waitingQueue.map((item) => (
-                <div key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
-                  <div>
-                    <p className="font-medium">{item.customer_name}</p>
-                    {item.customer_phone && <p className="text-xs text-muted-foreground">{item.customer_phone}</p>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">#{item.position}</span>
-                    <Select value={notifyTableId} onValueChange={setNotifyTableId}>
-                      <SelectTrigger className="w-[120px] h-8">
-                        <SelectValue placeholder={t('cashier.callNext')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tableStatuses
-                          .filter((t) => t.status === 'free')
-                          .map((t) => (
-                            <SelectItem key={t.id} value={t.id}>
-                              Mesa {t.number}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      size="sm"
-                      onClick={async () => {
-                        const freeTables = tableStatuses.filter((t) => t.status === 'free');
-                        if (freeTables.length === 0) {
-                          toast({ title: 'Nenhuma mesa livre', variant: 'destructive' });
-                          return;
-                        }
-                        const tid = notifyTableId || freeTables[0]?.id;
-                        if (!tid) return;
-                        try {
-                          const res = await notifyQueue.mutateAsync({ queue_id: item.id, table_id: tid }) as { short_code: string; table_number: string };
-                          setNotifyTableId('');
-                          refetchWaitingQueue();
-                          loadQueue();
-                          const tableNum = freeTables.find((t) => t.id === tid)?.number ?? res?.table_number ?? '?';
-                          toast({ title: t('cashier.callNext') + ' ✓', description: `Mesa ${tableNum} — ${res?.short_code ?? ''}` });
-                          if (item.customer_phone && res?.short_code) {
-                            const phone = ensurePhoneForWhatsApp(item.customer_phone, 'BR');
-                            const msg = `Olá ${item.customer_name}! Sua mesa está pronta. 🍽️ Apresente o código *${res.short_code}* na recepção. Mesa ${tableNum}.`;
-                            window.open(generateWhatsAppLink(phone, msg), '_blank');
-                          }
-                        } catch (err: any) {
-                          toast({ title: err?.message, variant: 'destructive' });
-                        }
-                      }}
-                      disabled={notifyQueue.isPending || tableStatuses.filter((t) => t.status === 'free').length === 0}
-                    >
-                      {notifyQueue.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : item.customer_phone ? <MessageCircle className="h-3 w-3 mr-1" /> : null}
-                      {notifyQueue.isPending ? null : t('cashier.callNext')}
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <OrderReceipt data={receiptData} />
       <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />
