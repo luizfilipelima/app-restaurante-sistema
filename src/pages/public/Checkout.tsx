@@ -325,7 +325,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       return;
     }
 
-    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && !addressDetails.trim()) {
+    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && zones.length > 0 && !addressDetails.trim()) {
       setFormError(t('checkout.errorFillAddressDetails'));
       return;
     }
@@ -373,7 +373,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       const bairro = deliveryType === DeliveryType.DELIVERY && selectedZoneId
         ? (zones.find((z) => z.id === selectedZoneId)?.location_name ?? '')
         : '';
-      const endereco = deliveryType === DeliveryType.DELIVERY
+      const endereco = deliveryType === DeliveryType.DELIVERY && zones.length > 0
         ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
         : '';
       const trocoRaw = paymentMethod === PaymentMethod.CASH && changeFor ? changeFor.replace(/\D/g, '') : '';
@@ -405,7 +405,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         tipo_entrega:      deliveryType === DeliveryType.DELIVERY ? 'Entrega' : 'Retirada',
         bairro,
         endereco,
-        detalhes_endereco: deliveryType === DeliveryType.DELIVERY ? (addressDetails?.trim() ?? '') : '',
+        detalhes_endereco: deliveryType === DeliveryType.DELIVERY
+          ? (zones.length > 0 ? (addressDetails?.trim() ?? '') : 'Localização a ser enviada via WhatsApp após o pedido')
+          : '',
         pagamento:         paymentLabel,
         pagamento_detalhes: pagamentoDetalhes,
         pix_restaurante:   (currentRestaurant?.pix_key || '').trim() || undefined,
@@ -448,11 +450,13 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         delivery_zone_id: finalDeliveryType === DeliveryType.DELIVERY ? (selectedZoneId || null) : null,
         delivery_address:
           finalDeliveryType === DeliveryType.DELIVERY
-            ? `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+            ? (zones.length > 0 ? `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` : 'A definir via WhatsApp')
             : null,
-        latitude: finalDeliveryType === DeliveryType.DELIVERY ? latitude : null,
-        longitude: finalDeliveryType === DeliveryType.DELIVERY ? longitude : null,
-        address_details: finalDeliveryType === DeliveryType.DELIVERY && addressDetails.trim() ? addressDetails.trim() : null,
+        latitude: finalDeliveryType === DeliveryType.DELIVERY && zones.length > 0 ? latitude : null,
+        longitude: finalDeliveryType === DeliveryType.DELIVERY && zones.length > 0 ? longitude : null,
+        address_details: finalDeliveryType === DeliveryType.DELIVERY
+          ? (zones.length === 0 ? 'Localização a ser enviada via WhatsApp após o pedido' : (addressDetails.trim() || null))
+          : null,
         delivery_fee: finalDeliveryFee,
         subtotal,
         total: finalTotal,
@@ -826,66 +830,80 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
         )}
 
-        {/* ── 4. Zona de entrega (apenas delivery, não-mesa) ── */}
-        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (
+        {/* ── 4. Zona de entrega (apenas delivery, não-mesa) — zonas ativas ── */}
+        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && zones.length > 0 && (
           <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100 overflow-hidden rounded-t-2xl">
               <div className="h-6 w-6 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
                 <Map className="h-3.5 w-3.5 text-teal-600" />
               </div>
               <span className="text-sm font-semibold text-slate-800">{t('checkout.zoneLabel')}</span>
-              {zones.length > 0 && selectedZoneId && (
+              {selectedZoneId && (
                 <Check className="h-4 w-4 text-teal-500 ml-auto flex-shrink-0" />
               )}
             </div>
             <div className="p-4">
-              {zones.length > 0 ? (
-                <div key={zoneSelectKey} className="space-y-2">
-                  <Select
-                    value={selectedZoneId || undefined}
-                    onValueChange={(v) => {
-                      setSelectedZoneId(v);
-                      setFormError(null);
+              <div key={zoneSelectKey} className="space-y-2">
+                <Select
+                  value={selectedZoneId || undefined}
+                  onValueChange={(v) => {
+                    setSelectedZoneId(v);
+                    setFormError(null);
+                  }}
+                >
+                  <SelectTrigger data-testid="checkout-zone-select" className="h-auto min-h-12 py-3 bg-slate-50 border-slate-200 rounded-xl text-base focus:bg-white w-full [&>span]:block [&>span]:whitespace-normal [&>span]:text-left [&>span]:break-words">
+                    <SelectValue placeholder={t('checkout.zonePlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent position="popper" sideOffset={4} className="z-[100]">
+                    {zones.map((zone) => (
+                      <SelectItem key={zone.id} value={zone.id}>
+                        <div className="flex items-center justify-between gap-6 w-full">
+                          <span>{zone.location_name}</span>
+                          <span className="text-muted-foreground text-xs font-semibold">
+                            {zone.fee === 0 ? t('checkout.free') : formatCurrency(convertForDisplay(zone.fee), displayCurrency)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedZoneId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setZoneSelectKey((k) => k + 1);
+                      setSelectedZoneId('');
                     }}
+                    className="text-xs text-teal-600 hover:text-teal-700 font-medium touch-manipulation"
                   >
-                    <SelectTrigger data-testid="checkout-zone-select" className="h-auto min-h-12 py-3 bg-slate-50 border-slate-200 rounded-xl text-base focus:bg-white w-full [&>span]:block [&>span]:whitespace-normal [&>span]:text-left [&>span]:break-words">
-                      <SelectValue placeholder={t('checkout.zonePlaceholder')} />
-                    </SelectTrigger>
-                    <SelectContent position="popper" sideOffset={4} className="z-[100]">
-                      {zones.map((zone) => (
-                        <SelectItem key={zone.id} value={zone.id}>
-                          <div className="flex items-center justify-between gap-6 w-full">
-                            <span>{zone.location_name}</span>
-                            <span className="text-muted-foreground text-xs font-semibold">
-                              {zone.fee === 0 ? t('checkout.free') : formatCurrency(convertForDisplay(zone.fee), displayCurrency)}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {selectedZoneId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setZoneSelectKey((k) => k + 1);
-                        setSelectedZoneId('');
-                      }}
-                      className="text-xs text-teal-600 hover:text-teal-700 font-medium touch-manipulation"
-                    >
-                      {t('checkout.changeZone')}
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-slate-500">{t('checkout.zoneNoZones')}</p>
-              )}
+                    {t('checkout.changeZone')}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {/* ── 5. Endereço de entrega com mapa — só aparece após selecionar zona (ou se não há zonas) ── */}
-        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && (zones.length === 0 || selectedZoneId) && (
+        {/* ── 4b. Card informativo quando zonas desativadas (envio de localização via WhatsApp) ── */}
+        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && zones.length === 0 && (
+          <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden border border-amber-200 bg-amber-50/50">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-amber-200/60">
+              <div className="h-6 w-6 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <Info className="h-3.5 w-3.5 text-amber-600" />
+              </div>
+              <span className="text-sm font-semibold text-amber-900">Localização e frete</span>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-amber-900/90 leading-relaxed flex items-start gap-2">
+                <MapPin className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                {t('checkout.zonesDisabledInfo')}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── 5. Endereço de entrega com mapa — só aparece quando há zonas ativas e zona selecionada ── */}
+        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && zones.length > 0 && selectedZoneId && (
           <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
               <div className="h-6 w-6 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">

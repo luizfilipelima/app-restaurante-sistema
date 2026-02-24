@@ -425,6 +425,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                   <span className={`w-1.5 h-1.5 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-red-500'} ${isOpen ? 'animate-pulse' : ''}`} />
                   {isOpen ? t('menu.open') : t('menu.closed')}
                 </span>
+                {restaurant.description?.trim() && (
+                  <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">{restaurant.description.trim()}</p>
+                )}
               </div>
               <MenuSettingsPopover
                 currency={currency}

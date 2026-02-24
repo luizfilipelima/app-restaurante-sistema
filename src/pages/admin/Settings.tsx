@@ -23,7 +23,7 @@ import { toast } from '@/hooks/use-toast';
 import {
   Save, Upload, Loader2, Printer,
   Phone, Globe, ImageIcon, AlarmClock, X, Wifi, Store,
-  Users, ExternalLink, Link2,
+  Users, ExternalLink, Link2, FileText,
   MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode,
 } from 'lucide-react';
 import { useRestaurant } from '@/hooks/queries';
@@ -287,6 +287,7 @@ export default function AdminSettings() {
     pix_key:                 '',
     pix_key_type:            'random' as 'cpf' | 'email' | 'random',
     bank_account:            { pyg: {}, ars: {} } as BankAccountByCountry,
+    description:             '',
   });
 
   const [bankCountry, setBankCountry] = useState<'pyg' | 'ars'>('pyg');
@@ -352,6 +353,7 @@ export default function AdminSettings() {
         pix_key:                 data.pix_key ?? '',
         pix_key_type:            (['cpf', 'email', 'random'].includes(data.pix_key_type) ? data.pix_key_type : 'random') as 'cpf' | 'email' | 'random',
         bank_account:            parseBankAccount(data.bank_account),
+        description:             data.description ?? '',
       });
     } catch (err) {
       console.error('Erro ao carregar restaurante:', err);
@@ -381,6 +383,7 @@ export default function AdminSettings() {
         exchange_rates:          formData.exchange_rates,
         payment_currencies:      formData.payment_currencies,
         pix_key:                 formData.pix_key?.trim() || null,
+        description:             formData.description?.trim() || null,
         bank_account:            (() => {
           const { pyg, ars } = formData.bank_account;
           const hasPyg = !!(pyg?.bank_name || pyg?.holder || pyg?.alias);
@@ -823,6 +826,37 @@ export default function AdminSettings() {
                   O prefixo de país vem do campo &quot;País de origem&quot; na seção Regional acima. O WhatsApp precisa estar ativo no celular para receber mensagens.
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* ── Descrição da loja (exibida no cardápio) ── */}
+          <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+            <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
+              <div className="h-9 w-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
+                <FileText className="h-[18px] w-[18px] text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Descrição da loja</h2>
+                <p className="text-[11px] text-muted-foreground">
+                  Breve texto sobre o estabelecimento. Será exibido no cardápio para o cliente.
+                </p>
+              </div>
+            </div>
+            <div className="p-5">
+              <FieldGroup>
+                <Label htmlFor="description" className="sr-only">Descrição da loja</Label>
+                <textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => set('description', e.target.value)}
+                  placeholder="Ex.: Pizzaria artesanal desde 2010. Massa fermentada 48h, ingredientes selecionados e atendimento especial."
+                  rows={3}
+                  className="flex min-h-[80px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1.5">
+                  Esta descrição aparece para o cliente ao acessar o cardápio online.
+                </p>
+              </FieldGroup>
             </div>
           </div>
 

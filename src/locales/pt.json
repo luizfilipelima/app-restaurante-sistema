@@ -75,6 +75,7 @@
     "zonePlaceholder": "Selecione seu bairro",
     "changeZone": "Alterar zona",
     "zoneNoZones": "Entrega para toda a área",
+    "zonesDisabledInfo": "Envie sua localização pelo WhatsApp após fazer o pedido para saber o valor do frete.",
     "free": "Grátis",
     "mapInstructionZone": "Arraste o pino para a sua localização exata dentro da área marcada",
     "addressLabel": "Endereço completo (opcional)",

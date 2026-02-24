@@ -196,6 +196,9 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                   <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {t('menu.estimateTime')}
                 </span>
               </div>
+              {restaurant.description?.trim() && (
+                <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">{restaurant.description.trim()}</p>
+              )}
             </div>
             </div>
             <MenuSettingsPopover

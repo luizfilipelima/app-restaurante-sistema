@@ -132,6 +132,8 @@ export interface Restaurant {
   language?: 'pt' | 'es' | 'en';
   /** Modo de exibição do cardápio: default (pills + lista) | categories_first (cards de categorias primeiro) */
   menu_display_mode?: 'default' | 'categories_first';
+  /** Breve descrição da loja exibida no cardápio para o cliente */
+  description?: string | null;
   /** Templates personalizáveis de mensagens WhatsApp */
   whatsapp_templates?: WhatsAppTemplates | null;
   /** Override manual da receita mensal em BRL (Super Admin). Se definido, usado no Dashboard BI em vez do preço do plano. */
