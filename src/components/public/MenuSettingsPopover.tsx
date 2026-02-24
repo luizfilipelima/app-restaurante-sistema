@@ -61,7 +61,7 @@ function MenuSettingsPopover({
     <DropdownMenu>
       <DropdownMenuTrigger
         asChild
-        className="outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-offset-2 rounded-xl"
+        className="outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 rounded-xl"
       >
         <button
           type="button"

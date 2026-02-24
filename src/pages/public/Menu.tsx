@@ -393,8 +393,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       >
       {/* Barra sutil de refresh quando dados em background (keepPreviousData) */}
       {isRefreshing && (
-        <div className="fixed top-0 left-0 right-0 h-0.5 bg-orange-200/80 z-[100] overflow-hidden">
-          <div className="h-full w-1/3 bg-orange-500 rounded-r-full animate-[progress-slide_1.5s_ease-in-out_infinite]" />
+        <div className="fixed top-0 left-0 right-0 h-0.5 bg-primary/20 z-[100] overflow-hidden">
+          <div className="h-full w-1/3 bg-primary rounded-r-full animate-[progress-slide_1.5s_ease-in-out_infinite]" />
         </div>
       )}
       {/* Header - Layout referência: logo + nome/status à esquerda, carrinho à direita */}
@@ -416,7 +416,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 {restaurant.logo ? (
                   <img src={restaurant.logo} alt={restaurant.name} width={56} height={56} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-lg">
+                  <div className="w-full h-full flex items-center justify-center bg-primary text-primary-foreground font-bold text-lg">
                     {restaurant.name.charAt(0)}
                   </div>
                 )}
@@ -460,12 +460,12 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 type="button"
                 data-testid="menu-view-cart"
                 onClick={() => setCartOpen(true)}
-                className="relative h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 flex items-center justify-center text-white transition-all touch-manipulation shadow-[0_2px_12px_rgba(249,115,22,0.35),0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_16px_rgba(249,115,22,0.4),0_2px_4px_rgba(0,0,0,0.06)]"
+                className="relative h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-primary hover:bg-primary/90 active:scale-95 flex items-center justify-center text-primary-foreground transition-all touch-manipulation shadow-md hover:shadow-lg"
                 aria-label={t('menu.viewCart')}
               >
                 <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6" />
                 {getItemsCount() > 0 && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-white text-orange-600 text-xs font-bold flex items-center justify-center shadow-md ring-2 ring-orange-500">
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-white text-primary text-xs font-bold flex items-center justify-center shadow-md ring-2 ring-primary">
                     {getItemsCount()}
                   </span>
                 )}
@@ -531,7 +531,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                         </div>
                         <div className="flex items-center justify-between gap-3 p-4 sm:p-5">
                           <span className="font-semibold text-slate-800 text-base sm:text-lg truncate flex-1">{cat.name}</span>
-                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-orange-100 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-orange-600 transition-colors">
+                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-primary/10 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-primary transition-colors">
                             {t('menu.viewProducts')}
                             <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                           </span>
@@ -539,15 +539,15 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       </>
                     ) : (
                       <div className="flex items-center gap-4 w-full p-4 sm:p-5">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center ring-1 ring-slate-200/60 group-hover:from-orange-50 group-hover:to-orange-100/50 group-hover:ring-orange-200/80 transition-all duration-200">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center ring-1 ring-slate-200/60 group-hover:from-primary/10 group-hover:to-primary/20 group-hover:ring-primary/30 transition-all duration-200">
                           {(() => {
                             const IconComp = getCategoryIconComponent(cat.icon);
-                            return <IconComp className="h-8 w-8 sm:h-10 sm:w-10 text-slate-500 group-hover:text-orange-600 transition-colors" />;
+                            return <IconComp className="h-8 w-8 sm:h-10 sm:w-10 text-slate-500 group-hover:text-primary transition-colors" />;
                           })()}
                         </div>
                         <div className="flex-1 min-w-0 flex items-center justify-between gap-3">
                           <span className="font-semibold text-slate-800 text-base sm:text-lg truncate">{cat.name}</span>
-                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-orange-100 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-orange-600 transition-colors duration-200">
+                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-primary/10 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-primary transition-colors duration-200">
                             {t('menu.viewProducts')}
                             <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                           </span>
@@ -582,7 +582,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 onClick={() => setSelectedCategory('all')}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
                   selectedCategory === 'all'
-                    ? 'bg-slate-900 text-white shadow-sm'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                 }`}
               >
@@ -598,7 +598,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                     onClick={() => setSelectedCategory(category)}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
                       selectedCategory === category
-                        ? 'bg-slate-900 text-white shadow-sm'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
                         : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                     }`}
                   >
@@ -629,7 +629,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 <button
                   type="button"
                   onClick={handleChangeLoyaltyNumber}
-                  className="text-[10px] text-violet-600 hover:text-violet-700 font-medium"
+                  className="text-[10px] text-primary hover:text-primary/80 font-medium"
                 >
                   {t('menu.loyalty.changeNumber')}
                 </button>
@@ -656,9 +656,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             : activeOffers;
           return offersToShow.length > 0 && (
           <section className="space-y-2 sm:space-y-3">
-            <h2 className="text-sm-mobile-block sm:text-base font-semibold text-orange-700 uppercase tracking-wider px-1 flex items-center gap-2">
+            <h2 className="text-sm-mobile-block sm:text-base font-semibold text-primary uppercase tracking-wider px-1 flex items-center gap-2">
               {t('menu.offers')}
-              <span className="text-xs font-semibold text-orange-600 bg-orange-200/60 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-semibold text-primary bg-primary/20 px-2 py-0.5 rounded-full">
                 {offersToShow.length}
               </span>
             </h2>
@@ -821,8 +821,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               {/* Left Side: Info */}
               <div className="flex-1 flex items-center justify-start px-4 gap-3.5">
                 <div className="relative">
-                   <div className="bg-orange-500 h-9 w-9 rounded-full flex items-center justify-center border border-orange-400/50 shadow-md shadow-orange-500/30">
-                      <span className="text-sm font-bold text-white">{getItemsCount()}</span>
+                   <div className="bg-primary h-9 w-9 rounded-full flex items-center justify-center border border-primary/50 shadow-md">
+                      <span className="text-sm font-bold text-primary-foreground">{getItemsCount()}</span>
                    </div>
                 </div>
                 <div className="flex flex-col items-start justify-center">
@@ -835,7 +835,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               <div className="w-[1px] bg-white/10 my-3"></div>
 
               {/* Right Side: CTA — cor sólida alinhada ao botão Finalizar Pedido */}
-              <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] bg-[#F26812] hover:bg-[#E05D10] text-white shadow-lg shadow-orange-500/25 transition-all duration-200">
+              <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-200">
                 <span className="text-sm font-bold drop-shadow-sm">{t('menu.viewBag')}</span>
                 <ChevronRight className="h-4 w-4 drop-shadow-sm" aria-hidden />
               </div>
@@ -853,7 +853,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
           <div className="px-6 pt-8 pb-6 sm:px-8 sm:pt-10 sm:pb-8">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-200">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-5 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
               <UtensilsCrossed className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
             </div>
             <DialogHeader className="text-center space-y-2 pb-6">
@@ -870,7 +870,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 value={welcomeNameInput}
                 onChange={(e) => setWelcomeNameInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && welcomeNameInput.trim() && (setTableCustomerName(welcomeNameInput.trim()), setWelcomeNameInput(''))}
-                className="h-14 text-base rounded-2xl border-2 border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-400 focus:ring-2 focus:ring-orange-100 px-4"
+                className="h-14 text-base rounded-2xl border-2 border-slate-200 bg-slate-50 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 px-4"
                 autoFocus
               />
               <Button
@@ -881,7 +881,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                   }
                 }}
                 disabled={!welcomeNameInput.trim()}
-                className="w-full h-14 text-base font-semibold rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg shadow-orange-200/50 transition-all active:scale-[0.98]"
+                className="w-full h-14 text-base font-semibold rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all active:scale-[0.98]"
               >
                 Continuar
               </Button>

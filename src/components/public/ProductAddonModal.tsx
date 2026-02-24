@@ -129,7 +129,7 @@ export default function ProductAddonModal({
               <h3 className="text-lg font-semibold text-slate-900 leading-snug">
                 {product.name}
               </h3>
-              <p className="text-base font-semibold text-orange-600 tabular-nums">
+              <p className="text-base font-semibold text-primary tabular-nums">
                 {fmt(basePrice)}
               </p>
               {product.description && (
@@ -163,7 +163,7 @@ export default function ProductAddonModal({
                 <button
                   type="button"
                   onClick={() => setQuantity((q) => q + 1)}
-                  className="h-9 w-9 rounded-full bg-orange-500 flex items-center justify-center text-white hover:bg-orange-600 active:scale-95 touch-manipulation transition-all"
+                  className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 active:scale-95 touch-manipulation transition-all"
                   aria-label="Aumentar quantidade"
                 >
                   <Plus className="h-4 w-4" />
@@ -187,7 +187,7 @@ export default function ProductAddonModal({
                         onClick={() => toggleAddon(item)}
                         className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all touch-manipulation ${
                           isSelected
-                            ? 'border-orange-400 bg-orange-50 text-orange-700'
+                            ? 'border-primary bg-primary/10 text-primary'
                             : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50/50 active:scale-[0.98]'
                         }`}
                       >
@@ -216,7 +216,7 @@ export default function ProductAddonModal({
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
                 rows={2}
-                className="rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-1 focus:ring-orange-500/30 min-h-[64px] resize-none text-sm touch-manipulation"
+                className="rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-1 focus:ring-primary/30 min-h-[64px] resize-none text-sm touch-manipulation"
               />
             </div>
           </div>
@@ -230,7 +230,7 @@ export default function ProductAddonModal({
           <button
             type="button"
             onClick={handleAdd}
-            className="w-full py-3.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-base transition-colors active:scale-[0.99] touch-manipulation shadow-sm"
+                className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base transition-colors active:scale-[0.99] touch-manipulation shadow-sm"
           >
             {t('productCard.addToCart')}
           </button>

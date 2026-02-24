@@ -34,15 +34,15 @@ export default function LoyaltyCard({ status, compact = false }: LoyaltyCardProp
       <div className={`mx-3 mb-2 rounded-xl border px-3 py-2.5 ${
         isGoalReached
           ? 'border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-950/40 dark:to-amber-950/40'
-          : 'border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/40 dark:to-purple-950/40'
+          : 'border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10'
       }`}>
         <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-1.5">
             {isGoalReached
               ? <Gift className="h-3.5 w-3.5 text-yellow-600 flex-shrink-0" />
-              : <Star className="h-3.5 w-3.5 text-violet-600 flex-shrink-0" />
+              : <Star className="h-3.5 w-3.5 text-primary flex-shrink-0" />
             }
-            <span className={`text-[11px] font-semibold ${isGoalReached ? 'text-yellow-700 dark:text-yellow-400' : 'text-violet-700 dark:text-violet-400'}`}>
+            <span className={`text-[11px] font-semibold ${isGoalReached ? 'text-yellow-700 dark:text-yellow-400' : 'text-primary'}`}>
               {isGoalReached
                 ? t('loyalty.progressComplete', { reward: reward_description })
                 : remaining === 1
@@ -51,7 +51,7 @@ export default function LoyaltyCard({ status, compact = false }: LoyaltyCardProp
               }
             </span>
           </div>
-          <span className={`text-[10px] font-bold shrink-0 ${isGoalReached ? 'text-yellow-600' : 'text-violet-500'}`}>
+          <span className={`text-[10px] font-bold shrink-0 ${isGoalReached ? 'text-yellow-600' : 'text-primary'}`}>
             {completed}/{orders_required}
           </span>
         </div>
@@ -65,7 +65,7 @@ export default function LoyaltyCard({ status, compact = false }: LoyaltyCardProp
                 i < completedDisplay
                   ? isGoalReached
                     ? 'bg-yellow-400 shadow-sm shadow-yellow-200'
-                    : 'bg-violet-500 shadow-sm shadow-violet-200'
+                    : 'bg-primary shadow-sm'
                   : 'bg-muted border border-border'
               }`}
             >
@@ -82,15 +82,15 @@ export default function LoyaltyCard({ status, compact = false }: LoyaltyCardProp
     <div className={`rounded-2xl border p-4 space-y-3 ${
       isGoalReached
         ? 'border-yellow-400 bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 dark:from-yellow-950/30 dark:via-amber-950/30 dark:to-orange-950/30'
-        : 'border-violet-200 bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 dark:from-violet-950/30 dark:via-purple-950/30 dark:to-fuchsia-950/30'
+        : 'border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-primary/5 dark:from-primary/20 dark:via-primary/10 dark:to-primary/10'
     }`}>
       <div className="flex items-center gap-2">
         {isGoalReached
           ? <Gift className="h-5 w-5 text-yellow-600 flex-shrink-0" />
-          : <Star className="h-5 w-5 text-violet-600 flex-shrink-0" />
+          : <Star className="h-5 w-5 text-primary flex-shrink-0" />
         }
         <div>
-          <p className={`text-sm font-semibold leading-tight ${isGoalReached ? 'text-yellow-700 dark:text-yellow-400' : 'text-violet-700 dark:text-violet-400'}`}>
+          <p className={`text-sm font-semibold leading-tight ${isGoalReached ? 'text-yellow-700 dark:text-yellow-400' : 'text-primary'}`}>
             {isGoalReached
               ? t('loyalty.progressComplete', { reward: reward_description })
               : remaining === 1
@@ -99,7 +99,7 @@ export default function LoyaltyCard({ status, compact = false }: LoyaltyCardProp
             }
           </p>
         </div>
-        <span className={`ml-auto text-xs font-bold shrink-0 ${isGoalReached ? 'text-yellow-600' : 'text-violet-500'}`}>
+        <span className={`ml-auto text-xs font-bold shrink-0 ${isGoalReached ? 'text-yellow-600' : 'text-primary'}`}>
           {completed}/{orders_required}
         </span>
       </div>
@@ -108,7 +108,7 @@ export default function LoyaltyCard({ status, compact = false }: LoyaltyCardProp
       <div className="h-2 rounded-full bg-muted overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${
-            isGoalReached ? 'bg-gradient-to-r from-yellow-400 to-amber-500' : 'bg-gradient-to-r from-violet-500 to-purple-600'
+            isGoalReached ? 'bg-gradient-to-r from-yellow-400 to-amber-500' : 'bg-primary'
           }`}
           style={{ width: `${progressPct}%` }}
         />
@@ -123,7 +123,7 @@ export default function LoyaltyCard({ status, compact = false }: LoyaltyCardProp
               i < completedDisplay
                 ? isGoalReached
                   ? 'bg-yellow-400 shadow shadow-yellow-200'
-                  : 'bg-violet-500 shadow shadow-violet-200'
+                  : 'bg-primary shadow'
                 : 'bg-muted border border-border'
             }`}
           >
@@ -140,10 +140,10 @@ export function LoyaltyInvite({ enabled }: { enabled: boolean }) {
   const { t } = useTranslation();
   if (!enabled) return null;
   return (
-    <div className="mx-3 mb-2 rounded-xl border border-violet-200/60 bg-violet-50/60 dark:bg-violet-950/20 px-3 py-2 flex items-start gap-2">
-      <Star className="h-3.5 w-3.5 text-violet-500 flex-shrink-0 mt-0.5" />
+    <div className="mx-3 mb-2 rounded-xl border border-primary/20 bg-primary/5 dark:bg-primary/10 px-3 py-2 flex items-start gap-2">
+      <Star className="h-3.5 w-3.5 text-primary flex-shrink-0 mt-0.5" />
       <div>
-        <p className="text-[11px] font-semibold text-violet-700 dark:text-violet-400">{t('loyalty.inviteFirst')}</p>
+        <p className="text-[11px] font-semibold text-primary">{t('loyalty.inviteFirst')}</p>
         <p className="text-[10px] text-muted-foreground">{t('loyalty.inviteDesc')}</p>
       </div>
     </div>

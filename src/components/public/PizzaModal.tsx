@@ -118,8 +118,8 @@ export default function PizzaModal({
         {/* Header Fixo — mobile first */}
         <div className="pt-6 pb-5 px-5 sm:pt-6 sm:pb-4 sm:px-6 border-b border-slate-200/80 bg-white z-10 flex-shrink-0">
           <div className="flex items-center gap-3 sm:gap-4">
-            <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-gradient-to-br from-orange-100 to-orange-50 flex items-center justify-center flex-shrink-0 shadow-sm ring-2 ring-orange-100/50">
-              <PizzaIcon className="h-6 w-6 sm:h-7 sm:w-7 text-orange-600" />
+            <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0 shadow-sm ring-2 ring-primary/20">
+              <PizzaIcon className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
               <DialogTitle className="text-lg sm:text-xl font-bold text-slate-900 truncate leading-tight">{product.name}</DialogTitle>
@@ -160,28 +160,28 @@ export default function PizzaModal({
                   onClick={() => setSelectedSize(size)}
                   className={`group relative p-4 sm:p-5 rounded-2xl text-left transition-all duration-200 border-2 touch-manipulation min-h-[100px] sm:min-h-[110px] ${
                     selectedSize?.id === size.id
-                      ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-orange-100/50 shadow-md shadow-orange-500/20 scale-[1.02]'
-                      : 'border-slate-200 bg-white hover:border-orange-200 hover:bg-slate-50 active:scale-[0.98]'
+                      ? 'border-primary bg-primary/5 shadow-md scale-[1.02]'
+                      : 'border-slate-200 bg-white hover:border-primary/40 hover:bg-slate-50 active:scale-[0.98]'
                   }`}
                 >
                   <div className="flex flex-col h-full justify-between">
                     <div className="flex-1">
-                      <div className={`font-bold text-lg sm:text-xl mb-1 ${selectedSize?.id === size.id ? 'text-orange-700' : 'text-slate-800'}`}>
+                      <div className={`font-bold text-lg sm:text-xl mb-1 ${selectedSize?.id === size.id ? 'text-primary' : 'text-slate-800'}`}>
                         {size.name}
                       </div>
                       {size.max_flavors > 1 && (
-                        <div className={`text-xs font-medium mb-1 ${selectedSize?.id === size.id ? 'text-orange-500' : 'text-slate-400'}`}>
+                        <div className={`text-xs font-medium mb-1 ${selectedSize?.id === size.id ? 'text-primary' : 'text-slate-400'}`}>
                           até {size.max_flavors} sabores
                         </div>
                       )}
-                      <div className={`text-sm font-semibold ${selectedSize?.id === size.id ? 'text-orange-600' : 'text-slate-500'}`}>
+                      <div className={`text-sm font-semibold ${selectedSize?.id === size.id ? 'text-primary' : 'text-slate-500'}`}>
                         {formatCurrency(product.price, currency)}
                       </div>
                     </div>
                     {selectedSize?.id === size.id && (
                       <div className="mt-3 flex justify-end">
-                        <div className="bg-orange-500 rounded-full p-1.5 flex-shrink-0 shadow-sm">
-                          <Check className="h-4 w-4 text-white" />
+                        <div className="bg-primary rounded-full p-1.5 flex-shrink-0 shadow-sm">
+                          <Check className="h-4 w-4 text-primary-foreground" />
                         </div>
                       </div>
                     )}
@@ -205,7 +205,7 @@ export default function PizzaModal({
                   </p>
                 </div>
                 {selectedFlavors.length > 0 && (
-                  <span className="text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-full px-2.5 py-1 flex-shrink-0">
+                  <span className="text-xs font-semibold text-primary bg-primary/10 border border-primary/30 rounded-full px-2.5 py-1 flex-shrink-0">
                     {selectedFlavors.length}/{maxFlavors}
                   </span>
                 )}
@@ -222,30 +222,30 @@ export default function PizzaModal({
                       disabled={isDisabled}
                       className={`relative flex items-start gap-3 p-4 rounded-2xl text-left transition-all duration-200 border-2 touch-manipulation min-h-[68px] ${
                         isSelected
-                          ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-orange-100/50 shadow-sm shadow-orange-500/15'
+                          ? 'border-primary bg-primary/5 shadow-sm'
                           : isDisabled
                           ? 'border-slate-100 bg-slate-50/60 opacity-50 cursor-not-allowed'
-                          : 'border-slate-200 bg-white hover:border-orange-200 hover:bg-orange-50/30 active:scale-[0.98]'
+                          : 'border-slate-200 bg-white hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98]'
                       }`}
                     >
                       {/* Checkbox visual */}
                       <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
                         isSelected
-                          ? 'bg-orange-500 border-orange-500'
+                          ? 'bg-primary border-primary'
                           : 'border-slate-300 bg-white'
                       }`}>
-                        {isSelected && <Check className="h-3 w-3 text-white" />}
+                        {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <div className={`font-semibold text-sm sm:text-base leading-tight ${isSelected ? 'text-orange-800' : 'text-slate-800'}`}>
+                        <div className={`font-semibold text-sm sm:text-base leading-tight ${isSelected ? 'text-primary' : 'text-slate-800'}`}>
                           {flavor.name}
                         </div>
                         {flavor.description && (
                           <div className="text-xs text-slate-500 mt-0.5 leading-snug line-clamp-2">{flavor.description}</div>
                         )}
                         {flavor.price > 0 && (
-                          <div className={`text-xs font-semibold mt-1 ${isSelected ? 'text-orange-600' : 'text-slate-500'}`}>
+                          <div className={`text-xs font-semibold mt-1 ${isSelected ? 'text-primary' : 'text-slate-500'}`}>
                             +{formatCurrency(flavor.price, currency)}
                           </div>
                         )}
@@ -303,14 +303,14 @@ export default function PizzaModal({
                       onClick={() => setSelectedEdge(null)}
                       className={`w-full flex items-center justify-between p-4 rounded-xl border-2 text-left touch-manipulation min-h-[52px] transition-all duration-200 ${
                         !selectedEdge
-                          ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-orange-100/50 shadow-sm'
+                          ? 'border-primary bg-primary/5 shadow-sm'
                           : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98]'
                       }`}
                     >
                       <span className="font-semibold text-base text-slate-800">{t('pizzaModal.noEdge')}</span>
                       {!selectedEdge && (
-                        <div className="bg-orange-500 rounded-full p-1.5 flex-shrink-0">
-                          <Check className="h-4 w-4 text-white" />
+                        <div className="bg-primary rounded-full p-1.5 flex-shrink-0">
+                          <Check className="h-4 w-4 text-primary-foreground" />
                         </div>
                       )}
                     </button>
@@ -320,7 +320,7 @@ export default function PizzaModal({
                         onClick={() => setSelectedEdge(edge)}
                         className={`w-full flex items-center justify-between p-4 rounded-xl border-2 text-left touch-manipulation min-h-[52px] transition-all duration-200 ${
                           selectedEdge?.id === edge.id
-                            ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-orange-100/50 shadow-sm'
+                            ? 'border-primary bg-primary/5 shadow-sm'
                             : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98]'
                         }`}
                       >
@@ -328,8 +328,8 @@ export default function PizzaModal({
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-slate-600">+{formatCurrency(edge.price, currency)}</span>
                           {selectedEdge?.id === edge.id && (
-                            <div className="bg-orange-500 rounded-full p-1.5 flex-shrink-0">
-                              <Check className="h-4 w-4 text-white" />
+                            <div className="bg-primary rounded-full p-1.5 flex-shrink-0">
+                              <Check className="h-4 w-4 text-primary-foreground" />
                             </div>
                           )}
                         </div>
@@ -353,7 +353,7 @@ export default function PizzaModal({
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
                 rows={4}
-                className="bg-white border-2 border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 rounded-xl text-base p-4 touch-manipulation resize-none min-h-[100px] transition-all duration-200"
+                className="bg-white border-2 border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl text-base p-4 touch-manipulation resize-none min-h-[100px] transition-all duration-200"
               />
             </section>
           )}
@@ -367,12 +367,12 @@ export default function PizzaModal({
               {selectedFlavors.map((f) => (
                 <span
                   key={f.id}
-                  className="inline-flex items-center gap-1 text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200 rounded-full px-2.5 py-1"
+                  className="inline-flex items-center gap-1 text-xs font-semibold bg-primary/10 text-primary border border-primary/30 rounded-full px-2.5 py-1"
                 >
                   {f.name}
                   <button
                     onClick={() => toggleFlavor(f)}
-                    className="text-orange-500 hover:text-orange-700 leading-none"
+                    className="text-primary hover:text-primary/80 leading-none"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -411,7 +411,7 @@ export default function PizzaModal({
             size="lg"
             onClick={handleAddToCart}
             disabled={!canAddToCart}
-            className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 active:from-orange-800 active:to-orange-700 text-white font-bold h-14 sm:h-14 rounded-2xl shadow-lg shadow-orange-500/30 touch-manipulation active:scale-[0.98] text-base sm:text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-14 sm:h-14 rounded-2xl shadow-lg touch-manipulation active:scale-[0.98] text-base sm:text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {!canAddToCart && hasFlavors && selectedFlavors.length === 0
               ? 'Escolha pelo menos 1 sabor'

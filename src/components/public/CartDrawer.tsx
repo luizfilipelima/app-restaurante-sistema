@@ -124,12 +124,12 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
             <div className="flex flex-col gap-1.5 px-5 py-3 border-b border-slate-100 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-sm shadow-orange-500/20">
-                    <ShoppingBag className="h-4 w-4 text-white" />
+                  <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-sm">
+                    <ShoppingBag className="h-4 w-4 text-primary-foreground" />
                   </div>
                   <h2 className="text-lg font-bold text-slate-900">{t('cart.title')}</h2>
                   {items.length > 0 && (
-                    <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
                       {items.length}
                     </span>
                   )}
@@ -229,7 +229,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                               </div>
                             )}
                             {item.observations && (
-                              <p className="text-xs text-orange-500 mt-1 italic line-clamp-1">Obs: {item.observations}</p>
+                              <p className="text-xs text-primary mt-1 italic line-clamp-1">Obs: {item.observations}</p>
                             )}
                           </div>
                           <button
@@ -278,7 +278,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                 <button
                   onClick={handleCheckout}
                   data-testid="cart-checkout"
-                  className="w-full h-14 rounded-2xl bg-[#F26812] hover:bg-[#E05D10] active:scale-[0.98] text-white font-bold text-base flex items-center justify-between px-5 shadow-lg shadow-orange-500/25 transition-all touch-manipulation"
+                  className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 active:scale-[0.98] text-primary-foreground font-bold text-base flex items-center justify-between px-5 shadow-lg transition-all touch-manipulation"
                 >
                   <span>{t('cart.finalize')}</span>
                   <ChevronRight className="h-5 w-5 opacity-90" />

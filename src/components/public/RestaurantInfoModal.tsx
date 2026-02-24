@@ -109,7 +109,7 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
                 {restaurant.logo ? (
                   <img src={restaurant.logo} alt={restaurant.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-2xl sm:text-3xl">
+                  <div className="w-full h-full flex items-center justify-center bg-primary text-primary-foreground font-bold text-2xl sm:text-3xl">
                     {restaurant.name.charAt(0)}
                   </div>
                 )}

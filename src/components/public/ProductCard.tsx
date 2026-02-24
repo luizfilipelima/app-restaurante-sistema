@@ -50,7 +50,7 @@ function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', con
       }}
       className={`group flex items-stretch gap-3 sm:gap-4 rounded-2xl overflow-hidden transition-all duration-200 w-full min-w-0 ${
         isOffer
-          ? 'bg-white border border-orange-100 shadow-sm'
+          ? 'bg-white border border-primary/30 shadow-sm'
           : 'bg-white/80 border border-slate-100/80 backdrop-blur-sm'
       } ${!readOnly ? 'cursor-pointer active:scale-[0.995] hover:shadow-md hover:border-slate-200/80 touch-manipulation' : ''}`}
     >
@@ -71,7 +71,7 @@ function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', con
         {(isOffer || isCombo) && (
           <div className="absolute top-2 left-2 flex gap-1">
             {isOffer && (
-              <span className="text-[9px] font-semibold uppercase tracking-wide bg-orange-500 text-white px-2 py-0.5 rounded-md">
+              <span className="text-[9px] font-semibold uppercase tracking-wide bg-primary text-primary-foreground px-2 py-0.5 rounded-md">
                 Oferta
               </span>
             )}
@@ -118,7 +118,7 @@ function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', con
                 e.stopPropagation();
                 onClick?.();
               }}
-              className="flex-shrink-0 h-9 w-9 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center transition-all duration-200 group-hover:bg-orange-500 group-hover:text-white hover:scale-105 active:scale-95 touch-manipulation"
+              className="flex-shrink-0 h-9 w-9 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center transition-all duration-200 group-hover:bg-primary group-hover:text-primary-foreground hover:scale-105 active:scale-95 touch-manipulation"
               aria-label={t('productCard.add')}
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />

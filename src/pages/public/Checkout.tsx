@@ -555,8 +555,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 safe-area-inset-bottom">
         <div className="text-center space-y-5">
-          <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
-            <ShoppingBag className="h-10 w-10 text-orange-500" />
+          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+            <ShoppingBag className="h-10 w-10 text-primary" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">{t('checkout.emptyTitle')}</h2>
@@ -564,7 +564,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
           <Button
             onClick={handleBackToMenu}
-            className="bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12 px-8 font-semibold touch-manipulation"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-12 px-8 font-semibold touch-manipulation"
           >
             {t('checkout.backToMenu')}
           </Button>
@@ -602,7 +602,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           {currentRestaurant?.logo ? (
             <img src={currentRestaurant.logo} width={32} height={32} className="h-8 w-8 rounded-lg object-cover flex-shrink-0" alt="" />
           ) : currentRestaurant?.name ? (
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center flex-shrink-0">
+            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
               <span className="text-sm font-bold text-white">{currentRestaurant.name[0].toUpperCase()}</span>
             </div>
           ) : null}
@@ -616,9 +616,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 px-2.5 h-8 rounded-lg bg-orange-50 border border-orange-100 flex-shrink-0">
-            <ShoppingBag className="h-3.5 w-3.5 text-orange-500" />
-            <span className="text-xs font-bold text-orange-600 tabular-nums">{totalItemCount}</span>
+          <div className="flex items-center gap-1.5 px-2.5 h-8 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
+            <ShoppingBag className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-bold text-primary tabular-nums">{totalItemCount}</span>
           </div>
         </div>
       </div>
@@ -629,8 +629,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         {/* ── 1. Sacola ── */}
         <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
-            <div className="h-6 w-6 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
-              <ShoppingBag className="h-3.5 w-3.5 text-orange-600" />
+            <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <ShoppingBag className="h-3.5 w-3.5 text-primary" />
             </div>
             <span className="text-sm font-semibold text-slate-800">Sua sacola</span>
             <span className="ml-auto text-xs text-slate-400">
@@ -649,7 +649,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               return (
                 <div key={index} className="flex items-start gap-3 px-4 py-3.5">
                   {/* Emoji/avatar */}
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100/60 flex items-center justify-center flex-shrink-0 text-xl mt-0.5">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 text-xl mt-0.5">
                     {item.isPizza ? '🍕' : item.isMarmita ? '🍱' : '🍽️'}
                   </div>
 
@@ -673,7 +673,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       </p>
                     )}
                     {item.observations && (
-                      <p className="text-xs text-orange-500 mt-0.5 italic line-clamp-1">📝 {item.observations}</p>
+                      <p className="text-xs text-primary mt-0.5 italic line-clamp-1">📝 {item.observations}</p>
                     )}
 
                     {/* Controles de quantidade */}
@@ -696,7 +696,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
                       <button
                         onClick={() => updateQuantity(index, item.quantity + 1)}
-                        className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-600 active:scale-90 transition-all touch-manipulation"
+                        className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-primary/10 hover:border-primary/30 hover:text-primary active:scale-90 transition-all touch-manipulation"
                         aria-label="Aumentar quantidade"
                       >
                         <Plus className="h-3.5 w-3.5" />
@@ -766,11 +766,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 onClick={() => setDeliveryType(type)}
                 className={`flex-1 flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 font-semibold text-sm transition-all touch-manipulation active:scale-[0.98] ${
                   deliveryType === type
-                    ? 'border-orange-500 bg-orange-50 text-orange-700'
+                    ? 'border-primary bg-primary/10 text-primary'
                     : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
-                <Icon className={`h-5 w-5 ${deliveryType === type ? 'text-orange-600' : 'text-slate-400'}`} />
+                <Icon className={`h-5 w-5 ${deliveryType === type ? 'text-primary' : 'text-slate-400'}`} />
                 <span>{label}</span>
                 <span className="text-[10px] font-normal opacity-70">{sub}</span>
               </button>
@@ -976,7 +976,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       type="button"
                       onClick={() => setPaymentCurrency(c)}
                       className={`px-2 py-1 rounded-md text-xs font-bold transition-all touch-manipulation ${
-                        displayCurrency === c ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                        displayCurrency === c ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'
                       }`}
                       title={currencyLabel(c)}
                     >
@@ -1004,7 +1004,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                         type="button"
                         onClick={() => setPaymentMethod(value)}
                         className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all touch-manipulation active:scale-[0.99] ${
-                          paymentMethod === value ? 'border-orange-500 bg-orange-50/70' : 'border-slate-100 bg-slate-50/60 hover:border-slate-200'
+                          paymentMethod === value ? 'border-primary bg-primary/10' : 'border-slate-100 bg-slate-50/60 hover:border-slate-200'
                         }`}
                       >
                         <div className={`h-9 w-9 rounded-xl ${iconBg} flex items-center justify-center flex-shrink-0`}>
@@ -1015,7 +1015,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                           <p className="text-xs text-slate-400">{desc}</p>
                         </div>
                         <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                          paymentMethod === value ? 'border-orange-500 bg-orange-500' : 'border-slate-300'
+                          paymentMethod === value ? 'border-primary bg-primary' : 'border-slate-300'
                         }`}>
                           {paymentMethod === value && <Check className="h-3 w-3 text-white" />}
                         </div>
@@ -1153,7 +1153,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 onChange={(e) => { const v = e.target.value; setNotes(v); setOrderNotes(v); }}
                 placeholder={t('checkout.notesPlaceholder')}
                 rows={3}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 resize-none transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none transition-colors"
               />
             </div>
           </div>
@@ -1163,8 +1163,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         {(currentRestaurant as { discount_coupons_enabled?: boolean | null })?.discount_coupons_enabled !== false && (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
-              <div className="h-6 w-6 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
-                <Ticket className="h-3.5 w-3.5 text-orange-600" />
+              <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Ticket className="h-3.5 w-3.5 text-primary" />
               </div>
               <span className="text-sm font-semibold text-slate-800">{t('checkout.couponLabel')}</span>
               <span className="text-xs text-slate-300 ml-1">• opcional</span>
@@ -1329,7 +1329,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             data-testid="checkout-submit"
             className={`w-full font-bold h-14 rounded-2xl shadow-lg flex items-center justify-center gap-2.5 text-base touch-manipulation active:scale-[0.98] transition-all ${
               isTableOrder
-                ? 'bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white'
+                ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
                 : 'bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white'
             }`}
             onClick={handleCheckout}
