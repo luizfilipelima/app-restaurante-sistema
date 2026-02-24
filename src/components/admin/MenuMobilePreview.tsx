@@ -1,5 +1,5 @@
 /**
- * Pré-visualização do cardápio no formato mobile, simulando um iPhone 17 Pro Max.
+ * Pré-visualização do cardápio no formato mobile.
  * Permite ao admin ver em tempo real como o cliente visualiza o cardápio.
  */
 
@@ -22,12 +22,12 @@ import {
   EyeOff,
 } from 'lucide-react';
 
-// iPhone 17 Pro Max: viewport 440×956 CSS pixels
+// Viewport mobile: 440×956 px
 const VIEWPORT_WIDTH = 440;
 const VIEWPORT_HEIGHT = 956;
 const SCALE = 0.58; // Escala para caber confortavelmente no modal
-const FRAME_RADIUS = 56; // Raio dos cantos da moldura (estilo iPhone)
-const NOTCH_WIDTH = 126; // Dynamic Island
+const FRAME_RADIUS = 28; // Raio dos cantos arredondados
+const BORDER_WIDTH = 3; // Largura da borda do dispositivo
 
 interface MenuMobilePreviewProps {
   open: boolean;
@@ -88,9 +88,8 @@ export default function MenuMobilePreview({
                 <Smartphone className="h-5 w-5 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-base font-semibold leading-tight flex items-center gap-2">
+                <DialogTitle className="text-base font-semibold leading-tight">
                   Pré-visualização Mobile
-                  <span className="text-xs font-normal text-muted-foreground">iPhone 17 Pro Max</span>
                 </DialogTitle>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {restaurantName}
@@ -148,75 +147,52 @@ export default function MenuMobilePreview({
 
         {/* Área do dispositivo */}
         <div className="flex-1 overflow-auto p-6 flex items-start justify-center min-h-[420px] bg-gradient-to-b from-slate-100 to-slate-200/80 dark:from-slate-900 dark:to-slate-800/80">
-          {/* Moldura iPhone 17 Pro Max */}
+          {/* Moldura com bordas arredondadas e borda de 3px */}
           <div
-            className="relative flex-shrink-0 shadow-2xl"
+            className="relative flex-shrink-0 shadow-xl overflow-hidden"
             style={{
-              width: scaledWidth + 24,
-              height: scaledHeight + 24,
+              width: scaledWidth + BORDER_WIDTH * 2,
+              height: scaledHeight + BORDER_WIDTH * 2,
+              borderRadius: FRAME_RADIUS + BORDER_WIDTH,
+              border: `${BORDER_WIDTH}px solid #1f2937`,
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
             }}
           >
-            {/* Borda/bezel externo — preto com cantos arredondados */}
+            {/* Área da tela — cantos arredondados respeitando a borda interna */}
             <div
-              className="absolute inset-0 rounded-[60px] bg-black"
+              className="absolute overflow-hidden bg-white dark:bg-slate-900"
               style={{
-                borderRadius: `${FRAME_RADIUS + 8}px`,
-                boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.08), 0 25px 50px -12px rgba(0,0,0,0.5)',
-              }}
-            />
-            {/* Área da tela com cantos arredondados */}
-            <div
-              className="absolute overflow-hidden bg-black"
-              style={{
-                top: 12,
-                left: 12,
+                top: BORDER_WIDTH,
+                left: BORDER_WIDTH,
                 width: scaledWidth,
                 height: scaledHeight,
                 borderRadius: FRAME_RADIUS,
               }}
             >
-              {/* Dynamic Island */}
-              <div
-                className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-black rounded-full"
+              {loading && (
+                <div
+                  className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800"
+                  style={{ borderRadius: FRAME_RADIUS }}
+                >
+                  <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-2" />
+                  <p className="text-xs text-slate-500">Carregando cardápio…</p>
+                </div>
+              )}
+              <iframe
+                ref={iframeRef}
+                src={iframeSrc}
+                title="Pré-visualização do cardápio"
+                onLoad={() => setLoading(false)}
                 style={{
-                  width: NOTCH_WIDTH * SCALE,
-                  height: 22,
+                  width: VIEWPORT_WIDTH,
+                  height: VIEWPORT_HEIGHT,
+                  transform: `scale(${SCALE})`,
+                  transformOrigin: '0 0',
+                  border: 'none',
                 }}
+                className="absolute top-0 left-0"
+                sandbox="allow-scripts allow-same-origin allow-forms"
               />
-              {/* Conteúdo da tela — wrapper com dimensões escaladas */}
-              <div
-                className="absolute top-0 left-0 overflow-hidden"
-                style={{
-                  width: scaledWidth,
-                  height: scaledHeight,
-                  borderRadius: FRAME_RADIUS - 4,
-                }}
-              >
-                {loading && (
-                  <div
-                    className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800"
-                    style={{ borderRadius: FRAME_RADIUS - 4 }}
-                  >
-                    <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-2" />
-                    <p className="text-xs text-slate-500">Carregando cardápio…</p>
-                  </div>
-                )}
-                <iframe
-                  ref={iframeRef}
-                  src={iframeSrc}
-                  title="Pré-visualização do cardápio"
-                  onLoad={() => setLoading(false)}
-                  style={{
-                    width: VIEWPORT_WIDTH,
-                    height: VIEWPORT_HEIGHT,
-                    transform: `scale(${SCALE})`,
-                    transformOrigin: '0 0',
-                    border: 'none',
-                  }}
-                  className="absolute top-0 left-0"
-                  sandbox="allow-scripts allow-same-origin allow-forms"
-                />
-              </div>
             </div>
           </div>
         </div>
