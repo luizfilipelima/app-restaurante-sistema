@@ -168,7 +168,8 @@ export function getMinimalPalette(
     accentId === 'gold'
       ? '43 85% 52%' // dourado sólido como fallback
       : `${hue} 95% ${mode === 'light' ? '48%' : '55%'}`;
-  const primaryFg = '0 0% 100%';
+  // Tema escuro: texto escuro nos botões primary para contraste (primary é claro)
+  const primaryFg = mode === 'dark' ? '0 0% 9%' : '0 0% 100%';
   const accent = mode === 'light' ? `${hue} 100% 96%` : `${hue} 30% 18%`;
   const accentFg = mode === 'light' ? `${hue} 95% 48%` : '0 0% 98%';
 
@@ -295,6 +296,23 @@ export function paletteToCssVars(palette: ThemePalette): Record<string, string> 
     '--border': palette.border,
     '--input': palette.input,
     '--ring': palette.ring,
+  };
+}
+
+/**
+ * Variáveis CSS semânticas (success, warning, destructive, info) para temas customizados.
+ * Quando o tema não é o padrão, essas cores seguem primary/accent para manter harmonia.
+ */
+export function getSemanticCssVarsForCustomTheme(palette: ThemePalette): Record<string, string> {
+  return {
+    '--success': palette.primary,
+    '--success-foreground': palette.primaryForeground,
+    '--warning': palette.accent,
+    '--warning-foreground': palette.accentForeground,
+    '--destructive': palette.primary,
+    '--destructive-foreground': palette.primaryForeground,
+    '--info': palette.accent,
+    '--info-foreground': palette.accentForeground,
   };
 }
 

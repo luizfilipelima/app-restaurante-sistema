@@ -7,7 +7,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { getMenuThemeConfig, paletteToCssVars } from '@/lib/menuThemes';
+import { getMenuThemeConfig, paletteToCssVars, getSemanticCssVarsForCustomTheme } from '@/lib/menuThemes';
 
 export default function MenuThemeWrapper() {
   const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
@@ -45,6 +45,8 @@ export default function MenuThemeWrapper() {
     const style: React.CSSProperties = {
       ...paletteToCssVars(config.palette),
       ...(config.primaryBgGradient && { '--primary-bg': config.primaryBgGradient } as React.CSSProperties),
+      // Cores semânticas seguem o tema quando não for o padrão
+      ...(config.accentId != null ? getSemanticCssVarsForCustomTheme(config.palette) : {}),
     };
     return {
       style,
@@ -52,6 +54,21 @@ export default function MenuThemeWrapper() {
       accentId: config.accentId ?? undefined,
     };
   }, [menuThemeId, menuThemeAccent]);
+
+  // Aplicar tema no documentElement para modais/dropdowns (portais) herdarem as variáveis
+  useEffect(() => {
+    if (!restaurantSlug || !themeConfig) return;
+    const el = document.documentElement;
+    Object.entries(themeConfig.style).forEach(([key, value]) => {
+      if (typeof value === 'string') el.style.setProperty(key, value);
+    });
+    if (themeConfig.isDark) el.classList.add('dark');
+    else el.classList.remove('dark');
+    return () => {
+      Object.keys(themeConfig.style).forEach((key) => el.style.removeProperty(key));
+      el.classList.remove('dark');
+    };
+  }, [restaurantSlug, themeConfig]);
 
   if (!restaurantSlug) return <Outlet />;
 

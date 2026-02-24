@@ -588,14 +588,14 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   // ── Carrinho vazio ──
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 safe-area-inset-bottom">
+      <div className="min-h-screen bg-background flex items-center justify-center p-6 safe-area-inset-bottom">
         <div className="text-center space-y-5">
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
             <ShoppingBag className="h-10 w-10 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900">{t('checkout.emptyTitle')}</h2>
-            <p className="text-sm text-slate-500 mt-1">Adicione itens ao carrinho para continuar</p>
+            <h2 className="text-xl font-bold text-foreground">{t('checkout.emptyTitle')}</h2>
+            <p className="text-sm text-muted-foreground mt-1">Adicione itens ao carrinho para continuar</p>
           </div>
           <Button
             onClick={handleBackToMenu}
@@ -621,14 +621,14 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     phoneCountry === 'BR' ? '🇧🇷' : phoneCountry === 'PY' ? '🇵🇾' : '🇦🇷';
 
   return (
-    <div className="min-h-screen bg-slate-50 safe-area-inset-bottom">
+    <div className="min-h-screen bg-background safe-area-inset-bottom">
 
       {/* ── Header sticky ── */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-slate-200/80 safe-area-inset-top">
+      <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-border/80 safe-area-inset-top">
         <div className="max-w-xl mx-auto px-4 h-14 flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 active:scale-95 transition-all touch-manipulation flex-shrink-0"
+            className="h-9 w-9 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted active:scale-95 transition-all touch-manipulation flex-shrink-0"
             aria-label="Voltar"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -638,16 +638,16 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             <img src={currentRestaurant.logo} width={32} height={32} className="h-8 w-8 rounded-lg object-cover flex-shrink-0" alt="" />
           ) : currentRestaurant?.name ? (
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-              <span className="text-sm font-bold text-white">{currentRestaurant.name[0].toUpperCase()}</span>
+              <span className="text-sm font-bold text-primary-foreground">{currentRestaurant.name[0].toUpperCase()}</span>
             </div>
           ) : null}
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-bold text-slate-900 leading-tight truncate">
+            <h1 className="text-sm font-bold text-foreground leading-tight truncate">
               {isTableOrder ? `Mesa ${tableNumber}` : t('checkout.title')}
             </h1>
             {currentRestaurant?.name && (
-              <p className="text-xs text-slate-400 truncate leading-tight">{currentRestaurant.name}</p>
+              <p className="text-xs text-muted-foreground truncate leading-tight">{currentRestaurant.name}</p>
             )}
           </div>
 
@@ -662,18 +662,18 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       <div className="max-w-xl mx-auto px-4 pt-4 pb-36 space-y-4">
 
         {/* ── 1. Sacola ── */}
-        <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
+        <div className="relative z-10 bg-card rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 flex items-center gap-2 border-b border-border">
             <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
               <ShoppingBag className="h-3.5 w-3.5 text-primary" />
             </div>
-            <span className="text-sm font-semibold text-slate-800">Sua sacola</span>
-            <span className="ml-auto text-xs text-slate-400">
+            <span className="text-sm font-semibold text-card-foreground">Sua sacola</span>
+            <span className="ml-auto text-xs text-muted-foreground">
               {totalItemCount} {totalItemCount === 1 ? 'item' : 'itens'}
             </span>
           </div>
 
-          <div className="divide-y divide-slate-50">
+          <div className="divide-y divide-border/50">
             {items.map((item, index) => {
               const itemTotal =
                 item.unitPrice * item.quantity +
@@ -690,20 +690,20 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-900 text-sm leading-tight">{item.productName}</p>
+                    <p className="font-semibold text-foreground text-sm leading-tight">{item.productName}</p>
 
                     {(item.pizzaSize || item.pizzaFlavors?.length) && (
-                      <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                         {[item.pizzaSize, item.pizzaFlavors?.join(', ')].filter(Boolean).join(' · ')}
                       </p>
                     )}
                     {item.marmitaSize && (
-                      <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                         {[item.marmitaSize, item.marmitaProteins?.join(', ')].filter(Boolean).join(' · ')}
                       </p>
                     )}
                     {item.addons && item.addons.length > 0 && (
-                      <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                         + {item.addons.map((a) => a.name).join(', ')}
                       </p>
                     )}
@@ -717,21 +717,21 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                         onClick={() => updateQuantity(index, item.quantity - 1)}
                         className={`h-7 w-7 rounded-lg border flex items-center justify-center active:scale-90 transition-all touch-manipulation ${
                           item.quantity <= 1
-                            ? 'border-red-200 text-red-400 hover:bg-red-50 hover:border-red-300'
-                            : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                            ? 'border-destructive/50 text-destructive hover:bg-destructive/10 hover:border-destructive'
+                            : 'border-border text-muted-foreground hover:bg-muted'
                         }`}
                         aria-label={item.quantity <= 1 ? 'Remover item' : 'Diminuir quantidade'}
                       >
                         {item.quantity <= 1 ? <Trash2 className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
                       </button>
 
-                      <span className="text-sm font-bold text-slate-900 w-6 text-center tabular-nums select-none">
+                      <span className="text-sm font-bold text-foreground w-6 text-center tabular-nums select-none">
                         {item.quantity}
                       </span>
 
                       <button
                         onClick={() => updateQuantity(index, item.quantity + 1)}
-                        className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-primary/10 hover:border-primary/30 hover:text-primary active:scale-90 transition-all touch-manipulation"
+                        className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:bg-primary/10 hover:border-primary/30 hover:text-primary active:scale-90 transition-all touch-manipulation"
                         aria-label="Aumentar quantidade"
                       >
                         <Plus className="h-3.5 w-3.5" />
@@ -742,11 +742,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   {/* Preço */}
                   {!isTableOrder && (
                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0 ml-1">
-                      <span className={`text-sm font-bold tabular-nums ${item.isLoyaltyReward ? 'text-amber-600' : 'text-slate-900'}`}>
+                      <span className={`text-sm font-bold tabular-nums ${item.isLoyaltyReward ? 'text-warning' : 'text-foreground'}`}>
                         {item.isLoyaltyReward ? t('checkout.free') : formatCurrency(convertForDisplay(itemTotal), displayCurrency)}
                       </span>
                       {item.quantity > 1 && (
-                        <span className="text-[10px] text-slate-400 tabular-nums">
+                        <span className="text-[10px] text-muted-foreground tabular-nums">
                           {formatCurrency(unitDisplay, displayCurrency)} cada
                         </span>
                       )}
@@ -761,29 +761,29 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         {/* ── Mesa badge + Nome do cliente ── */}
         {isTableOrder && (
           <div className="relative z-10 space-y-3">
-            <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-200">
-              <div className="h-9 w-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-                <Store className="h-[18px] w-[18px] text-amber-700" />
+            <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-warning/10 border border-warning/30">
+              <div className="h-9 w-9 rounded-xl bg-warning/20 flex items-center justify-center flex-shrink-0">
+                <Store className="h-[18px] w-[18px] text-warning" />
               </div>
               <div>
-                <p className="text-sm font-bold text-amber-900">Mesa {tableNumber}</p>
-                <p className="text-xs text-amber-700">Pedido vai direto para a cozinha</p>
+                <p className="text-sm font-bold text-warning">Mesa {tableNumber}</p>
+                <p className="text-xs text-warning">Pedido vai direto para a cozinha</p>
               </div>
             </div>
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
-                <User className="h-3.5 w-3.5 text-amber-600" />
-                <span className="text-sm font-semibold text-slate-800">Seu nome (divisão da conta)</span>
+            <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-4 py-3 flex items-center gap-2 border-b border-border">
+                <User className="h-3.5 w-3.5 text-primary" />
+                <span className="text-sm font-semibold text-card-foreground">Seu nome (divisão da conta)</span>
               </div>
               <div className="p-4">
                 <Input
                   value={tableCustomerName ?? ''}
                   onChange={(e) => { setTableCustomerName(e.target.value.trim() || null); setFormError(null); }}
                   placeholder="Ex: João, Maria"
-                  className="h-12 text-base bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
+                  className="h-12 text-base bg-muted border-border rounded-xl focus:bg-background"
                   autoComplete="name"
                 />
-                <p className="text-xs text-slate-400 mt-2">Identifique seu pedido para facilitar a divisão da conta na mesa.</p>
+                <p className="text-xs text-muted-foreground mt-2">Identifique seu pedido para facilitar a divisão da conta na mesa.</p>
               </div>
             </div>
           </div>
@@ -802,10 +802,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 className={`flex-1 flex flex-col items-center gap-1.5 py-4 rounded-2xl border-2 font-semibold text-sm transition-all touch-manipulation active:scale-[0.98] ${
                   deliveryType === type
                     ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+                    : 'border-border bg-card text-muted-foreground hover:border-border hover:bg-muted'
                 }`}
               >
-                <Icon className={`h-5 w-5 ${deliveryType === type ? 'text-primary' : 'text-slate-400'}`} />
+                <Icon className={`h-5 w-5 ${deliveryType === type ? 'text-primary' : 'text-muted-foreground'}`} />
                 <span>{label}</span>
                 <span className="text-[10px] font-normal opacity-70">{sub}</span>
               </button>
@@ -815,16 +815,16 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 3. Dados do cliente (não-mesa) ── */}
         {!isTableOrder && (
-          <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
-              <div className="h-6 w-6 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <User className="h-3.5 w-3.5 text-blue-600" />
+          <div className="relative z-10 bg-card rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-border">
+              <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <User className="h-3.5 w-3.5 text-primary" />
               </div>
-              <span className="text-sm font-semibold text-slate-800">Seus dados</span>
+              <span className="text-sm font-semibold text-card-foreground">Seus dados</span>
             </div>
             <div className="p-4 space-y-3">
               <div>
-                <Label htmlFor="name" className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
+                <Label htmlFor="name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
                   {t('checkout.yourName')}
                 </Label>
                 <Input
@@ -834,16 +834,16 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   onChange={(e) => { setCustomerName(e.target.value); setFormError(null); }}
                   placeholder={t('checkout.namePlaceholder')}
                   autoComplete="name"
-                  className="h-12 text-base bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
+                  className="h-12 text-base bg-muted border-border rounded-xl focus:bg-background"
                 />
               </div>
               <div>
-                <Label htmlFor="phone" className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
+                <Label htmlFor="phone" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
                   {t('checkout.phoneLabel')}
                 </Label>
                 <div className="flex gap-2">
                   <Select value={phoneCountry} onValueChange={(v) => setPhoneCountry(v as 'BR' | 'PY' | 'AR')}>
-                    <SelectTrigger className="w-[66px] h-12 shrink-0 bg-slate-50 border-slate-200 rounded-xl px-2 justify-center gap-0">
+                    <SelectTrigger className="w-[66px] h-12 shrink-0 bg-muted border-border rounded-xl px-2 justify-center gap-0">
                       <span className="text-xl">{phoneFlagLabel}</span>
                     </SelectTrigger>
                     <SelectContent>
@@ -858,7 +858,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     onChange={(e) => { setCustomerPhone(e.target.value); setFormError(null); }}
                     data-testid="checkout-phone"
                     placeholder={phonePlaceholder}
-                    className="flex-1 h-12 text-base bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
+                    className="flex-1 h-12 text-base bg-muted border-border rounded-xl focus:bg-background"
                     type="tel"
                     autoComplete="tel"
                     inputMode="tel"
@@ -871,14 +871,14 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 4. Zona de entrega (apenas delivery, não-mesa) — zonas ativas ── */}
         {!isTableOrder && deliveryType === DeliveryType.DELIVERY && zones.length > 0 && (
-          <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100 overflow-hidden rounded-t-2xl">
-              <div className="h-6 w-6 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
-                <Map className="h-3.5 w-3.5 text-teal-600" />
+          <div className="relative z-10 bg-card rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-border overflow-hidden rounded-t-2xl">
+              <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Map className="h-3.5 w-3.5 text-primary" />
               </div>
-              <span className="text-sm font-semibold text-slate-800">{t('checkout.zoneLabel')}</span>
+              <span className="text-sm font-semibold text-card-foreground">{t('checkout.zoneLabel')}</span>
               {selectedZoneId && (
-                <Check className="h-4 w-4 text-teal-500 ml-auto flex-shrink-0" />
+                <Check className="h-4 w-4 text-primary ml-auto flex-shrink-0" />
               )}
             </div>
             <div className="p-4">
@@ -890,7 +890,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     setFormError(null);
                   }}
                 >
-                  <SelectTrigger data-testid="checkout-zone-select" className="h-auto min-h-12 py-3 bg-slate-50 border-slate-200 rounded-xl text-base focus:bg-white w-full [&>span]:block [&>span]:whitespace-normal [&>span]:text-left [&>span]:break-words">
+                  <SelectTrigger data-testid="checkout-zone-select" className="h-auto min-h-12 py-3 bg-muted border-border rounded-xl text-base focus:bg-background w-full [&>span]:block [&>span]:whitespace-normal [&>span]:text-left [&>span]:break-words">
                     <SelectValue placeholder={t('checkout.zonePlaceholder')} />
                   </SelectTrigger>
                   <SelectContent position="popper" sideOffset={4} className="z-[100]">
@@ -913,7 +913,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       setZoneSelectKey((k) => k + 1);
                       setSelectedZoneId('');
                     }}
-                    className="text-xs text-teal-600 hover:text-teal-700 font-medium touch-manipulation"
+                    className="text-xs text-primary hover:text-primary/90 font-medium touch-manipulation"
                   >
                     {t('checkout.changeZone')}
                   </button>
@@ -925,16 +925,16 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 4b. Card informativo quando zonas desativadas (envio de localização via WhatsApp) ── */}
         {!isTableOrder && deliveryType === DeliveryType.DELIVERY && zones.length === 0 && (
-          <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden border border-amber-200 bg-amber-50/50">
-            <div className="px-4 py-3 flex items-center gap-2 border-b border-amber-200/60">
-              <div className="h-6 w-6 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-                <Info className="h-3.5 w-3.5 text-amber-600" />
+          <div className="relative z-10 bg-card rounded-2xl shadow-sm overflow-hidden border border-warning/30 bg-warning/5">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-warning/20">
+              <div className="h-6 w-6 rounded-lg bg-warning/20 flex items-center justify-center flex-shrink-0">
+                <Info className="h-3.5 w-3.5 text-warning" />
               </div>
-              <span className="text-sm font-semibold text-amber-900">Localização e frete</span>
+              <span className="text-sm font-semibold text-warning">Localização e frete</span>
             </div>
             <div className="p-4">
-              <p className="text-sm text-amber-900/90 leading-relaxed flex items-start gap-2">
-                <MapPin className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-warning leading-relaxed flex items-start gap-2">
+                <MapPin className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
                 {t('checkout.zonesDisabledInfo')}
               </p>
             </div>
@@ -943,14 +943,14 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 5. Endereço de entrega com mapa — só aparece quando há zonas ativas e zona selecionada ── */}
         {!isTableOrder && deliveryType === DeliveryType.DELIVERY && zones.length > 0 && selectedZoneId && (
-          <div className="relative z-10 bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
-              <div className="h-6 w-6 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                <MapPin className="h-3.5 w-3.5 text-green-600" />
+          <div className="relative z-10 bg-card rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-border">
+              <div className="h-6 w-6 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
+                <MapPin className="h-3.5 w-3.5 text-success" />
               </div>
-              <span className="text-sm font-semibold text-slate-800">Endereço de entrega</span>
+              <span className="text-sm font-semibold text-card-foreground">Endereço de entrega</span>
               {addressDetails.trim() && (
-                <Check className="h-4 w-4 text-green-500 ml-auto flex-shrink-0" />
+                <Check className="h-4 w-4 text-success ml-auto flex-shrink-0" />
               )}
             </div>
 
@@ -978,7 +978,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
               {/* Complemento / Referência */}
               <div>
-                <Label htmlFor="addressDetails" className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
+                <Label htmlFor="addressDetails" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
                   Complemento / Referência <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -986,7 +986,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   value={addressDetails}
                   onChange={(e) => { setAddressDetails(e.target.value); setFormError(null); }}
                   placeholder="Apto, Bloco, Casa, Ponto de referência..."
-                  className="h-12 bg-slate-50 border-slate-200 rounded-xl text-base focus:bg-white"
+                  className="h-12 bg-muted border-border rounded-xl text-base focus:bg-background"
                   required
                 />
               </div>
@@ -996,22 +996,22 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 6. Pagamento (não-mesa) ── */}
         {!isTableOrder && (
-          <div className="relative z-20 bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
-              <div className="h-6 w-6 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
-                <CreditCard className="h-3.5 w-3.5 text-violet-600" />
+          <div className="relative z-20 bg-card rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-border">
+              <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <CreditCard className="h-3.5 w-3.5 text-primary" />
               </div>
-              <span className="text-sm font-semibold text-slate-800">{t('checkout.payment')}</span>
+              <span className="text-sm font-semibold text-card-foreground">{t('checkout.payment')}</span>
 
               {paymentCurrencies.length > 1 && (
-                <div className="ml-auto flex gap-1 p-0.5 bg-slate-100 rounded-lg">
+                <div className="ml-auto flex gap-1 p-0.5 bg-muted rounded-lg">
                   {paymentCurrencies.map((c) => (
                     <button
                       key={c}
                       type="button"
                       onClick={() => setPaymentCurrency(c)}
                       className={`px-2 py-1 rounded-md text-xs font-bold transition-all touch-manipulation ${
-                        displayCurrency === c ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                        displayCurrency === c ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
                       }`}
                       title={currencyLabel(c)}
                     >
@@ -1025,11 +1025,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             <div className="p-3 space-y-2">
               {(() => {
                 const baseOptions = [
-                  { value: PaymentMethod.PIX, icon: Smartphone, label: 'PIX', desc: 'Envie o comprovante após confirmar', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', deliveryOnly: false },
-                  { value: PaymentMethod.BANK_TRANSFER, icon: Landmark, label: 'Transferência Bancária', desc: displayCurrency === 'PYG' ? 'Banco, titular, alias' : displayCurrency === 'ARS' ? 'Banco, agência, conta' : 'Disponível em Guaraní ou Peso', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600', deliveryOnly: false },
-                  { value: PaymentMethod.CASH, icon: Banknote, label: t('checkout.cash'), desc: 'Pague na entrega / retirada', iconBg: 'bg-green-100', iconColor: 'text-green-600', deliveryOnly: false },
-                  { value: PaymentMethod.CARD, icon: CreditCard, label: t('checkout.cardOnDelivery'), desc: 'Débito ou crédito na entrega', iconBg: 'bg-blue-100', iconColor: 'text-blue-600', deliveryOnly: true },
-                  { value: PaymentMethod.QRCODE, icon: QrCode, label: 'QR Code', desc: 'Na entrega', iconBg: 'bg-amber-100', iconColor: 'text-amber-600', deliveryOnly: true },
+                  { value: PaymentMethod.PIX, icon: Smartphone, label: 'PIX', desc: 'Envie o comprovante após confirmar', iconBg: 'bg-success/20', iconColor: 'text-success', deliveryOnly: false },
+                  { value: PaymentMethod.BANK_TRANSFER, icon: Landmark, label: 'Transferência Bancária', desc: displayCurrency === 'PYG' ? 'Banco, titular, alias' : displayCurrency === 'ARS' ? 'Banco, agência, conta' : 'Disponível em Guaraní ou Peso', iconBg: 'bg-info/20', iconColor: 'text-info', deliveryOnly: false },
+                  { value: PaymentMethod.CASH, icon: Banknote, label: t('checkout.cash'), desc: 'Pague na entrega / retirada', iconBg: 'bg-success/20', iconColor: 'text-success', deliveryOnly: false },
+                  { value: PaymentMethod.CARD, icon: CreditCard, label: t('checkout.cardOnDelivery'), desc: 'Débito ou crédito na entrega', iconBg: 'bg-info/20', iconColor: 'text-info', deliveryOnly: true },
+                  { value: PaymentMethod.QRCODE, icon: QrCode, label: 'QR Code', desc: 'Na entrega', iconBg: 'bg-warning/20', iconColor: 'text-warning', deliveryOnly: true },
                 ];
                 return baseOptions
                   .filter((o) => !o.deliveryOnly || deliveryType === DeliveryType.DELIVERY)
@@ -1039,30 +1039,30 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                         type="button"
                         onClick={() => setPaymentMethod(value)}
                         className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all touch-manipulation active:scale-[0.99] ${
-                          paymentMethod === value ? 'border-primary bg-primary/10' : 'border-slate-100 bg-slate-50/60 hover:border-slate-200'
+                          paymentMethod === value ? 'border-primary bg-primary/10' : 'border-border bg-muted/60 hover:border-border'
                         }`}
                       >
                         <div className={`h-9 w-9 rounded-xl ${iconBg} flex items-center justify-center flex-shrink-0`}>
                           <Icon className={`h-4 w-4 ${iconColor}`} />
                         </div>
                         <div className="flex-1 text-left">
-                          <p className="text-sm font-semibold text-slate-900">{label}</p>
-                          <p className="text-xs text-slate-400">{desc}</p>
+                          <p className="text-sm font-semibold text-foreground">{label}</p>
+                          <p className="text-xs text-muted-foreground">{desc}</p>
                         </div>
                         <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                          paymentMethod === value ? 'border-primary bg-primary' : 'border-slate-300'
+                          paymentMethod === value ? 'border-primary bg-primary' : 'border-border'
                         }`}>
-                          {paymentMethod === value && <Check className="h-3 w-3 text-white" />}
+                          {paymentMethod === value && <Check className="h-3 w-3 text-primary-foreground" />}
                         </div>
                       </button>
 
                       {value === PaymentMethod.PIX && paymentMethod === PaymentMethod.PIX && (
                         <div className="mt-2 px-1">
                           {currentRestaurant?.pix_key ? (
-                            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
-                              <p className="text-xs font-semibold text-emerald-800 mb-1.5">Envie o PIX para:</p>
+                            <div className="p-3 rounded-xl bg-success/10 border border-success/30">
+                              <p className="text-xs font-semibold text-success mb-1.5">Envie o PIX para:</p>
                               <div className="flex items-center gap-2">
-                                <code className="flex-1 text-sm font-mono text-emerald-900 break-all bg-white/80 px-2.5 py-2 rounded-lg border border-emerald-100">
+                                <code className="flex-1 text-sm font-mono text-success break-all bg-card/80 px-2.5 py-2 rounded-lg border border-success/20">
                                   {currentRestaurant.pix_key}
                                 </code>
                                 <button
@@ -1076,18 +1076,18 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                                       // silencioso — botão mostra estado visual
                                     }
                                   }}
-                                  className="flex-shrink-0 h-10 w-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition-colors touch-manipulation"
+                                  className="flex-shrink-0 h-10 w-10 rounded-lg bg-success hover:bg-success/90 text-success-foreground flex items-center justify-center transition-colors touch-manipulation"
                                   title="Copiar chave PIX"
                                 >
                                   {pixCopied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
                                 </button>
                               </div>
-                              <p className="text-xs text-emerald-700 mt-2">Após enviar o pedido no WhatsApp, envie o comprovante de pagamento.</p>
+                              <p className="text-xs text-success mt-2">Após enviar o pedido no WhatsApp, envie o comprovante de pagamento.</p>
                             </div>
                           ) : (
-                            <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-100">
-                              <Info className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                              <p className="text-xs text-amber-800">
+                            <div className="flex items-start gap-2 p-2.5 rounded-xl bg-warning/10 border border-warning/20">
+                              <Info className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
+                              <p className="text-xs text-warning">
                                 O restaurante ainda não configurou a chave PIX. Após enviar o pedido no WhatsApp, envie o comprovante informando o valor.
                               </p>
                             </div>
@@ -1098,17 +1098,17 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       {value === PaymentMethod.BANK_TRANSFER && paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS') && (
                         <div className="mt-2 px-1 space-y-2">
                           {bankAccountSnapshot && hasBankAccountData(bankAccountSnapshot) ? (
-                            <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200">
-                              <p className="text-xs font-semibold text-indigo-800 mb-2">
+                            <div className="p-3 rounded-xl bg-info/10 border border-info/30">
+                              <p className="text-xs font-semibold text-info mb-2">
                                 Envie a transferência para{displayCurrency === 'PYG' ? ' (Guaraní)' : ' (Peso Argentino)'}:
                               </p>
-                              <div className="space-y-1.5 text-sm text-indigo-900">
+                              <div className="space-y-1.5 text-sm text-info">
                                 {formatBankAccountLines(bankAccountSnapshot).map((line) => {
                                   const idx = line.indexOf(': ');
                                   const label = idx >= 0 ? line.slice(0, idx) : line;
                                   const value = idx >= 0 ? line.slice(idx + 2) : '';
                                   return (
-                                    <p key={label}><span className="text-indigo-600">{label}:</span> {value}</p>
+                                    <p key={label}><span className="text-info">{label}:</span> {value}</p>
                                   );
                                 })}
                               </div>
@@ -1124,17 +1124,17 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                                     // silencioso — botão mostra estado visual
                                   }
                                 }}
-                                className="mt-2 flex items-center gap-2 text-xs font-medium text-indigo-700 hover:text-indigo-800 transition-colors touch-manipulation"
+                                className="mt-2 flex items-center gap-2 text-xs font-medium text-info hover:text-info/90 transition-colors touch-manipulation"
                               >
                                 {bankCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                                 {bankCopied ? 'Copiado!' : 'Copiar dados'}
                               </button>
-                              <p className="text-xs text-indigo-700 mt-2">Após enviar o pedido no WhatsApp, envie o comprovante de transferência.</p>
+                              <p className="text-xs text-info mt-2">Após enviar o pedido no WhatsApp, envie o comprovante de transferência.</p>
                             </div>
                           ) : (
-                            <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-100">
-                              <Info className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                              <p className="text-xs text-amber-800">
+                            <div className="flex items-start gap-2 p-2.5 rounded-xl bg-warning/10 border border-warning/20">
+                              <Info className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
+                              <p className="text-xs text-warning">
                                 O restaurante ainda não configurou os dados bancários. Entre em contato pelo WhatsApp.
                               </p>
                             </div>
@@ -1144,23 +1144,23 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
                       {value === PaymentMethod.QRCODE && paymentMethod === PaymentMethod.QRCODE && (
                         <div className="mt-2 px-1">
-                          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-100">
-                            <Info className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                            <p className="text-xs text-amber-800">Pague via QR Code no momento da entrega.</p>
+                          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-warning/10 border border-warning/20">
+                            <Info className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-warning">Pague via QR Code no momento da entrega.</p>
                           </div>
                         </div>
                       )}
 
                       {value === PaymentMethod.CASH && paymentMethod === PaymentMethod.CASH && (
                         <div className="mt-2 px-1">
-                          <Label className="text-xs text-slate-400 mb-1.5 block">
-                            {t('checkout.changeFor')} em {displayCurrency === 'PYG' ? 'Guaraní' : displayCurrency === 'ARS' ? 'Peso Argentino' : 'Real'} — <span className="text-slate-300">opcional</span>
+                          <Label className="text-xs text-muted-foreground mb-1.5 block">
+                            {t('checkout.changeFor')} em {displayCurrency === 'PYG' ? 'Guaraní' : displayCurrency === 'ARS' ? 'Peso Argentino' : 'Real'} — <span className="text-muted-foreground/70">opcional</span>
                           </Label>
                           <Input
                             placeholder={displayCurrency === 'PYG' ? 'Ex: 100.000' : 'Ex: 100,00'}
                             value={changeFor}
                             onChange={(e) => setChangeFor(e.target.value)}
-                            className="h-11 bg-white border-slate-200 rounded-xl text-base"
+                            className="h-11 bg-background border-border rounded-xl text-base"
                             inputMode="decimal"
                           />
                         </div>
@@ -1174,13 +1174,13 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 6. Observações (não-mesa) ── */}
         {!isTableOrder && (
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
-              <div className="h-6 w-6 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
-                <StickyNote className="h-3.5 w-3.5 text-yellow-600" />
+          <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-border">
+              <div className="h-6 w-6 rounded-lg bg-warning/20 flex items-center justify-center flex-shrink-0">
+                <StickyNote className="h-3.5 w-3.5 text-warning" />
               </div>
-              <span className="text-sm font-semibold text-slate-800">{t('checkout.notesLabel')}</span>
-              <span className="text-xs text-slate-300 ml-1">• opcional</span>
+              <span className="text-sm font-semibold text-card-foreground">{t('checkout.notesLabel')}</span>
+              <span className="text-xs text-muted-foreground ml-1">• opcional</span>
             </div>
             <div className="p-4">
               <textarea
@@ -1188,7 +1188,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 onChange={(e) => { const v = e.target.value; setNotes(v); setOrderNotes(v); }}
                 placeholder={t('checkout.notesPlaceholder')}
                 rows={3}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none transition-colors"
+                className="w-full bg-muted border border-border rounded-xl p-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none transition-colors"
               />
             </div>
           </div>
@@ -1196,30 +1196,30 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 7. Cupom de desconto (apenas quando habilitado e existe ao menos um cupom ativo) ── */}
         {showCouponCard && (
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100">
+        <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-border">
               <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <Ticket className="h-3.5 w-3.5 text-primary" />
               </div>
-              <span className="text-sm font-semibold text-slate-800">{t('checkout.couponLabel')}</span>
-              <span className="text-xs text-slate-300 ml-1">• opcional</span>
+              <span className="text-sm font-semibold text-card-foreground">{t('checkout.couponLabel')}</span>
+              <span className="text-xs text-muted-foreground ml-1">• opcional</span>
             </div>
             <div className="p-4">
               {appliedCoupon ? (
-                <div className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                <div className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-success/10 border border-success/30">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
-                      <Check className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                    <p className="text-sm font-semibold text-success flex items-center gap-2">
+                      <Check className="h-4 w-4 text-success flex-shrink-0" />
                       {t('checkout.couponApplied')} — {appliedCoupon.code}
                     </p>
-                    <p className="text-xs text-emerald-600 mt-0.5">
+                    <p className="text-xs text-success mt-0.5">
                       {t('checkout.discount')}: {formatCurrency(convertForDisplay(appliedCoupon.discountAmount), displayCurrency)}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={handleRemoveCoupon}
-                    className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-100 transition-colors touch-manipulation flex-shrink-0"
+                    className="p-1.5 rounded-lg text-success hover:bg-success/20 transition-colors touch-manipulation flex-shrink-0"
                     aria-label={t('checkout.couponRemove')}
                   >
                     <XIcon className="h-4 w-4" />
@@ -1234,7 +1234,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       setCouponError(null);
                     }}
                     placeholder={t('checkout.couponPlaceholder')}
-                    className="flex-1 h-12 text-base bg-slate-50 border-slate-200 rounded-xl focus:bg-white uppercase placeholder:normal-case"
+                    className="flex-1 h-12 text-base bg-muted border-border rounded-xl focus:bg-background uppercase placeholder:normal-case"
                     disabled={validatingCoupon}
                   />
                   <Button
@@ -1249,7 +1249,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 </div>
               )}
               {couponError && (
-                <p className="text-xs text-red-600 mt-2 flex items-center gap-1.5">
+                <p className="text-xs text-destructive mt-2 flex items-center gap-1.5">
                   <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
                   {couponError}
                 </p>
@@ -1261,34 +1261,34 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         {/* ── 8. Fidelidade ── */}
         {!isTableOrder && loyaltyStatus?.enabled && (
           hasLoyaltyItemInCart ? (
-            <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-300">
-              <Gift className="h-5 w-5 text-amber-600 flex-shrink-0" />
+            <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-warning/10 border border-warning/30">
+              <Gift className="h-5 w-5 text-warning flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-amber-800">{t('loyalty.redemptionLabel')}</p>
-                <p className="text-xs text-amber-700 truncate">
+                <p className="text-sm font-bold text-warning">{t('loyalty.redemptionLabel')}</p>
+                <p className="text-xs text-warning truncate">
                   {loyaltyStatus.reward_product_name ?? loyaltyStatus.reward_description} {t('loyalty.addedToOrder')}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleRemoveLoyaltyReward}
-                className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-100 transition-colors touch-manipulation flex-shrink-0"
+                className="p-1.5 rounded-lg text-warning hover:bg-warning/20 transition-colors touch-manipulation flex-shrink-0"
                 aria-label={t('loyalty.removeReward')}
               >
                 <XIcon className="h-4 w-4" />
               </button>
             </div>
           ) : loyaltyRedeemed && !loyaltyStatus.reward_product_id ? (
-            <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-300">
-              <Gift className="h-5 w-5 text-amber-600 flex-shrink-0" />
+            <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-warning/10 border border-warning/30">
+              <Gift className="h-5 w-5 text-warning flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-amber-800">{t('loyalty.redemptionLabel')}</p>
-                <p className="text-xs text-amber-700 truncate">{loyaltyStatus.reward_description}</p>
+                <p className="text-sm font-bold text-warning">{t('loyalty.redemptionLabel')}</p>
+                <p className="text-xs text-warning truncate">{loyaltyStatus.reward_description}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setLoyaltyRedeemed(false)}
-                className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-100 transition-colors touch-manipulation flex-shrink-0"
+                className="p-1.5 rounded-lg text-warning hover:bg-warning/20 transition-colors touch-manipulation flex-shrink-0"
                 aria-label="Cancelar resgate"
               >
                 <XIcon className="h-4 w-4" />
@@ -1301,7 +1301,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full gap-2 h-12 rounded-xl border-2 border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold"
+                  className="w-full gap-2 h-12 rounded-xl border-2 border-warning bg-warning/10 hover:bg-warning/20 text-warning font-semibold"
                   onClick={handleAddLoyaltyReward}
                 >
                   <Gift className="h-5 w-5" />
@@ -1314,27 +1314,27 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
         {/* ── 9. Resumo ── */}
         {!isTableOrder && (
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100">
-              <span className="text-sm font-semibold text-slate-800">Resumo do pedido</span>
+          <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-border">
+              <span className="text-sm font-semibold text-card-foreground">Resumo do pedido</span>
             </div>
             <div className="px-4 py-3 space-y-2.5">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-500">{t('checkout.subtotal')}</span>
-                <span className="font-semibold text-slate-800 tabular-nums">
+                <span className="text-muted-foreground">{t('checkout.subtotal')}</span>
+                <span className="font-semibold text-foreground tabular-nums">
                   {formatCurrency(convertForDisplay(subtotal), displayCurrency)}
                 </span>
               </div>
 
               {deliveryType === DeliveryType.DELIVERY && (
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-500">{t('checkout.deliveryFee')}</span>
+                  <span className="text-muted-foreground">{t('checkout.deliveryFee')}</span>
                   {deliveryFee === 0 ? (
-                    <span className="font-semibold text-emerald-600">
+                    <span className="font-semibold text-success">
                       {selectedZoneId ? `${t('checkout.free')} 🎉` : '—'}
                     </span>
                   ) : (
-                    <span className="font-semibold text-slate-700 tabular-nums">
+                    <span className="font-semibold text-foreground tabular-nums">
                       {formatCurrency(convertForDisplay(deliveryFee), displayCurrency)}
                     </span>
                   )}
@@ -1343,22 +1343,22 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
               {discountAmount > 0 && (
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-500">{t('checkout.discount')}</span>
-                  <span className="font-semibold text-emerald-600 tabular-nums">
+                  <span className="text-muted-foreground">{t('checkout.discount')}</span>
+                  <span className="font-semibold text-success tabular-nums">
                     − {formatCurrency(convertForDisplay(discountAmount), displayCurrency)}
                   </span>
                 </div>
               )}
 
-              <div className="flex justify-between items-center pt-2.5 border-t border-slate-100">
-                <span className="font-bold text-slate-900">{t('checkout.total')}</span>
-                <span className="text-xl font-black text-slate-900 tabular-nums">
+              <div className="flex justify-between items-center pt-2.5 border-t border-border">
+                <span className="font-bold text-foreground">{t('checkout.total')}</span>
+                <span className="text-xl font-black text-foreground tabular-nums">
                   {formatCurrency(convertForDisplay(total), displayCurrency)}
                 </span>
               </div>
 
               {paymentCurrencies.length > 1 && displayCurrency !== baseCurrency && (
-                <p className="text-[10px] text-slate-400 text-right">
+                <p className="text-[10px] text-muted-foreground text-right">
                   ≈ {formatCurrency(total, baseCurrency)} (valor base)
                 </p>
               )}
@@ -1370,19 +1370,19 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
       {/* ── Barra de ação sticky ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 bg-white/97 backdrop-blur-md border-t border-slate-100 px-4 pt-3 shadow-2xl shadow-slate-900/10"
+        className="fixed bottom-0 left-0 right-0 z-30 bg-card/97 backdrop-blur-md border-t border-border px-4 pt-3 shadow-2xl shadow-black/10"
         style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
       >
         <div className="max-w-xl mx-auto space-y-2.5">
 
           {/* Banner de erro inline */}
           {formError && (
-            <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-red-50 border border-red-200">
-              <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700 font-medium leading-snug">{formError}</p>
+            <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-destructive/10 border border-destructive/30">
+              <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive font-medium leading-snug">{formError}</p>
               <button
                 onClick={() => setFormError(null)}
-                className="ml-auto p-0.5 text-red-400 hover:text-red-600 transition-colors flex-shrink-0"
+                className="ml-auto p-0.5 text-destructive hover:text-destructive/90 transition-colors flex-shrink-0"
                 aria-label="Fechar erro"
               >
                 <XIcon className="h-3.5 w-3.5" />
@@ -1437,11 +1437,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             </DialogDescription>
           </DialogHeader>
           <div className="py-3 flex justify-center">
-            <Gift className="h-14 w-14 text-yellow-500 animate-bounce" />
+            <Gift className="h-14 w-14 text-warning animate-bounce" />
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button
-              className="w-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:brightness-105 text-white font-bold h-12 rounded-xl shadow-lg"
+              className="w-full bg-warning hover:bg-warning/90 text-warning-foreground font-bold h-12 rounded-xl shadow-lg"
               onClick={async () => {
                 setLoyaltyRedeemed(true);
                 setShowRedeemDialog(false);

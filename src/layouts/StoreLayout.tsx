@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import InitialSplashScreen from '@/components/public/InitialSplashScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { getMenuThemeConfig, paletteToCssVars } from '@/lib/menuThemes';
+import { getMenuThemeConfig, paletteToCssVars, getSemanticCssVarsForCustomTheme } from '@/lib/menuThemes';
 
 // Rotas públicas — lazy para reduzir bundle inicial (cardápio carrega só o necessário)
 const PublicMenu = lazyWithRetry(() => import('@/pages/public/Menu'));
@@ -75,6 +75,8 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
     const style: React.CSSProperties = {
       ...paletteToCssVars(config.palette),
       ...(config.primaryBgGradient && { '--primary-bg': config.primaryBgGradient } as React.CSSProperties),
+      // Cores semânticas seguem o tema quando não for o padrão
+      ...(config.accentId != null ? getSemanticCssVarsForCustomTheme(config.palette) : {}),
     };
     return {
       style,
@@ -82,6 +84,21 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
       accentId: config.accentId ?? undefined,
     };
   }, [menuThemeId, menuThemeAccent]);
+
+  // Aplicar tema no documentElement para modais/dropdowns (portais) herdarem as variáveis
+  useEffect(() => {
+    if (!themeConfig) return;
+    const el = document.documentElement;
+    Object.entries(themeConfig.style).forEach(([key, value]) => {
+      if (typeof value === 'string') el.style.setProperty(key, value);
+    });
+    if (themeConfig.isDark) el.classList.add('dark');
+    else el.classList.remove('dark');
+    return () => {
+      Object.keys(themeConfig.style).forEach((key) => el.style.removeProperty(key));
+      el.classList.remove('dark');
+    };
+  }, [themeConfig]);
 
   useDynamicFavicon(logoUrl);
 
