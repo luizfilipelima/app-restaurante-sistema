@@ -90,8 +90,10 @@ import {
   Wine,
   Tag,
   ShoppingCart,
+  Smartphone,
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
+import MenuMobilePreview from '@/components/admin/MenuMobilePreview';
 import CategoryIconPicker from '@/components/admin/CategoryIconPicker';
 import { getCategoryIconComponent } from '@/lib/categoryIcons';
 import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/ProductAddonsSection';
@@ -431,6 +433,7 @@ export default function AdminMenu() {
 
   // QR / Online modal
   const [showOnlineModal, setShowOnlineModal] = useState(false);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [slug, setSlug] = useState('');
   const [slugSaving, setSlugSaving] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -1193,6 +1196,18 @@ export default function AdminMenu() {
             </div>
           </div>
 
+          {/* Pré-visualização Mobile */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowMobilePreview(true)}
+            className="h-8 gap-1.5"
+            disabled={!slug && !restaurant?.slug}
+            title="Ver como o cliente vê no celular"
+          >
+            <Smartphone className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Visualizar no celular</span>
+          </Button>
           {/* Online */}
           <Button variant="outline" size="sm" onClick={() => setShowOnlineModal(true)} className="h-8 gap-1.5">
             <QrCode className="h-3.5 w-3.5" />
@@ -2333,6 +2348,15 @@ export default function AdminMenu() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Pré-visualização Mobile (iPhone 17 Pro Max) ─────────────────────── */}
+      <MenuMobilePreview
+        open={showMobilePreview}
+        onOpenChange={setShowMobilePreview}
+        slug={slug || restaurant?.slug || ''}
+        interactiveDefault={true}
+        restaurantName={restaurant?.name ?? ''}
+      />
 
       {/* ── Cardápio Online Modal ───────────────────────────────────────────── */}
       <Dialog open={showOnlineModal} onOpenChange={setShowOnlineModal}>

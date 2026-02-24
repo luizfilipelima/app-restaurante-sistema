@@ -246,7 +246,6 @@ export default function AdminDeliveryZones() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
           <div className="flex items-center gap-3">
-            <Label className="text-sm font-medium text-slate-700 shrink-0">Zonas no checkout</Label>
             <div
               role="group"
               aria-label="Ativar ou desativar zonas de entrega"
