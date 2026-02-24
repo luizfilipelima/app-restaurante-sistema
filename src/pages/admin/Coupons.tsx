@@ -265,32 +265,37 @@ export default function AdminCoupons() {
             <div
               role="group"
               aria-label="Ativar ou desativar cupons de desconto"
-              className="inline-flex rounded-xl bg-slate-100 p-1"
+              className="relative inline-flex w-[200px] rounded-xl bg-slate-100 p-1"
             >
+              {/* Pill deslizante — indica o estado ativo */}
+              <div
+                className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-200 ease-out ${
+                  discountCouponsEnabled
+                    ? 'left-[calc(50%+2px)] bg-emerald-500'
+                    : 'left-1 bg-slate-700'
+                }`}
+                aria-hidden
+              />
               <button
                 type="button"
                 onClick={() => discountCouponsEnabled && toggleDiscountCouponsEnabled()}
                 disabled={togglingGlobal}
-                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                  !discountCouponsEnabled
-                    ? 'bg-slate-900 text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-200/80'
-                }`}
+                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  !discountCouponsEnabled ? 'text-white' : 'text-slate-500 hover:text-slate-700'
+                } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
-                {togglingGlobal && discountCouponsEnabled ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {togglingGlobal && discountCouponsEnabled && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
                 Desativado
               </button>
               <button
                 type="button"
                 onClick={() => !discountCouponsEnabled && toggleDiscountCouponsEnabled()}
                 disabled={togglingGlobal}
-                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                  discountCouponsEnabled
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-200/80'
-                }`}
+                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  discountCouponsEnabled ? 'text-white' : 'text-slate-500 hover:text-slate-700'
+                } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
-                {togglingGlobal && !discountCouponsEnabled ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {togglingGlobal && !discountCouponsEnabled && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
                 Ativado
               </button>
             </div>

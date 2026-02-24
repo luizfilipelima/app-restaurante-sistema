@@ -108,6 +108,26 @@ interface QueueItemTable extends QueueItemBase {
 
 type CashierQueueItem = QueueItemComandaDigital | QueueItemComandaBuffet | QueueItemTable;
 
+/** Agrupamento de pedidos da mesma mesa para exibir em um único card */
+interface TableGroup {
+  type: 'table_group';
+  id: string;
+  tableNumber: number;
+  hallZoneId: string | null;
+  zoneName: string;
+  items: QueueItemTable[];
+  label: string;
+  customerName: string | null;
+  totalAmount: number;
+  createdAt: string;
+}
+
+type CashierDisplayItem = CashierQueueItem | TableGroup;
+
+function isTableGroup(x: CashierDisplayItem): x is TableGroup {
+  return (x as TableGroup).type === 'table_group';
+}
+
 /** Conta concluída (paga) hoje — para histórico e tempo de permanência */
 interface CompletedItem {
   id: string;
@@ -283,23 +303,25 @@ function QueueCard({
   t,
   dateLocale,
 }: {
-  item: CashierQueueItem;
+  item: CashierDisplayItem;
   selected: boolean;
   currency: CurrencyCode;
   onClick: () => void;
   t: (k: string) => string;
   dateLocale: Locale;
 }) {
-  const total = getDisplayTotal(
-    item.totalAmount,
-    item.type === 'comanda_digital'
-      ? item.items
-      : item.type === 'comanda_buffet'
-        ? item.items
-        : undefined
-  );
+  const total = isTableGroup(item)
+    ? getDisplayTotal(item.totalAmount, undefined)
+    : getDisplayTotal(
+        item.totalAmount,
+        item.type === 'comanda_digital'
+          ? item.items
+          : item.type === 'comanda_buffet'
+            ? item.items
+            : undefined
+      );
   const badgeClass =
-    item.type === 'table'
+    isTableGroup(item) || item.type === 'table'
       ? 'bg-blue-100 text-blue-700 border-blue-200'
       : item.type === 'comanda_buffet'
         ? 'bg-orange-100 text-orange-700 border-orange-200'
@@ -360,7 +382,7 @@ function CashierContent() {
   const [queue, setQueue] = useState<CashierQueueItem[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [isLive, setIsLive] = useState(false);
-  const [selected, setSelected] = useState<CashierQueueItem | null>(null);
+  const [selected, setSelected] = useState<CashierDisplayItem | null>(null);
   const [closing, setClosing] = useState(false);
   const [justClosed, setJustClosed] = useState(false);
   const [scanInput, setScanInput] = useState('');
@@ -677,11 +699,13 @@ function CashierContent() {
   }, [restaurantId, isLive]);
 
   const selectItem = useCallback(
-    (item: CashierQueueItem) => {
+    (item: CashierDisplayItem) => {
       if (selected?.id === item.id) return;
       setScanError(null);
       setSelected(item);
-      const total = getDisplayTotal(item.totalAmount, item.type === 'comanda_digital' ? item.items : item.type === 'comanda_buffet' ? item.items : undefined);
+      const total = isTableGroup(item)
+        ? getDisplayTotal(item.totalAmount, undefined)
+        : getDisplayTotal(item.totalAmount, item.type === 'comanda_digital' ? item.items : item.type === 'comanda_buffet' ? item.items : undefined);
       const id = `pay-${Date.now()}`;
       const displayVal = convertPriceFromStorage(total, baseCurrency);
       setPayments([{ id, method: 'cash', currency: baseCurrency, amount: total, displayValue: displayVal }]);
@@ -709,12 +733,14 @@ function CashierContent() {
       }
       const num = parseInt(value, 10);
       if (!isNaN(num)) {
-        const tableFound = queue.find(
-          (q): q is QueueItemTable => q.type === 'table' && q.tableNumber === num
-        );
-        if (tableFound) {
-          selectItem(tableFound);
-          return;
+        for (const group of queueGroupedByZone) {
+          const found = group.items.find(
+            (i) => (isTableGroup(i) ? i.tableNumber === num : i.type === 'table' && i.tableNumber === num)
+          );
+          if (found) {
+            selectItem(found);
+            return;
+          }
         }
         const bufFound = queue.find(
           (q): q is QueueItemComandaBuffet => q.type === 'comanda_buffet' && q.number === num
@@ -728,13 +754,17 @@ function CashierContent() {
         setScanError(t('cashier.invalidFormat'));
       }
     }
-  }, [scanInput, queue, mainView, selectItem, t]);
+  }, [scanInput, queue, queueGroupedByZone, mainView, selectItem, t]);
 
   const handleScanKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') handleScanSubmit();
   };
 
-  const totalToPay = selected ? getDisplayTotal(selected.totalAmount, selected.type === 'comanda_digital' ? selected.items : selected.type === 'comanda_buffet' ? selected.items : undefined) : 0;
+  const totalToPay = selected
+    ? isTableGroup(selected)
+      ? getDisplayTotal(selected.totalAmount, undefined)
+      : getDisplayTotal(selected.totalAmount, selected.type === 'comanda_digital' ? selected.items : selected.type === 'comanda_buffet' ? selected.items : undefined)
+    : 0;
 
   const totalReceivedBRL = useMemo(() => {
     let sum = 0;
@@ -759,17 +789,61 @@ function CashierContent() {
   }, [completedList]);
 
   const queueGroupedByZone = useMemo(() => {
-    const groups: { zoneName: string; items: CashierQueueItem[] }[] = [];
+    const groups: { zoneName: string; items: CashierDisplayItem[] }[] = [];
     const tableItems = queue.filter((q): q is QueueItemTable => q.type === 'table');
-    const nonTableItems = queue.filter((q) => q.type !== 'table');
+    const nonTableItems = queue.filter((q) => q.type !== 'table') as CashierDisplayItem[];
+
+    const groupTableItemsByTable = (items: QueueItemTable[], zoneName: string): CashierDisplayItem[] => {
+      const byTable = new Map<string, QueueItemTable[]>();
+      for (const t of items) {
+        const key = `${t.hallZoneId ?? ''}::${t.tableNumber}`;
+        const arr = byTable.get(key) ?? [];
+        arr.push(t);
+        byTable.set(key, arr);
+      }
+      const result: CashierDisplayItem[] = [];
+      for (const arr of byTable.values()) {
+        if (arr.length === 1) {
+          result.push(arr[0]);
+        } else {
+          const first = arr[0];
+          const totalAmount = arr.reduce((s, x) => s + x.totalAmount, 0);
+          const oldest = arr.reduce((a, b) => (new Date(a.createdAt) < new Date(b.createdAt) ? a : b));
+          const customerLabel = arr.length > 1 ? `${arr.length} pedidos` : (first.customerName || null);
+          result.push({
+            type: 'table_group',
+            id: `table-group-${first.hallZoneId ?? 'none'}-${first.tableNumber}`,
+            tableNumber: first.tableNumber,
+            hallZoneId: first.hallZoneId,
+            zoneName,
+            items: arr,
+            label: first.label,
+            customerName: customerLabel,
+            totalAmount,
+            createdAt: oldest.createdAt,
+          });
+        }
+      }
+      return result;
+    };
+
     for (const z of hallZones) {
       const items = tableItems.filter((t) => t.hallZoneId === z.id);
-      if (items.length > 0) groups.push({ zoneName: z.name, items });
+      if (items.length > 0) {
+        const displayItems = groupTableItemsByTable(items, z.name);
+        groups.push({ zoneName: z.name, items: displayItems });
+      }
     }
     const noZone = tableItems.filter((t) => !t.hallZoneId);
-    if (noZone.length > 0) groups.push({ zoneName: t('cashier.noZone'), items: noZone });
+    if (noZone.length > 0) {
+      const displayItems = groupTableItemsByTable(noZone, t('cashier.noZone'));
+      groups.push({ zoneName: t('cashier.noZone'), items: displayItems });
+    }
     if (nonTableItems.length > 0) groups.push({ zoneName: t('cashier.standaloneComandas'), items: nonTableItems });
-    if (groups.length === 0 && queue.length > 0) groups.push({ zoneName: t('cashier.all'), items: queue });
+    if (groups.length === 0 && queue.length > 0) {
+      const displayItems = groupTableItemsByTable(tableItems, t('cashier.all'));
+      groups.push({ zoneName: t('cashier.all'), items: [...displayItems, ...nonTableItems] });
+    }
     return groups;
   }, [queue, hallZones, t]);
 
@@ -844,6 +918,24 @@ function CashierContent() {
           .update({ status: 'closed', closed_at: new Date().toISOString() })
           .eq('id', selected.comandaId);
         toast({ title: t('cashier.buffetClosed'), description: `#${selected.number} — ${formatCurrency(totalToPay, currency)}` });
+      } else if (isTableGroup(selected)) {
+        for (const tbl of selected.items) {
+          await supabase
+            .from('orders')
+            .update({ status: 'completed', is_paid: true, payment_method: primaryMethod })
+            .eq('id', tbl.orderId);
+          const fullOrder = { ...tbl.order, status: 'completed', is_paid: true };
+          if (restaurant && restaurant.print_auto_on_new_order !== false) {
+            printOrder(
+              fullOrder as any,
+              restaurant.name,
+              (restaurant.print_paper_width as '58mm' | '80mm') || '80mm',
+              currency,
+              (restaurant.print_settings_by_sector as any) ?? undefined
+            );
+          }
+        }
+        toast({ title: t('cashier.orderPaid'), description: `${selected.label} — ${formatCurrency(totalToPay, currency)}` });
       } else if (selected.type === 'table') {
         await supabase
           .from('orders')
@@ -884,36 +976,42 @@ function CashierContent() {
     scannerRef.current?.focus();
   };
 
-  const itemsForDisplay =
-    selected?.type === 'comanda_digital'
-      ? selected.items.map((i) => ({ name: i.product_name, qty: i.quantity, price: i.total_price }))
-      : selected?.type === 'comanda_buffet'
-        ? selected.items.map((i) => ({ name: i.description, qty: i.quantity, price: i.total_price }))
-        : selected?.type === 'table'
-          ? (selected.order.order_items ?? []).map((i: any) => ({ name: i.product_name, qty: i.quantity, price: i.total_price }))
-          : [];
+  const itemsForDisplay = (() => {
+    if (!selected) return [];
+    if (selected.type === 'comanda_digital') return selected.items.map((i) => ({ name: i.product_name, qty: i.quantity, price: i.total_price }));
+    if (selected.type === 'comanda_buffet') return selected.items.map((i) => ({ name: i.description, qty: i.quantity, price: i.total_price }));
+    if (isTableGroup(selected)) {
+      return selected.items.flatMap((o) => (o.order.order_items ?? []).map((i: any) => ({ name: i.product_name, qty: i.quantity, price: i.total_price })));
+    }
+    if (selected.type === 'table') return (selected.order.order_items ?? []).map((i: any) => ({ name: i.product_name, qty: i.quantity, price: i.total_price }));
+    return [];
+  })();
 
   // Para mesa: agrupa por customer_name (João, Maria, Mesa Geral)
-  const tableItemsGrouped =
-    selected?.type === 'table' && (selected.order.order_items ?? []).length > 0
-      ? (() => {
-          const items = selected.order.order_items as Array<{ product_name: string; quantity: number; total_price: number; customer_name?: string | null }>;
-          const map = new Map<string, { label: string; items: { name: string; qty: number; price: number }[]; subtotal: number }>();
-          for (const i of items) {
-            const key = (i.customer_name ?? '').trim() || '__mesa_geral__';
-            const label = key === '__mesa_geral__' ? t('cashier.tableGeneral') : key;
-            const row = { name: i.product_name, qty: i.quantity, price: Number(i.total_price) };
-            const existing = map.get(key);
-            if (existing) {
-              existing.items.push(row);
-              existing.subtotal += row.price;
-            } else {
-              map.set(key, { label, items: [row], subtotal: row.price });
-            }
-          }
-          return Array.from(map.values()).sort((a, b) => (a.label === 'Mesa Geral' ? 1 : 0) - (b.label === 'Mesa Geral' ? 1 : 0) || a.label.localeCompare(b.label));
-        })()
-      : null;
+  const tableItemsGrouped = (() => {
+    if (!selected) return null;
+    let orderItems: Array<{ product_name: string; quantity: number; total_price: number; customer_name?: string | null }> = [];
+    if (isTableGroup(selected)) {
+      orderItems = selected.items.flatMap((o) => (o.order.order_items ?? []) as typeof orderItems);
+    } else if (selected.type === 'table') {
+      orderItems = (selected.order.order_items ?? []) as typeof orderItems;
+    }
+    if (orderItems.length === 0) return null;
+    const map = new Map<string, { label: string; items: { name: string; qty: number; price: number }[]; subtotal: number }>();
+    for (const i of orderItems) {
+      const key = (i.customer_name ?? '').trim() || '__mesa_geral__';
+      const label = key === '__mesa_geral__' ? t('cashier.tableGeneral') : key;
+      const row = { name: i.product_name, qty: i.quantity, price: Number(i.total_price) };
+      const existing = map.get(key);
+      if (existing) {
+        existing.items.push(row);
+        existing.subtotal += row.price;
+      } else {
+        map.set(key, { label, items: [row], subtotal: row.price });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => (a.label === t('cashier.tableGeneral') ? 1 : 0) - (b.label === t('cashier.tableGeneral') ? 1 : 0) || a.label.localeCompare(b.label));
+  })();
 
   return (
     <div className="h-full flex flex-col">

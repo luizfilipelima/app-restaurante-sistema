@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
@@ -66,26 +66,11 @@ export default function KitchenDisplay() {
   // Gerenciar sessões simultâneas (máximo 3 por restaurante)
   useSessionManager(user?.id || null, effectiveRestaurantId);
 
-  useEffect(() => {
-    if (!effectiveRestaurantId) {
-      setOrders([]);
-      setLoading(false);
-      return;
-    }
-    loadOrders();
-    const cleanup = subscribeToOrders();
-    const poll = setInterval(loadOrders, 10000);
-    return () => {
-      cleanup?.();
-      clearInterval(poll);
-    };
-  }, [effectiveRestaurantId]);
-
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async (silent = false) => {
     if (!effectiveRestaurantId) return;
 
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
 
       const { data, error } = await supabase
         .from('orders')
@@ -109,13 +94,29 @@ export default function KitchenDisplay() {
       console.error('Erro ao carregar pedidos:', error);
       setOrders([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
+  }, [effectiveRestaurantId]);
 
-  const subscribeToOrders = () => {
-    if (!effectiveRestaurantId) return;
+  const loadOrdersRef = useRef(loadOrders);
+  loadOrdersRef.current = loadOrders;
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshSilently = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      loadOrdersRef.current(true);
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    if (!effectiveRestaurantId) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+    loadOrders(false);
     const channel = supabase
       .channel(`kitchen-orders-${effectiveRestaurantId}`)
       .on(
@@ -127,33 +128,30 @@ export default function KitchenDisplay() {
           filter: `restaurant_id=eq.${effectiveRestaurantId}`,
         },
         (payload) => {
-          console.log('Order update:', payload);
-          
-          if (payload.eventType === 'INSERT' || 
-              (payload.eventType === 'UPDATE' && ['pending', 'preparing'].includes((payload.new as any).status))) {
-            const newOrderId = (payload.new as any).id;
+          const newRow = payload.new as any;
+          if (payload.eventType === 'INSERT' && newRow?.status && ['pending', 'preparing'].includes(newRow.status)) {
+            const newOrderId = newRow.id;
             setNewOrderIds(prev => [...prev, newOrderId]);
-            
             toast({
               title: "🔔 Novo pedido!",
-              description: `Pedido #${newOrderId.slice(0, 8).toUpperCase()}`,
+              description: `Pedido #${(newOrderId ?? '').slice(0, 8).toUpperCase()}`,
               className: "bg-blue-500 text-white border-none",
             });
-            
-            setTimeout(() => {
-              setNewOrderIds(prev => prev.filter(id => id !== newOrderId));
-            }, 10000);
+            setTimeout(() => setNewOrderIds(prev => prev.filter(id => id !== newOrderId)), 10000);
           }
-          
-          loadOrders();
+          refreshSilently();
         }
       )
       .subscribe();
 
+    const poll = setInterval(() => loadOrdersRef.current(true), 30000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(poll);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  };
+  }, [effectiveRestaurantId, loadOrders, refreshSilently]);
 
   const updateStatus = async (orderId: string, newStatus: string) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o));
@@ -168,7 +166,7 @@ export default function KitchenDisplay() {
         await supabase.from('orders').update(payload).eq('id', orderId);
       } catch (e) {
         console.error(e);
-        loadOrders();
+        loadOrders(true);
       }
     }
   };
@@ -217,8 +215,11 @@ export default function KitchenDisplay() {
   type OrderCategory = 'local_fisico' | 'delivery' | 'buffet';
   const getOrderCategory = (o: DatabaseOrder): OrderCategory => {
     if (o.order_source === 'buffet') return 'buffet';
-    if (o.order_source === 'delivery' || o.delivery_type === 'delivery' || o.order_source === 'pickup' || o.delivery_type === 'pickup') return 'delivery';
-    return 'local_fisico'; // table, comanda, ou fallback
+    if (o.order_source === 'table' || o.table_id) return 'local_fisico'; // pedido de mesa = local
+    if (o.order_source === 'comanda') return 'local_fisico';
+    if (o.order_source === 'delivery' || o.delivery_type === 'delivery') return 'delivery';
+    if (o.order_source === 'pickup' || o.delivery_type === 'pickup') return 'delivery';
+    return 'local_fisico';
   };
 
   const groupByCategory = <T extends { id: string }>(list: T[], getCat: (x: T) => OrderCategory) => {
