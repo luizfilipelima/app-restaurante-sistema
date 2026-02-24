@@ -43,7 +43,6 @@ import {
   DialogTitle,
   DialogHeader,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { format, formatDistanceToNow, startOfDay } from 'date-fns';
 import type { Locale } from 'date-fns';
@@ -432,7 +431,7 @@ function CashierContent() {
   const { data: waitingQueue = [], refetch: refetchWaitingQueue } = useWaitingQueue(hasReservations ? restaurantId : null);
   const addToQueue = useAddToWaitingQueue(restaurantId);
   const notifyQueue = useNotifyQueueItem(restaurantId);
-  const { data: tables = [] } = useTables(restaurantId);
+  useTables(restaurantId);
   const { data: tableStatuses = [] } = useTableStatuses(restaurantId);
 
   const exchangeRates: ExchangeRates = restaurant?.exchange_rates ?? {
@@ -887,12 +886,7 @@ function CashierContent() {
   const handleScanKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const value = scanBufferRef.current.trim() || scanInput.trim();
-      if (value) {
-        scanBufferRef.current = '';
-        setScanInput('');
-        processScanValue(value);
-      }
+      handleScanSubmit();
     } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       scanBufferRef.current += e.key;
     }

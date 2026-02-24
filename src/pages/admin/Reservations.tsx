@@ -40,7 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, CalendarClock, Loader2, X, User, Clock, MapPin } from 'lucide-react';
-import { format, isToday, isTomorrow, isPast } from 'date-fns';
+import { format } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
 import { useAdminTranslation } from '@/hooks/useAdminTranslation';
@@ -57,7 +57,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 function ReservationsContent() {
   const restaurantId = useAdminRestaurantId();
-  const { restaurant } = useAdminRestaurant();
+  useAdminRestaurant();
   const { t, lang } = useAdminTranslation();
   const dateLocale = DATE_LOCALES[lang] ?? ptBR;
   const queryClient = useQueryClient();
