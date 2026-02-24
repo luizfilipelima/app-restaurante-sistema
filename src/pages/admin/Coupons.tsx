@@ -257,22 +257,19 @@ export default function AdminCoupons() {
         </div>
       </div>
 
-      {/* Card de ações: Status dos cupons + Novo Cupom */}
-      <Card className="border-slate-200 shadow-sm overflow-hidden">
-        <CardContent className="p-6 space-y-5">
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-slate-700">Status dos cupons no checkout</Label>
+      {/* Barra de ações: Toggle + Novo Cupom (layout horizontal elegante) */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+          <div className="flex items-center gap-3">
+            <Label className="text-sm font-medium text-slate-700 shrink-0">Cupons no checkout</Label>
             <div
               role="group"
               aria-label="Ativar ou desativar cupons de desconto"
-              className="relative inline-flex w-[200px] rounded-xl bg-slate-100 p-1"
+              className="relative inline-flex w-[180px] rounded-xl bg-slate-100 p-1"
             >
-              {/* Pill deslizante — indica o estado ativo */}
               <div
                 className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-200 ease-out ${
-                  discountCouponsEnabled
-                    ? 'left-[calc(50%+2px)] bg-emerald-500'
-                    : 'left-1 bg-slate-700'
+                  discountCouponsEnabled ? 'left-[calc(50%+2px)] bg-emerald-500' : 'left-1 bg-slate-700'
                 }`}
                 aria-hidden
               />
@@ -280,7 +277,7 @@ export default function AdminCoupons() {
                 type="button"
                 onClick={() => discountCouponsEnabled && toggleDiscountCouponsEnabled()}
                 disabled={togglingGlobal}
-                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   !discountCouponsEnabled ? 'text-white' : 'text-slate-500 hover:text-slate-700'
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
@@ -291,7 +288,7 @@ export default function AdminCoupons() {
                 type="button"
                 onClick={() => !discountCouponsEnabled && toggleDiscountCouponsEnabled()}
                 disabled={togglingGlobal}
-                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   discountCouponsEnabled ? 'text-white' : 'text-slate-500 hover:text-slate-700'
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
@@ -299,20 +296,22 @@ export default function AdminCoupons() {
                 Ativado
               </button>
             </div>
-            <p className="text-xs text-slate-500">
-              {discountCouponsEnabled
-                ? 'Os clientes podem aplicar cupons no checkout.'
-                : 'A seção de cupom não aparece no checkout.'}
-            </p>
           </div>
-          <div className="border-t border-slate-100 pt-5">
-            <Button onClick={openCreate} className="w-full sm:w-auto bg-[#F87116] hover:bg-orange-600 text-white shadow-md">
-              <Plus className="h-4 w-4 mr-2" />
-              {t('coupons.addCoupon')}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          <p className="text-xs text-slate-500 sm:max-w-[240px]">
+            {discountCouponsEnabled
+              ? 'Clientes podem aplicar cupons no checkout.'
+              : 'Seção de cupom não aparece no checkout.'}
+          </p>
+        </div>
+        <Button
+          onClick={openCreate}
+          size="lg"
+          className="w-full sm:w-auto shrink-0 bg-[#F87116] hover:bg-orange-600 text-white shadow-md font-semibold"
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          {t('coupons.addCoupon')}
+        </Button>
+      </div>
 
       {coupons.length === 0 ? (
         <Card>
