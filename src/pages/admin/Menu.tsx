@@ -91,6 +91,7 @@ import {
   Tag,
   ShoppingCart,
   Smartphone,
+  Palette,
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
 import MenuMobilePreview from '@/components/admin/MenuMobilePreview';
@@ -172,7 +173,7 @@ function SortableCategoryItem({ category, count, isSelected, onSelect, onEdit, o
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center gap-1 rounded-lg border transition-all h-9 px-1.5 ${
+      className={`group flex items-center gap-1 rounded-xl border transition-all h-10 px-2 ${
         isSelected
           ? 'bg-primary border-primary shadow-sm'
           : 'bg-background border-transparent hover:border-border hover:bg-muted/50'
@@ -435,6 +436,7 @@ export default function AdminMenu() {
   // QR / Online modal
   const [showOnlineModal, setShowOnlineModal] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
+  const [showMenuConfigModal, setShowMenuConfigModal] = useState(false);
   const [slug, setSlug] = useState('');
   const [slugSaving, setSlugSaving] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -1162,191 +1164,183 @@ export default function AdminMenu() {
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
 
       {/* ── Page Header ──────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">Central do Cardápio</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {totalProducts} produto{totalProducts !== 1 ? 's' : ''} · {activeProducts} ativo{activeProducts !== 1 ? 's' : ''}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Search — desktop-first, campo mais largo */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <Input
-              value={productSearch}
-              onChange={(e) => setProductSearch(e.target.value)}
-              placeholder="Buscar produto..."
-              className="pl-9 h-9 w-44 min-[900px]:w-64 text-sm"
-            />
-          </div>
-
-          {/* Inventory toggle */}
-          <div
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors select-none ${showInventory ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400' : 'border-border text-muted-foreground hover:bg-muted/60'}`}
-            onClick={() => setShowInventory((v) => !v)}
-          >
-            {showInventory ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-            <span>Ver Custos</span>
-            <div onClick={(e) => e.stopPropagation()} className="ml-0.5">
-              <Switch checked={showInventory} onCheckedChange={setShowInventory} className="h-4 w-7" />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">Central do Cardápio</h1>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/80 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                <Package className="h-3.5 w-3.5" />
+                {totalProducts} produto{totalProducts !== 1 ? 's' : ''}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50">
+                <Check className="h-3.5 w-3.5" />
+                {activeProducts} ativo{activeProducts !== 1 ? 's' : ''}
+              </span>
             </div>
           </div>
 
-          {/* Pré-visualização Mobile */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowMobilePreview(true)}
-            className="h-8 gap-1.5"
-            disabled={!slug && !restaurant?.slug}
-            title="Ver como o cliente vê no celular"
-          >
-            <Smartphone className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Visualizar no celular</span>
-          </Button>
-          {/* Online */}
-          <Button variant="outline" size="sm" onClick={() => setShowOnlineModal(true)} className="h-8 gap-1.5">
-            <QrCode className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Cardápio Online</span>
-          </Button>
+          {/* Barra de ações */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 flex-wrap">
+            {/* Busca */}
+            <div className="relative order-1 sm:order-none w-full sm:w-auto min-w-[200px] sm:min-w-[220px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Buscar produto..."
+                className="pl-9 h-10 w-full text-sm rounded-lg"
+              />
+            </div>
 
-          {/* New product */}
-          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }} transition={{ duration: 0.15 }} className="inline-flex">
-            <Button size="sm" onClick={() => openNew()} className="h-8 gap-1.5">
-              <Plus className="h-3.5 w-3.5" />
-              Novo Produto
-            </Button>
-          </motion.div>
+            <div className="flex items-center gap-2 flex-wrap order-2">
+              {/* Ver Custos */}
+              <div
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium cursor-pointer transition-all select-none ${
+                  showInventory
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400'
+                    : 'border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                }`}
+                onClick={() => setShowInventory((v) => !v)}
+              >
+                {showInventory ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                <span>Ver Custos</span>
+                <Switch checked={showInventory} onCheckedChange={setShowInventory} className="h-4 w-7" onClick={(e) => e.stopPropagation()} />
+              </div>
+
+              <span className="hidden sm:block w-px h-6 bg-border" aria-hidden />
+
+              {/* Tema (atalho) */}
+              <Button variant="outline" size="sm" onClick={() => setShowMenuConfigModal(true)} className="h-10 gap-2" title="Tema e configurações do cardápio">
+                <Palette className="h-4 w-4" />
+                <span className="hidden md:inline">Tema</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMobilePreview(true)}
+                className="h-10 gap-2"
+                disabled={!slug && !restaurant?.slug}
+                title="Ver como o cliente vê no celular"
+              >
+                <Smartphone className="h-4 w-4" />
+                <span className="hidden md:inline">Visualizar</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowOnlineModal(true)} className="h-10 gap-2">
+                <QrCode className="h-4 w-4" />
+                <span className="hidden md:inline">Online</span>
+              </Button>
+
+              <span className="hidden sm:block w-px h-6 bg-border" aria-hidden />
+
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.15 }} className="inline-flex">
+                <Button size="sm" onClick={() => openNew()} className="h-10 gap-2 shadow-sm">
+                  <Plus className="h-4 w-4" />
+                  Novo Produto
+                </Button>
+              </motion.div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Two-column master-detail layout (desktop-first) ───────────────────── */}
-      <div className="flex gap-5 xl:gap-6 items-start min-h-[520px]">
+      {/* ── Layout principal: Categorias (sidebar) + Produtos ─────────────────── */}
+      <div className="flex flex-col lg:flex-row gap-6 items-stretch lg:items-start min-h-[520px]">
 
-        {/* ── Left: Category Sidebar ──────────────────────────────────────────── */}
-        <div className="w-60 xl:w-72 flex-shrink-0">
-          <Card className="dark:bg-slate-900 sticky top-4 shadow-sm">
-            <CardHeader className="pb-2 pt-5 px-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categorias</CardTitle>
-                {savingCategoryOrder && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+        {/* ── Sidebar: Categorias ────────────────────────────────────────────── */}
+        <aside className="w-full lg:w-64 xl:w-72 flex-shrink-0">
+          <Card className="dark:bg-slate-900/50 border-border/80 sticky top-4 overflow-hidden">
+            <CardHeader className="pb-3 pt-5 px-4 bg-muted/30 dark:bg-muted/10 border-b border-border/60">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold text-foreground">Filtrar por categoria</CardTitle>
+                {savingCategoryOrder && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
               </div>
             </CardHeader>
-            <CardContent className="px-3 pb-4 space-y-1">
+            <CardContent className="p-3 space-y-2">
 
-              {/* Exibição do cardápio */}
-              <div className="mb-3 pb-3 border-b border-border/60">
-                <Label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5 block">Primeira tela do cardápio</Label>
-                <Select
-                  value={menuDisplayMode}
-                  onValueChange={(v) => saveMenuDisplayMode(v as 'default' | 'categories_first')}
-                  disabled={menuDisplayModeSaving}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    {menuDisplayModeSaving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Padrão</SelectItem>
-                    <SelectItem value="categories_first">Categorias</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  &quot;Categorias&quot; mostra cards de categorias na primeira tela.
-                </p>
-              </div>
-
-              <div className="mb-3 pb-3 border-b border-border/60">
-                <MenuThemeSelector
-                  restaurantId={restaurantId}
-                  currentTheme={restaurant?.menu_theme}
-                  onThemeChange={(themeId) => setRestaurant((prev) => prev ? { ...prev, menu_theme: themeId } : null)}
-                  onInvalidateCache={() => invalidatePublicMenuCache(queryClient, slug || restaurant?.slug || ctxRestaurant?.slug)}
-                />
-              </div>
-
-              {/* "Todas" */}
+              {/* Todas */}
               <button
                 type="button"
                 onClick={() => setSelectedCategoryId(null)}
-                className={`w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors ${
+                className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                   selectedCategoryId === null
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'hover:bg-muted/70 text-foreground'
                 }`}
               >
-                <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
+                <LayoutGrid className="h-4 w-4 shrink-0 opacity-80" />
                 <span className="flex-1 text-left">Todas</span>
                 <Badge
                   variant={selectedCategoryId === null ? 'secondary' : 'outline'}
-                  className={`text-xs h-4 px-1.5 ${selectedCategoryId === null ? 'bg-primary-foreground/20 text-primary-foreground border-0' : ''}`}
+                  className={`text-xs h-5 px-2 font-semibold ${selectedCategoryId === null ? 'bg-primary-foreground/25 text-primary-foreground border-0' : ''}`}
                 >
                   {totalProducts}
                 </Badge>
               </button>
 
-              {/* Category list with DnD */}
+              {/* Lista de categorias com DnD */}
               {loading ? (
-                <div className="py-3 flex justify-center">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <div className="py-6 flex justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               ) : categories.length === 0 ? (
-                <p className="text-xs text-muted-foreground px-2 py-3 text-center">
-                  Nenhuma categoria ainda.
-                </p>
+                <div className="rounded-xl border border-dashed border-border/80 p-6 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">Nenhuma categoria</p>
+                  <p className="text-xs text-muted-foreground/80">Crie a primeira para organizar seus produtos</p>
+                </div>
               ) : (
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCategoryDragEnd}>
                   <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-                    {categories.map((cat) => (
-                      <SortableCategoryItem
-                        key={cat.id}
-                        category={cat}
-                        count={products.filter((p) => p.category === cat.name).length}
-                        isSelected={selectedCategoryId === cat.id}
-                        onSelect={() => setSelectedCategoryId(cat.id)}
-                        onEdit={() => handleOpenEditCategory(cat)}
-                        onDelete={() => handleDeleteCategory(cat)}
-                      />
-                    ))}
+                    <div className="space-y-1">
+                      {categories.map((cat) => (
+                        <SortableCategoryItem
+                          key={cat.id}
+                          category={cat}
+                          count={products.filter((p) => p.category === cat.name).length}
+                          isSelected={selectedCategoryId === cat.id}
+                          onSelect={() => setSelectedCategoryId(cat.id)}
+                          onEdit={() => handleOpenEditCategory(cat)}
+                          onDelete={() => handleDeleteCategory(cat)}
+                        />
+                      ))}
+                    </div>
                   </SortableContext>
                 </DndContext>
               )}
 
-              {/* Add category */}
+              {/* Nova categoria */}
               <button
                 type="button"
                 onClick={() => setShowCategoryModal(true)}
-                className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors mt-1 border border-dashed border-border/60 hover:border-border"
+                className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors mt-2 border-2 border-dashed border-border/70 hover:border-primary/40"
               >
-                <Plus className="h-3.5 w-3.5 shrink-0" />
+                <Plus className="h-4 w-4 shrink-0" />
                 <span>Nova Categoria</span>
               </button>
 
             </CardContent>
           </Card>
-        </div>
+        </aside>
 
-        {/* ── Right: Products panel ────────────────────────────────────────────── */}
-        <div className="flex-1 min-w-0">
+        {/* ── Painel de Produtos ───────────────────────────────────────────────── */}
+        <section className="flex-1 min-w-0">
 
-          {/* Panel header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold text-foreground">
+          {/* Cabeçalho do painel */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg font-semibold text-foreground">
                 {selectedCategory ? selectedCategory.name : 'Todos os Produtos'}
               </h2>
-              {selectedCategory?.is_pizza && <Badge variant="secondary" className="text-xs">Pizza</Badge>}
-              {selectedCategory?.is_marmita && <Badge variant="secondary" className="text-xs">Marmita</Badge>}
-              <Badge variant="outline" className="text-xs">{filteredProducts.length}</Badge>
+              {selectedCategory?.is_pizza && <Badge variant="secondary" className="text-xs font-medium">Pizza</Badge>}
+              {selectedCategory?.is_marmita && <Badge variant="secondary" className="text-xs font-medium">Marmita</Badge>}
+              <Badge variant="outline" className="text-xs font-medium">{filteredProducts.length} item{filteredProducts.length !== 1 ? 's' : ''}</Badge>
             </div>
             {selectedCategory && (
-              <Button size="sm" variant="outline" onClick={() => openNew(selectedCategory.id)} className="h-7 text-xs gap-1">
-                <Plus className="h-3 w-3" />
+              <Button size="sm" variant="outline" onClick={() => openNew(selectedCategory.id)} className="h-9 gap-2 w-full sm:w-auto shrink-0">
+                <Plus className="h-4 w-4" />
                 Produto nesta categoria
               </Button>
             )}
@@ -1475,7 +1469,7 @@ export default function AdminMenu() {
               </motion.div>
             </AnimatePresence>
           )}
-        </div>
+        </section>
       </div>
 
       {/* ════════════════════════════════════════════════════════════════════════
@@ -2356,6 +2350,54 @@ export default function AdminMenu() {
             <Button variant="outline" onClick={() => setShowEditCategoryModal(false)}>Cancelar</Button>
             <Button onClick={handleUpdateCategory} disabled={!editingCategory || !editCategoryForm.name.trim()}>Salvar</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Configurações do Cardápio (Tema + Exibição) ─────────────────────── */}
+      <Dialog open={showMenuConfigModal} onOpenChange={setShowMenuConfigModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Palette className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-semibold leading-tight">Configurações do Cardápio</DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">Tema visual e primeira tela</p>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="space-y-6 pt-2">
+            <MenuThemeSelector
+              restaurantId={restaurantId}
+              currentTheme={restaurant?.menu_theme}
+              onThemeChange={(themeId) => setRestaurant((prev) => prev ? { ...prev, menu_theme: themeId } : null)}
+              onInvalidateCache={() => invalidatePublicMenuCache(queryClient, slug || restaurant?.slug || ctxRestaurant?.slug)}
+            />
+            <div className="border-t border-border pt-5">
+              <div className="flex items-center gap-2 mb-2">
+                <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
+                <Label className="text-sm font-medium">Primeira tela do cardápio</Label>
+              </div>
+              <Select
+                value={menuDisplayMode}
+                onValueChange={(v) => saveMenuDisplayMode(v as 'default' | 'categories_first')}
+                disabled={menuDisplayModeSaving}
+              >
+                <SelectTrigger className="h-10">
+                  {menuDisplayModeSaving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Padrão — Lista de produtos</SelectItem>
+                  <SelectItem value="categories_first">Categorias — Cards na primeira tela</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-2">
+                &quot;Categorias&quot; exibe cards com imagens de cada categoria na primeira tela. &quot;Padrão&quot; vai direto para os produtos.
+              </p>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

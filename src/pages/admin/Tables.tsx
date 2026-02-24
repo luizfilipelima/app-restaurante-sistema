@@ -262,6 +262,8 @@ export default function AdminTables() {
   const activeTables = tables.filter((t) => t.is_active);
   const inactiveTables = tables.filter((t) => !t.is_active);
   const [reactivatingId, setReactivatingId] = useState<string | null>(null);
+  const [inactiveDeleteTarget, setInactiveDeleteTarget] = useState<{ id: string; number: number } | null>(null);
+  const [deletingInactive, setDeletingInactive] = useState(false);
   const pendingCalls = (waiterCallsData ?? []).filter((c) => c.status === 'pending');
 
   // Merge tableStatuses with tables for grid (tableStatuses is source of truth for status)
@@ -514,6 +516,7 @@ export default function AdminTables() {
           if (!open) {
             setSelectedTableIds(new Set());
             setShowDeleteConfirm(false);
+            setInactiveDeleteTarget(null);
           }
         }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -706,12 +709,12 @@ export default function AdminTables() {
                   </>
                 )}
 
-                {/* Mesas inativas — visualizar e reativar */}
+                {/* Mesas inativas — visualizar, reativar ou excluir permanentemente */}
                 {inactiveTables.length > 0 && (
                   <div className="space-y-3 border-t pt-4">
                     <h3 className="font-semibold text-sm text-muted-foreground">Mesas inativas</h3>
                     <p className="text-xs text-muted-foreground">
-                      Mesas excluídas (desativadas). Reative para voltar a usá-las sem criar duplicatas.
+                      Mesas desativadas. Reative para usá-las novamente ou exclua permanentemente para liberar o número e cadastrar uma nova mesa.
                     </p>
                     <div className="max-h-[160px] overflow-y-auto border border-dashed rounded-lg divide-y bg-muted/20">
                       {inactiveTables.map((t) => (
@@ -725,30 +728,43 @@ export default function AdminTables() {
                               {hallZones.find((z) => z.id === t.hall_zone_id)?.name ?? 'Sem zona'}
                             </span>
                           </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="shrink-0 gap-1.5"
-                            disabled={reactivatingId === t.id}
-                            onClick={async () => {
-                              setReactivatingId(t.id);
-                              try {
-                                const { error } = await supabase.from('tables').update({ is_active: true }).eq('id', t.id);
-                                if (error) throw error;
-                                refetchTables();
-                                queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
-                                toast({ title: `Mesa ${t.number} reativada!` });
-                              } catch {
-                                toast({ title: 'Erro ao reativar mesa', variant: 'destructive' });
-                              } finally {
-                                setReactivatingId(null);
-                              }
-                            }}
-                          >
-                            {reactivatingId === t.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                            Reativar
-                          </Button>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5"
+                              disabled={reactivatingId === t.id}
+                              onClick={async () => {
+                                setReactivatingId(t.id);
+                                try {
+                                  const { error } = await supabase.from('tables').update({ is_active: true }).eq('id', t.id);
+                                  if (error) throw error;
+                                  refetchTables();
+                                  queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+                                  toast({ title: `Mesa ${t.number} reativada!` });
+                                } catch {
+                                  toast({ title: 'Erro ao reativar mesa', variant: 'destructive' });
+                                } finally {
+                                  setReactivatingId(null);
+                                }
+                              }}
+                            >
+                              {reactivatingId === t.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                              Reativar
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
+                              disabled={deletingInactive}
+                              onClick={() => setInactiveDeleteTarget({ id: t.id, number: t.number })}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              {t('tablesCentral.deletePermanently')}
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -757,6 +773,51 @@ export default function AdminTables() {
               </div>
             </TabsContent>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de exclusão permanente de mesa inativa */}
+      <Dialog open={!!inactiveDeleteTarget} onOpenChange={(open) => !open && setInactiveDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('tablesCentral.deletePermanently')}</DialogTitle>
+            <DialogDescription>
+              {t('tablesCentral.deletePermanentlyConfirm')}
+            </DialogDescription>
+          </DialogHeader>
+          {inactiveDeleteTarget && (
+            <p className="text-sm text-muted-foreground">
+              {t('tablesCentral.table')} {inactiveDeleteTarget.number}
+            </p>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setInactiveDeleteTarget(null)} disabled={deletingInactive}>
+              {t('tablesCentral.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!inactiveDeleteTarget || !restaurantId || deletingInactive) return;
+                setDeletingInactive(true);
+                try {
+                  const { error } = await supabase.from('tables').delete().eq('id', inactiveDeleteTarget.id);
+                  if (error) throw error;
+                  refetchTables();
+                  queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+                  toast({ title: `Mesa ${inactiveDeleteTarget.number} excluída definitivamente. O número está livre para cadastrar novamente.` });
+                  setInactiveDeleteTarget(null);
+                } catch {
+                  toast({ title: 'Erro ao excluir mesa', variant: 'destructive' });
+                } finally {
+                  setDeletingInactive(false);
+                }
+              }}
+              disabled={deletingInactive}
+            >
+              {deletingInactive ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              {t('tablesCentral.deletePermanently')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
