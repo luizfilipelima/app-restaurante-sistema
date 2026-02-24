@@ -242,23 +242,19 @@ export default function AdminDeliveryZones() {
         </div>
       </div>
 
-      {/* ── Card de ações: Status (vertical) + Nova Zona ───────────────────────── */}
-      <Card className="border-slate-200 shadow-sm overflow-hidden">
-        <CardContent className="p-6 space-y-5">
-          {/* Status das zonas — alternador com pill deslizante */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-slate-700">Status das zonas no checkout</Label>
+      {/* ── Barra de ações: Toggle + Nova Zona (layout horizontal elegante) ────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+          <div className="flex items-center gap-3">
+            <Label className="text-sm font-medium text-slate-700 shrink-0">Zonas no checkout</Label>
             <div
               role="group"
               aria-label="Ativar ou desativar zonas de entrega"
-              className="relative inline-flex w-[200px] rounded-xl bg-slate-100 p-1"
+              className="relative inline-flex w-[180px] rounded-xl bg-slate-100 p-1"
             >
-              {/* Pill deslizante — indica o estado ativo */}
               <div
                 className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-200 ease-out ${
-                  deliveryZonesEnabled
-                    ? 'left-[calc(50%+2px)] bg-emerald-500'
-                    : 'left-1 bg-slate-700'
+                  deliveryZonesEnabled ? 'left-[calc(50%+2px)] bg-emerald-500' : 'left-1 bg-slate-700'
                 }`}
                 aria-hidden
               />
@@ -266,7 +262,7 @@ export default function AdminDeliveryZones() {
                 type="button"
                 onClick={() => deliveryZonesEnabled && toggleDeliveryZonesEnabled()}
                 disabled={togglingGlobal}
-                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   !deliveryZonesEnabled ? 'text-white' : 'text-slate-500 hover:text-slate-700'
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
@@ -277,7 +273,7 @@ export default function AdminDeliveryZones() {
                 type="button"
                 onClick={() => !deliveryZonesEnabled && toggleDeliveryZonesEnabled()}
                 disabled={togglingGlobal}
-                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   deliveryZonesEnabled ? 'text-white' : 'text-slate-500 hover:text-slate-700'
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
@@ -285,25 +281,23 @@ export default function AdminDeliveryZones() {
                 Ativado
               </button>
             </div>
-            <p className="text-xs text-slate-500">
-              {deliveryZonesEnabled
-                ? 'O cliente escolhe a zona e vê a taxa no checkout.'
-                : 'O checkout exibe um card pedindo a localização via WhatsApp após o pedido.'}
-            </p>
           </div>
-
-          <div className="border-t border-slate-100 pt-5">
-            <Button
-              onClick={() => { resetForm(); setShowForm(true); setFormData(emptyForm(baseCurrency)); }}
-              data-testid="delivery-zone-new"
-              className="w-full sm:w-auto bg-[#F87116] hover:bg-orange-600 text-white shadow-md"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Zona
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          <p className="text-xs text-slate-500 sm:max-w-[240px]">
+            {deliveryZonesEnabled
+              ? 'Cliente escolhe a zona e vê a taxa no checkout.'
+              : 'Checkout exibe card pedindo localização via WhatsApp.'}
+          </p>
+        </div>
+        <Button
+          onClick={() => { resetForm(); setShowForm(true); setFormData(emptyForm(baseCurrency)); }}
+          data-testid="delivery-zone-new"
+          size="lg"
+          className="w-full sm:w-auto shrink-0 bg-[#F87116] hover:bg-orange-600 text-white shadow-md font-semibold"
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          Nova Zona
+        </Button>
+      </div>
 
       {/* ── Formulário Nova/Editar Zona ────────────────────────────────────────── */}
       {showForm && (
