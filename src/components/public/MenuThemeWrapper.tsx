@@ -1,7 +1,8 @@
 /**
- * Wrapper que aplica o tema do cardápio (menu_theme) nas rotas do domínio principal.
- * Usado quando o cardápio é acessado via /:restaurantSlug/menu (sem subdomínio).
- * No subdomínio, o StoreLayout já aplica o tema.
+ * Wrapper que aplica o tema do cardápio (menu_theme + menu_theme_accent) em todas
+ * as rotas públicas do restaurante acessadas por path (/:restaurantSlug/*).
+ * Garante que cardápio delivery, vitrine, mesas, checkout, reservas, fila, track, bio etc.
+ * usem o mesmo tema configurado. No subdomínio, o StoreLayout aplica o tema.
  */
 import { useEffect, useState, useMemo } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
@@ -35,27 +36,33 @@ export default function MenuThemeWrapper() {
     })();
   }, [restaurantSlug]);
 
+  // Sempre aplicar um tema: enquanto carrega usa default_light; depois usa o do restaurante
   const themeConfig = useMemo(() => {
-    if (menuThemeId === undefined) return null;
-    const config = getMenuThemeConfig(menuThemeId, menuThemeAccent);
+    const effectiveTheme = menuThemeId === undefined ? 'default_light' : menuThemeId;
+    const effectiveAccent = menuThemeAccent === undefined ? null : menuThemeAccent;
+    const config = getMenuThemeConfig(effectiveTheme, effectiveAccent);
     if (!config) return null;
+    const style: React.CSSProperties = {
+      ...paletteToCssVars(config.palette),
+      ...(config.primaryBgGradient && { '--primary-bg': config.primaryBgGradient } as React.CSSProperties),
+    };
     return {
-      style: paletteToCssVars(config.palette) as React.CSSProperties,
+      style,
       isDark: config.isDark,
+      accentId: config.accentId ?? undefined,
     };
   }, [menuThemeId, menuThemeAccent]);
 
-  if (themeConfig) {
-    return (
-      <div
-        data-menu-theme
-        className={`min-h-screen ${themeConfig.isDark ? 'dark' : ''}`}
-        style={themeConfig.style}
-      >
-        <Outlet />
-      </div>
-    );
-  }
+  if (!restaurantSlug) return <Outlet />;
 
-  return <Outlet />;
+  return (
+    <div
+      data-menu-theme
+      data-accent={themeConfig?.accentId ?? undefined}
+      className={`min-h-screen ${themeConfig?.isDark ? 'dark' : ''}`}
+      style={themeConfig?.style ?? {}}
+    >
+      <Outlet />
+    </div>
+  );
 }

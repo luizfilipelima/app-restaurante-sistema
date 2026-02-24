@@ -29,7 +29,8 @@ interface StoreLayoutProps {
 /**
  * Layout para loja/cardápio do restaurante (multi-tenant por subdomínio).
  * Ex.: pizzaria.quiero.food -> cardápio da pizzaria.
- * Carrega restaurante (logo + language), aplica idioma e evita flash antes de renderizar.
+ * Aplica o tema (menu_theme + menu_theme_accent) em todas as rotas vistas pelo cliente:
+ * cardápio delivery, vitrine, mesas/QR, checkout, comanda, reservas, fila, track, bio.
  */
 export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -67,12 +68,18 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
     })();
   }, [tenantSlug]);
 
+  // Tema sempre aplicado: fallback para default_light se config for null
   const themeConfig = useMemo(() => {
-    const config = getMenuThemeConfig(menuThemeId, menuThemeAccent);
+    const config = getMenuThemeConfig(menuThemeId, menuThemeAccent) ?? getMenuThemeConfig('default_light', null);
     if (!config) return null;
+    const style: React.CSSProperties = {
+      ...paletteToCssVars(config.palette),
+      ...(config.primaryBgGradient && { '--primary-bg': config.primaryBgGradient } as React.CSSProperties),
+    };
     return {
-      style: paletteToCssVars(config.palette) as React.CSSProperties,
+      style,
       isDark: config.isDark,
+      accentId: config.accentId ?? undefined,
     };
   }, [menuThemeId, menuThemeAccent]);
 
@@ -101,16 +108,14 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        {themeConfig && (
-          <div
-            data-menu-theme
-            className={`min-h-screen ${themeConfig.isDark ? 'dark' : ''}`}
-            style={themeConfig.style}
-          >
-            {content}
-          </div>
-        )}
-        {!themeConfig && content}
+        <div
+          data-menu-theme
+          data-accent={themeConfig?.accentId ?? undefined}
+          className={`min-h-screen ${themeConfig?.isDark ? 'dark' : ''}`}
+          style={themeConfig?.style ?? {}}
+        >
+          {content}
+        </div>
       </BrowserRouter>
     </ErrorBoundary>
   );

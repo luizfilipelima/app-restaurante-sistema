@@ -151,6 +151,11 @@
   }
 }
 
+/* Tema cardápio: gradiente dourado quando accent = gold */
+[data-menu-theme][data-accent="gold"] .bg-primary {
+  background: var(--primary-bg, hsl(var(--primary))) !important;
+}
+
 @layer utilities {
   .gradient-primary {
     @apply bg-gradient-to-br from-orange-500 via-orange-600 to-red-600;
