@@ -175,7 +175,6 @@ export function getMinimalPalette(
   if (mode === 'light') {
     // Claro: fundos e bordas com leve tint do hue (creme/quente ou fresco conforme a cor)
     const bg = `${hue} 18% 98%`;
-    const card = `${hue} 10% 100%`; // quase branco, leve tint
     const fg = `${hue} 28% 14%`; // texto escuro com tint (legível)
     const muted = `${hue} 20% 94%`;
     const mutedFg = `${hue} 22% 42%`;
@@ -198,7 +197,6 @@ export function getMinimalPalette(
 
   // Escuro: fundos e bordas tintados pelo hue (sem azul neutro)
   const bg = `${hue} 12% 6%`;
-  const card = `${hue} 12% 9%`;
   const fg = '0 0% 98%'; // branco para contraste
   const muted = `${hue} 14% 14%`;
   const mutedFg = `${hue} 15% 65%`;
