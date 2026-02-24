@@ -717,15 +717,15 @@ export default function AdminTables() {
                       Mesas desativadas. Reative para usá-las novamente ou exclua permanentemente para liberar o número e cadastrar uma nova mesa.
                     </p>
                     <div className="max-h-[160px] overflow-y-auto border border-dashed rounded-lg divide-y bg-muted/20">
-                      {inactiveTables.map((t) => (
+                      {inactiveTables.map((tbl) => (
                         <div
-                          key={t.id}
+                          key={tbl.id}
                           className="flex items-center justify-between gap-3 px-3 py-2.5"
                         >
                           <div>
-                            <span className="font-medium">Mesa {t.number}</span>
+                            <span className="font-medium">Mesa {tbl.number}</span>
                             <span className="text-xs text-muted-foreground ml-2">
-                              {hallZones.find((z) => z.id === t.hall_zone_id)?.name ?? 'Sem zona'}
+                              {hallZones.find((z) => z.id === tbl.hall_zone_id)?.name ?? 'Sem zona'}
                             </span>
                           </div>
                           <div className="flex shrink-0 items-center gap-1.5">
@@ -734,15 +734,15 @@ export default function AdminTables() {
                               variant="outline"
                               size="sm"
                               className="gap-1.5"
-                              disabled={reactivatingId === t.id}
+                              disabled={reactivatingId === tbl.id}
                               onClick={async () => {
-                                setReactivatingId(t.id);
+                                setReactivatingId(tbl.id);
                                 try {
-                                  const { error } = await supabase.from('tables').update({ is_active: true }).eq('id', t.id);
+                                  const { error } = await supabase.from('tables').update({ is_active: true }).eq('id', tbl.id);
                                   if (error) throw error;
                                   refetchTables();
                                   queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
-                                  toast({ title: `Mesa ${t.number} reativada!` });
+                                  toast({ title: `Mesa ${tbl.number} reativada!` });
                                 } catch {
                                   toast({ title: 'Erro ao reativar mesa', variant: 'destructive' });
                                 } finally {
@@ -750,7 +750,7 @@ export default function AdminTables() {
                                 }
                               }}
                             >
-                              {reactivatingId === t.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                              {reactivatingId === tbl.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
                               Reativar
                             </Button>
                             <Button
@@ -759,7 +759,7 @@ export default function AdminTables() {
                               size="sm"
                               className="text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
                               disabled={deletingInactive}
-                              onClick={() => setInactiveDeleteTarget({ id: t.id, number: t.number })}
+                              onClick={() => setInactiveDeleteTarget({ id: tbl.id, number: tbl.number })}
                             >
                               <Trash2 className="h-4 w-4" />
                               {t('tablesCentral.deletePermanently')}
