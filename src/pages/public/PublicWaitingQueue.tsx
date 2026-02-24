@@ -104,18 +104,18 @@ export default function PublicWaitingQueue({ tenantSlug: slugFromLayout }: Publi
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-50">
-        <Loader2 className="h-10 w-10 animate-spin text-[#F87116]" />
-        <p className="text-sm text-slate-500">Carregando…</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Carregando…</p>
       </div>
     );
   }
 
   if (!restaurant || (error && step === 'form')) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center bg-slate-50">
-        <AlertCircle className="h-12 w-12 text-red-500" />
-        <p className="text-slate-700">{error ?? 'Restaurante não encontrado.'}</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center bg-background">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <p className="text-foreground">{error ?? 'Restaurante não encontrado.'}</p>
         <Link to={restaurantSlug ? `/${restaurantSlug}` : '/'}>
           <Button variant="outline">Voltar</Button>
         </Link>
@@ -125,21 +125,21 @@ export default function PublicWaitingQueue({ tenantSlug: slugFromLayout }: Publi
 
   if (step === 'success') {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center px-4 py-8">
+      <div className="min-h-screen bg-background flex flex-col items-center px-4 py-8">
         <div className="max-w-md w-full text-center space-y-6">
-          <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
-            <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+          <div className="h-16 w-16 rounded-full bg-success/10 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="h-8 w-8 text-success" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Você entrou na fila!</h1>
-            <p className="text-slate-600 mt-1">
+            <h1 className="text-xl font-bold text-foreground">Você entrou na fila!</h1>
+            <p className="text-muted-foreground mt-1">
               {position !== null && (
                 <>Sua posição: <strong>#{position}</strong></>
               )}
             </p>
           </div>
-          <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-sm text-left">
-            <p className="text-sm text-slate-600">
+          <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-sm text-left">
+            <p className="text-sm text-muted-foreground">
               Quando uma mesa estiver disponível, você será avisado.
               {customerPhone && (
                 <> Enviaremos uma mensagem no WhatsApp informado.</>
@@ -160,8 +160,8 @@ export default function PublicWaitingQueue({ tenantSlug: slugFromLayout }: Publi
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-100 px-4 py-4 flex items-center gap-3">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border px-4 py-4 flex items-center gap-3">
         {restaurant?.logo ? (
           <img src={restaurant.logo} alt={restaurant.name} className="h-10 w-10 rounded-xl object-cover" />
         ) : (
@@ -170,13 +170,13 @@ export default function PublicWaitingQueue({ tenantSlug: slugFromLayout }: Publi
           </div>
         )}
         <div>
-          <h1 className="font-bold text-slate-900">{restaurant?.name}</h1>
-          <p className="text-xs text-slate-500">Fila de espera</p>
+          <h1 className="font-bold text-foreground">{restaurant?.name}</h1>
+          <p className="text-xs text-muted-foreground">Fila de espera</p>
         </div>
       </header>
 
       <main className="max-w-md mx-auto px-4 py-6">
-        <p className="text-sm text-slate-600 mb-6">
+        <p className="text-sm text-muted-foreground mb-6">
           Sem reserva? Informe seu nome e WhatsApp para entrar na fila. Avisaremos quando uma mesa estiver livre.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -210,8 +210,8 @@ export default function PublicWaitingQueue({ tenantSlug: slugFromLayout }: Publi
             Entrar na fila
           </Button>
         </form>
-        <p className="text-center text-xs text-slate-500 mt-6">
-          <Link to={restaurantSlug ? `/${restaurantSlug}` : '/'} className="text-[#F87116] hover:underline">
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          <Link to={restaurantSlug ? `/${restaurantSlug}` : '/'} className="text-primary hover:underline">
             Voltar ao cardápio
           </Link>
         </p>

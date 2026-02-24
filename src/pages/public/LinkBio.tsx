@@ -114,7 +114,7 @@ function LangToggle({ lang, onToggle }: { lang: Lang; onToggle: () => void }) {
   return (
     <button
       onClick={onToggle}
-      className="absolute top-4 right-4 z-30 flex items-center bg-white/90 backdrop-blur-sm border border-white/60 rounded-full p-1 shadow-md active:scale-[0.93] transition-transform duration-150"
+      className="absolute top-4 right-4 z-30 flex items-center bg-card/90 backdrop-blur-sm border border-border rounded-full p-1 shadow-md active:scale-[0.93] transition-transform duration-150"
       style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.10)' }}
     >
       {(['pt', 'es'] as Lang[]).map((l) => (
@@ -122,8 +122,8 @@ function LangToggle({ lang, onToggle }: { lang: Lang; onToggle: () => void }) {
           key={l}
           className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide transition-all duration-200 ${
             lang === l
-              ? 'bg-slate-900 text-white'
-              : 'text-slate-400 hover:text-slate-600'
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           {l.toUpperCase()}
@@ -191,8 +191,8 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
   // ── Loading ───────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="h-[100dvh] flex items-center justify-center bg-white">
-        <div className="w-10 h-10 rounded-2xl bg-orange-100 animate-pulse" />
+      <div className="h-[100dvh] flex items-center justify-center bg-background">
+        <div className="w-10 h-10 rounded-2xl bg-primary/20 animate-pulse" />
       </div>
     );
   }
@@ -200,11 +200,11 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
   // ── Not found ─────────────────────────────────────────────────────────────────
   if (!restaurant) {
     return (
-      <div className="h-[100dvh] flex flex-col items-center justify-center gap-3 bg-white px-6 text-center">
-        <p className="text-lg font-semibold text-slate-700 animate-[fadeIn_0.35s_ease_forwards]">
+      <div className="h-[100dvh] flex flex-col items-center justify-center gap-3 bg-background px-6 text-center">
+        <p className="text-lg font-semibold text-foreground animate-[fadeIn_0.35s_ease_forwards]">
           {t.notFound}
         </p>
-        <a href="https://quiero.food" className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
+        <a href="https://quiero.food" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
           quiero.food
         </a>
       </div>
@@ -218,7 +218,7 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="relative min-h-[100dvh] w-full flex flex-col overflow-hidden bg-[#f8f7f4]">
+    <div className="relative min-h-[100dvh] w-full flex flex-col overflow-hidden bg-background">
 
       {/* ── Background decorativo ── */}
       <div
@@ -268,15 +268,15 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
                   alt={restaurant.name}
                   width={120}
                   height={120}
-                  className="w-full h-full object-cover rounded-[28px] border border-white/80"
+                  className="w-full h-full object-cover rounded-[28px] border border-border"
                   style={{ boxShadow: '0 12px 40px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.08)' }}
                 />
               ) : (
                 <div
-                  className="w-full h-full rounded-[28px] bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center border border-orange-200"
-                  style={{ boxShadow: '0 12px 40px rgba(249,115,22,0.28), 0 2px 8px rgba(0,0,0,0.08)' }}
+                  className="w-full h-full rounded-[28px] bg-gradient-to-br from-primary to-primary/90 flex items-center justify-center border border-primary/30"
+                  style={{ boxShadow: '0 12px 40px var(--tw-shadow-color, rgba(0,0,0,0.13)), 0 2px 8px rgba(0,0,0,0.08)' }}
                 >
-                  <span className="text-5xl font-black text-white leading-none select-none">
+                  <span className="text-5xl font-black text-primary-foreground leading-none select-none">
                     {restaurant.name.charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -290,7 +290,7 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}
           >
-            <h1 className="text-[26px] sm:text-[28px] font-extrabold text-slate-900 tracking-tight leading-tight">
+            <h1 className="text-[26px] sm:text-[28px] font-extrabold text-foreground tracking-tight leading-tight">
               {restaurant.name}
             </h1>
 
@@ -298,13 +298,13 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
             <span
               className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[12px] font-semibold tracking-wide border transition-colors duration-300 ${
                 isOpen
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                  : 'bg-slate-100 border-slate-200 text-slate-500'
+                  ? 'bg-success/10 border-success/30 text-success'
+                  : 'bg-muted border-border text-muted-foreground'
               }`}
             >
               <span
                 className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                  isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                  isOpen ? 'bg-success animate-pulse' : 'bg-muted-foreground'
                 }`}
               />
               {isOpen ? t.openNow : t.closedNow}
@@ -320,37 +320,37 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
             href={menuUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={`group relative flex items-center gap-4 w-full bg-white rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 delay-150 ease-out ${
+            className={`group relative flex items-center gap-4 w-full bg-card rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 delay-150 ease-out ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
             }`}
             style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05)' }}
           >
             {/* Borda de destaque no hover */}
-            <div className="absolute inset-0 rounded-2xl border border-slate-100 group-hover:border-orange-200 transition-colors duration-200" />
+            <div className="absolute inset-0 rounded-2xl border border-border group-hover:border-primary/50 transition-colors duration-200" />
             {/* Fundo hover suave */}
-            <div className="absolute inset-0 rounded-2xl bg-orange-50/0 group-hover:bg-orange-50/50 transition-all duration-200" />
+            <div className="absolute inset-0 rounded-2xl bg-primary/0 group-hover:bg-primary/5 transition-all duration-200" />
 
             {/* Ícone */}
             <div
-              className="relative z-10 w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center flex-shrink-0 text-[22px] group-hover:scale-105 transition-transform duration-200"
-              style={{ boxShadow: '0 4px 12px rgba(249,115,22,0.30)' }}
+              className="relative z-10 w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/90 flex items-center justify-center flex-shrink-0 text-[22px] group-hover:scale-105 transition-transform duration-200"
+              style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
             >
               🍽️
             </div>
 
             {/* Texto */}
             <div className="relative z-10 flex-1 min-w-0 text-left">
-              <p className="text-[15px] font-bold text-slate-900 leading-tight">
+              <p className="text-[15px] font-bold text-foreground leading-tight">
                 {t.deliveryMenu}
               </p>
-              <p className="text-[12px] text-slate-400 mt-0.5 truncate font-medium">
+              <p className="text-[12px] text-muted-foreground mt-0.5 truncate font-medium">
                 {restaurant.slug}.quiero.food
               </p>
             </div>
 
             {/* Seta — anima no hover */}
             <div className="relative z-10 flex-shrink-0">
-              <ArrowIcon className="w-4 h-4 text-slate-300 group-hover:text-orange-400 group-hover:translate-x-1 transition-all duration-200" />
+              <ArrowIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
             </div>
           </a>
 

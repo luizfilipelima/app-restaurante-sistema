@@ -106,8 +106,8 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-100/80">
-        <div className="bg-white/95 border-b border-slate-200/80">
+      <div className="min-h-screen bg-background">
+        <div className="bg-card/95 border-b border-border">
           <div className="container mx-auto px-4 py-4 max-w-6xl flex items-center gap-4">
             <Skeleton className="h-12 w-12 md:h-14 md:w-14 rounded-2xl" />
             <div className="space-y-2">
@@ -125,7 +125,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+              <div key={i} className="bg-card rounded-2xl border border-border overflow-hidden">
                 <Skeleton className="aspect-square w-full" />
                 <div className="p-3 space-y-2">
                   <Skeleton className="h-4 w-3/4" />
@@ -139,7 +139,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
     );
   }
 
-  if (!loading && (!menuData || isError || !restaurant)) return <div className="min-h-screen flex items-center justify-center p-4">{t('menu.restaurantNotFound')}</div>;
+  if (!loading && (!menuData || isError || !restaurant)) return <div className="min-h-screen flex items-center justify-center p-4 bg-background text-foreground">{t('menu.restaurantNotFound')}</div>;
   if (!restaurant) return null;
 
   const validCurrencies = ['BRL', 'PYG', 'ARS', 'USD'] as const;
@@ -158,9 +158,9 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
         : restaurant.is_active;
 
   return (
-    <div className="min-h-screen bg-slate-100/80 font-sans antialiased pb-8 md:pb-8 safe-area-inset-bottom">
+    <div className="min-h-screen bg-background font-sans antialiased pb-8 md:pb-8 safe-area-inset-bottom">
       {/* Header - Mobile First */}
-      <header className="bg-white/95 backdrop-blur-sm border-b border-slate-200/80 sticky top-0 z-20 safe-area-inset-top">
+      <header className="bg-card/95 backdrop-blur-sm border-b border-border sticky top-0 z-20 safe-area-inset-top">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-6xl">
           <div className="flex items-center justify-between gap-2 sm:gap-4 min-w-0">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
@@ -168,13 +168,13 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
               <button
                 type="button"
                 onClick={() => (viewingCategoryId ? setViewingCategoryId(null) : navigate('/menu'))}
-                className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 flex-shrink-0"
+                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground flex-shrink-0"
               >
                 <ArrowLeft className="h-5 w-5" />
                 <span className="text-sm font-medium hidden sm:inline">Categorias</span>
               </button>
             )}
-            <div className="h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-xl sm:rounded-2xl overflow-hidden ring-2 ring-slate-100 flex-shrink-0 bg-white shadow-sm">
+            <div className="h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-xl sm:rounded-2xl overflow-hidden ring-2 ring-border flex-shrink-0 bg-card shadow-sm">
               {restaurant.logo ? (
                 <img src={restaurant.logo} alt={restaurant.name} width={56} height={56} className="w-full h-full object-cover" />
               ) : (
@@ -184,13 +184,13 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 truncate tracking-tight leading-tight">{restaurant.name}</h1>
+              <h1 className="text-base sm:text-lg md:text-xl font-bold text-foreground truncate tracking-tight leading-tight">{restaurant.name}</h1>
               <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1 flex-wrap">
-                <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full ${isOpen ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
-                  <span className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-red-500'} ${isOpen ? 'animate-pulse' : ''}`} />
+                <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full ${isOpen ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                  <span className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${isOpen ? 'bg-success' : 'bg-destructive'} ${isOpen ? 'animate-pulse' : ''}`} />
                   {isOpen ? t('menu.open') : t('menu.closed')}
                 </span>
-                <span className="text-slate-400 text-[10px] sm:text-xs flex items-center gap-1">
+                <span className="text-muted-foreground text-[10px] sm:text-xs flex items-center gap-1">
                   <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {t('menu.estimateTime')}
                 </span>
               </div>
@@ -202,7 +202,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                 aria-label="Informações do restaurante"
                 title="Informações do restaurante"
                 onClick={() => setInfoModalOpen(true)}
-                className="flex items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-white border border-slate-200/80 text-slate-600 hover:text-slate-800 hover:bg-slate-50 hover:border-slate-300 active:scale-95 transition-all touch-manipulation flex-shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08),0_2px_4px_rgba(0,0,0,0.04)]"
+                className="flex items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted hover:border-border active:scale-95 transition-all touch-manipulation flex-shrink-0 shadow-sm hover:shadow-md"
               >
                 <Info className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
@@ -230,7 +230,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
         {/* Modo categorias primeiro: cards com imagem no topo (16:9), bordas arredondadas */}
         {categoriesFirst && !viewingSingleCategory && (
           <div className="space-y-4">
-            <h2 className="text-base font-semibold text-slate-700">{t('menu.all')}</h2>
+            <h2 className="text-base font-semibold text-foreground">{t('menu.all')}</h2>
             <div className="flex flex-col gap-3 sm:gap-4">
               {categoriesFromDb
                 .filter((cat) => categories.includes(cat.name))
@@ -239,17 +239,17 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                     key={cat.id}
                     type="button"
                     onClick={() => setViewingCategoryId(cat.id)}
-                    className="group w-full text-left flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:ring-2 hover:ring-slate-200/60 transition-all duration-200 active:scale-[0.99] cursor-pointer"
+                    className="group w-full text-left flex flex-col rounded-2xl overflow-hidden bg-card border border-border shadow-sm hover:shadow-lg hover:border-border hover:ring-2 hover:ring-border transition-all duration-200 active:scale-[0.99] cursor-pointer"
                   >
                     {cat.image_url ? (
                       <>
-                        <div className="relative w-full aspect-video bg-slate-100 overflow-hidden rounded-t-2xl">
+                        <div className="relative w-full aspect-video bg-muted overflow-hidden rounded-t-2xl">
                           <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                         </div>
                         <div className="flex items-center justify-between gap-3 p-4 sm:p-5">
-                          <span className="font-semibold text-slate-800 text-base sm:text-lg truncate flex-1">{cat.name}</span>
-                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-primary/10 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-primary transition-colors">
+                          <span className="font-semibold text-card-foreground text-base sm:text-lg truncate flex-1">{cat.name}</span>
+                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-muted group-hover:bg-primary/10 px-3 py-2 text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">
                             {t('menu.viewProducts')}
                             <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                           </span>
@@ -257,15 +257,15 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                       </>
                     ) : (
                       <div className="flex items-center gap-4 w-full p-4 sm:p-5">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center ring-1 ring-slate-200/60 group-hover:from-primary/10 group-hover:to-primary/20 group-hover:ring-primary/30 transition-all duration-200">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-2xl bg-gradient-to-br from-muted to-muted/80 flex items-center justify-center ring-1 ring-border group-hover:from-primary/10 group-hover:to-primary/20 group-hover:ring-primary/30 transition-all duration-200">
                           {(() => {
                             const IconComp = getCategoryIconComponent(cat.icon);
-                            return <IconComp className="h-8 w-8 sm:h-10 sm:w-10 text-slate-500 group-hover:text-primary transition-colors" />;
+                            return <IconComp className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground group-hover:text-primary transition-colors" />;
                           })()}
                         </div>
                         <div className="flex-1 min-w-0 flex items-center justify-between gap-3">
-                          <span className="font-semibold text-slate-800 text-base sm:text-lg truncate">{cat.name}</span>
-                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-slate-100 group-hover:bg-primary/10 px-3 py-2 text-xs font-medium text-slate-600 group-hover:text-primary transition-colors duration-200">
+                          <span className="font-semibold text-card-foreground text-base sm:text-lg truncate">{cat.name}</span>
+                          <span className="flex items-center gap-1 shrink-0 rounded-full bg-muted group-hover:bg-primary/10 px-3 py-2 text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors duration-200">
                             {t('menu.viewProducts')}
                             <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                           </span>
@@ -280,15 +280,15 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
 
         {/* Busca e categorias — quando não no modo categorias-first inicial */}
         {(!categoriesFirst || viewingSingleCategory) && (
-        <div className="sticky top-[65px] sm:top-[73px] md:top-[81px] z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-slate-100/80 backdrop-blur-md rounded-xl sm:rounded-2xl">
+        <div className="sticky top-[65px] sm:top-[73px] md:top-[81px] z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-background/80 backdrop-blur-md rounded-xl sm:rounded-2xl">
           <div className="space-y-3 sm:space-y-4">
             <div className="relative">
-              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none z-10" />
+              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
               <Input
                 placeholder={t('menu.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-3 sm:pr-4 bg-white border-slate-200/80 rounded-xl sm:rounded-2xl border shadow-sm focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 text-base sm:text-base text-slate-900 placeholder:text-slate-400 transition-shadow touch-manipulation"
+                className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-3 sm:pr-4 bg-card border-border rounded-xl sm:rounded-2xl border shadow-sm focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 text-base sm:text-base text-foreground placeholder:text-muted-foreground transition-shadow touch-manipulation"
               />
             </div>
 
@@ -300,10 +300,10 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                 className={`flex flex-col items-center justify-center gap-1 min-w-[64px] sm:min-w-[70px] h-[68px] sm:h-[74px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
                   selectedCategory === 'all'
                     ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'bg-white text-slate-600 border border-slate-200/80 active:border-slate-300 active:bg-slate-50'
+                    : 'bg-card text-muted-foreground border border-border active:border-border active:bg-muted'
                 }`}
               >
-                <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${selectedCategory === 'all' ? 'bg-primary-foreground/20' : 'bg-slate-100'}`}>
+                <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${selectedCategory === 'all' ? 'bg-primary-foreground/20' : 'bg-muted'}`}>
                   <Utensils className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
                 <span className="text-[10px] sm:text-xs font-semibold leading-tight">{t('menu.all')}</span>
@@ -318,10 +318,10 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                     className={`flex flex-col items-center justify-center gap-1 min-w-[64px] sm:min-w-[70px] h-[68px] sm:h-[74px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
                       selectedCategory === category
                         ? 'bg-primary text-primary-foreground shadow-md'
-                        : 'bg-white text-slate-600 border border-slate-200/80 active:border-slate-300 active:bg-slate-50'
+                        : 'bg-card text-muted-foreground border border-border active:border-border active:bg-muted'
                     }`}
                   >
-                    <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${selectedCategory === category ? 'bg-primary-foreground/20' : 'bg-slate-100'}`}>
+                    <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${selectedCategory === category ? 'bg-primary-foreground/20' : 'bg-muted'}`}>
                       <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
                     <span className="text-[10px] sm:text-xs font-semibold whitespace-nowrap leading-tight">{category}                </span>
@@ -349,7 +349,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
 
               return (
                 <div key={categoryName} className="space-y-3 sm:space-y-5">
-                  <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
+                  <h2 className="text-sm-mobile-block sm:text-base font-semibold text-muted-foreground uppercase tracking-wider px-1">
                     {categoryName}
                   </h2>
                   {hasSubs ? (
@@ -359,7 +359,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                         if (subProducts.length === 0) return null;
                         return (
                           <div key={sub.id} className="space-y-2">
-                            <h3 className="text-xs sm:text-sm font-medium text-slate-400 uppercase tracking-wider px-1">{sub.name}</h3>
+                            <h3 className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wider px-1">{sub.name}</h3>
                             <div className="flex flex-col gap-3 sm:gap-4">
                               {subProducts.map((product) => (
                                 <ProductCardViewOnly key={product.id} product={product} currency={currency} comboItems={productComboItemsMap?.[product.id]} />
@@ -388,7 +388,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
             })
           ) : (
                 <>
-                  <h2 className="text-sm-mobile-block sm:text-base font-semibold text-slate-500 uppercase tracking-wider px-1">
+                  <h2 className="text-sm-mobile-block sm:text-base font-semibold text-muted-foreground uppercase tracking-wider px-1">
                     {viewingSingleCategory && currentCategoryFromRoute ? currentCategoryFromRoute.name : selectedCategory}
                   </h2>
                   <div className="flex flex-col gap-3 sm:gap-4">
@@ -405,8 +405,8 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
           )}
 
           {filteredProducts.length === 0 && (
-            <div className="text-center py-12 sm:py-16 bg-white/60 rounded-xl sm:rounded-2xl border border-dashed border-slate-200 mx-1">
-              <p className="text-slate-500 text-base sm:text-sm text-sm-mobile-block">
+            <div className="text-center py-12 sm:py-16 bg-card/60 rounded-xl sm:rounded-2xl border border-dashed border-border mx-1">
+              <p className="text-muted-foreground text-base sm:text-sm text-sm-mobile-block">
                 {searchQuery ? t('menuViewOnly.noSearchResults') : t('menuViewOnly.noProductsInCategory')}
               </p>
             </div>

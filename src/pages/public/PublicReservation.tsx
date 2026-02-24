@@ -156,18 +156,18 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-50">
-        <Loader2 className="h-10 w-10 animate-spin text-[#F87116]" />
-        <p className="text-sm text-slate-500">Carregando…</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Carregando…</p>
       </div>
     );
   }
 
   if (!restaurant || error && step === 'form') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center bg-slate-50">
-        <AlertCircle className="h-12 w-12 text-red-500" />
-        <p className="text-slate-700">{error ?? 'Restaurante não encontrado.'}</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center bg-background">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <p className="text-foreground">{error ?? 'Restaurante não encontrado.'}</p>
         <Link to={restaurantSlug ? `/${restaurantSlug}` : '/'}>
           <Button variant="outline">Voltar</Button>
         </Link>
@@ -177,31 +177,31 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
 
   if (step === 'success' && result) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center px-4 py-8">
+      <div className="min-h-screen bg-background flex flex-col items-center px-4 py-8">
         <div className="max-w-md w-full text-center space-y-6">
-          <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
-            <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+          <div className="h-16 w-16 rounded-full bg-success/10 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="h-8 w-8 text-success" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Reserva confirmada!</h1>
-            <p className="text-slate-600 mt-1">
+            <h1 className="text-xl font-bold text-foreground">Reserva confirmada!</h1>
+            <p className="text-muted-foreground mt-1">
               Apresente o código abaixo na recepção ao chegar.
             </p>
           </div>
-          <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">Código da comanda</p>
-            <p className="text-2xl font-black font-mono text-[#F87116] mb-4">{result.short_code}</p>
-            <div className="flex justify-center bg-white p-4 rounded-xl">
+          <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-sm">
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Código da comanda</p>
+            <p className="text-2xl font-black font-mono text-primary mb-4">{result.short_code}</p>
+            <div className="flex justify-center bg-card p-4 rounded-xl">
               <Barcode value={result.short_code} height={48} margin={0} displayValue={false} />
             </div>
-            <p className="text-xs text-slate-500 mt-4">
+            <p className="text-xs text-muted-foreground mt-4">
               Mesa {result.table_number} · {new Date(result.scheduled_at).toLocaleString('pt-BR', {
                 dateStyle: 'short',
                 timeStyle: 'short',
               })}
             </p>
           </div>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Guarde esta tela ou tire um print. O código será bipado na recepção.
           </p>
           <Link to={restaurantSlug ? `/${restaurantSlug}` : '/'}>
@@ -213,8 +213,8 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-100 px-4 py-4 flex items-center gap-3">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border px-4 py-4 flex items-center gap-3">
         {restaurant?.logo ? (
           <img src={restaurant.logo} alt={restaurant.name} className="h-10 w-10 rounded-xl object-cover" />
         ) : (
@@ -223,8 +223,8 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
           </div>
         )}
         <div>
-          <h1 className="font-bold text-slate-900">{restaurant?.name}</h1>
-          <p className="text-xs text-slate-500">Fazer reserva</p>
+          <h1 className="font-bold text-foreground">{restaurant?.name}</h1>
+          <p className="text-xs text-muted-foreground">Fazer reserva</p>
         </div>
       </header>
 
@@ -310,8 +310,8 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
             Confirmar reserva
           </Button>
         </form>
-        <p className="text-center text-xs text-slate-500 mt-6">
-          <Link to={restaurantSlug ? `/${restaurantSlug}` : '/'} className="text-[#F87116] hover:underline">
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          <Link to={restaurantSlug ? `/${restaurantSlug}` : '/'} className="text-primary hover:underline">
             Voltar ao cardápio
           </Link>
         </p>

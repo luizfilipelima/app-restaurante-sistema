@@ -40,8 +40,8 @@ export default function OrderConfirmation({ tenantSlug: tenantSlugProp }: OrderC
 
   if (!orderId) {
     return (
-      <div className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center p-6 safe-area-inset">
-        <p className="text-slate-600 text-center">{t('orderConfirmation.invalidLink')}</p>
+      <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center p-6 safe-area-inset">
+        <p className="text-muted-foreground text-center">{t('orderConfirmation.invalidLink')}</p>
         <Button onClick={handleBackToMenu} className="mt-4">
           {t('checkout.backToMenu')}
         </Button>
@@ -50,7 +50,7 @@ export default function OrderConfirmation({ tenantSlug: tenantSlugProp }: OrderC
   }
 
   return (
-    <div data-testid="order-confirmation-page" className="min-h-[100dvh] bg-gradient-to-b from-emerald-50/80 via-white to-slate-50 flex flex-col safe-area-inset">
+    <div data-testid="order-confirmation-page" className="min-h-[100dvh] bg-gradient-to-b from-success/10 via-background to-background flex flex-col safe-area-inset">
       {/* Content — centered, mobile-first */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 sm:py-12 max-w-md mx-auto w-full">
         {/* Success icon with animation */}
@@ -78,7 +78,7 @@ export default function OrderConfirmation({ tenantSlug: tenantSlugProp }: OrderC
           initial={{ y: 12, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-2xl sm:text-3xl font-bold text-slate-900 text-center leading-tight"
+          className="text-2xl sm:text-3xl font-bold text-foreground text-center leading-tight"
         >
           {t('orderConfirmation.title')}
         </motion.h1>
@@ -88,7 +88,7 @@ export default function OrderConfirmation({ tenantSlug: tenantSlugProp }: OrderC
           initial={{ y: 12, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="mt-3 text-base sm:text-lg text-slate-600 text-center leading-relaxed max-w-[320px]"
+          className="mt-3 text-base sm:text-lg text-muted-foreground text-center leading-relaxed max-w-[320px]"
         >
           {isDelivery
             ? t('orderConfirmation.deliveryMessage')
@@ -100,9 +100,9 @@ export default function OrderConfirmation({ tenantSlug: tenantSlugProp }: OrderC
           initial={{ y: 16, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="mt-6 w-full max-w-sm rounded-2xl bg-white/90 border border-slate-200/80 shadow-sm p-4 sm:p-5"
+          className="mt-6 w-full max-w-sm rounded-2xl bg-card/90 border border-border shadow-sm p-4 sm:p-5"
         >
-          <p className="text-sm text-slate-500 text-center">
+          <p className="text-sm text-muted-foreground text-center">
             {t('orderConfirmation.whatsappInfo')}
           </p>
         </motion.div>
@@ -117,7 +117,7 @@ export default function OrderConfirmation({ tenantSlug: tenantSlugProp }: OrderC
           <Button
             variant="outline"
             onClick={handleBackToMenu}
-            className="w-full h-12 rounded-xl text-slate-600 hover:bg-slate-50 touch-manipulation"
+            className="w-full h-12 rounded-xl text-muted-foreground hover:bg-muted touch-manipulation"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             {t('checkout.backToMenu')}

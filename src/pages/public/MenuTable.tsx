@@ -101,16 +101,16 @@ export default function MenuTable({ tenantSlug: tenantSlugProp }: MenuTableProps
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <Loader2 className="h-12 w-12 animate-spin text-slate-400" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (!tableFound) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-        <p className="text-center text-slate-600">Mesa não encontrada. Verifique o número.</p>
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <p className="text-center text-muted-foreground">Mesa não encontrada. Verifique o número.</p>
       </div>
     );
   }
