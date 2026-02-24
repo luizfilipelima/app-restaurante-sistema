@@ -112,7 +112,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   // ── Entrega ──
   const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
   const { data: rawZones = [] } = useDeliveryZones(restaurantId ?? null);
-  const zones = rawZones.filter((z) => z.is_active);
+  const deliveryZonesEnabled = (currentRestaurant as { delivery_zones_enabled?: boolean | null })?.delivery_zones_enabled !== false;
+  const zones = deliveryZonesEnabled ? rawZones.filter((z) => z.is_active) : [];
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
   const [zoneSelectKey, setZoneSelectKey] = useState(0); // Força remount do Select ao alterar zona (workaround Radix em mobile)
   const [latitude, setLatitude] = useState<number>(-25.5278);

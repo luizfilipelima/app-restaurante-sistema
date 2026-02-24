@@ -38,6 +38,8 @@ interface MenuSettingsPopoverProps {
   onLanguageChange: (lang: MenuLanguage) => void;
   nativeLanguage?: MenuLanguage;
   className?: string;
+  /** Variante visual do trigger: white = fundo branco com sombra (padrão header cardápio) */
+  variant?: 'default' | 'white';
 }
 
 function MenuSettingsPopover({
@@ -47,28 +49,27 @@ function MenuSettingsPopover({
   language,
   onLanguageChange,
   className = '',
+  variant = 'default',
 }: MenuSettingsPopoverProps) {
   const hasMultipleCurrencies = currencyOptions.length > 1;
+
+  const triggerClass = variant === 'white'
+    ? `flex items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-white border border-slate-200/80 text-slate-600 hover:text-slate-800 hover:bg-slate-50 hover:border-slate-300 active:scale-95 transition-all touch-manipulation flex-shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08),0_2px_4px_rgba(0,0,0,0.04)] ${className}`
+    : `flex items-center justify-center h-9 w-9 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 transition-colors touch-manipulation flex-shrink-0 ${className}`;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         asChild
-        className="outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 rounded-lg"
+        className="outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-offset-2 rounded-xl"
       >
         <button
           type="button"
           aria-label="Idioma e moeda"
           title="Idioma e moeda"
-          className={`
-            flex items-center justify-center
-            h-9 w-9 rounded-lg
-            text-slate-500 hover:text-slate-700 hover:bg-slate-100/80
-            transition-colors touch-manipulation flex-shrink-0
-            ${className}
-          `}
+          className={triggerClass}
         >
-          <Languages className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+          <Languages className="h-4 w-4 sm:h-5 sm:w-5" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={6} className="min-w-[200px]">

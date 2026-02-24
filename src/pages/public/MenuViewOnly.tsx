@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSubdomain } from '@/lib/subdomain';
 import { useRestaurantMenuData } from '@/hooks/queries';
-import { Clock, Search, Utensils, Coffee, IceCream, UtensilsCrossed, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Clock, Search, Utensils, Coffee, IceCream, UtensilsCrossed, ArrowLeft, ChevronRight, Info } from 'lucide-react';
 import { getCategoryIconComponent } from '@/lib/categoryIcons';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,6 +11,7 @@ import { isWithinOpeningHours } from '@/lib/utils';
 import { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import MenuSettingsPopover from '@/components/public/MenuSettingsPopover';
+import RestaurantInfoModal from '@/components/public/RestaurantInfoModal';
 import ProductCardViewOnly from '@/components/public/ProductCardViewOnly';
 
 const CATEGORY_ICONS: Record<string, any> = {
@@ -40,6 +41,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
   const [viewingCategoryId, setViewingCategoryId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [infoModalOpen, setInfoModalOpen] = useState(false);
 
   const { data: menuData, isLoading: loading, isError } = useRestaurantMenuData(restaurantSlug);
 
@@ -201,22 +203,35 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
               )}
             </div>
             </div>
-            <MenuSettingsPopover
-              currency={currency}
-              currencyOptions={[currency]}
-              baseCurrency={currency}
-              onCurrencyChange={() => {}}
-              language={(i18n.language === 'es' ? 'es' : 'pt') as MenuLanguage}
-              onLanguageChange={(lang) => {
-                i18n.changeLanguage(lang);
-                setStoredMenuLanguage(lang);
-              }}
-              nativeLanguage={(restaurant.language === 'es' ? 'es' : 'pt') as MenuLanguage}
-              className="flex-shrink-0"
-            />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                type="button"
+                aria-label="Informações do restaurante"
+                title="Informações do restaurante"
+                onClick={() => setInfoModalOpen(true)}
+                className="flex items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-white border border-slate-200/80 text-slate-600 hover:text-slate-800 hover:bg-slate-50 hover:border-slate-300 active:scale-95 transition-all touch-manipulation flex-shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08),0_2px_4px_rgba(0,0,0,0.04)]"
+              >
+                <Info className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+              <MenuSettingsPopover
+                currency={currency}
+                currencyOptions={[currency]}
+                baseCurrency={currency}
+                onCurrencyChange={() => {}}
+                language={(i18n.language === 'es' ? 'es' : 'pt') as MenuLanguage}
+                onLanguageChange={(lang) => {
+                  i18n.changeLanguage(lang);
+                  setStoredMenuLanguage(lang);
+                }}
+                nativeLanguage={(restaurant.language === 'es' ? 'es' : 'pt') as MenuLanguage}
+                variant="white"
+              />
+            </div>
           </div>
         </div>
       </header>
+
+      <RestaurantInfoModal open={infoModalOpen} onOpenChange={setInfoModalOpen} restaurant={restaurant} />
 
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-6xl space-y-4 sm:space-y-6">
         {/* Modo categorias primeiro: cards com imagem no topo (16:9), bordas arredondadas */}

@@ -6,7 +6,7 @@ import { useCartStore } from '@/store/cartStore';
 import { useTableOrderStore } from '@/store/tableOrderStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { useRestaurantMenuData, useActiveOffersByRestaurantId, useLoyaltyProgram, useLoyaltyStatus } from '@/hooks/queries';
-import { ShoppingCart, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2, ArrowLeft, Info } from 'lucide-react';
 import { getCategoryIconComponent } from '@/lib/categoryIcons';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +21,7 @@ import { useSharingMeta } from '@/hooks/useSharingMeta';
 import { isWithinOpeningHours, normalizePhoneWithCountryCode } from '@/lib/utils';
 import { useMenuCurrency } from '@/hooks/useMenuCurrency';
 import MenuSettingsPopover from '@/components/public/MenuSettingsPopover';
+import RestaurantInfoModal from '@/components/public/RestaurantInfoModal';
 import { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import ProductCard from '@/components/public/ProductCard';
@@ -104,6 +105,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const [cartOpen, setCartOpen] = useState(false);
   const [addonModalProduct, setAddonModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
   const [simpleModalProduct, setSimpleModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
+  const [infoModalOpen, setInfoModalOpen] = useState(false);
 
   const { data: menuData, isLoading: loading, isError, isFetching, isPlaceholderData } = useRestaurantMenuData(restaurantSlug);
   // Usa restaurant_id diretamente do menuData para evitar requisição extra (slug→id)
@@ -429,6 +431,18 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                   <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">{restaurant.description.trim()}</p>
                 )}
               </div>
+            </div>
+            {/* Grupo de ícones: idioma/moeda + informações + carrinho — padrão visual unificado */}
+            <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+              <button
+                type="button"
+                aria-label="Informações do restaurante"
+                title="Informações do restaurante"
+                onClick={() => setInfoModalOpen(true)}
+                className="flex items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-white border border-slate-200/80 text-slate-600 hover:text-slate-800 hover:bg-slate-50 hover:border-slate-300 active:scale-95 transition-all touch-manipulation flex-shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08),0_2px_4px_rgba(0,0,0,0.04)]"
+              >
+                <Info className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
               <MenuSettingsPopover
                 currency={currency}
                 currencyOptions={paymentCurrencies}
@@ -440,26 +454,28 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                   setStoredMenuLanguage(lang);
                 }}
                 nativeLanguage={(restaurant.language === 'es' ? 'es' : 'pt') as import('@/lib/i18n').MenuLanguage}
-                className="ml-auto"
+                variant="white"
               />
+              <button
+                type="button"
+                data-testid="menu-view-cart"
+                onClick={() => setCartOpen(true)}
+                className="relative h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 flex items-center justify-center text-white transition-all touch-manipulation shadow-[0_2px_12px_rgba(249,115,22,0.35),0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_16px_rgba(249,115,22,0.4),0_2px_4px_rgba(0,0,0,0.06)]"
+                aria-label={t('menu.viewCart')}
+              >
+                <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6" />
+                {getItemsCount() > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-white text-orange-600 text-xs font-bold flex items-center justify-center shadow-md ring-2 ring-orange-500">
+                    {getItemsCount()}
+                  </span>
+                )}
+              </button>
             </div>
-            {/* Ícone de carrinho — quadrado escuro com badge laranja */}
-            <button
-              type="button"
-              data-testid="menu-view-cart"
-              onClick={() => setCartOpen(true)}
-              className="relative h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 flex items-center justify-center text-white transition-all touch-manipulation flex-shrink-0"
-              aria-label={t('menu.viewCart')}
-            >
-              <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6" />
-              {getItemsCount() > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center shadow-sm">
-                  {getItemsCount()}
-                </span>
-              )}
-            </button>
           </div>
         </div>
+
+        <RestaurantInfoModal open={infoModalOpen} onOpenChange={setInfoModalOpen} restaurant={restaurant} />
+
         {/* Barra Mesa + Chamar Garçom - modo mesa */}
         {tableNumber != null && onCallWaiter && (
           <div className="border-t border-amber-200/60 bg-amber-50/90">

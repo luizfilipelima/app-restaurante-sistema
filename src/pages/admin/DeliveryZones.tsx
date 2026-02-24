@@ -2,6 +2,7 @@ import { useState, Suspense, lazy, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
+import { useRestaurant } from '@/hooks/queries';
 import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
 import { useDeliveryZones } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,8 @@ import { formatCurrency } from '@/lib/utils';
 import { convertPriceToStorage, convertPriceFromStorage, convertBetweenCurrencies, getCurrencySymbol, formatPriceInputPyG } from '@/lib/priceHelper';
 import type { CurrencyCode } from '@/lib/priceHelper';
 import type { DeliveryZone } from '@/types';
-import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
+import { Plus, Edit, Trash2, MapPin, Truck, Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 const ZoneRadiusMapEditor = lazy(() => import('@/components/admin/ZoneRadiusMapEditor'));
 
 const RADIUS_MIN = 500;
@@ -56,9 +58,12 @@ export default function AdminDeliveryZones() {
   const queryClient = useQueryClient();
   const restaurantId = useAdminRestaurantId();
   const restaurant = useAdminRestaurant()?.restaurant ?? null;
+  const { data: restaurantData } = useRestaurant(restaurantId);
   const baseCurrency = useAdminCurrency();
   const { data: zonesData, isLoading: loading, refetch } = useDeliveryZones(restaurantId);
   const zones = zonesData ?? [];
+
+  const deliveryZonesEnabled = (restaurantData as { delivery_zones_enabled?: boolean | null })?.delivery_zones_enabled !== false;
 
   const paymentCurrencies = (restaurant as { payment_currencies?: string[] })?.payment_currencies;
   const feeCurrencyOptions: CurrencyCode[] = (() => {
@@ -86,6 +91,7 @@ export default function AdminDeliveryZones() {
   const [editingZone, setEditingZone] = useState<DeliveryZone | null>(null);
   const [feeCurrency, setFeeCurrency] = useState<CurrencyCode>(baseCurrency);
   const [formData, setFormData] = useState(() => emptyForm(baseCurrency));
+  const [togglingGlobal, setTogglingGlobal] = useState(false);
 
   const resetForm = useCallback(() => {
     setEditingZone(null);
@@ -107,6 +113,27 @@ export default function AdminDeliveryZones() {
     setFeeCurrency(baseCurrency);
     setShowForm(true);
   }, [baseCurrency]);
+
+  const toggleDeliveryZonesEnabled = async () => {
+    if (!restaurantId) return;
+    setTogglingGlobal(true);
+    try {
+      const newValue = !deliveryZonesEnabled;
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ delivery_zones_enabled: newValue, updated_at: new Date().toISOString() })
+        .eq('id', restaurantId);
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
+      invalidatePublicMenuCache(queryClient, restaurant?.slug);
+      toast({ title: newValue ? 'Zonas de entrega ativadas' : 'Zonas de entrega desativadas' });
+    } catch (err) {
+      console.error('Erro ao alterar status:', err);
+      toast({ title: 'Erro ao atualizar', variant: 'destructive' });
+    } finally {
+      setTogglingGlobal(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,9 +171,10 @@ export default function AdminDeliveryZones() {
       invalidatePublicMenuCache(queryClient, restaurant?.slug);
       resetForm();
       refetch();
+      toast({ title: editingZone ? 'Zona atualizada' : 'Zona criada' });
     } catch (error) {
       console.error('Erro ao salvar zona:', error);
-      alert('Erro ao salvar zona de entrega');
+      toast({ title: 'Erro ao salvar zona', variant: 'destructive' });
     }
   };
 
@@ -160,8 +188,10 @@ export default function AdminDeliveryZones() {
       if (error) throw error;
       invalidatePublicMenuCache(queryClient, restaurant?.slug);
       refetch();
+      toast({ title: isActive ? 'Zona desativada' : 'Zona ativada' });
     } catch (error) {
       console.error('Erro ao atualizar zona:', error);
+      toast({ title: 'Erro ao atualizar', variant: 'destructive' });
     }
   };
 
@@ -177,169 +207,236 @@ export default function AdminDeliveryZones() {
       if (error) throw error;
       invalidatePublicMenuCache(queryClient, restaurant?.slug);
       refetch();
+      toast({ title: 'Zona excluída' });
     } catch (error) {
       console.error('Erro ao excluir zona:', error);
+      toast({ title: 'Erro ao excluir', variant: 'destructive' });
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center min-h-[320px]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-10 w-10 animate-spin text-[#F87116]" />
+          <p className="text-sm text-muted-foreground">Carregando zonas…</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Zonas de Entrega</h1>
-            <p className="text-muted-foreground">
-              Configure os bairros e taxas de entrega com raio no mapa
-            </p>
-          </div>
-          <Button onClick={() => { resetForm(); setShowForm(true); setFormData(emptyForm(baseCurrency)); }} data-testid="delivery-zone-new">
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Zona
-          </Button>
-        </div>
-
-        {showForm && (
-          <Card>
-            <CardHeader>
-              <CardTitle>{editingZone ? 'Editar Zona de Entrega' : 'Nova Zona de Entrega'}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="location_name">Nome do Bairro/Região</Label>
-                  <Input
-                    id="location_name"
-                    value={formData.location_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, location_name: e.target.value })
-                    }
-                    placeholder="Ex: Centro, Bairro Alto"
-                    required
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <Label htmlFor="fee">Taxa de Entrega</Label>
-                    {feeCurrencyOptions.length > 1 && (
-                      <Select value={feeCurrency} onValueChange={(v) => setFeeCurrency(v as CurrencyCode)}>
-                        <SelectTrigger className="h-8 w-[120px] text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {feeCurrencyOptions.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {FEE_CURRENCIES.find((x) => x.value === c)?.label ?? getCurrencySymbol(c)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                  <Input
-                    id="fee"
-                    type="text"
-                    inputMode="decimal"
-                    value={formData.feeInput}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        feeInput: feeCurrency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
-                      })
-                    }
-                    placeholder={feeCurrency === 'PYG' ? '0' : '0,00'}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Use 0 para entrega grátis
-                  </p>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <Label>Raio de alcance</Label>
-                    <span className="text-sm font-medium text-muted-foreground">
-                      {formData.radiusMeters >= 1000
-                        ? `${(formData.radiusMeters / 1000).toFixed(1)} km`
-                        : `${formData.radiusMeters} m`}
-                    </span>
-                  </div>
-                  <Slider
-                    value={[formData.radiusMeters]}
-                    onValueChange={([v]) => setFormData({ ...formData, radiusMeters: v })}
-                    min={RADIUS_MIN}
-                    max={RADIUS_MAX}
-                    step={100}
-                    className="w-full"
-                  />
-                </div>
-
-                <Suspense fallback={<Skeleton className="h-[280px] w-full rounded-xl" />}>
-                  <ZoneRadiusMapEditor
-                    centerLat={formData.centerLat}
-                    centerLng={formData.centerLng}
-                    radiusMeters={formData.radiusMeters}
-                    onCenterChange={(lat, lng) => setFormData({ ...formData, centerLat: lat, centerLng: lng })}
-                    height="280px"
-                  />
-                </Suspense>
-
-                <div className="flex gap-2">
-                  <Button type="submit">Salvar</Button>
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancelar
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
-
-        {zones.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <MapPin className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">
-                Você ainda não tem zonas de entrega cadastradas
+    <div className="space-y-8 pb-10">
+      {/* ── Hero + Ações ───────────────────────────────────────────────────────── */}
+      <div className="rounded-2xl bg-gradient-to-br from-orange-500/10 via-amber-50/50 to-transparent border border-orange-200/60 p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div className="flex items-start gap-4">
+            <div className="h-12 w-12 rounded-xl bg-orange-500/15 flex items-center justify-center flex-shrink-0">
+              <Truck className="h-6 w-6 text-orange-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                Zonas de Entrega
+              </h1>
+              <p className="text-slate-600 mt-1 text-sm sm:text-base max-w-xl">
+                Configure bairros e taxas de entrega. No checkout, o cliente escolhe a zona ou envia a localização via WhatsApp.
               </p>
-              <Button onClick={() => { resetForm(); setShowForm(true); }}>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Primeira Zona
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 flex-shrink-0">
+            {/* Alternador Desativado / Ativado */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-slate-600 whitespace-nowrap">Status:</span>
+              <div
+                role="group"
+                aria-label="Ativar ou desativar zonas de entrega"
+                className="inline-flex rounded-xl bg-white border border-slate-200 p-1 shadow-sm"
+              >
+                <button
+                  type="button"
+                  onClick={() => deliveryZonesEnabled && toggleDeliveryZonesEnabled()}
+                  disabled={togglingGlobal}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    !deliveryZonesEnabled
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {togglingGlobal && deliveryZonesEnabled ? <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> : null}
+                  Desativado
+                </button>
+                <button
+                  type="button"
+                  onClick={() => !deliveryZonesEnabled && toggleDeliveryZonesEnabled()}
+                  disabled={togglingGlobal}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    deliveryZonesEnabled
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {togglingGlobal && !deliveryZonesEnabled ? <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> : null}
+                  Ativado
+                </button>
+              </div>
+              <span className="text-xs text-slate-500 max-w-[140px]">
+                {deliveryZonesEnabled ? 'Checkout exibe zonas' : 'Checkout exibe card WhatsApp'}
+              </span>
+            </div>
+
+            <Button
+              onClick={() => { resetForm(); setShowForm(true); setFormData(emptyForm(baseCurrency)); }}
+              data-testid="delivery-zone-new"
+              className="bg-[#F87116] hover:bg-orange-600 text-white shadow-md"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Zona
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Formulário Nova/Editar Zona ────────────────────────────────────────── */}
+      {showForm && (
+        <Card className="border-slate-200 shadow-lg overflow-hidden">
+          <CardHeader className="bg-slate-50/80 border-b">
+            <CardTitle className="text-lg">
+              {editingZone ? 'Editar Zona' : 'Nova Zona de Entrega'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <Label htmlFor="location_name">Nome do Bairro/Região</Label>
+                <Input
+                  id="location_name"
+                  value={formData.location_name}
+                  onChange={(e) => setFormData({ ...formData, location_name: e.target.value })}
+                  placeholder="Ex: Centro, Bairro Alto"
+                  required
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <Label htmlFor="fee">Taxa de Entrega</Label>
+                  {feeCurrencyOptions.length > 1 && (
+                    <Select value={feeCurrency} onValueChange={(v) => setFeeCurrency(v as CurrencyCode)}>
+                      <SelectTrigger className="h-8 w-[120px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {feeCurrencyOptions.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {FEE_CURRENCIES.find((x) => x.value === c)?.label ?? getCurrencySymbol(c)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                <Input
+                  id="fee"
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.feeInput}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      feeInput: feeCurrency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
+                    })
+                  }
+                  placeholder={feeCurrency === 'PYG' ? '0' : '0,00'}
+                  required
+                  className="mt-1.5"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Use 0 para entrega grátis</p>
+              </div>
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <Label>Raio de alcance</Label>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {formData.radiusMeters >= 1000
+                      ? `${(formData.radiusMeters / 1000).toFixed(1)} km`
+                      : `${formData.radiusMeters} m`}
+                  </span>
+                </div>
+                <Slider
+                  value={[formData.radiusMeters]}
+                  onValueChange={([v]) => setFormData({ ...formData, radiusMeters: v })}
+                  min={RADIUS_MIN}
+                  max={RADIUS_MAX}
+                  step={100}
+                  className="mt-2"
+                />
+              </div>
+              <Suspense fallback={<Skeleton className="h-[280px] w-full rounded-xl" />}>
+                <ZoneRadiusMapEditor
+                  centerLat={formData.centerLat}
+                  centerLng={formData.centerLng}
+                  radiusMeters={formData.radiusMeters}
+                  onCenterChange={(lat, lng) => setFormData({ ...formData, centerLat: lat, centerLng: lng })}
+                  height="280px"
+                />
+              </Suspense>
+              <div className="flex gap-3 pt-2">
+                <Button type="submit">Salvar</Button>
+                <Button type="button" variant="outline" onClick={resetForm}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Lista de zonas ou empty state ──────────────────────────────────────── */}
+      {zones.length === 0 ? (
+        <Card className="border-dashed border-2 border-slate-200 bg-slate-50/30">
+          <CardContent className="flex flex-col items-center justify-center py-16 px-6">
+            <div className="h-16 w-16 rounded-2xl bg-slate-200/60 flex items-center justify-center mb-4">
+              <MapPin className="h-8 w-8 text-slate-500" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-800 mb-1">Nenhuma zona cadastrada</h3>
+            <p className="text-slate-600 text-center text-sm max-w-sm mb-6">
+              Adicione zonas para que o cliente escolha o bairro e veja a taxa no checkout.
+            </p>
+            <Button onClick={() => { resetForm(); setShowForm(true); }} className="bg-[#F87116] hover:bg-orange-600">
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Primeira Zona
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">
+            Zonas configuradas
+            <span className="ml-2 text-sm font-normal text-slate-500">({zones.length})</span>
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {zones.map((zone) => (
-              <Card key={zone.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-5 w-5 text-primary" />
-                      <h3 className="font-semibold text-lg">
-                        {zone.location_name}
-                      </h3>
+              <Card key={zone.id} className="overflow-hidden border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-10 w-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+                        <MapPin className="h-5 w-5 text-orange-600" />
+                      </div>
+                      <h3 className="font-semibold text-slate-900 truncate">{zone.location_name}</h3>
                     </div>
                     {!zone.is_active && (
-                      <span className="text-xs bg-destructive text-destructive-foreground px-2 py-1 rounded">
+                      <span className="text-[10px] font-medium uppercase tracking-wider bg-slate-200 text-slate-600 px-2 py-1 rounded-md flex-shrink-0">
                         Inativa
                       </span>
                     )}
                   </div>
                   <div className="mb-4">
-                    <p className="text-2xl font-bold text-primary">
-                      {zone.fee === 0
-                        ? 'Grátis'
-                        : formatCurrency(zone.fee, baseCurrency)}
+                    <p className="text-2xl font-bold text-orange-600">
+                      {zone.fee === 0 ? 'Grátis' : formatCurrency(zone.fee, baseCurrency)}
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      Taxa de entrega · Raio {(zone.radius_meters ?? 2000) >= 1000
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Raio {(zone.radius_meters ?? 2000) >= 1000
                         ? `${((zone.radius_meters ?? 2000) / 1000).toFixed(1)} km`
                         : `${zone.radius_meters ?? 2000} m`}
                     </p>
@@ -354,26 +451,25 @@ export default function AdminDeliveryZones() {
                     >
                       {zone.is_active ? 'Desativar' : 'Ativar'}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => openEdit(zone)}
-                    >
+                    <Button variant="outline" size="icon" onClick={() => openEdit(zone)} title="Editar">
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => deleteZone(zone.id)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      title="Excluir"
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
-        )}
+        </div>
+      )}
     </div>
   );
 }

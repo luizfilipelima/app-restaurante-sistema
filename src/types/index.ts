@@ -134,6 +134,8 @@ export interface Restaurant {
   menu_display_mode?: 'default' | 'categories_first';
   /** Breve descrição da loja exibida no cardápio para o cliente */
   description?: string | null;
+  /** Quando false, desativa todas as zonas no checkout (mostra card WhatsApp). Quando true, respeita is_active de cada zona. */
+  delivery_zones_enabled?: boolean | null;
   /** Templates personalizáveis de mensagens WhatsApp */
   whatsapp_templates?: WhatsAppTemplates | null;
   /** Override manual da receita mensal em BRL (Super Admin). Se definido, usado no Dashboard BI em vez do preço do plano. */
