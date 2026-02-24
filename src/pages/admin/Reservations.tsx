@@ -160,15 +160,22 @@ function ReservationsContent() {
   };
 
   useEffect(() => {
-    if (!restaurantId || !hasReservations) return;
+    if (!restaurantId) return;
     const ch = supabase
-      .channel(`reservations-${restaurantId}`)
+      .channel(`reservations-realtime-${restaurantId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: `restaurant_id=eq.${restaurantId}` }, () => {
         queryClient.invalidateQueries({ queryKey: ['reservations', restaurantId] });
+        queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'waiting_queue', filter: `restaurant_id=eq.${restaurantId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['waitingQueue', restaurantId] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tables', filter: `restaurant_id=eq.${restaurantId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['tables', restaurantId] });
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [restaurantId, hasReservations, queryClient]);
+  }, [restaurantId, queryClient]);
 
   const today = new Date().toISOString().slice(0, 10);
   const basePublicUrl = restaurant?.slug ? getCardapioPublicUrl(restaurant.slug) : '';

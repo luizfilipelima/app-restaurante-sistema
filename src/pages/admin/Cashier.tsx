@@ -99,6 +99,8 @@ interface QueueItemComandaDigital extends QueueItemBase {
   items: { id: string; product_name: string; quantity: number; unit_price: number; total_price: number; notes: string | null }[];
   /** Preenchido quando a comanda é de uma reserva (status pending/confirmed) */
   reservation?: ReservationInfo;
+  /** IDs dos pedidos de mesa vinculados (reserva+mesa: paga comanda + marca orders) */
+  linkedTableOrderIds?: string[];
 }
 
 interface QueueItemComandaBuffet extends QueueItemBase {
@@ -332,10 +334,12 @@ function QueueCard({
       );
   const badgeClass =
     isTableGroup(item) || item.type === 'table'
-      ? 'bg-blue-100 text-blue-700 border-blue-200'
+      ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800'
       : item.type === 'comanda_buffet'
-        ? 'bg-orange-100 text-orange-700 border-orange-200'
-        : 'bg-emerald-100 text-emerald-700 border-emerald-200';
+        ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800'
+        : item.type === 'comanda_digital' && (item as QueueItemComandaDigital).reservation
+          ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+          : 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800';
 
   return (
     <button
@@ -467,32 +471,80 @@ function CashierContent() {
       ]);
 
       const vcData = (vcRes.data ?? []) as any[];
+      const ordersData = (ordersRes.data ?? []) as any[];
+      const tableOrders = ordersData.filter(
+        (o: any) => (o.order_source === 'table' || o.table_id) && o.order_source !== 'delivery' && o.delivery_type !== 'delivery'
+      );
+
+      const tableIdsConsumedByReservation = new Set<string>();
+
       vcData.forEach((vc) => {
         const resList = vc.reservations;
         const res = Array.isArray(resList) && resList.length > 0 ? resList[0] : null;
         const reservation = res && ['pending', 'confirmed'].includes(res.status)
           ? { id: res.id, customer_name: res.customer_name, scheduled_at: res.scheduled_at, late_tolerance_minutes: res.late_tolerance_minutes ?? 15, table_id: res.table_id, status: res.status }
           : undefined;
-        const label = reservation ? `${vc.short_code} · Reserva` : vc.short_code;
+
+        const vcItems = (vc.virtual_comanda_items ?? []).map((i: any) => ({
+          id: i.id,
+          product_name: i.product_name,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+          total_price: i.total_price,
+          notes: i.notes,
+        }));
+
+        let label: string;
+        let customerName: string | null;
+        let tableNumber: string | null = vc.table_number;
+        let totalAmount = vc.total_amount ?? 0;
+        let mergedItems = [...vcItems];
+        let linkedTableOrderIds: string[] | undefined;
+
+        if (reservation?.table_id) {
+          const matchingTableOrders = tableOrders.filter((o: any) => o.table_id === reservation.table_id);
+          if (matchingTableOrders.length > 0) {
+            linkedTableOrderIds = matchingTableOrders.map((o: any) => o.id);
+            matchingTableOrders.forEach((o: any) => {
+              tableIdsConsumedByReservation.add(o.id);
+              totalAmount += o.total ?? 0;
+              const t = o.tables;
+              if (t?.number != null) tableNumber = String(t.number);
+              (o.order_items ?? []).forEach((i: any) => {
+                mergedItems.push({
+                  id: i.id,
+                  product_name: i.product_name,
+                  quantity: i.quantity,
+                  unit_price: i.unit_price ?? 0,
+                  total_price: i.total_price ?? 0,
+                  notes: i.observations ?? null,
+                });
+              });
+            });
+            label = tRef.current('reservations.reserva');
+            customerName = reservation.customer_name || vc.customer_name;
+          } else {
+            label = `${tRef.current('reservations.reserva')} · ${vc.short_code}`;
+            customerName = reservation.customer_name || vc.customer_name;
+          }
+        } else {
+          label = reservation ? `${vc.short_code} · ${tRef.current('reservations.reserva')}` : vc.short_code;
+          customerName = reservation?.customer_name ?? vc.customer_name;
+        }
+
         items.push({
           id: `vc-${vc.id}`,
           type: 'comanda_digital',
           label,
-          customerName: vc.customer_name,
-          totalAmount: vc.total_amount ?? 0,
+          customerName,
+          totalAmount,
           createdAt: vc.created_at,
           virtualComandaId: vc.id,
           shortCode: vc.short_code,
-          tableNumber: vc.table_number,
-          items: (vc.virtual_comanda_items ?? []).map((i: any) => ({
-            id: i.id,
-            product_name: i.product_name,
-            quantity: i.quantity,
-            unit_price: i.unit_price,
-            total_price: i.total_price,
-            notes: i.notes,
-          })),
+          tableNumber,
+          items: mergedItems,
           reservation,
+          linkedTableOrderIds,
         });
       });
 
@@ -517,11 +569,8 @@ function CashierContent() {
         });
       });
 
-      const ordersData = (ordersRes.data ?? []) as any[];
-      const tableOrders = ordersData.filter(
-        (o: any) => (o.order_source === 'table' || o.table_id) && o.order_source !== 'delivery' && o.delivery_type !== 'delivery'
-      );
       tableOrders.forEach((o: any) => {
+        if (tableIdsConsumedByReservation.has(o.id)) return;
         const t = o.tables;
         const tableNum = t?.number ?? o.table_id ?? '?';
         items.push({
@@ -817,9 +866,12 @@ function CashierContent() {
     const num = parseInt(v, 10);
     if (!isNaN(num)) {
       for (const group of queueGroupedByZone) {
-        const found = group.items.find(
-          (i) => (isTableGroup(i) ? i.tableNumber === num : i.type === 'table' && i.tableNumber === num)
-        );
+        const found = group.items.find((i) => {
+          if (isTableGroup(i)) return i.tableNumber === num;
+          if (i.type === 'table') return i.tableNumber === num;
+          if (i.type === 'comanda_digital' && i.tableNumber) return String(i.tableNumber) === String(num);
+          return false;
+        });
         if (found) {
           selectItem(found);
           return;
@@ -932,6 +984,12 @@ function CashierContent() {
           p_payment_method: primaryMethod,
         });
         if (error) throw error;
+        if (selected.linkedTableOrderIds?.length) {
+          await supabase
+            .from('orders')
+            .update({ status: 'completed', is_paid: true, payment_method: primaryMethod })
+            .in('id', selected.linkedTableOrderIds);
+        }
         const { data: fullOrder } = await supabase
           .from('orders')
           .select('*, order_items(*), delivery_zone:delivery_zones(*)')

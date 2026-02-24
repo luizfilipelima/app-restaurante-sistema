@@ -251,6 +251,9 @@ export default function AdminTables() {
         queryClient.invalidateQueries({ queryKey: ['tableComandaLinks'] });
         queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: `restaurant_id=eq.${restaurantId}` }, () => {
+        queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
+      })
       .subscribe();
     return () => {
       supabase.removeChannel(ch);

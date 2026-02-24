@@ -100,27 +100,34 @@ function WaiterTerminalContent() {
     const ch = supabase
       .channel('waiter-terminal-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'waiter_calls', filter: `restaurant_id=eq.${restaurantId}` }, () => {
-        queryClient.invalidateQueries({ queryKey: ['waiterCalls', restaurantId] });
-        queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+        queryClient.refetchQueries({ queryKey: ['waiterCalls', restaurantId] });
+        queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, () => {
-        queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
-        queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+        queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
+        queryClient.refetchQueries({ queryKey: ['tableOrders'] });
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_items' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
-        queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+        queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
+        queryClient.refetchQueries({ queryKey: ['tableOrders'] });
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'order_items' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
-        queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+        queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
+        queryClient.refetchQueries({ queryKey: ['tableOrders'] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tables', filter: `restaurant_id=eq.${restaurantId}` }, () => {
         refetchTables();
-        queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+        queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hall_zones', filter: `restaurant_id=eq.${restaurantId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['hallZones', restaurantId] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'table_comanda_links', filter: `restaurant_id=eq.${restaurantId}` }, () => {
         queryClient.invalidateQueries({ queryKey: ['tableComandaLinks'] });
+        queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: `restaurant_id=eq.${restaurantId}` }, () => {
+        queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
