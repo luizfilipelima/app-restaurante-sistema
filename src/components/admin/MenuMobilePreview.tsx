@@ -67,8 +67,8 @@ export default function MenuMobilePreview({
     window.open(menuUrl, '_blank', 'noopener,noreferrer');
   }, [menuUrl]);
 
-  const scaledWidth = VIEWPORT_WIDTH * SCALE;
-  const scaledHeight = VIEWPORT_HEIGHT * SCALE;
+  const scaledWidth = Math.round(VIEWPORT_WIDTH * SCALE);
+  const scaledHeight = Math.round(VIEWPORT_HEIGHT * SCALE);
 
   if (!slug?.trim()) {
     return null;
@@ -146,53 +146,69 @@ export default function MenuMobilePreview({
         </DialogHeader>
 
         {/* Área do dispositivo */}
-        <div className="flex-1 overflow-auto p-6 flex items-start justify-center min-h-[420px] bg-gradient-to-b from-slate-100 to-slate-200/80 dark:from-slate-900 dark:to-slate-800/80">
-          {/* Moldura com bordas arredondadas e borda de 3px */}
+        <div className="flex-1 overflow-auto p-6 flex items-center justify-center min-h-[420px] bg-gradient-to-b from-slate-100 to-slate-200/80 dark:from-slate-900 dark:to-slate-800/80">
+          {/* Moldura: borda 3px, cantos arredondados, conteúdo clipado internamente */}
           <div
-            className="relative flex-shrink-0 shadow-xl overflow-hidden"
+            className="relative flex-shrink-0 shadow-xl"
             style={{
               width: scaledWidth + BORDER_WIDTH * 2,
               height: scaledHeight + BORDER_WIDTH * 2,
               borderRadius: FRAME_RADIUS + BORDER_WIDTH,
               border: `${BORDER_WIDTH}px solid #1f2937`,
               boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
+              overflow: 'hidden',
             }}
           >
-            {/* Área da tela — cantos arredondados respeitando a borda interna */}
+            {/* Área da tela — clip-path garante recorte preciso nos cantos */}
             <div
-              className="absolute overflow-hidden bg-white dark:bg-slate-900"
+              className="absolute bg-white dark:bg-slate-900 isolate"
               style={{
                 top: BORDER_WIDTH,
                 left: BORDER_WIDTH,
-                width: scaledWidth,
-                height: scaledHeight,
+                right: BORDER_WIDTH,
+                bottom: BORDER_WIDTH,
+                overflow: 'hidden',
                 borderRadius: FRAME_RADIUS,
+                clipPath: `inset(0 round ${FRAME_RADIUS}px)`,
+                WebkitClipPath: `inset(0 round ${FRAME_RADIUS}px)`,
               }}
             >
-              {loading && (
-                <div
-                  className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800"
-                  style={{ borderRadius: FRAME_RADIUS }}
-                >
-                  <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-2" />
-                  <p className="text-xs text-slate-500">Carregando cardápio…</p>
-                </div>
-              )}
-              <iframe
-                ref={iframeRef}
-                src={iframeSrc}
-                title="Pré-visualização do cardápio"
-                onLoad={() => setLoading(false)}
+              {/* Wrapper do iframe: dimensões exatas, recorte perfeito */}
+              <div
+                className="absolute top-0 left-0 overflow-hidden"
                 style={{
-                  width: VIEWPORT_WIDTH,
-                  height: VIEWPORT_HEIGHT,
-                  transform: `scale(${SCALE})`,
-                  transformOrigin: '0 0',
-                  border: 'none',
+                  width: scaledWidth,
+                  height: scaledHeight,
+                  borderRadius: FRAME_RADIUS,
+                  clipPath: `inset(0 round ${FRAME_RADIUS}px)`,
                 }}
-                className="absolute top-0 left-0"
-                sandbox="allow-scripts allow-same-origin allow-forms"
-              />
+              >
+                {loading && (
+                  <div
+                    className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800"
+                    style={{ borderRadius: FRAME_RADIUS }}
+                  >
+                    <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-2" />
+                    <p className="text-xs text-slate-500">Carregando cardápio…</p>
+                  </div>
+                )}
+                <iframe
+                  ref={iframeRef}
+                  src={iframeSrc}
+                  title="Pré-visualização do cardápio"
+                  onLoad={() => setLoading(false)}
+                  style={{
+                    width: VIEWPORT_WIDTH,
+                    height: VIEWPORT_HEIGHT,
+                    transform: `scale(${SCALE})`,
+                    transformOrigin: 'top left',
+                    border: 'none',
+                    display: 'block',
+                  }}
+                  className="absolute top-0 left-0"
+                  sandbox="allow-scripts allow-same-origin allow-forms"
+                />
+              </div>
             </div>
           </div>
         </div>

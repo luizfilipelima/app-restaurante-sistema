@@ -22,7 +22,7 @@ import { formatCurrency } from '@/lib/utils';
 import { convertPriceToStorage, convertPriceFromStorage, convertBetweenCurrencies, getCurrencySymbol, formatPriceInputPyG } from '@/lib/priceHelper';
 import type { CurrencyCode } from '@/lib/priceHelper';
 import type { DeliveryZone } from '@/types';
-import { Plus, Edit, Trash2, MapPin, Truck, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, MapPin, Truck, Loader2, Gauge } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 const ZoneRadiusMapEditor = lazy(() => import('@/components/admin/ZoneRadiusMapEditor'));
 
@@ -63,7 +63,9 @@ export default function AdminDeliveryZones() {
   const { data: zonesData, isLoading: loading, refetch } = useDeliveryZones(restaurantId);
   const zones = zonesData ?? [];
 
-  const deliveryZonesEnabled = (restaurantData as { delivery_zones_enabled?: boolean | null })?.delivery_zones_enabled !== false;
+  const restaurantWithMode = restaurantData as { delivery_zones_enabled?: boolean | null; delivery_zones_mode?: 'disabled' | 'zones' | 'kilometers' | null };
+  const rawMode = restaurantWithMode?.delivery_zones_mode;
+  const deliveryZonesMode: 'disabled' | 'zones' | 'kilometers' = rawMode ?? (restaurantWithMode?.delivery_zones_enabled === false ? 'disabled' : 'zones');
 
   const paymentCurrencies = (restaurant as { payment_currencies?: string[] })?.payment_currencies;
   const feeCurrencyOptions: CurrencyCode[] = (() => {
@@ -114,21 +116,25 @@ export default function AdminDeliveryZones() {
     setShowForm(true);
   }, [baseCurrency]);
 
-  const toggleDeliveryZonesEnabled = async () => {
+  const setDeliveryZonesMode = async (mode: 'disabled' | 'zones' | 'kilometers') => {
     if (!restaurantId) return;
     setTogglingGlobal(true);
     try {
-      const newValue = !deliveryZonesEnabled;
       const { error } = await supabase
         .from('restaurants')
-        .update({ delivery_zones_enabled: newValue, updated_at: new Date().toISOString() })
+        .update({
+          delivery_zones_mode: mode,
+          delivery_zones_enabled: mode !== 'disabled',
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', restaurantId);
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
       invalidatePublicMenuCache(queryClient, restaurant?.slug);
-      toast({ title: newValue ? 'Zonas de entrega ativadas' : 'Zonas de entrega desativadas' });
+      const labels = { disabled: 'Desativado', zones: 'Ativado', kilometers: 'Modo Quilometragem' };
+      toast({ title: `Modo alterado para: ${labels[mode]}` });
     } catch (err) {
-      console.error('Erro ao alterar status:', err);
+      console.error('Erro ao alterar modo:', err);
       toast({ title: 'Erro ao atualizar', variant: 'destructive' });
     } finally {
       setTogglingGlobal(false);
@@ -248,43 +254,60 @@ export default function AdminDeliveryZones() {
           <div className="flex items-center gap-3">
             <div
               role="group"
-              aria-label="Ativar ou desativar zonas de entrega"
-              className="relative inline-flex w-[180px] rounded-xl bg-slate-100 p-1"
+              aria-label="Modo de zonas de entrega"
+              className="relative inline-flex w-full min-w-[280px] max-w-[340px] rounded-xl bg-slate-100 p-1"
             >
               <div
-                className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-200 ease-out ${
-                  deliveryZonesEnabled ? 'left-[calc(50%+2px)] bg-emerald-500' : 'left-1 bg-slate-700'
-                }`}
+                className="absolute top-1 bottom-1 w-[calc(33.333%-4px)] rounded-lg shadow-sm transition-all duration-200 ease-out"
+                style={{
+                  left: deliveryZonesMode === 'disabled' ? 4 : deliveryZonesMode === 'zones' ? 'calc(33.333% + 2px)' : 'calc(66.666% + 4px)',
+                  backgroundColor: deliveryZonesMode === 'disabled' ? '#374151' : deliveryZonesMode === 'zones' ? '#10b981' : '#f59e0b',
+                }}
                 aria-hidden
               />
               <button
                 type="button"
-                onClick={() => deliveryZonesEnabled && toggleDeliveryZonesEnabled()}
+                onClick={() => deliveryZonesMode !== 'disabled' && setDeliveryZonesMode('disabled')}
                 disabled={togglingGlobal}
-                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  !deliveryZonesEnabled ? 'text-white' : 'text-slate-500 hover:text-slate-700'
+                className={`relative z-10 flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  deliveryZonesMode === 'disabled' ? 'text-white' : 'text-slate-500 hover:text-slate-700'
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
-                {togglingGlobal && deliveryZonesEnabled && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
+                {togglingGlobal && deliveryZonesMode === 'disabled' && <Loader2 className="h-3 w-3 animate-spin shrink-0" />}
                 Desativado
               </button>
               <button
                 type="button"
-                onClick={() => !deliveryZonesEnabled && toggleDeliveryZonesEnabled()}
+                onClick={() => deliveryZonesMode !== 'zones' && setDeliveryZonesMode('zones')}
                 disabled={togglingGlobal}
-                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  deliveryZonesEnabled ? 'text-white' : 'text-slate-500 hover:text-slate-700'
+                className={`relative z-10 flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  deliveryZonesMode === 'zones' ? 'text-white' : 'text-slate-500 hover:text-slate-700'
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
-                {togglingGlobal && !deliveryZonesEnabled && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
+                {togglingGlobal && deliveryZonesMode === 'zones' && <Loader2 className="h-3 w-3 animate-spin shrink-0" />}
                 Ativado
+              </button>
+              <button
+                type="button"
+                onClick={() => deliveryZonesMode !== 'kilometers' && setDeliveryZonesMode('kilometers')}
+                disabled={togglingGlobal}
+                className={`relative z-10 flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  deliveryZonesMode === 'kilometers' ? 'text-white' : 'text-slate-500 hover:text-slate-700'
+                } disabled:opacity-60 disabled:cursor-not-allowed`}
+                title="Modo por quilometragem (em breve)"
+              >
+                {togglingGlobal && deliveryZonesMode === 'kilometers' && <Loader2 className="h-3 w-3 animate-spin shrink-0" />}
+                <Gauge className="h-3 w-3 shrink-0" />
+                <span className="truncate">Quilometragem</span>
               </button>
             </div>
           </div>
-          <p className="text-xs text-slate-500 sm:max-w-[240px]">
-            {deliveryZonesEnabled
-              ? 'Cliente escolhe a zona e vê a taxa no checkout.'
-              : 'Checkout exibe card pedindo localização via WhatsApp.'}
+          <p className="text-xs text-slate-500 sm:max-w-[280px]">
+            {deliveryZonesMode === 'disabled'
+              ? 'Checkout exibe card pedindo localização via WhatsApp.'
+              : deliveryZonesMode === 'zones'
+                ? 'Cliente escolhe a zona e vê a taxa no checkout.'
+                : 'Modo quilometragem (em breve).'}
           </p>
         </div>
         <Button

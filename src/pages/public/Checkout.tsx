@@ -112,7 +112,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   // ── Entrega ──
   const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
   const { data: rawZones = [] } = useDeliveryZones(restaurantId ?? null);
-  const deliveryZonesEnabled = (currentRestaurant as { delivery_zones_enabled?: boolean | null })?.delivery_zones_enabled !== false;
+  const r = currentRestaurant as { delivery_zones_enabled?: boolean | null; delivery_zones_mode?: 'disabled' | 'zones' | 'kilometers' | null };
+  const mode = r?.delivery_zones_mode ?? (r?.delivery_zones_enabled === false ? 'disabled' : 'zones');
+  const deliveryZonesEnabled = mode !== 'disabled';
   const zones = deliveryZonesEnabled ? rawZones.filter((z) => z.is_active) : [];
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
   const [zoneSelectKey, setZoneSelectKey] = useState(0); // Força remount do Select ao alterar zona (workaround Radix em mobile)

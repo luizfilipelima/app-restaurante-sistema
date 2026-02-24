@@ -136,6 +136,8 @@ export interface Restaurant {
   description?: string | null;
   /** Quando false, desativa todas as zonas no checkout (mostra card WhatsApp). Quando true, respeita is_active de cada zona. */
   delivery_zones_enabled?: boolean | null;
+  /** Modo de zonas: disabled | zones | kilometers. Prioridade sobre delivery_zones_enabled. */
+  delivery_zones_mode?: 'disabled' | 'zones' | 'kilometers' | null;
   /** Quando false, esconde a seção de cupom no checkout. Quando true, cupons disponíveis. */
   discount_coupons_enabled?: boolean | null;
   /** Templates personalizáveis de mensagens WhatsApp */
