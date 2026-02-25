@@ -197,7 +197,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     setLatitude(lat);
     setLongitude(lng);
     setMapKey((k) => k + 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseCurrency, mode, restaurantLat, restaurantLng]);
 
   // Quando o cliente seleciona ou troca de zona, centraliza o mapa (sem remount — MapUpdater faz flyTo)

@@ -28,19 +28,17 @@ export function useAdminTranslation() {
     const keys = key.split('.');
     const dict = adminTranslations[lang] ?? adminTranslations.pt;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let result: any = dict;
+    let result: Record<string, unknown> | string | undefined = dict as Record<string, unknown>;
     for (const k of keys) {
-      result = result?.[k];
+      result = typeof result === 'object' && result !== null ? (result as Record<string, unknown>)[k] as Record<string, unknown> | string | undefined : undefined;
       if (result === undefined) break;
     }
 
     // Fall back to 'pt' if translation missing
     if (result === undefined) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let ptResult: any = adminTranslations.pt;
+      let ptResult: Record<string, unknown> | string | undefined = adminTranslations.pt as Record<string, unknown>;
       for (const k of keys) {
-        ptResult = ptResult?.[k];
+        ptResult = typeof ptResult === 'object' && ptResult !== null ? (ptResult as Record<string, unknown>)[k] as Record<string, unknown> | string | undefined : undefined;
         if (ptResult === undefined) break;
       }
       result = ptResult;

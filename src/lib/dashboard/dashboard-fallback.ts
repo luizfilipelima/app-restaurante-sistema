@@ -104,6 +104,7 @@ async function fetchAllOrders(selectCols: string, tenantId: string): Promise<Ord
   let from = 0;
   const rows: OrderLite[] = [];
 
+  // eslint-disable-next-line no-constant-condition -- pagination loop
   while (true) {
     const { data, error } = await fetchOrdersPage(selectCols, tenantId, from, from + pageSize - 1);
     if (error) throw error;
@@ -139,6 +140,7 @@ async function fetchPeriodOrders(
     const pageSize = 1000;
     let from = 0;
     const rows: OrderLite[] = [];
+    // eslint-disable-next-line no-constant-condition -- pagination loop
     while (true) {
       const { data, error } = await supabase
         .from('orders')

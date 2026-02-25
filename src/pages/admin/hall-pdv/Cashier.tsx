@@ -244,6 +244,7 @@ function QRModal({
         alert(t('cashier.allowPopups'));
         return;
       }
+      const scriptClose = '</script>';
       win.document.write(
         `<!DOCTYPE html><html><head><meta charset="utf-8"><title>QR Comanda</title>
         <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff}
@@ -253,7 +254,7 @@ function QRModal({
         </style></head><body><div class="card">${logoHtml}<p class="title">${t('cashier.scanToOpen')}</p>
         <p class="name">${restaurantName}</p><div class="qr"><img src="${qrPng}" width="280" height="280"/></div>
         <p class="url">${url}</p><p class="hint">${t('cashier.scanHintPrint')}</p></div>
-        <script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}<\/script></body></html>`
+        <script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}${scriptClose}</body></html>`
       );
       win.document.close();
     } catch (e) {
@@ -446,7 +447,7 @@ function CashierContent() {
           .eq('restaurant_id', restaurantId)
           .eq('status', 'open')
           .order('created_at', { ascending: true }),
-        !!hasBuffet
+        hasBuffet
           ? supabase
               .from('comandas')
               .select('id, number, total_amount, opened_at, comanda_items(id, description, quantity, unit_price, total_price)')
@@ -454,7 +455,7 @@ function CashierContent() {
               .eq('status', 'open')
               .order('opened_at', { ascending: true })
           : { data: [] },
-        !!hasTables
+        hasTables
           ? supabase
               .from('orders')
               .select(`
@@ -498,7 +499,7 @@ function CashierContent() {
         let customerName: string | null;
         let tableNumber: string | null = vc.table_number;
         let totalAmount = vc.total_amount ?? 0;
-        let mergedItems = [...vcItems];
+        const mergedItems = [...vcItems];
         let linkedTableOrderIds: string[] | undefined;
 
         if (reservation?.table_id) {

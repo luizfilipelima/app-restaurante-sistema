@@ -595,8 +595,8 @@ function AddUserForm({ restaurantId, canAssignOwner, onSuccess, onCancel }: AddU
         // Tenta extrair o body real da resposta de erro
         let realMsg = error.message;
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const body = await (error as any).context?.json?.();
+          const raw = await (error as { context?: { json?: () => Promise<unknown> } }).context?.json?.();
+          const body = raw as { error?: string; detail?: string } | undefined;
           if (body?.error) realMsg = body.error;
           if (body?.detail) realMsg += ` (${body.detail})`;
         } catch { /* ignora */ }
