@@ -13,6 +13,7 @@ import { formatPrice } from '@/lib/priceHelper';
 import type { DatabaseOrder } from '@/types';
 import type { CompletedOrdersDateRange } from '@/hooks/queries/useCompletedOrders';
 import { useCompletedOrders } from '@/hooks/queries/useCompletedOrders';
+import { useQueryErrorToast } from '@/hooks/shared/useQueryErrorToast';
 
 const DATE_RANGE_OPTIONS: { value: CompletedOrdersDateRange; label: string }[] = [
   { value: 'today', label: 'Hoje' },
@@ -358,7 +359,9 @@ export function CompletedOrdersView({
   onPrintOrder,
 }: CompletedOrdersViewProps) {
   const [dateRange, setDateRange] = useState<CompletedOrdersDateRange>('today');
-  const { data: orders = [], isLoading } = useCompletedOrders({ restaurantId, dateRange });
+  const completedQuery = useCompletedOrders({ restaurantId, dateRange });
+  const { data: orders = [], isLoading } = completedQuery;
+  useQueryErrorToast(completedQuery, 'Não foi possível carregar os pedidos concluídos.');
 
   const stats = useMemo(() => {
     const total = orders.reduce((sum, o) => sum + Number(o.total), 0);

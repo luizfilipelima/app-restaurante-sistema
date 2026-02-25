@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
+import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { UserRole } from '@/types';
 
 interface ProtectedRouteProps {
@@ -26,9 +27,9 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, allowedRoles, requiredFeature }: ProtectedRouteProps) {
   const { user, initialized } = useAuthStore();
   const location = useLocation();
-
-  // O restaurantId vem do perfil do usuário (restaurant_admin) ou é null (super_admin sem restaurante).
-  const restaurantId = user?.restaurant_id ?? null;
+  // Restaurante "em uso": do contexto (ex.: super_admin gerenciando outro restaurante) ou do usuário.
+  const contextRestaurantId = useAdminRestaurantId();
+  const restaurantId = contextRestaurantId ?? user?.restaurant_id ?? null;
 
   // A query de feature só roda quando `requiredFeature` está definido e o usuário está autenticado.
   const { data: hasFeature, isLoading: featureLoading } = useFeatureAccess(

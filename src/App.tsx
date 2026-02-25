@@ -230,22 +230,26 @@ const adminRoutes = (
         </RoleProtectedRoute>
       }
     />
-    {/* Caixa — caixa e acima + feature flag */}
+    {/* Caixa — caixa e acima + feature flag (proteção na rota alinhada a Buffet/Mesas/etc.) */}
     <Route
       path="cashier"
       element={
-        <RoleProtectedRoute allowedRoles={['cashier']}>
-          <AdminCashier />
-        </RoleProtectedRoute>
+        <ProtectedRoute requiredFeature="feature_virtual_comanda">
+          <RoleProtectedRoute allowedRoles={['cashier']}>
+            <AdminCashier />
+          </RoleProtectedRoute>
+        </ProtectedRoute>
       }
     />
-    {/* QR Code para impressão — caixa e acima */}
+    {/* QR Code para impressão — caixa e acima + feature flag */}
     <Route
       path="comanda-qr"
       element={
-        <RoleProtectedRoute allowedRoles={['cashier']}>
-          <AdminComandaQRCode />
-        </RoleProtectedRoute>
+        <ProtectedRoute requiredFeature="feature_virtual_comanda">
+          <RoleProtectedRoute allowedRoles={['cashier']}>
+            <AdminComandaQRCode />
+          </RoleProtectedRoute>
+        </ProtectedRoute>
       }
     />
     {/* Página de upgrade — somente proprietário/admin */}

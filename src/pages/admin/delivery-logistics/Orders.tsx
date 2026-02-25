@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/shared/use-toast';
+import { useQueryErrorToast } from '@/hooks/shared/useQueryErrorToast';
 import { formatPhone, getCardapioPublicUrl, ensurePhoneForWhatsApp, inferPhoneCountry, normalizePhoneWithCountryCode } from '@/lib/core/utils';
 import { formatPrice } from '@/lib/priceHelper';
 import { formatDistanceToNow } from 'date-fns';
@@ -133,12 +134,14 @@ export default function AdminOrders() {
   const currency = useAdminCurrency();
   const { t } = useAdminTranslation();
   const queryClient = useQueryClient();
-  const { data: ordersData, isLoading: loading, refetch: refetchOrders } = useOrders({
+  const ordersQuery = useOrders({
     restaurantId,
     page: 0,
     limit: 100,
     orderSourceFilter: 'delivery_pickup_only', // Kanban exclusivo: Delivery e Retirada
   });
+  const { data: ordersData, isLoading: loading, refetch: refetchOrders } = ordersQuery;
+  useQueryErrorToast(ordersQuery, 'Não foi possível carregar os pedidos.');
   const orders = ordersData?.orders ?? [];
   const { data: printSettings } = usePrintSettings(restaurantId);
   const { data: restaurant } = useRestaurant(restaurantId);

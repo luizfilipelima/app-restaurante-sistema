@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/shared/use-toast';
+import { useQueryErrorToast } from '@/hooks/shared/useQueryErrorToast';
 import { formatPrice } from '@/lib/priceHelper';
 import { exportDashboardCSV, exportDashboardXLSX } from '@/lib/dashboard/dashboard-export';
 import {
@@ -105,19 +106,23 @@ export default function AdminDashboard() {
 
   const areaForRpc = areaFilter;
 
-  const { data: kpisData, isLoading: loadingKPIs } = useDashboardKPIs({
+  const kpisQuery = useDashboardKPIs({
     tenantId: restaurantId,
     startDate: start,
     endDate: end,
     areaFilter: areaForRpc,
   });
+  const { data: kpisData, isLoading: loadingKPIs } = kpisQuery;
+  useQueryErrorToast(kpisQuery, 'Não foi possível carregar os indicadores do painel.');
 
-  const { data: statsData, isLoading: loadingBI } = useDashboardStats({
+  const statsQuery = useDashboardStats({
     tenantId: restaurantId,
     startDate: start,
     endDate: end,
     areaFilter: areaForRpc,
   });
+  const { data: statsData, isLoading: loadingBI } = statsQuery;
+  useQueryErrorToast(statsQuery, 'Não foi possível carregar as estatísticas do painel.');
 
   const { data: analyticsFallback } = useDashboardAnalytics({
     tenantId: restaurantId,
