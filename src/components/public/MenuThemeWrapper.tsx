@@ -3,22 +3,37 @@
  * as rotas públicas do restaurante acessadas por path (/:restaurantSlug/*).
  * Garante que cardápio delivery, vitrine, mesas, checkout, reservas, fila, track, bio etc.
  * usem o mesmo tema configurado. No subdomínio, o StoreLayout aplica o tema.
+ *
+ * Usa cache em localStorage para evitar flash de tema em visitas repetidas.
+ * Atualiza meta theme-color e background do html para refletir o tema.
  */
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useLayoutEffect } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { getMenuThemeConfig, paletteToCssVars, getSemanticCssVarsForCustomTheme } from '@/lib/menuThemes';
+import { getMenuThemeConfig, paletteToCssVars, getSemanticCssVarsForCustomTheme, updateDocumentThemeMeta, resetDocumentThemeMeta } from '@/lib/menuThemes';
+import { getMenuThemeCache, setMenuThemeCache } from '@/lib/menuThemeCache';
 
 export default function MenuThemeWrapper() {
   const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
   const [menuThemeId, setMenuThemeId] = useState<string | null | undefined>(undefined);
   const [menuThemeAccent, setMenuThemeAccent] = useState<string | null | undefined>(undefined);
 
-  useEffect(() => {
+  // Carregar tema do cache imediatamente (antes do paint) para evitar flash em visitas repetidas
+  useLayoutEffect(() => {
     if (!restaurantSlug) {
       setMenuThemeId(undefined);
+      setMenuThemeAccent(undefined);
       return;
     }
+    const cached = getMenuThemeCache(restaurantSlug);
+    if (cached) {
+      setMenuThemeId(cached.menuThemeId);
+      setMenuThemeAccent(cached.menuThemeAccent);
+    }
+  }, [restaurantSlug]);
+
+  useEffect(() => {
+    if (!restaurantSlug) return;
     (async () => {
       try {
         const { data } = await supabase
@@ -27,8 +42,11 @@ export default function MenuThemeWrapper() {
           .eq('slug', restaurantSlug)
           .eq('is_active', true)
           .single();
-        setMenuThemeId(data?.menu_theme ?? null);
-        setMenuThemeAccent(data?.menu_theme_accent ?? null);
+        const themeId = data?.menu_theme ?? null;
+        const accent = data?.menu_theme_accent ?? null;
+        setMenuThemeId(themeId);
+        setMenuThemeAccent(accent);
+        setMenuThemeCache(restaurantSlug, { menuThemeId: themeId, menuThemeAccent: accent });
       } catch {
         setMenuThemeId(null);
         setMenuThemeAccent(null);
@@ -36,7 +54,7 @@ export default function MenuThemeWrapper() {
     })();
   }, [restaurantSlug]);
 
-  // Sempre aplicar um tema: enquanto carrega usa default_light; depois usa o do restaurante
+  // Sempre aplicar um tema: usa cache/default enquanto carrega; depois usa o do restaurante
   const themeConfig = useMemo(() => {
     const effectiveTheme = menuThemeId === undefined ? 'default_light' : menuThemeId;
     const effectiveAccent = menuThemeAccent === undefined ? null : menuThemeAccent;
@@ -45,17 +63,17 @@ export default function MenuThemeWrapper() {
     const style: React.CSSProperties = {
       ...paletteToCssVars(config.palette),
       ...(config.primaryBgGradient && { '--primary-bg': config.primaryBgGradient } as React.CSSProperties),
-      // Cores semânticas seguem o tema quando não for o padrão
       ...(config.accentId != null ? getSemanticCssVarsForCustomTheme(config.palette) : {}),
     };
     return {
       style,
       isDark: config.isDark,
       accentId: config.accentId ?? undefined,
+      rawConfig: config,
     };
   }, [menuThemeId, menuThemeAccent]);
 
-  // Aplicar tema no documentElement para modais/dropdowns (portais) herdarem as variáveis
+  // Aplicar tema no documentElement + meta theme-color + background do html
   useEffect(() => {
     if (!restaurantSlug || !themeConfig) return;
     const el = document.documentElement;
@@ -64,9 +82,11 @@ export default function MenuThemeWrapper() {
     });
     if (themeConfig.isDark) el.classList.add('dark');
     else el.classList.remove('dark');
+    updateDocumentThemeMeta(themeConfig.rawConfig);
     return () => {
       Object.keys(themeConfig.style).forEach((key) => el.style.removeProperty(key));
       el.classList.remove('dark');
+      resetDocumentThemeMeta();
     };
   }, [restaurantSlug, themeConfig]);
 

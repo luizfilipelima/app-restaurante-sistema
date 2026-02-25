@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Palette, Check } from 'lucide-react';
+import { Loader2, Palette, Check, Pipette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -10,7 +10,11 @@ import {
   getMinimalPreviewColors,
   getPalettePreviewColors,
   getMinimalPalette,
+  isCustomAccent,
+  parseCustomAccent,
+  hslToHex,
 } from '@/lib/menuThemes';
+import ThemeColorPicker from '@/components/admin/ThemeColorPicker';
 import type { MenuThemeId } from '@/lib/menuThemes';
 
 interface MenuThemeSelectorProps {
@@ -29,6 +33,7 @@ export default function MenuThemeSelector({
   restaurantId,
   currentTheme,
   currentAccent,
+  slug,
   onThemeChange,
   onAccentChange,
   onInvalidateCache,
@@ -38,7 +43,7 @@ export default function MenuThemeSelector({
     normalizeMenuThemeId(currentTheme)
   );
   const [selectedAccent, setSelectedAccent] = useState<string>(() =>
-    currentAccent && MENU_THEME_ACCENT_OPTIONS.some((a) => a.id === currentAccent)
+    currentAccent && (MENU_THEME_ACCENT_OPTIONS.some((a) => a.id === currentAccent) || isCustomAccent(currentAccent))
       ? currentAccent
       : DEFAULT_ACCENT
   );
@@ -49,7 +54,7 @@ export default function MenuThemeSelector({
 
   useEffect(() => {
     setSelectedAccent(
-      currentAccent && MENU_THEME_ACCENT_OPTIONS.some((a) => a.id === currentAccent)
+      currentAccent && (MENU_THEME_ACCENT_OPTIONS.some((a) => a.id === currentAccent) || isCustomAccent(currentAccent))
         ? currentAccent
         : DEFAULT_ACCENT
     );
@@ -81,6 +86,8 @@ export default function MenuThemeSelector({
       onAccentChange?.(accentValue);
       invalidatePublicMenuCache(queryClient);
       onInvalidateCache?.();
+      const { clearMenuThemeCache } = await import('@/lib/menuThemeCache');
+      clearMenuThemeCache(slug);
       const { toast } = await import('@/hooks/use-toast');
       toast({ title: 'Tema salvo! Atualize o cardápio para ver as mudanças.' });
     } catch (err) {
@@ -93,7 +100,7 @@ export default function MenuThemeSelector({
 
   const currentThemeNorm = normalizeMenuThemeId(currentTheme);
   const currentAccentNorm =
-    currentAccent && MENU_THEME_ACCENT_OPTIONS.some((a) => a.id === currentAccent)
+    currentAccent && (MENU_THEME_ACCENT_OPTIONS.some((a) => a.id === currentAccent) || isCustomAccent(currentAccent))
       ? currentAccent
       : DEFAULT_ACCENT;
   const themeChanged = selectedTheme !== currentThemeNorm;
@@ -190,7 +197,43 @@ export default function MenuThemeSelector({
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() =>
+                setSelectedAccent(
+                  isCustomAccent(selectedAccent) ? selectedAccent : 'custom:350,40,90'
+                )
+              }
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 border-2 text-xs font-medium transition-all ${
+                isCustomAccent(selectedAccent)
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border hover:border-muted-foreground/50 hover:bg-muted/50'
+              }`}
+              title="Cor personalizada"
+            >
+              <span
+                className="w-3.5 h-3.5 rounded-full shrink-0 border border-white/80 dark:border-black/30 shadow-sm"
+                style={{
+                  backgroundColor: isCustomAccent(selectedAccent)
+                    ? hslToHex(
+                        parseCustomAccent(selectedAccent)?.h ?? 350,
+                        parseCustomAccent(selectedAccent)?.s ?? 40,
+                        parseCustomAccent(selectedAccent)?.l ?? 90
+                      )
+                    : '#a8a8a8',
+                }}
+              />
+              <Pipette className="h-3 w-3" />
+              Personalizada
+            </button>
           </div>
+          {isCustomAccent(selectedAccent) && (
+            <ThemeColorPicker
+              value={selectedAccent}
+              onChange={(v) => setSelectedAccent(v)}
+              label="Escolha a cor"
+            />
+          )}
           {/* Visualização tema claro vs escuro com a cor escolhida */}
           <div className="grid grid-cols-2 gap-2 pt-1">
             <div className="rounded-lg border border-border p-2 space-y-1.5">

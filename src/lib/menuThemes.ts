@@ -149,9 +149,77 @@ export const GOLD_PRIMARY_GRADIENT = 'linear-gradient(135deg, hsl(48, 90%, 58%),
 
 const DEFAULT_ACCENT_ID = 'orange';
 
+/** Cores customizadas: custom:H,S,L (HSL) ou custom#RRGGBB (hex) */
+export function isCustomAccent(accentId: string | null | undefined): boolean {
+  if (!accentId || typeof accentId !== 'string') return false;
+  return accentId.startsWith('custom:') || accentId.startsWith('custom#');
+}
+
+export interface HslValues {
+  h: number;
+  s: number;
+  l: number;
+}
+
+/** Converte hex (#RRGGBB ou RRGGBB) para HSL */
+export function hexToHsl(hex: string): HslValues | null {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return null;
+  let r = parseInt(result[1], 16) / 255;
+  let g = parseInt(result[2], 16) / 255;
+  let b = parseInt(result[3], 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      default: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
+/** Extrai HSL de accent custom (custom:H,S,L ou custom#RRGGBB) */
+export function parseCustomAccent(accentId: string | null | undefined): HslValues | null {
+  if (!accentId || !isCustomAccent(accentId)) return null;
+  if (accentId.startsWith('custom#')) {
+    return hexToHsl(accentId.slice(7));
+  }
+  const m = /^custom:(\d+),(\d+),(\d+)$/.exec(accentId);
+  if (!m) return null;
+  const h = Math.min(360, Math.max(0, parseInt(m[1], 10)));
+  const s = Math.min(100, Math.max(0, parseInt(m[2], 10)));
+  const l = Math.min(100, Math.max(0, parseInt(m[3], 10)));
+  return { h, s, l };
+}
+
+/** Converte HSL para string custom:HHH,SS,LL para salvar no banco */
+export function hslToCustomAccent(h: number, s: number, l: number): string {
+  return `custom:${Math.round(h)},${Math.round(s)},${Math.round(l)}`;
+}
+
+/** Converte HSL para hex (#RRGGBB) */
+export function hslToHex(h: number, s: number, l: number): string {
+  s /= 100;
+  l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
 function getAccentHue(accentId: string | null | undefined): number {
+  const custom = parseCustomAccent(accentId);
+  if (custom) return custom.h;
   const opt = MENU_THEME_ACCENT_OPTIONS.find((a) => a.id === accentId);
-  return opt?.hue ?? 24; // orange
+  return opt?.hue ?? 24;
 }
 
 /**
@@ -163,12 +231,15 @@ export function getMinimalPalette(
   mode: 'light' | 'dark',
   accentId: string | null | undefined
 ): ThemePalette {
-  const hue = getAccentHue(accentId);
-  // Primary e accent vivos (detalhes e CTAs)
+  const custom = parseCustomAccent(accentId);
+  const hue = custom ? custom.h : getAccentHue(accentId);
+  // Primary: cor exata para custom; preset para gold; padrão para demais
   const primary =
     accentId === 'gold'
-      ? '43 85% 52%' // dourado sólido como fallback
-      : `${hue} 95% ${mode === 'light' ? '48%' : '55%'}`;
+      ? '43 85% 52%'
+      : custom
+        ? `${custom.h} ${custom.s}% ${custom.l}%`
+        : `${hue} 95% ${mode === 'light' ? '48%' : '55%'}`;
   // Tema escuro: texto escuro nos botões primary para contraste (primary é claro)
   const primaryFg = mode === 'dark' ? '0 0% 9%' : '0 0% 100%';
   const accent = mode === 'light' ? `${hue} 100% 96%` : `${hue} 30% 18%`;
@@ -238,7 +309,8 @@ export function getMenuThemeConfig(
 ): MenuThemeConfigResult | null {
   const theme = menuTheme ?? 'default_light';
   const accentId =
-    menuThemeAccent && MENU_THEME_ACCENT_OPTIONS.some((a) => a.id === menuThemeAccent)
+    menuThemeAccent &&
+    (MENU_THEME_ACCENT_OPTIONS.some((a) => a.id === menuThemeAccent) || isCustomAccent(menuThemeAccent))
       ? menuThemeAccent
       : null;
 
@@ -317,10 +389,29 @@ export function getSemanticCssVarsForCustomTheme(palette: ThemePalette): Record<
   };
 }
 
+/** Cor padrão para meta theme-color e fallback no cleanup */
+export const DEFAULT_THEME_COLOR = '#f8fafc';
+
 /** Converte HSL da paleta (formato "H S% L%") para string CSS hsl(H, S%, L%) */
 export function paletteHslToCss(s: string): string {
   if (!s || !s.includes('%')) return s;
   return `hsl(${s.replace(/ /g, ', ')})`;
+}
+
+/** Atualiza meta theme-color e background do html com a cor de fundo do tema */
+export function updateDocumentThemeMeta(config: MenuThemeConfigResult | null): void {
+  if (!config) return;
+  const bgCss = paletteHslToCss(config.palette.background);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', bgCss);
+  document.documentElement.style.backgroundColor = bgCss;
+}
+
+/** Reseta meta theme-color e background do html (chamado no unmount) */
+export function resetDocumentThemeMeta(): void {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', DEFAULT_THEME_COLOR);
+  document.documentElement.style.backgroundColor = '';
 }
 
 /** Retorna 5 cores da paleta para preview, em formato CSS (hsl) para uso em style */

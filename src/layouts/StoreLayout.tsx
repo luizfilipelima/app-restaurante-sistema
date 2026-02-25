@@ -1,4 +1,4 @@
-import { useEffect, useState, Suspense, useMemo } from 'react';
+import { useEffect, useState, Suspense, useMemo, useLayoutEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
@@ -7,7 +7,8 @@ import { supabase } from '@/lib/supabase';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import InitialSplashScreen from '@/components/public/InitialSplashScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { getMenuThemeConfig, paletteToCssVars, getSemanticCssVarsForCustomTheme } from '@/lib/menuThemes';
+import { getMenuThemeConfig, paletteToCssVars, getSemanticCssVarsForCustomTheme, updateDocumentThemeMeta, resetDocumentThemeMeta } from '@/lib/menuThemes';
+import { getMenuThemeCache, setMenuThemeCache } from '@/lib/menuThemeCache';
 
 // Rotas públicas — lazy para reduzir bundle inicial (cardápio carrega só o necessário)
 const PublicMenu = lazyWithRetry(() => import('@/pages/public/Menu'));
@@ -36,6 +37,20 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [menuThemeId, setMenuThemeId] = useState<string | null>(null);
   const [menuThemeAccent, setMenuThemeAccent] = useState<string | null>(null);
+  const [cacheApplied, setCacheApplied] = useState(false);
+
+  // Carregar tema do cache imediatamente (antes do paint) para evitar flash em visitas repetidas
+  useLayoutEffect(() => {
+    if (!tenantSlug) return;
+    const cached = getMenuThemeCache(tenantSlug);
+    if (cached) {
+      setMenuThemeId(cached.menuThemeId);
+      setMenuThemeAccent(cached.menuThemeAccent);
+    }
+    setCacheApplied(true);
+  }, [tenantSlug]);
+
+  const showNeutralSplash = cacheApplied && menuThemeId === null && menuThemeAccent === null;
 
   useEffect(() => {
     if (!tenantSlug) return;
@@ -51,9 +66,12 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
           prefetchRestaurantMenu(tenantSlug),
         ]);
         const data = restaurantRes.data;
+        const themeId = data?.menu_theme ?? null;
+        const themeAccent = data?.menu_theme_accent ?? null;
         setLogoUrl(data?.logo ?? null);
-        setMenuThemeId(data?.menu_theme ?? null);
-        setMenuThemeAccent(data?.menu_theme_accent ?? null);
+        setMenuThemeId(themeId);
+        setMenuThemeAccent(themeAccent);
+        setMenuThemeCache(tenantSlug, { menuThemeId: themeId, menuThemeAccent: themeAccent });
         const userHasChosen = hasStoredMenuLanguage();
         const lang = (userHasChosen ? getStoredMenuLanguage() : (data?.language === 'es' ? 'es' : 'pt')) as MenuLanguage;
         if (!userHasChosen) setStoredMenuLanguage(lang);
@@ -75,17 +93,17 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
     const style: React.CSSProperties = {
       ...paletteToCssVars(config.palette),
       ...(config.primaryBgGradient && { '--primary-bg': config.primaryBgGradient } as React.CSSProperties),
-      // Cores semânticas seguem o tema quando não for o padrão
       ...(config.accentId != null ? getSemanticCssVarsForCustomTheme(config.palette) : {}),
     };
     return {
       style,
       isDark: config.isDark,
       accentId: config.accentId ?? undefined,
+      rawConfig: config,
     };
   }, [menuThemeId, menuThemeAccent]);
 
-  // Aplicar tema no documentElement para modais/dropdowns (portais) herdarem as variáveis
+  // Aplicar tema no documentElement + meta theme-color + background do html
   useEffect(() => {
     if (!themeConfig) return;
     const el = document.documentElement;
@@ -94,16 +112,18 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
     });
     if (themeConfig.isDark) el.classList.add('dark');
     else el.classList.remove('dark');
+    updateDocumentThemeMeta(themeConfig.rawConfig);
     return () => {
       Object.keys(themeConfig.style).forEach((key) => el.style.removeProperty(key));
       el.classList.remove('dark');
+      resetDocumentThemeMeta();
     };
   }, [themeConfig]);
 
   useDynamicFavicon(logoUrl);
 
   const content = (
-    <Suspense fallback={<InitialSplashScreen />}>
+    <Suspense fallback={<InitialSplashScreen neutral={showNeutralSplash} />}>
       <Routes>
           <Route path="/" element={<PublicMenu tenantSlug={tenantSlug} />} />
         <Route path="/categoria/:categoryId" element={<PublicMenu tenantSlug={tenantSlug} />} />

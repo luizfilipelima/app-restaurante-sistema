@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 interface InitialSplashScreenProps {
   /** Quando true, aplica fade-out suave antes de desmontar */
   exiting?: boolean;
+  /** Quando true, usa fundo neutro fixo (#f5f5f5) em vez do tema — evita flash na primeira carga sem cache */
+  neutral?: boolean;
   className?: string;
 }
 
@@ -17,18 +19,21 @@ const LOGO_PATH =
 /** Fallback para --primary quando fora do tema (ex.: :root) */
 const PRIMARY_FALLBACK = '24 95% 53%';
 
-export default function InitialSplashScreen({ exiting = false, className }: InitialSplashScreenProps) {
+const NEUTRAL_BG = '#f5f5f5';
+
+export default function InitialSplashScreen({ exiting = false, neutral = false, className }: InitialSplashScreenProps) {
   return (
     <div
       role="status"
       aria-label="Carregando cardápio"
       className={cn(
         'h-screen w-screen fixed inset-0 z-50 flex items-center justify-center',
-        'bg-background',
+        neutral ? '' : 'bg-background',
         'transition-opacity duration-500 ease-out',
         exiting ? 'opacity-0' : 'opacity-100',
         className
       )}
+      style={neutral ? { backgroundColor: NEUTRAL_BG } : undefined}
     >
       <div className="relative flex flex-col items-center justify-center">
         <svg

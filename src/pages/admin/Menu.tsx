@@ -2355,7 +2355,7 @@ export default function AdminMenu() {
 
       {/* ── Configurações do Cardápio (Tema + Exibição) ─────────────────────── */}
       <Dialog open={showMenuConfigModal} onOpenChange={setShowMenuConfigModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -2368,15 +2368,18 @@ export default function AdminMenu() {
             </div>
           </DialogHeader>
           <div className="space-y-6 pt-2">
-            <MenuThemeSelector
+            <section>
+              <MenuThemeSelector
               restaurantId={restaurantId}
               currentTheme={restaurant?.menu_theme}
               currentAccent={restaurant?.menu_theme_accent}
+              slug={slug || restaurant?.slug || ctxRestaurant?.slug}
               onThemeChange={(themeId) => setRestaurant((prev) => prev ? { ...prev, menu_theme: themeId ?? undefined } : null)}
               onAccentChange={(accentId) => setRestaurant((prev) => prev ? { ...prev, menu_theme_accent: accentId ?? undefined } : null)}
               onInvalidateCache={() => invalidatePublicMenuCache(queryClient, slug || restaurant?.slug || ctxRestaurant?.slug)}
             />
-            <div className="border-t border-border pt-5">
+            </section>
+            <section className="border-t border-border pt-5">
               <div className="flex items-center gap-2 mb-2">
                 <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
                 <Label className="text-sm font-medium">Primeira tela do cardápio</Label>
@@ -2398,7 +2401,7 @@ export default function AdminMenu() {
               <p className="text-xs text-muted-foreground mt-2">
                 &quot;Categorias&quot; exibe cards com imagens de cada categoria na primeira tela. &quot;Padrão&quot; vai direto para os produtos.
               </p>
-            </div>
+            </section>
           </div>
         </DialogContent>
       </Dialog>
