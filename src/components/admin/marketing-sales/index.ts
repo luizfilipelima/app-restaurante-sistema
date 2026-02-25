@@ -1,0 +1,1 @@
+export { WhatsAppTemplatesModal } from './WhatsAppTemplatesModal';
