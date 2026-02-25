@@ -46,7 +46,7 @@ DROP TRIGGER IF EXISTS update_subcategories_updated_at ON subcategories;
 CREATE TRIGGER update_subcategories_updated_at
   BEFORE UPDATE ON subcategories
   FOR EACH ROW
-  EXECUTE PROCEDURE update_subcategories_updated_at();
+  EXECUTE FUNCTION update_subcategories_updated_at();
 
 -- 5. Adicionar subcategory_id em products
 ALTER TABLE products ADD COLUMN IF NOT EXISTS subcategory_id UUID REFERENCES subcategories(id) ON DELETE SET NULL;

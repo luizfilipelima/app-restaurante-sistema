@@ -1,11 +1,6 @@
 -- ============================================================
--- Corrige erros 400 nas RPCs get_dashboard_analytics e get_advanced_dashboard_stats
--- Garante que as funções existem e força o PostgREST a recarregar o schema
--- ============================================================
--- IMPORTANTE: Execute em 3 etapas separadas no SQL Editor se der erro de sintaxe:
---   1. Linhas 1-13 (ALTER TABLE)
---   2. Linhas 15-264 (get_dashboard_analytics + GRANT)
---   3. Linhas 266 até o fim (get_advanced_dashboard_stats + GRANT + NOTIFY)
+-- Corrige erros 400 na RPC get_dashboard_analytics
+-- Garante colunas BI, recria get_dashboard_analytics e NOTIFY pgrst para recarregar schema
 -- ============================================================
 
 -- 1. Garantir colunas BI (caso add_bi_columns.sql não tenha rodado)
