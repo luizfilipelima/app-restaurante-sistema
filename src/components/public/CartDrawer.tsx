@@ -142,7 +142,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                 </button>
               </div>
               {tableCustomerName?.trim() && tableNumber != null && (
-                <p className="text-xs text-amber-700 font-medium">Pedindo como: {tableCustomerName} · Mesa {tableNumber}</p>
+                <p className="text-xs text-primary font-medium">Pedindo como: {tableCustomerName} · Mesa {tableNumber}</p>
               )}
             </div>
 
@@ -166,10 +166,10 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                 </div>
               ) : (
                 <>
-                  {/* Upsell */}
+                  {/* Upsell (order bump) — usa cores do tema do restaurante */}
                   {upsellRows.length > 0 && (
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3 space-y-2">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700">
+                    <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3 space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
                         <Sparkles className="h-3.5 w-3.5" />
                         {t('cart.upsellTitle')}
                       </div>
@@ -183,15 +183,15 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                               {p.image_url ? (
                                 <img src={p.image_url} alt={p.name} width={44} height={44} className="w-11 h-11 rounded-xl object-cover flex-shrink-0" loading="lazy" />
                               ) : (
-                                <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center text-xl flex-shrink-0">🍽</div>
+                                <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center text-xl flex-shrink-0">🍽</div>
                               )}
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-foreground truncate">{p.name}</p>
-                                <p className="text-xs text-amber-700 font-semibold mt-0.5">{fmt(price)}</p>
+                                <p className="text-xs text-primary font-semibold mt-0.5">{fmt(price)}</p>
                               </div>
                               <Button
                                 size="sm"
-                                className="h-8 w-8 p-0 rounded-full bg-amber-500 hover:bg-amber-600 text-white active:scale-95 touch-manipulation flex-shrink-0 border-0"
+                                className="h-8 w-8 p-0 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground active:scale-95 touch-manipulation flex-shrink-0 border-0"
                                 onClick={() => addUpsellToCart(row)}
                               >
                                 <Plus className="h-4 w-4" />

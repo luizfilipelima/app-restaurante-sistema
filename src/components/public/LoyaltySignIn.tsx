@@ -67,17 +67,17 @@ export default function LoyaltySignIn({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-violet-200/80 bg-gradient-to-br from-violet-50/90 via-white to-purple-50/50 p-4 sm:p-5 space-y-3"
+      className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4 sm:p-5 space-y-3"
     >
       <div className="flex items-start gap-3">
-        <div className="h-10 w-10 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
-          <Gift className="h-5 w-5 text-violet-600" />
+        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <Gift className="h-5 w-5 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold text-violet-900">
+          <h3 className="text-sm font-bold text-primary">
             {t('menu.loyalty.title')}
           </h3>
-          <p className="text-xs text-violet-600/90 mt-0.5">
+          <p className="text-xs text-primary/90 mt-0.5">
             {t('menu.loyalty.subtitle')}
           </p>
         </div>
@@ -145,7 +145,7 @@ export default function LoyaltySignIn({
 
       <Button
         type="submit"
-        className="w-full h-11 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold"
+        className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
       >
         {t('menu.loyalty.cta')}
       </Button>
