@@ -26,6 +26,7 @@ import {
 } from '@/hooks/queries';
 import type { TableWithStatus } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -73,6 +74,7 @@ import {
   ConciergeBell,
   RotateCcw,
   Trash2,
+  LayoutGrid,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import type { Locale } from 'date-fns';
@@ -321,36 +323,25 @@ export default function AdminTables() {
   };
 
   return (
-    <div className="space-y-6 pb-8">
-      {/* Header com barra compacta do Terminal do Garçom integrada */}
+    <AdminPageLayout className="pb-8">
+      <AdminPageHeader
+        title={t('tablesCentral.title')}
+        description={t('tablesCentral.subtitle')}
+        icon={LayoutGrid}
+        actions={
+          <>
+            <Button variant="outline" size="lg" className="min-h-[48px] touch-manipulation" onClick={() => setShowConfig(true)}>
+              <Settings className="h-5 w-5 mr-2" />
+              {t('tablesCentral.configure')}
+            </Button>
+            <Button size="lg" className="min-h-[48px] min-w-[48px] touch-manipulation" onClick={() => setShowAddTable(true)}>
+              <Plus className="h-5 w-5 mr-2" />
+              {t('tablesCentral.addTable')}
+            </Button>
+          </>
+        }
+      />
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold sm:text-3xl">{t('tablesCentral.title')}</h1>
-            <p className="text-muted-foreground mt-1">
-              {t('tablesCentral.subtitle')}
-            </p>
-          </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="lg"
-            className="min-h-[48px] touch-manipulation"
-            onClick={() => setShowConfig(true)}
-          >
-            <Settings className="h-5 w-5 mr-2" />
-            {t('tablesCentral.configure')}
-          </Button>
-          <Button
-            size="lg"
-            className="min-h-[48px] min-w-[48px] touch-manipulation"
-            onClick={() => setShowAddTable(true)}
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            {t('tablesCentral.addTable')}
-          </Button>
-        </div>
-        </div>
         {/* Barra compacta Terminal do Garçom (max ~50–60px) */}
         <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 h-12 max-h-12">
           <ConciergeBell className="h-4 w-4 shrink-0 text-primary" aria-hidden />
@@ -1002,7 +993,7 @@ export default function AdminTables() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPageLayout>
   );
 }
 

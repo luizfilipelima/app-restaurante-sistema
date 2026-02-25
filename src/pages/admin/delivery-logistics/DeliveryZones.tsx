@@ -5,6 +5,7 @@ import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant } from '@/co
 import { useRestaurant } from '@/hooks/queries';
 import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
 import { useDeliveryZones, useDeliveryDistanceTiers, useCreateDeliveryDistanceTier, useUpdateDeliveryDistanceTier, useDeleteDeliveryDistanceTier } from '@/hooks/queries';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -386,21 +387,12 @@ export default function AdminDeliveryZones() {
   }
 
   return (
-    <div className="space-y-6 pb-10">
-      {/* ── Header ────────────────────────────────────────────────────────────── */}
-      <div className="flex items-start gap-4">
-        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <Truck className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-            Zonas de Entrega
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base max-w-xl">
-            Configure bairros e taxas ou frete por distância. No checkout, o cliente escolhe a zona ou envia a localização.
-          </p>
-        </div>
-      </div>
+    <AdminPageLayout className="pb-10">
+      <AdminPageHeader
+        title="Zonas de Entrega"
+        description="Configure bairros e taxas ou frete por distância. No checkout, o cliente escolhe a zona ou envia a localização."
+        icon={Truck}
+      />
 
       {/* ── Tabs por modo ─────────────────────────────────────────────────────── */}
       <Tabs
@@ -843,6 +835,6 @@ export default function AdminDeliveryZones() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPageLayout>
   );
 }

@@ -15,6 +15,7 @@ const REPEAT_DAYS: { key: OfferRepeatDay; label: string }[] = [
   { key: 'sun', label: 'Dom' },
 ];
 
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -295,28 +296,26 @@ export default function AdminOffers() {
   }
 
   return (
-    <div className="space-y-6 min-w-0 w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Tag className="h-8 w-8 text-orange-500" />
-            {t('offers.title')}
-          </h1>
-          <p className="text-muted-foreground">{t('offers.subtitle')}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link to={`${basePath}/menu`}>
-              Central do Cardápio
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Link>
-          </Button>
-          <Button onClick={() => openCreate()}>
-            <Plus className="h-4 w-4 mr-2" />
-            {t('offers.addOffer')}
-          </Button>
-        </div>
-      </div>
+    <AdminPageLayout>
+      <AdminPageHeader
+        title={t('offers.title')}
+        description={t('offers.subtitle')}
+        icon={Tag}
+        actions={
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link to={`${basePath}/menu`}>
+                Central do Cardápio
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Link>
+            </Button>
+            <Button onClick={() => openCreate()}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t('offers.addOffer')}
+            </Button>
+          </>
+        }
+      />
 
       {offers.length === 0 ? (
         <Card>
@@ -736,6 +735,6 @@ export default function AdminOffers() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPageLayout>
   );
 }

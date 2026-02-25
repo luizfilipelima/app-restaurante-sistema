@@ -12,6 +12,7 @@ import {
   convertBetweenCurrencies,
 } from '@/lib/priceHelper';
 import { Category, Product, InventoryItem, InventoryMovement } from '@/types';
+import { AdminPageLayout } from '@/components/admin/_shared';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -71,6 +72,7 @@ import {
   FileSpreadsheet,
   ChefHat,
   Box,
+  Boxes,
 } from 'lucide-react';
 import InventoryIngredients from './InventoryIngredients';
 
@@ -758,17 +760,12 @@ export default function AdminInventory() {
   // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-4">
-
-      {/* ── Page Header ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Controle de Estoque</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Produtos, ingredientes e custos vinculados ao faturamento
-          </p>
-        </div>
-      </div>
+    <AdminPageLayout className="space-y-4">
+      <AdminPageHeader
+        title="Controle de Estoque"
+        description="Produtos, ingredientes e custos vinculados ao faturamento"
+        icon={Boxes}
+      />
 
       {/* ── Tabs: Produtos | Ingredientes ───────────────────────────────────── */}
       <Tabs defaultValue="products" className="w-full">
@@ -967,7 +964,7 @@ export default function AdminInventory() {
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] }}
                 >
-                  <div className="rounded-lg border border-border overflow-hidden bg-white">
+                  <div className="admin-card-border overflow-hidden bg-white rounded-lg">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -1469,6 +1466,6 @@ export default function AdminInventory() {
         </TabsContent>
       </Tabs>
 
-    </div>
+    </AdminPageLayout>
   );
 }

@@ -36,7 +36,16 @@
     --ring: 24 95% 53%;
     
     /* Raio da borda aumentado para visual moderno (Rounded-xl default) */
-    --radius: 0.75rem; 
+    --radius: 0.75rem;
+
+    /* ========== Tema do Painel Admin (identidade visual única) ========== */
+    --admin-page-bg: 210 40% 98%;           /* slate-50 — fundo das páginas */
+    --admin-page-title: 222.2 84% 4.9%;      /* foreground — títulos */
+    --admin-page-description: 215.4 16.3% 46.9%; /* muted-foreground — descrição */
+    --admin-card-bg: 0 0% 100%;              /* branco */
+    --admin-card-border: 214.3 31.8% 91.4%;  /* slate-200 */
+    --admin-card-radius: 0.75rem;            /* rounded-xl */
+    --admin-section-gap: 1.5rem;             /* space-y-6 entre seções */
     
     /* Cores para status */
     --success: 142 76% 36%;
@@ -67,6 +76,14 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 24 95% 53%;
+    /* Tema Admin (dark) — mesma identidade, cores adaptadas */
+    --admin-page-bg: 222.2 84% 4.9%;
+    --admin-page-title: 210 40% 98%;
+    --admin-page-description: 215 20.2% 65.1%;
+    --admin-card-bg: 222.2 84% 4.9%;
+    --admin-card-border: 217.2 32.6% 17.5%;
+    --admin-card-radius: 0.75rem;
+    --admin-section-gap: 1.5rem;
     /* Status — dark mode: versões levemente mais claras para contrastar no fundo escuro */
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
@@ -193,10 +210,35 @@
     @apply text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-4 border-l-transparent;
   }
   .admin-card {
-    @apply bg-white rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow;
+    @apply bg-white shadow-sm hover:shadow-md transition-shadow;
+    border: 1px solid hsl(var(--admin-card-border) / 0.8);
+    border-radius: var(--admin-card-radius);
   }
   .admin-metric-card {
-    @apply bg-white rounded-xl border border-slate-200/80 p-5 shadow-sm;
+    @apply bg-white p-5 shadow-sm;
+    border: 1px solid hsl(var(--admin-card-border) / 0.8);
+    border-radius: var(--admin-card-radius);
+  }
+  /* Título e descrição padrão de página do painel (usar com AdminPageHeader) */
+  .admin-page-title {
+    @apply font-bold tracking-tight truncate;
+    font-size: clamp(1.25rem, 2.5vw, 1.875rem);
+    line-height: 1.2;
+    color: hsl(var(--admin-page-title));
+  }
+  @media (min-width: 768px) {
+    .admin-page-title {
+      font-size: 1.875rem;
+    }
+  }
+  .admin-page-description {
+    @apply text-sm mt-1;
+    color: hsl(var(--admin-page-description));
+  }
+  /* Borda e raio padrão do painel (para Card ou qualquer container) */
+  .admin-card-border {
+    border: 1px solid hsl(var(--admin-card-border) / 0.8);
+    border-radius: var(--admin-card-radius);
   }
 
   /* Esconder scrollbar mas permitir scroll */

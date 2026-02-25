@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/shared/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { Clock, Sun, XCircle, Loader2, Save, CheckCircle2 } from 'lucide-react';
 
 const DAYS: { key: DayKey; label: string; short: string }[] = [
@@ -101,24 +102,20 @@ export default function AdminHorarios() {
   }
 
   return (
-    <div className="space-y-6 pb-10">
-      {/* ── Hero ───────────────────────────────────────────────────────────── */}
+    <AdminPageLayout className="pb-10">
+      <AdminPageHeader
+        title="Horários de Funcionamento"
+        description="Defina quando seu estabelecimento está aberto. Essas informações aparecem no cardápio e nas buscas."
+        icon={Clock}
+      />
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600 p-6 sm:p-8 text-white shadow-xl"
       >
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
-              <Clock className="h-5 w-5" />
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Horários de Funcionamento</h1>
-          </div>
-          <p className="text-sm sm:text-base text-white/90 max-w-xl">
-            Defina quando seu estabelecimento está aberto. Essas informações aparecem no cardápio e nas buscas.
-          </p>
-        </div>
+        <p className="relative z-10 text-sm sm:text-base text-white/90 max-w-xl">
+          Defina quando seu estabelecimento está aberto. Essas informações aparecem no cardápio e nas buscas.
+        </p>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.2)_0%,_transparent_50%)]" />
       </motion.div>
 
@@ -311,6 +308,6 @@ export default function AdminHorarios() {
           </Button>
         </div>
       </motion.div>
-    </div>
+    </AdminPageLayout>
   );
 }

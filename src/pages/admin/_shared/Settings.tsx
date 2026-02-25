@@ -24,10 +24,11 @@ import {
   Save, Upload, Loader2, Printer,
   Phone, Globe, ImageIcon, AlarmClock, X, Wifi, Store,
   Users, ExternalLink, Link2, FileText,
-  MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode,
+  MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode, Settings as SettingsIcon,
 } from 'lucide-react';
 import { useRestaurant } from '@/hooks/queries';
 import { useCanAccess } from '@/hooks/auth/useUserRole';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import RestaurantUsersPanel from '@/components/admin/_shared/RestaurantUsersPanel';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -424,18 +425,13 @@ export default function AdminSettings() {
   const phonePlaceholder = getPhonePlaceholder(formData.phone_country);
 
   return (
-    <div className="w-full space-y-6 pb-10">
-
-      {/* ── Cabeçalho ────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">{t('settings.title')}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t('settings.subtitle')}
-          </p>
-        </div>
-        <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
-      </div>
+    <AdminPageLayout className="pb-10">
+      <AdminPageHeader
+        title={t('settings.title')}
+        description={t('settings.subtitle')}
+        icon={SettingsIcon}
+        actions={<SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />}
+      />
 
       {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -483,7 +479,7 @@ export default function AdminSettings() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
             {/* ── Logo — drop zone ── */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col shadow-sm">
+            <div className="admin-card-border bg-card overflow-hidden flex flex-col shadow-sm">
 
               {/* Cabeçalho */}
               <div className="flex items-center gap-2.5 px-4 pt-4 pb-3 border-b border-border/60">
@@ -584,7 +580,7 @@ export default function AdminSettings() {
             </div>
 
             {/* ── Informações do negócio ── */}
-            <div className="md:col-span-2 rounded-2xl border border-border bg-card p-6 space-y-5 shadow-sm">
+            <div className="md:col-span-2 admin-card-border bg-card p-6 space-y-5 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
                   <Store className="h-[18px] w-[18px] text-muted-foreground" />
@@ -641,7 +637,7 @@ export default function AdminSettings() {
           </div>
 
           {/* ── Regionalização (moeda, país, idiomas) ── */}
-          <div className="rounded-2xl border border-border bg-card p-6 space-y-5 shadow-sm">
+          <div className="admin-card-border bg-card p-6 space-y-5 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl bg-[#F87116]/10 flex items-center justify-center flex-shrink-0">
                 <Globe className="h-[18px] w-[18px] text-[#F87116]" />
@@ -740,7 +736,7 @@ export default function AdminSettings() {
           </div>
 
           {/* ── Contato (telefone, WhatsApp, redes) ── */}
-          <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+          <div className="admin-card-border bg-card overflow-hidden shadow-sm">
             <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
               <div className="h-9 w-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center flex-shrink-0">
                 <Phone className="h-[18px] w-[18px] text-emerald-600 dark:text-emerald-400" />
@@ -831,7 +827,7 @@ export default function AdminSettings() {
           </div>
 
           {/* ── Descrição da loja (exibida no cardápio) ── */}
-          <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+          <div className="admin-card-border bg-card overflow-hidden shadow-sm">
             <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
               <div className="h-9 w-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
                 <FileText className="h-[18px] w-[18px] text-amber-600 dark:text-amber-400" />
@@ -870,7 +866,7 @@ export default function AdminSettings() {
             ABA 3b — PIX e Transferência (dados para o cliente enviar o pagamento)
         ══════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="pagamentos" className="mt-0 space-y-5">
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="admin-card-border bg-card overflow-hidden">
             <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
               <div className="h-9 w-9 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
                 <QrCode className="h-[18px] w-[18px] text-emerald-600" />
@@ -930,7 +926,7 @@ export default function AdminSettings() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="admin-card-border bg-card overflow-hidden">
             <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
               <div className="h-9 w-9 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
                 <Landmark className="h-[18px] w-[18px] text-indigo-600" />
@@ -945,7 +941,7 @@ export default function AdminSettings() {
             <div className="p-5 space-y-4">
               <div className="flex items-center gap-2">
                 <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">País</Label>
-                <div className="flex rounded-xl border border-border overflow-hidden bg-muted/30">
+                <div className="flex admin-card-border overflow-hidden bg-muted/30">
                   <button
                     type="button"
                     onClick={() => setBankCountry('pyg')}
@@ -1072,7 +1068,7 @@ export default function AdminSettings() {
         <TabsContent value="impressao" className="mt-0 space-y-6">
 
           {/* Card 1: Configurações gerais */}
-          <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="admin-card-border bg-card shadow-sm overflow-hidden">
             <div className="p-5 pb-4 border-b border-border/60 bg-muted/20">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-[#F87116]/10 flex items-center justify-center flex-shrink-0">
@@ -1123,7 +1119,7 @@ export default function AdminSettings() {
           </div>
 
           {/* Card 2: Impressão e taxa por setor */}
-          <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="admin-card-border bg-card shadow-sm overflow-hidden">
             <div className="p-5 pb-4 border-b border-border/60 bg-muted/20">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-[#F87116]/10 flex items-center justify-center flex-shrink-0">
@@ -1154,7 +1150,7 @@ export default function AdminSettings() {
                   return (
                     <div
                       key={sector}
-                      className="rounded-xl border border-border bg-background/50 p-4 space-y-4 transition-colors hover:border-muted-foreground/20"
+                      className="admin-card-border bg-background/50 p-4 space-y-4 transition-colors hover:border-muted-foreground/20"
                     >
                       <div className="flex items-center gap-2 pb-2 border-b border-border/60">
                         <span className="text-sm font-semibold text-foreground">{sectorLabel}</span>
@@ -1300,7 +1296,7 @@ export default function AdminSettings() {
                     };
 
                     return (
-                      <div key={foreignCurr} className="rounded-xl border border-border bg-background/60 p-4 space-y-2">
+                      <div key={foreignCurr} className="admin-card-border bg-background/60 p-4 space-y-2">
                         <Label className="text-sm font-medium flex flex-wrap items-center gap-1">
                           <span className="text-muted-foreground">Quantos {nativeUnit}</span>
                           <span className="text-foreground">=</span>
@@ -1387,7 +1383,7 @@ export default function AdminSettings() {
         ══════════════════════════════════════════════════════════════════════ */}
         {canAccessUsers && (
           <TabsContent value="usuarios" className="mt-0 space-y-5">
-            <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="admin-card-border bg-card p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
@@ -1422,6 +1418,6 @@ export default function AdminSettings() {
           restaurantName={restaurant?.name}
         />
       )}
-    </div>
+    </AdminPageLayout>
   );
 }

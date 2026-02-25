@@ -33,8 +33,9 @@ import {
   DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2,
   MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon, Flame, Bike, HelpCircle,
   Users, LayoutGrid, Download, FileSpreadsheet, FileText, ChevronDown, Printer,
-  Gift, Star,
+  Gift, Star, LayoutDashboard,
 } from 'lucide-react';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import DashboardPrintReport from '@/components/admin/overview/DashboardPrintReport';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -472,90 +473,76 @@ export default function AdminDashboard() {
   const ordPct = pctChange(metrics.totalOrders, prevMetrics.totalOrders);
 
   return (
-    <div className="space-y-6 min-w-0">
-        {/* ── Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">{t('dashboard.title')}</h1>
-            <p className="text-slate-500 text-sm mt-0.5">
+    <AdminPageLayout>
+        <AdminPageHeader
+          title={t('dashboard.title')}
+          icon={LayoutDashboard}
+          description={
+            <>
               {periodLabel}{areaFilter !== 'all' ? ` · ${areaLabel}` : ''}
               {restaurantName && <> · <span className="font-medium">{restaurantName}</span></>}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={areaFilter} onValueChange={(v) => setAreaFilter(v as AreaValue)}>
-              <SelectTrigger className="w-full sm:w-[150px] h-9 bg-white border-slate-200 text-sm">
-                <SelectValue placeholder={t('common.all')} />
-              </SelectTrigger>
-              <SelectContent>
-                {AREA_VALUES.map((v) => (
-                  <SelectItem key={v} value={v}>{t(`dashboard.filters.${v === 'all' ? 'all' : v === 'table' ? 'table' : v === 'pickup' ? 'pickup' : v}`)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={period} onValueChange={(v) => setPeriod(v as PeriodValue)}>
-              <SelectTrigger className="w-full sm:w-[170px] h-9 bg-white border-slate-200 text-sm">
-                <SelectValue placeholder={t('common.period')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="30">{t('dashboard.filters.last30')}</SelectItem>
-                <SelectItem value="365">{t('dashboard.filters.lastYear')}</SelectItem>
-                <SelectItem value="max">{t('dashboard.filters.allTime')}</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Exportar Relatório (PDF/Impressão A4) */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 gap-1.5 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-[#F87116] hover:border-orange-200"
-              disabled={!analytics || printing}
-              onClick={handlePrintReport}
-              title={t('print.exportReportTitle')}
-            >
-              {printing
-                ? <Loader2 className="h-4 w-4 animate-spin" />
-                : <Printer className="h-4 w-4" />
-              }
-              <span className="hidden sm:inline">{t('print.exportReport')}</span>
-            </Button>
-
-            {/* Export */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 gap-1.5 border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                  disabled={!analytics || exporting}
-                >
-                  {exporting
-                    ? <Loader2 className="h-4 w-4 animate-spin" />
-                    : <Download className="h-4 w-4" />
-                  }
-                  {t('common.export')}
-                  <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem
-                  className="gap-2 cursor-pointer"
-                  onClick={() => handleExport('csv')}
-                >
-                  <FileText className="h-4 w-4 text-slate-500" />
-                  {t('dashboard.exportCSV')}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="gap-2 cursor-pointer"
-                  onClick={() => handleExport('xlsx')}
-                >
-                  <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                  {t('dashboard.exportXLSX')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
+            </>
+          }
+          actions={
+            <>
+              <Select value={areaFilter} onValueChange={(v) => setAreaFilter(v as AreaValue)}>
+                <SelectTrigger className="w-full sm:w-[150px] h-9 bg-white border-slate-200 text-sm">
+                  <SelectValue placeholder={t('common.all')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {AREA_VALUES.map((v) => (
+                    <SelectItem key={v} value={v}>{t(`dashboard.filters.${v === 'all' ? 'all' : v === 'table' ? 'table' : v === 'pickup' ? 'pickup' : v}`)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={period} onValueChange={(v) => setPeriod(v as PeriodValue)}>
+                <SelectTrigger className="w-full sm:w-[170px] h-9 bg-white border-slate-200 text-sm">
+                  <SelectValue placeholder={t('common.period')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">{t('dashboard.filters.last30')}</SelectItem>
+                  <SelectItem value="365">{t('dashboard.filters.lastYear')}</SelectItem>
+                  <SelectItem value="max">{t('dashboard.filters.allTime')}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-[#F87116] hover:border-orange-200"
+                disabled={!analytics || printing}
+                onClick={handlePrintReport}
+                title={t('print.exportReportTitle')}
+              >
+                {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+                <span className="hidden sm:inline">{t('print.exportReport')}</span>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5 border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    disabled={!analytics || exporting}
+                  >
+                    {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    {t('common.export')}
+                    <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => handleExport('csv')}>
+                    <FileText className="h-4 w-4 text-slate-500" />
+                    {t('dashboard.exportCSV')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => handleExport('xlsx')}>
+                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                    {t('dashboard.exportXLSX')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          }
+        />
 
         {/* ══ LINHA 1: KPIs Críticos — Faturamento, Lucro, Ticket Médio ══ */}
         <motion.div
@@ -1345,6 +1332,6 @@ export default function AdminDashboard() {
             />,
             document.body
           )}
-    </div>
+    </AdminPageLayout>
   );
 }

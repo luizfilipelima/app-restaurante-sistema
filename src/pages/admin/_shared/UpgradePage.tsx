@@ -1,5 +1,6 @@
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { useAdminRestaurantId, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
 import {
@@ -233,53 +234,43 @@ export default function UpgradePage() {
   const currentPlanName = currentPlan?.name ?? 'core'; // sem assinatura → trata como Core
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      <div className="max-w-6xl mx-auto px-4 py-10">
+    <AdminPageLayout className="min-h-screen max-w-6xl mx-auto bg-gradient-to-b from-slate-50 to-white pb-10">
+      <AdminPageHeader
+        title="Planos & Assinatura"
+        description="Escolha o plano ideal para o seu restaurante. Todos os planos incluem suporte, atualizações e as funcionalidades essenciais. Faça upgrade a qualquer momento."
+        icon={CreditCard}
+        actions={
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </button>
+        }
+      />
 
-        {/* ── Navegação ─────────────────────────────────────────────────────── */}
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-8 flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Voltar
-        </button>
-
-        {/* ── Banner contextual (só aparece quando vindo de um bloqueio) ──── */}
-        {blockedFeatureInfo && (
-          <div className="mb-10 flex items-start gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-6 py-5 shadow-sm">
-            <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-amber-200/60 text-amber-600">
-              <Lock className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-amber-900">
-                {blockedFeatureInfo.label} não está disponível no seu plano atual
-              </p>
-              <p className="mt-0.5 text-sm text-amber-700">{blockedFeatureInfo.description}</p>
-              <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-amber-200/60 px-3 py-0.5 text-xs font-semibold text-amber-800">
-                <Sparkles className="h-3 w-3" />
-                Disponível no plano {PLAN_CONFIG[blockedFeatureInfo.planRequired]?.label}
-              </p>
-            </div>
+      {/* ── Banner contextual (só aparece quando vindo de um bloqueio) ──── */}
+      {blockedFeatureInfo && (
+        <div className="mb-10 flex items-start gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-6 py-5 shadow-sm">
+          <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-amber-200/60 text-amber-600">
+            <Lock className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-amber-900">
+              {blockedFeatureInfo.label} não está disponível no seu plano atual
+            </p>
+            <p className="mt-0.5 text-sm text-amber-700">{blockedFeatureInfo.description}</p>
+            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-amber-200/60 px-3 py-0.5 text-xs font-semibold text-amber-800">
+              <Sparkles className="h-3 w-3" />
+              Disponível no plano {PLAN_CONFIG[blockedFeatureInfo.planRequired]?.label}
+            </p>
           </div>
-        )}
-
-        {/* ── Título ─────────────────────────────────────────────────────── */}
-        <div className="mb-12 text-center">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-1.5 text-xs font-semibold text-orange-700">
-            <CreditCard className="h-3.5 w-3.5" />
-            Planos & Assinatura
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Escolha o plano ideal para o seu restaurante
-          </h1>
-          <p className="mt-3 text-base text-slate-500 max-w-xl mx-auto">
-            Todos os planos incluem suporte, atualizações e as funcionalidades essenciais.
-            Faça upgrade a qualquer momento.
-          </p>
         </div>
+      )}
 
-        {/* ── Cards de planos (3 colunas) ────────────────────────────────── */}
+      {/* ── Cards de planos (3 colunas) ────────────────────────────────── */}
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
             {[1, 2, 3].map((i) => <Skeleton key={i} className="h-96 rounded-2xl" />)}
@@ -504,8 +495,6 @@ export default function UpgradePage() {
             Voltar ao Dashboard
           </Link>
         </div>
-
-      </div>
-    </div>
+    </AdminPageLayout>
   );
 }

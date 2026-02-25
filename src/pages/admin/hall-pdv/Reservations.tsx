@@ -23,6 +23,7 @@ import {
 } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { FeatureGuard } from '@/components/auth/FeatureGuard';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -183,56 +184,43 @@ function ReservationsContent() {
   const linkFila = basePublicUrl ? `${basePublicUrl.replace(/\/$/, '')}/fila` : '';
 
   return (
-    <div className="space-y-6 pb-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{t('reservations.title')}</h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">{t('reservations.subtitle')}</p>
-          {!!hasReservations && linkReservar && (
-            <div className="flex items-center gap-2 mt-2">
-              <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
-              <a
-                href={linkReservar}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-              >
-                {t('reservations.linkReservation')}
-              </a>
-              <span className="text-muted-foreground">·</span>
-              <a
-                href={linkFila}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-              >
-                {t('reservations.linkWaitingQueue')}
-              </a>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {!!hasReservations && (
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => setShowWaitingQueue(true)}
-            >
-              <Users className="h-5 w-5 mr-2" />
-              {t('cashier.waitingQueue')}
-              <span className="ml-1.5 text-muted-foreground">({waitingQueue.length})</span>
+    <AdminPageLayout className="pb-8">
+      <AdminPageHeader
+        title={t('reservations.title')}
+        description={
+          <>
+            {t('reservations.subtitle')}
+            {!!hasReservations && linkReservar && (
+              <div className="flex items-center gap-2 mt-2">
+                <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                <a href={linkReservar} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                  {t('reservations.linkReservation')}
+                </a>
+                <span className="text-muted-foreground">·</span>
+                <a href={linkFila} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                  {t('reservations.linkWaitingQueue')}
+                </a>
+              </div>
+            )}
+          </>
+        }
+        icon={CalendarClock}
+        actions={
+          <>
+            {!!hasReservations && (
+              <Button variant="outline" size="lg" onClick={() => setShowWaitingQueue(true)}>
+                <Users className="h-5 w-5 mr-2" />
+                {t('cashier.waitingQueue')}
+                <span className="ml-1.5 text-muted-foreground">({waitingQueue.length})</span>
+              </Button>
+            )}
+            <Button size="lg" onClick={() => setShowCreate(true)} disabled={freeTables.length === 0 || !hasTables}>
+              <Plus className="h-5 w-5 mr-2" />
+              {t('reservations.newReservation')}
             </Button>
-          )}
-          <Button
-            size="lg"
-            onClick={() => setShowCreate(true)}
-            disabled={freeTables.length === 0 || !hasTables}
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            {t('reservations.newReservation')}
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="flex items-center gap-2 flex-wrap">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -551,7 +539,7 @@ function ReservationCard({
           </Button>
         )}
       </div>
-    </div>
+    </AdminPageLayout>
   );
 }
 

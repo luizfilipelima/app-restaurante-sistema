@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { Bike, Plus, Pencil, Trash2, Phone, User, Loader2, Package, Clock, DollarSign } from 'lucide-react';
 import { generateWhatsAppLink, normalizePhoneWithCountryCode } from '@/lib/core/utils';
 import { formatPrice } from '@/lib/priceHelper';
@@ -181,19 +182,18 @@ export default function AdminCouriers() {
   }
 
   return (
-    <div className="space-y-6 min-w-0 w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Entregadores</h1>
-          <p className="text-muted-foreground">
-            Cadastre motoboys e atribua pedidos a eles. O país do telefone define o código para contato.
-          </p>
-        </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo entregador
-        </Button>
-      </div>
+    <AdminPageLayout>
+      <AdminPageHeader
+        title="Entregadores"
+        description="Cadastre motoboys e atribua pedidos a eles. O país do telefone define o código para contato."
+        icon={Bike}
+        actions={
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo entregador
+          </Button>
+        }
+      />
 
       {/* Mini BI: Métricas por entregador */}
       {couriers.length > 0 && metricsData && metricsData.length > 0 && (
@@ -418,6 +418,6 @@ export default function AdminCouriers() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPageLayout>
   );
 }

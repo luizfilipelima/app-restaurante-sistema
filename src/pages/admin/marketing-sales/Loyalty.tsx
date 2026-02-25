@@ -12,6 +12,7 @@ import { useAdminRestaurantId, useAdminBasePath } from '@/contexts/AdminRestaura
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { useRestaurant, useLoyaltyProgram, useLoyaltyMetrics, useSaveLoyaltyProgram, useAdminProducts } from '@/hooks/queries';
 import type { LoyaltyProgram, LoyaltyScoringChannels } from '@/types';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -124,26 +125,20 @@ export default function AdminLoyalty() {
   const completedDisplay = Math.min(Math.round((5 / ordersRequired) * displayMax), displayMax);
 
   return (
-    <div className="space-y-6 pb-10">
-        {/* ── Hero Section ───────────────────────────────────────────────────── */}
+    <AdminPageLayout className="pb-10">
+      <AdminPageHeader
+        title={t('loyalty.pageTitle')}
+        description={t('loyalty.heroMessage', { name: restaurant?.name || 'seu restaurante' })}
+        icon={Gift}
+      />
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-violet-600 p-6 sm:p-8 text-white shadow-xl"
         >
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <Gift className="h-5 w-5" />
-              </div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-                {t('loyalty.pageTitle')}
-              </h1>
-            </div>
-            <p className="text-sm sm:text-base text-white/90 max-w-xl">
-              {t('loyalty.heroMessage', { name: restaurant?.name || 'seu restaurante' })}
-            </p>
-          </div>
+          <p className="relative z-10 text-sm sm:text-base text-white/90 max-w-xl">
+            {t('loyalty.heroMessage', { name: restaurant?.name || 'seu restaurante' })}
+          </p>
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.2)_0%,_transparent_50%)]" />
         </motion.div>
 
@@ -471,6 +466,6 @@ export default function AdminLoyalty() {
             </div>
           )}
         </motion.div>
-      </div>
+      </AdminPageLayout>
   );
 }

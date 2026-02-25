@@ -15,6 +15,7 @@ import {
   formatPrice,
   type ExchangeRates,
 } from '@/lib/priceHelper';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -107,85 +108,6 @@ function formatTotalMultiCurrency(
   return parts.join(' · ');
 }
 
-// ─── Componente: Status Bar ───────────────────────────────────────────────────
-
-function StatusBar({
-  isLive, isOnline, isSyncing, pendingCount, onNewComanda,
-}: {
-  isLive: boolean;
-  isOnline: boolean;
-  isSyncing: boolean;
-  pendingCount: number;
-  onNewComanda: () => void;
-}) {
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-      {/* Título + indicadores */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight leading-tight">Buffet / Kg</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Operação offline-first · atualização em tempo real</p>
-        </div>
-
-        {/* Ao Vivo */}
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-all ${
-          isLive
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-            : 'bg-slate-100 border-slate-200 text-slate-500'
-        }`}>
-          {isLive ? (
-            <>
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <Wifi className="h-3 w-3" />
-              Ao Vivo
-            </>
-          ) : (
-            <>
-              <WifiOff className="h-3 w-3" />
-              Conectando…
-            </>
-          )}
-        </div>
-
-        {/* Online/Offline/Syncing */}
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${
-          isSyncing  ? 'bg-sky-100 border border-sky-200 text-sky-700' :
-          isOnline   ? 'bg-slate-100 border border-slate-200 text-slate-600' :
-                       'bg-red-100 border border-red-200 text-red-700'
-        }`}>
-          {isSyncing ? (
-            <><Loader2 className="h-3 w-3 animate-spin" />Sincronizando…</>
-          ) : isOnline ? (
-            <><Cloud className="h-3 w-3" />Online</>
-          ) : (
-            <><CloudOff className="h-3 w-3" />Offline</>
-          )}
-          {pendingCount > 0 && (
-            <span className="ml-0.5 bg-white text-slate-800 rounded-full px-1.5 text-[10px] font-bold border border-slate-200">
-              {pendingCount}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Ações */}
-      <div className="flex items-center gap-2">
-        <Button
-          onClick={onNewComanda}
-          className="gap-2 bg-[#F87116] hover:bg-[#e56910] text-white shadow-sm shadow-orange-200"
-        >
-          <Plus className="h-4 w-4" />
-          Nova Comanda
-          <kbd className="ml-1 text-[10px] opacity-70 bg-orange-600 px-1 rounded">F2</kbd>
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 // ─── Componente: Painel Scanner (esquerda) ────────────────────────────────────
 
 function ScannerPanel({
@@ -231,7 +153,7 @@ function ScannerPanel({
     <div className="flex flex-col gap-4 h-full">
 
       {/* ── Bloco Scanner ──────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-sm">
+      <div className="admin-card-border bg-card p-4 space-y-3 shadow-sm">
 
         {/* Header */}
         <div className="flex items-center gap-2.5">
@@ -889,15 +811,27 @@ export default function Buffet() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-5 min-h-screen">
-
-      {/* ── Status Bar ─────────────────────────────────────────────────── */}
-      <StatusBar
-        isLive={isLive}
-        isOnline={isOnline}
-        isSyncing={isSyncing}
-        pendingCount={pendingCount}
-        onNewComanda={handleNewComanda}
+    <AdminPageLayout className="flex flex-col gap-5 min-h-screen">
+      <AdminPageHeader
+        title="Buffet / Kg"
+        description="Operação offline-first · atualização em tempo real"
+        icon={Scale}
+        actions={
+          <>
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-all ${isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
+              {isLive ? (<><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" /></span><Wifi className="h-3 w-3" /> Ao Vivo</>) : (<><WifiOff className="h-3 w-3" /> Conectando…</>)}
+            </div>
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${isSyncing ? 'bg-sky-100 border border-sky-200 text-sky-700' : isOnline ? 'bg-slate-100 border border-slate-200 text-slate-600' : 'bg-red-100 border border-red-200 text-red-700'}`}>
+              {isSyncing ? <><Loader2 className="h-3 w-3 animate-spin" />Sincronizando…</> : isOnline ? <><Cloud className="h-3 w-3" />Online</> : <><CloudOff className="h-3 w-3" />Offline</>}
+              {pendingCount > 0 && <span className="ml-0.5 bg-white text-slate-800 rounded-full px-1.5 text-[10px] font-bold border border-slate-200">{pendingCount}</span>}
+            </div>
+            <Button onClick={handleNewComanda} className="gap-2 bg-[#F87116] hover:bg-[#e56910] text-white shadow-sm shadow-orange-200">
+              <Plus className="h-4 w-4" />
+              Nova Comanda
+              <kbd className="ml-1 text-[10px] opacity-70 bg-orange-600 px-1 rounded">F2</kbd>
+            </Button>
+          </>
+        }
       />
 
       {/* ── Config: Preço do Kg ──────────────────────────────────────────────── */}
@@ -1107,6 +1041,6 @@ export default function Buffet() {
         </DialogContent>
       </Dialog>
 
-    </div>
+    </AdminPageLayout>
   );
 }

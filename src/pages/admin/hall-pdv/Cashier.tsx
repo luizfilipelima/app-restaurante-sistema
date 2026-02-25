@@ -26,6 +26,7 @@ import {
   convertPriceFromStorage,
   type ExchangeRates,
 } from '@/lib/priceHelper';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { FeatureGuard } from '@/components/auth/FeatureGuard';
 import { toast } from '@/hooks/shared/use-toast';
 import { usePrinter } from '@/hooks/printer/usePrinter';
@@ -1148,7 +1149,7 @@ function CashierContent() {
   })();
 
   return (
-    <div className="h-full flex flex-col">
+    <AdminPageLayout className="h-full flex flex-col">
       {comandaUrl && restaurant && (
         <QRModal
           open={showQRModal}
@@ -1160,16 +1161,13 @@ function CashierContent() {
         />
       )}
 
-      <div className="space-y-5 mb-5">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">{t('cashier.title')}</h1>
-            <p className="text-muted-foreground mt-0.5 text-sm">
-              {t('cashier.subtitle')}
-            </p>
-          </div>
+      <AdminPageHeader
+        title={t('cashier.title')}
+        description={t('cashier.subtitle')}
+        icon={ScanBarcode}
+        actions={
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
+            <div className="flex items-center gap-1 admin-card-border bg-muted/40 rounded-xl p-1">
               <button
                 onClick={() => setMainView('cashier')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -1215,7 +1213,8 @@ function CashierContent() {
             </>
             )}
           </div>
-        </div>
+        }
+      />
       {mainView === 'completed' && (
         <CashierCompletedView
           restaurantId={restaurantId}
@@ -1240,11 +1239,11 @@ function CashierContent() {
       )}
       {mainView === 'cashier' && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+          <div className="admin-card-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('cashier.accountsOpen')}</p>
             <p className="text-2xl font-bold text-foreground mt-1 tabular-nums">{loadingList && queue.length === 0 ? '…' : queue.length}</p>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+          <div className="admin-card-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('cashier.totalToReceive')}</p>
             <p className="text-2xl font-bold text-foreground mt-1 tabular-nums">
               {formatPrice(totalToReceive, baseCurrency)}
@@ -1258,13 +1257,11 @@ function CashierContent() {
           </div>
         </div>
       )}
-      </div>
-
       {mainView === 'cashier' && (
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-5 min-h-0">
         {/* COLUNA ESQUERDA: Busca + Fila */}
         <div className="lg:col-span-2 flex flex-col min-h-0 gap-4">
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-3 flex-shrink-0 shadow-sm">
+          <div className="admin-card-border bg-card p-5 space-y-3 flex-shrink-0 shadow-sm">
             <div className="flex items-center gap-2">
               <ScanBarcode className="h-5 w-5 text-muted-foreground" />
               <div>
@@ -1302,7 +1299,7 @@ function CashierContent() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card overflow-hidden flex-1 min-h-0 flex flex-col shadow-sm">
+          <div className="admin-card-border bg-card overflow-hidden flex-1 min-h-0 flex flex-col shadow-sm">
             <div className="px-4 py-3 border-b border-border flex-shrink-0">
               <h2 className="text-sm font-semibold mb-2">
                 {t('cashier.queueTitle')} — {t('cashier.waitingPayment')}
@@ -1358,7 +1355,7 @@ function CashierContent() {
               </p>
             </div>
           ) : (
-            <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+            <div className="admin-card-border bg-card overflow-hidden shadow-sm">
               <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                 <div>
                   <span className="font-mono text-lg font-bold">{selected.label}</span>
@@ -1466,7 +1463,7 @@ function CashierContent() {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="flex gap-2 items-center flex-wrap p-2.5 rounded-xl bg-white dark:bg-slate-800/50 border border-border"
+                        className="flex gap-2 items-center flex-wrap p-2.5 admin-card-border bg-white dark:bg-slate-800/50"
                       >
                         <select
                           value={p.method}
@@ -1571,7 +1568,7 @@ function CashierContent() {
 
       <OrderReceipt data={receiptData} />
       <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />
-    </div>
+    </AdminPageLayout>
   );
 }
 

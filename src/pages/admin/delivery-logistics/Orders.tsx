@@ -22,10 +22,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff, QrCode, Landmark, Store, BookOpen } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff, QrCode, Landmark, Store, BookOpen, ClipboardList } from 'lucide-react';
 import { WhatsAppTemplatesModal } from '@/components/admin/marketing-sales/WhatsAppTemplatesModal';
 import { processTemplate, getTemplate } from '@/lib/whatsapp/whatsappTemplates';
 import type { WhatsAppTemplates } from '@/types';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { ROLES_CANCEL_ORDER } from '@/hooks/auth/useUserRole';
 import { useCouriers, useOrders, usePrintSettings, useProductPrintDestinations, creditLoyaltyPoint, getOrderSector } from '@/hooks/queries';
@@ -495,81 +496,51 @@ export default function AdminOrders() {
         currentTemplates={localWaTemplates}
         onSaved={(saved) => setLocalWaTemplates(saved)}
       />
-      <div className="space-y-6 min-w-0">
-        {/* ── Cabeçalho ── */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-bold mb-1 text-foreground">Gestão de Delivery e Retiradas</h1>
-            <p className="text-muted-foreground text-sm sm:text-base">
-              {view === 'kanban'
-                ? 'Quartel-general do Delivery e Retirada — acompanhe em tempo real'
-                : 'Histórico de pedidos concluídos (Delivery e Retirada) com exportação CSV'}
-            </p>
-          </div>
-
-          {/* Indicador Ao Vivo + Toggle Kanban / Concluídos */}
-          <div className="flex items-center gap-3 self-start sm:self-auto flex-shrink-0 flex-wrap">
-            {/* Botão de edição de mensagens WhatsApp */}
-            <button
-              onClick={() => setShowWaTemplatesModal(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#25D366]/30 bg-[#25D366]/5 hover:bg-[#25D366]/10 text-[#1a9e52] dark:text-[#25D366] text-xs font-semibold transition-all hover:border-[#25D366]/60"
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-              {t('waTemplates.btnLabel')}
-            </button>
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
-              isLive
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                : 'bg-muted border-border text-muted-foreground'
-            }`}>
-              {isLive ? (
-                <>
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <Wifi className="h-3 w-3" />
-                  Ao Vivo
-                </>
-              ) : (
-                <>
-                  <WifiOff className="h-3 w-3" />
-                  Conectando…
-                </>
-              )}
-            </div>
-          <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
-            <button
-              onClick={() => setView('kanban')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                view === 'kanban'
-                  ? 'bg-background shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <LayoutGrid className="h-4 w-4" />
-              Kanban
-              {orders.length > 0 && (
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  view === 'kanban'
-                    ? 'bg-primary/10 text-primary'
-                    : 'bg-muted text-muted-foreground'
-                }`}>
-                  {orders.length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setView('completed')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                view === 'completed'
-                  ? 'bg-background shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <ListChecks className="h-4 w-4" />
-              Concluídos
-            </button>
-          </div>
-          </div>{/* fim wrapper live + toggle */}
-        </div>
+      <AdminPageLayout>
+        <AdminPageHeader
+          title="Gestão de Delivery e Retiradas"
+          description={
+            view === 'kanban'
+              ? 'Quartel-general do Delivery e Retirada — acompanhe em tempo real'
+              : 'Histórico de pedidos concluídos (Delivery e Retirada) com exportação CSV'
+          }
+          icon={ClipboardList}
+          actions={
+            <>
+              <button
+                onClick={() => setShowWaTemplatesModal(true)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#25D366]/30 bg-[#25D366]/5 hover:bg-[#25D366]/10 text-[#1a9e52] dark:text-[#25D366] text-xs font-semibold transition-all hover:border-[#25D366]/60"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                {t('waTemplates.btnLabel')}
+              </button>
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+                isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-muted border-border text-muted-foreground'
+              }`}>
+                {isLive ? (<><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /><Wifi className="h-3 w-3" /> Ao Vivo</>) : (<><WifiOff className="h-3 w-3" /> Conectando…</>)}
+              </div>
+              <div className="flex items-center gap-1 admin-card-border bg-muted/40 p-1">
+                <button
+                  onClick={() => setView('kanban')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${view === 'kanban' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  Kanban
+                  {orders.length > 0 && (
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${view === 'kanban' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>{orders.length}</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setView('completed')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${view === 'completed' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  <ListChecks className="h-4 w-4" />
+                  Concluídos
+                </button>
+              </div>
+            </>
+          }
+        />
 
         {/* ── View: Concluídos ── */}
         {view === 'completed' && (
@@ -674,7 +645,7 @@ export default function AdminOrders() {
                       return (
                         <div
                           key={order.id}
-                          className={`relative bg-card rounded-xl border border-border shadow-sm overflow-hidden hover:shadow-md transition-shadow`}
+                          className={`relative bg-card admin-card-border shadow-sm overflow-hidden hover:shadow-md transition-shadow`}
                         >
                           {/* Borda lateral colorida de status */}
                           <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${config.gradient} rounded-l-xl`} />
@@ -910,7 +881,7 @@ export default function AdminOrders() {
           })}
         </div>
         )} {/* fim view kanban */}
-      </div>
+      </AdminPageLayout>
 
       {/* Diálogo Despachar para Entregador */}
       <Dialog

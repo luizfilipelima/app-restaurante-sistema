@@ -31,6 +31,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Ticket, Plus, Pencil, Trash2, Loader2, ArrowRight } from 'lucide-react';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { toast } from '@/hooks/shared/use-toast';
 import { formatPrice } from '@/lib/priceHelper';
@@ -240,32 +241,29 @@ export default function AdminCoupons() {
   }
 
   return (
-    <div className="space-y-6 min-w-0 w-full">
-      {/* Etapa 1: Header + botões */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-            <Ticket className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
-            {t('coupons.title')}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">{t('coupons.subtitle')}</p>
-        </div>
-        <div className="flex gap-2 shrink-0">
-          <Button asChild variant="outline" size="sm">
-            <Link to={`${basePath}/menu`}>
-              Central do Cardápio
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Link>
-          </Button>
-          <Button onClick={openCreate} size="sm" className="sm:h-10 sm:px-6">
-            <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-            {t('coupons.addCoupon')}
-          </Button>
-        </div>
-      </div>
+    <AdminPageLayout>
+      <AdminPageHeader
+        title={t('coupons.title')}
+        description={t('coupons.subtitle')}
+        icon={Ticket}
+        actions={
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link to={`${basePath}/menu`}>
+                Central do Cardápio
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Link>
+            </Button>
+            <Button onClick={openCreate} size="sm" className="sm:h-10 sm:px-6">
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+              {t('coupons.addCoupon')}
+            </Button>
+          </>
+        }
+      />
 
       {/* Etapa 2: Toggle global com Switch */}
-      <Card className="rounded-xl border border-border">
+      <Card className="admin-card-border">
         <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-start sm:items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -295,25 +293,25 @@ export default function AdminCoupons() {
       {/* Estatísticas (quando há cupons) */}
       {coupons.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-          <Card className="rounded-xl border border-border">
+          <Card className="admin-card-border">
             <CardContent className="p-4">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total</p>
               <p className="text-2xl font-bold text-foreground mt-1">{stats.all}</p>
             </CardContent>
           </Card>
-          <Card className="rounded-xl border border-border">
+          <Card className="admin-card-border">
             <CardContent className="p-4">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ativos</p>
               <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{stats.active}</p>
             </CardContent>
           </Card>
-          <Card className="rounded-xl border border-border">
+          <Card className="admin-card-border">
             <CardContent className="p-4">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Inativos</p>
               <p className="text-2xl font-bold text-muted-foreground mt-1">{stats.inactive}</p>
             </CardContent>
           </Card>
-          <Card className="rounded-xl border border-border">
+          <Card className="admin-card-border">
             <CardContent className="p-4">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Usos totais</p>
               <p className="text-2xl font-bold text-foreground mt-1">{stats.totalUses}</p>
@@ -324,7 +322,7 @@ export default function AdminCoupons() {
 
       {coupons.length === 0 ? (
         /* Etapa 6: Empty state melhorado */
-        <Card className="rounded-xl border border-border">
+        <Card className="admin-card-border">
           <CardContent className="p-14 sm:p-16 text-center">
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 mb-6">
               <Ticket className="h-10 w-10 text-primary" />
@@ -358,7 +356,7 @@ export default function AdminCoupons() {
             </Tabs>
           </div>
 
-          <Card className="rounded-xl border border-border">
+          <Card className="admin-card-border">
             {filteredCoupons.length === 0 ? (
               <CardContent className="py-16 text-center">
                 <p className="text-muted-foreground mb-4">
@@ -707,6 +705,6 @@ export default function AdminCoupons() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPageLayout>
   );
 }

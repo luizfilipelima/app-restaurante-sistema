@@ -63,6 +63,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import {
   Plus,
   Trash2,
@@ -78,6 +79,7 @@ import {
   Edit,
   Package,
   ExternalLink,
+  UtensilsCrossed,
   BarChart2,
   Eye,
   EyeOff,
@@ -1164,29 +1166,25 @@ export default function AdminMenu() {
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
-
-      {/* ── Page Header ──────────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">Central do Cardápio</h1>
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/80 px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                <Package className="h-3.5 w-3.5" />
-                {totalProducts} produto{totalProducts !== 1 ? 's' : ''}
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50">
-                <Check className="h-3.5 w-3.5" />
-                {activeProducts} ativo{activeProducts !== 1 ? 's' : ''}
-              </span>
-            </div>
+    <AdminPageLayout>
+      <AdminPageHeader
+        title="Central do Cardápio"
+        icon={UtensilsCrossed}
+        description={
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/80 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              <Package className="h-3.5 w-3.5" />
+              {totalProducts} produto{totalProducts !== 1 ? 's' : ''}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50">
+              <Check className="h-3.5 w-3.5" />
+              {activeProducts} ativo{activeProducts !== 1 ? 's' : ''}
+            </span>
           </div>
-
-          {/* Barra de ações */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 flex-wrap">
-            {/* Busca */}
-            <div className="relative order-1 sm:order-none w-full sm:w-auto min-w-[200px] sm:min-w-[220px]">
+        }
+        actions={
+          <>
+            <div className="relative w-full sm:w-auto min-w-[200px] sm:min-w-[220px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 value={productSearch}
@@ -1195,57 +1193,37 @@ export default function AdminMenu() {
                 className="pl-9 h-10 w-full text-sm rounded-lg"
               />
             </div>
-
-            <div className="flex items-center gap-2 flex-wrap order-2">
-              {/* Ver Custos */}
-              <div
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium cursor-pointer transition-all select-none ${
-                  showInventory
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400'
-                    : 'border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                }`}
-                onClick={() => setShowInventory((v) => !v)}
-              >
-                {showInventory ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                <span>Ver Custos</span>
-                <Switch checked={showInventory} onCheckedChange={setShowInventory} className="h-4 w-7" onClick={(e) => e.stopPropagation()} />
-              </div>
-
-              <span className="hidden sm:block w-px h-6 bg-border" aria-hidden />
-
-              {/* Tema (atalho) */}
-              <Button variant="outline" size="sm" onClick={() => setShowMenuConfigModal(true)} className="h-10 gap-2" title="Tema e configurações do cardápio">
-                <Palette className="h-4 w-4" />
-                <span className="hidden md:inline">Tema</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowMobilePreview(true)}
-                className="h-10 gap-2"
-                disabled={!slug && !restaurant?.slug}
-                title="Ver como o cliente vê no celular"
-              >
-                <Smartphone className="h-4 w-4" />
-                <span className="hidden md:inline">Visualizar</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowOnlineModal(true)} className="h-10 gap-2">
-                <QrCode className="h-4 w-4" />
-                <span className="hidden md:inline">Online</span>
-              </Button>
-
-              <span className="hidden sm:block w-px h-6 bg-border" aria-hidden />
-
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.15 }} className="inline-flex">
-                <Button size="sm" onClick={() => openNew()} className="h-10 gap-2 shadow-sm">
-                  <Plus className="h-4 w-4" />
-                  Novo Produto
-                </Button>
-              </motion.div>
+            <div
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium cursor-pointer transition-all select-none ${
+                showInventory ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400' : 'border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+              }`}
+              onClick={() => setShowInventory((v) => !v)}
+            >
+              {showInventory ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              <span>Ver Custos</span>
+              <Switch checked={showInventory} onCheckedChange={setShowInventory} className="h-4 w-7" onClick={(e) => e.stopPropagation()} />
             </div>
-          </div>
-        </div>
-      </div>
+            <Button variant="outline" size="sm" onClick={() => setShowMenuConfigModal(true)} className="h-10 gap-2" title="Tema e configurações do cardápio">
+              <Palette className="h-4 w-4" />
+              <span className="hidden md:inline">Tema</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowMobilePreview(true)} className="h-10 gap-2" disabled={!slug && !restaurant?.slug} title="Ver como o cliente vê no celular">
+              <Smartphone className="h-4 w-4" />
+              <span className="hidden md:inline">Visualizar</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowOnlineModal(true)} className="h-10 gap-2">
+              <QrCode className="h-4 w-4" />
+              <span className="hidden md:inline">Online</span>
+            </Button>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.15 }} className="inline-flex">
+              <Button size="sm" onClick={() => openNew()} className="h-10 gap-2 shadow-sm">
+                <Plus className="h-4 w-4" />
+                Novo Produto
+              </Button>
+            </motion.div>
+          </>
+        }
+      />
 
       {/* ── Layout principal: Categorias (sidebar) + Produtos ─────────────────── */}
       <div className="flex flex-col lg:flex-row gap-6 items-stretch lg:items-start min-h-[520px]">
@@ -1424,7 +1402,7 @@ export default function AdminMenu() {
                             <Badge variant="outline" className="text-xs">{catProducts.length}</Badge>
                           </div>
                         )}
-                        <div className="rounded-xl border border-border overflow-hidden shadow-sm">
+                        <div className="admin-card-border overflow-hidden shadow-sm">
                           <Table>
                             <TableHeader>
                               <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -1792,7 +1770,7 @@ export default function AdminMenu() {
                 : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800';
 
               return (
-                <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+                <div className="admin-card-border bg-muted/20 p-4 space-y-3">
                   <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     <BarChart2 className="h-3.5 w-3.5" />
                     Precificação
@@ -1905,7 +1883,7 @@ export default function AdminMenu() {
             </div>
 
             {/* ── BLOCO 5: Estoque por produto ── */}
-            <div className="rounded-xl border border-border overflow-hidden">
+            <div className="admin-card-border overflow-hidden">
               {/* Toggle header */}
               <div
                 className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
@@ -2473,7 +2451,7 @@ export default function AdminMenu() {
                       <h3 className="text-sm font-semibold text-foreground">Links do Cardápio</h3>
 
                       {/* Cardápio Interativo */}
-                      <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+                      <div className="admin-card-border bg-muted/20 p-4 space-y-3">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-lg bg-orange-100 dark:bg-orange-950/40 flex items-center justify-center shrink-0">
@@ -2511,7 +2489,7 @@ export default function AdminMenu() {
                       </div>
 
                       {/* Somente Visualização */}
-                      <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+                      <div className="admin-card-border bg-muted/20 p-4 space-y-3">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
@@ -2567,6 +2545,6 @@ export default function AdminMenu() {
       </Dialog>
 
 
-    </div>
+    </AdminPageLayout>
   );
 }

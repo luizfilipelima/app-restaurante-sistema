@@ -15,6 +15,7 @@ import QRCode from 'qrcode';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
 import { FeatureGuard } from '@/components/auth/FeatureGuard';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { Button } from '@/components/ui/button';
 import { getComandaPublicUrl } from '@/lib/core/utils';
 import { Download, Printer, QrCode, ExternalLink, Info, Loader2 } from 'lucide-react';
@@ -233,17 +234,12 @@ export default function ComandaQRCode() {
 
   return (
     <FeatureGuard feature="feature_virtual_comanda">
-      <div className="p-6 max-w-2xl mx-auto space-y-8">
-
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <QrCode className="h-6 w-6 text-[#F87116]" />
-            QR Code da Comanda Digital
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Imprima e cole na entrada ou em cada mesa. O cliente escaneia e abre a comanda com cardápio integrado.
-          </p>
-        </div>
+      <AdminPageLayout className="max-w-2xl mx-auto">
+        <AdminPageHeader
+          title="QR Code da Comanda Digital"
+          description="Imprima e cole na entrada ou em cada mesa. O cliente escaneia e abre a comanda com cardápio integrado."
+          icon={QrCode}
+        />
 
         {!slug && restaurant && (
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
@@ -266,7 +262,7 @@ export default function ComandaQRCode() {
         )}
 
         {url && (
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
+          <div className="admin-card-border bg-slate-50 p-5 space-y-3">
             <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
               <Info className="h-4 w-4 text-slate-500" />
               Como funciona para o cliente
@@ -288,8 +284,7 @@ export default function ComandaQRCode() {
             </ol>
           </div>
         )}
-
-      </div>
+      </AdminPageLayout>
     </FeatureGuard>
   );
 }
