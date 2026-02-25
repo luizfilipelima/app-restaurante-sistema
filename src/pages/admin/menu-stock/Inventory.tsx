@@ -12,7 +12,7 @@ import {
   convertBetweenCurrencies,
 } from '@/lib/priceHelper';
 import { Category, Product, InventoryItem, InventoryMovement } from '@/types';
-import { AdminPageLayout } from '@/components/admin/_shared';
+import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';

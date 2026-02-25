@@ -474,7 +474,7 @@ function ReservationsContent() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPageLayout>
   );
 }
 
@@ -539,7 +539,7 @@ function ReservationCard({
           </Button>
         )}
       </div>
-    </AdminPageLayout>
+    </div>
   );
 }
 
