@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
-import { MapContainer, TileLayer, Circle, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Circle, Marker, useMapEvents, useMap } from 'react-leaflet';
 import { useTranslation } from 'react-i18next';
 
 /** Corrige ícones do Leaflet que quebram com bundlers (webpack/vite) */
@@ -56,6 +56,9 @@ interface MapAddressPickerProps {
   zoneCenterLat?: number;
   zoneCenterLng?: number;
   zoneRadiusMeters?: number;
+  /** Localização do restaurante — quando definido (modo quilometragem), exibe pino de restaurante */
+  restaurantLat?: number;
+  restaurantLng?: number;
 }
 
 function MapMoveHandler({
@@ -81,6 +84,16 @@ function MapMoveHandler({
 const TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
+/** Ícone de restaurante em SVG para o marcador no mapa — pin vermelho com storefront */
+const RESTAURANT_MARKER_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" width="44" height="52" viewBox="0 0 44 52" fill="none">
+  <path d="M22 0C9.85 0 0 9.85 0 22C0 38.5 22 52 22 52C22 52 44 38.5 44 22C44 9.85 34.15 0 22 0Z" fill="#dc2626" stroke="#b91c1c" stroke-width="2"/>
+  <path d="M12 30V18h20v12" fill="white" stroke="#dc2626" stroke-width="1.5"/>
+  <path d="M12 18l4-6h12l4 6" fill="white" stroke="#dc2626" stroke-width="1.5"/>
+  <rect x="18" y="22" width="8" height="8" fill="#dc2626"/>
+</svg>
+`;
+
 export default function MapAddressPicker({
   lat,
   lng,
@@ -89,11 +102,15 @@ export default function MapAddressPicker({
   zoneCenterLat,
   zoneCenterLng,
   zoneRadiusMeters,
+  restaurantLat,
+  restaurantLng,
 }: MapAddressPickerProps) {
   const [isDragging, setIsDragging] = useState(false);
   const { t } = useTranslation();
   const hasZoneBounds =
     Number.isFinite(zoneCenterLat) && Number.isFinite(zoneCenterLng) && (zoneRadiusMeters ?? 0) > 0;
+  const hasRestaurantMarker =
+    Number.isFinite(restaurantLat) && Number.isFinite(restaurantLng);
   const mapCenter: [number, number] = hasZoneBounds && zoneCenterLat != null && zoneCenterLng != null
     ? [Number(zoneCenterLat), Number(zoneCenterLng)]
     : [lat, lng];
@@ -135,6 +152,18 @@ export default function MapAddressPicker({
                 fillOpacity: 0.15,
                 weight: 2,
               }}
+            />
+          )}
+          {hasRestaurantMarker && restaurantLat != null && restaurantLng != null && (
+            <Marker
+              position={[restaurantLat, restaurantLng]}
+              icon={L.divIcon({
+                html: RESTAURANT_MARKER_SVG,
+                className: '!bg-transparent !border-0',
+                iconSize: [44, 52],
+                iconAnchor: [22, 52],
+              })}
+              zIndexOffset={500}
             />
           )}
           <MapMoveHandler

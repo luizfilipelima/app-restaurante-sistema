@@ -41,7 +41,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones, useDeliveryDistanceTiers, useHasActiveCoupons, validateCoupon } from '@/hooks/queries';
 import { getDeliveryFeeByDistance } from '@/lib/geo';
 
-const MapAddressPicker = lazy(() => import('@/components/public/MapAddressPicker'));
+const MapAddressPreview = lazy(() => import('@/components/public/MapAddressPreview'));
+const MapAddressOverlay = lazy(() => import('@/components/public/MapAddressOverlay'));
 import LoyaltyCard from '@/components/public/LoyaltyCard';
 
 // Coordenadas padrão por moeda — Tríplice Fronteira
@@ -126,11 +127,15 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const mode = r?.delivery_zones_mode ?? (r?.delivery_zones_enabled === false ? 'disabled' : 'zones');
   const deliveryZonesEnabled = mode !== 'disabled';
   const zones = deliveryZonesEnabled && mode === 'zones' ? rawZones.filter((z) => z.is_active) : [];
+  const restaurantLat = r?.restaurant_lat != null ? Number(r.restaurant_lat) : null;
+  const restaurantLng = r?.restaurant_lng != null ? Number(r.restaurant_lng) : null;
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
   const [zoneSelectKey, setZoneSelectKey] = useState(0); // Força remount do Select ao alterar zona (workaround Radix em mobile)
   const [latitude, setLatitude] = useState<number>(-25.5278);
   const [longitude, setLongitude] = useState<number>(-54.5828);
   const [addressDetails, setAddressDetails] = useState('');
+  const [addressText, setAddressText] = useState('');
+  const [showMapOverlay, setShowMapOverlay] = useState(false);
   const [mapKey, setMapKey] = useState(0);
   const locationFromStorage = useRef(false);
 
@@ -160,7 +165,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     try {
       const saved = localStorage.getItem(geoStorageKey);
       if (saved) {
-        const data = JSON.parse(saved) as { lat?: number; lng?: number; details?: string };
+        const data = JSON.parse(saved) as { lat?: number; lng?: number; details?: string; addressText?: string };
         if (data.lat != null && data.lng != null) {
           setLatitude(data.lat);
           setLongitude(data.lng);
@@ -168,25 +173,32 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           setMapKey((k) => k + 1);
         }
         if (data.details) setAddressDetails(data.details);
+        if (data.addressText) setAddressText(data.addressText);
       }
     } catch { /* ignore */ }
   }, [restaurantId, geoStorageKey]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(geoStorageKey, JSON.stringify({ lat: latitude, lng: longitude, details: addressDetails }));
+      localStorage.setItem(geoStorageKey, JSON.stringify({ lat: latitude, lng: longitude, details: addressDetails, addressText }));
     } catch { /* ignore */ }
-  }, [latitude, longitude, addressDetails, geoStorageKey]);
+  }, [latitude, longitude, addressDetails, addressText, geoStorageKey]);
 
-  // Centraliza o mapa pela moeda do restaurante quando não há posição salva
+  // Centraliza o mapa: modo quilometragem sem local salvo → restaurante; caso contrário → default por moeda
   useEffect(() => {
     if (locationFromStorage.current) return;
+    if (mode === 'kilometers' && restaurantLat != null && restaurantLng != null) {
+      setLatitude(restaurantLat);
+      setLongitude(restaurantLng);
+      setMapKey((k) => k + 1);
+      return;
+    }
     const [lat, lng] = getDefaultCenter(baseCurrency);
     setLatitude(lat);
     setLongitude(lng);
     setMapKey((k) => k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseCurrency]);
+  }, [baseCurrency, mode, restaurantLat, restaurantLng]);
 
   // Quando o cliente seleciona ou troca de zona, centraliza o mapa (sem remount — MapUpdater faz flyTo)
   useEffect(() => {
@@ -198,10 +210,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     }
   }, [selectedZoneId, zones]);
 
-  // Prefetch do MapAddressPicker quando entrega for selecionada (carrega chunk antes do mapa aparecer)
+  // Prefetch do overlay/mapa quando entrega for selecionada (carrega chunk antes do mapa aparecer)
   useEffect(() => {
     if (!isTableOrder && deliveryType === DeliveryType.DELIVERY) {
-      import('@/components/public/MapAddressPicker');
+      import('@/components/public/MapAddressOverlay');
+      import('@/components/public/MapAddressPreview');
     }
   }, [isTableOrder, deliveryType]);
 
@@ -260,6 +273,13 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     setLongitude(lng);
   }, []);
 
+  const handleMapOverlayConfirm = useCallback((lat: number, lng: number, addrText?: string) => {
+    handleMapLocationChange(lat, lng);
+    if (addrText != null) setAddressText(addrText);
+    setShowMapOverlay(false);
+    setMapKey((k) => k + 1);
+  }, [handleMapLocationChange]);
+
   const handleApplyCoupon = async () => {
     const code = couponCode.trim();
     if (!code || !restaurantId) return;
@@ -295,8 +315,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
   const isKilometersMode = mode === 'kilometers';
-  const restaurantLat = r?.restaurant_lat != null ? Number(r.restaurant_lat) : null;
-  const restaurantLng = r?.restaurant_lng != null ? Number(r.restaurant_lng) : null;
   const kmDeliveryResult = isKilometersMode && restaurantLat != null && restaurantLng != null && tiers.length > 0
     ? getDeliveryFeeByDistance(restaurantLat, restaurantLng, latitude, longitude, tiers.map((t) => ({ km_min: Number(t.km_min), km_max: t.km_max != null ? Number(t.km_max) : null, fee: t.fee })))
     : null;
@@ -998,13 +1016,34 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               )}
             </div>
 
-            <div className="p-4 space-y-3">
+            <div className="p-4 space-y-4">
               {isOutsideDeliveryArea && (
                 <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0" />
-                  Sua localização está fora da área de entrega. Arraste o mapa para uma área atendida.
+                  Sua localização está fora da área de entrega. Toque em &quot;Ajustar no mapa&quot; para posicionar.
                 </div>
               )}
+
+              {/* Campo de endereço (exibe + abre overlay ao tocar) */}
+              <button
+                type="button"
+                onClick={() => setShowMapOverlay(true)}
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl border-2 border-border bg-muted/60 hover:bg-muted transition-colors text-left"
+              >
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <MapPin className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">
+                    Endereço no mapa
+                  </p>
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {addressText || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`}
+                  </p>
+                </div>
+              </button>
+
+              {/* Miniatura do mapa (não interativa) */}
               {(() => {
                 const centerLat = mode === 'zones' && selectedZone?.center_lat != null
                   ? Number(selectedZone.center_lat)
@@ -1017,22 +1056,33 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     ? restaurantLng
                     : longitude;
                 const hasValidCoords = Number.isFinite(centerLat) && Number.isFinite(centerLng);
-                if (!hasValidCoords) return <Skeleton className="h-64 w-full rounded-xl" />;
+                if (!hasValidCoords) return <Skeleton className="h-[120px] w-full rounded-xl" />;
                 return (
-                  <Suspense fallback={<Skeleton className="h-64 w-full rounded-xl" />}>
-                    <MapAddressPicker
+                  <Suspense fallback={<Skeleton className="h-[120px] w-full rounded-xl" />}>
+                    <MapAddressPreview
                       key={mapKey}
                       lat={latitude}
                       lng={longitude}
-                      onLocationChange={handleMapLocationChange}
-                      height="256px"
                       zoneCenterLat={mode === 'zones' && selectedZone?.center_lat != null ? Number(selectedZone.center_lat) : undefined}
                       zoneCenterLng={mode === 'zones' && selectedZone?.center_lng != null ? Number(selectedZone.center_lng) : undefined}
                       zoneRadiusMeters={mode === 'zones' && selectedZone?.radius_meters != null ? Number(selectedZone.radius_meters) : undefined}
+                      restaurantLat={isKilometersMode && restaurantLat != null ? restaurantLat : undefined}
+                      restaurantLng={isKilometersMode && restaurantLng != null ? restaurantLng : undefined}
+                      height="120px"
                     />
                   </Suspense>
                 );
               })()}
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowMapOverlay(true)}
+                className="w-full h-12 rounded-xl font-semibold border-2"
+              >
+                <MapPin className="h-4 w-4 mr-2" />
+                Ajustar no mapa
+              </Button>
 
               {/* Complemento / Referência */}
               <div>
@@ -1050,6 +1100,25 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               </div>
             </div>
           </div>
+        )}
+
+        {/* MapAddressOverlay — bottom sheet para definir localização */}
+        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && ((mode === 'zones' && zones.length > 0 && selectedZoneId) || (mode === 'kilometers' && tiers.length > 0 && restaurantLat != null && restaurantLng != null)) && (
+          <Suspense fallback={null}>
+            <MapAddressOverlay
+              open={showMapOverlay}
+              onClose={() => setShowMapOverlay(false)}
+              onConfirm={handleMapOverlayConfirm}
+              initialLat={latitude}
+              initialLng={longitude}
+              addressText={addressText}
+              zoneCenterLat={mode === 'zones' && selectedZone?.center_lat != null ? Number(selectedZone.center_lat) : undefined}
+              zoneCenterLng={mode === 'zones' && selectedZone?.center_lng != null ? Number(selectedZone.center_lng) : undefined}
+              zoneRadiusMeters={mode === 'zones' && selectedZone?.radius_meters != null ? Number(selectedZone.radius_meters) : undefined}
+              restaurantLat={isKilometersMode && restaurantLat != null ? restaurantLat : undefined}
+              restaurantLng={isKilometersMode && restaurantLng != null ? restaurantLng : undefined}
+            />
+          </Suspense>
         )}
 
         {/* ── 6. Pagamento (não-mesa) ── */}
