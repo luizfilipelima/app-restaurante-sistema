@@ -826,29 +826,29 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         >
           <div className="px-3 pb-3">
             <Button
-              className="w-full h-16 rounded-3xl bg-primary text-primary-foreground shadow-xl shadow-primary/30 dark:shadow-none hover:bg-primary/90 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch"
+              className="w-full h-16 rounded-3xl bg-transparent hover:bg-transparent shadow-none hover:opacity-95 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch border-0"
               onClick={() => setCartOpen(true)}
             >
-              {/* Left Side: Info */}
-              <div className="flex-1 flex items-center justify-start px-4 gap-3.5">
+              {/* Left Side: Info — blur + opacidade para contraste com Ver Sacola */}
+              <div className="flex-1 flex items-center justify-start px-4 gap-3.5 bg-primary/40 backdrop-blur-md">
                 <div className="relative">
-                   <div className="bg-primary h-9 w-9 rounded-full flex items-center justify-center border border-primary/50 shadow-md dark:shadow-none">
+                   <div className="bg-primary h-9 w-9 rounded-full flex items-center justify-center border border-primary-foreground/30">
                       <span className="text-sm font-bold text-primary-foreground">{getItemsCount()}</span>
                    </div>
                 </div>
                 <div className="flex flex-col items-start justify-center">
-                  <span className="text-[10px] uppercase tracking-wider text-primary-foreground/80 font-semibold leading-tight">{t('menu.total')}</span>
-                  <span className="text-base font-bold text-white leading-tight">{formatForDisplay(getSubtotal())}</span>
+                  <span className="text-[10px] uppercase tracking-wider text-foreground/80 font-semibold leading-tight">{t('menu.total')}</span>
+                  <span className="text-base font-bold text-foreground leading-tight">{formatForDisplay(getSubtotal())}</span>
                 </div>
               </div>
 
               {/* Divider */}
-              <div className="w-[1px] bg-primary-foreground/20 my-3"></div>
+              <div className="w-[1px] bg-foreground/20 self-stretch shrink-0" aria-hidden />
 
-              {/* Right Side: CTA — cor sólida alinhada ao botão Finalizar Pedido */}
-              <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg dark:shadow-none transition-all duration-200">
-                <span className="text-sm font-bold drop-shadow-sm dark:drop-shadow-none">{t('menu.viewBag')}</span>
-                <ChevronRight className="h-4 w-4 drop-shadow-sm dark:drop-shadow-none" aria-hidden />
+              {/* Right Side: CTA — cor sólida do tema */}
+              <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200">
+                <span className="text-sm font-bold">{t('menu.viewBag')}</span>
+                <ChevronRight className="h-4 w-4" aria-hidden />
               </div>
             </Button>
           </div>

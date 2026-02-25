@@ -20,6 +20,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
@@ -208,6 +209,7 @@ export default function AdminCoupons() {
     all: coupons.length,
     active: coupons.filter((c) => c.is_active).length,
     inactive: coupons.filter((c) => !c.is_active).length,
+    totalUses: coupons.reduce((s, c) => s + (c.use_count ?? 0), 0),
   };
 
   const filteredCoupons =
@@ -239,90 +241,99 @@ export default function AdminCoupons() {
 
   return (
     <div className="space-y-6 min-w-0 w-full">
+      {/* Etapa 1: Header + botões */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Ticket className="h-8 w-8 text-orange-500" />
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+            <Ticket className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
             {t('coupons.title')}
           </h1>
-          <p className="text-muted-foreground">{t('coupons.subtitle')}</p>
+          <p className="text-sm text-muted-foreground mt-1">{t('coupons.subtitle')}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Button asChild variant="outline" size="sm">
             <Link to={`${basePath}/menu`}>
               Central do Cardápio
               <ArrowRight className="h-4 w-4 ml-1" />
             </Link>
           </Button>
+          <Button onClick={openCreate} size="sm" className="sm:h-10 sm:px-6">
+            <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+            {t('coupons.addCoupon')}
+          </Button>
         </div>
       </div>
 
-      {/* Barra de ações: Toggle + Novo Cupom (layout horizontal elegante) */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
-          <div className="flex items-center gap-3">
-            <div
-              role="group"
-              aria-label="Ativar ou desativar cupons de desconto"
-              className="relative inline-flex w-[180px] rounded-xl bg-slate-100 p-1"
-            >
-              <div
-                className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-200 ease-out ${
-                  discountCouponsEnabled ? 'left-[calc(50%+2px)] bg-emerald-500' : 'left-1 bg-slate-700'
-                }`}
-                aria-hidden
-              />
-              <button
-                type="button"
-                onClick={() => discountCouponsEnabled && toggleDiscountCouponsEnabled()}
-                disabled={togglingGlobal}
-                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  !discountCouponsEnabled ? 'text-white' : 'text-slate-500 hover:text-slate-700'
-                } disabled:opacity-60 disabled:cursor-not-allowed`}
-              >
-                {togglingGlobal && discountCouponsEnabled && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
-                Desativado
-              </button>
-              <button
-                type="button"
-                onClick={() => !discountCouponsEnabled && toggleDiscountCouponsEnabled()}
-                disabled={togglingGlobal}
-                className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  discountCouponsEnabled ? 'text-white' : 'text-slate-500 hover:text-slate-700'
-                } disabled:opacity-60 disabled:cursor-not-allowed`}
-              >
-                {togglingGlobal && !discountCouponsEnabled && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
-                Ativado
-              </button>
+      {/* Etapa 2: Toggle global com Switch */}
+      <Card className="rounded-xl border border-border">
+        <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <Ticket className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Cupons no checkout</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {discountCouponsEnabled
+                  ? 'Clientes podem aplicar cupons no checkout.'
+                  : 'Cupons não aparecem no checkout.'}
+              </p>
             </div>
           </div>
-          <p className="text-xs text-slate-500 sm:max-w-[240px]">
-            {discountCouponsEnabled
-              ? 'Clientes podem aplicar cupons no checkout.'
-              : 'Seção de cupom não aparece no checkout.'}
-          </p>
+          <div className="flex items-center gap-2 shrink-0">
+            {togglingGlobal && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            <Switch
+              checked={discountCouponsEnabled}
+              onCheckedChange={toggleDiscountCouponsEnabled}
+              disabled={togglingGlobal}
+              aria-label="Ativar ou desativar cupons de desconto"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Estatísticas (quando há cupons) */}
+      {coupons.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          <Card className="rounded-xl border border-border">
+            <CardContent className="p-4">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total</p>
+              <p className="text-2xl font-bold text-foreground mt-1">{stats.all}</p>
+            </CardContent>
+          </Card>
+          <Card className="rounded-xl border border-border">
+            <CardContent className="p-4">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ativos</p>
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{stats.active}</p>
+            </CardContent>
+          </Card>
+          <Card className="rounded-xl border border-border">
+            <CardContent className="p-4">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Inativos</p>
+              <p className="text-2xl font-bold text-muted-foreground mt-1">{stats.inactive}</p>
+            </CardContent>
+          </Card>
+          <Card className="rounded-xl border border-border">
+            <CardContent className="p-4">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Usos totais</p>
+              <p className="text-2xl font-bold text-foreground mt-1">{stats.totalUses}</p>
+            </CardContent>
+          </Card>
         </div>
-        <Button
-          onClick={openCreate}
-          size="lg"
-          className="w-full sm:w-auto shrink-0 bg-[#F87116] hover:bg-orange-600 text-white shadow-md font-semibold"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          {t('coupons.addCoupon')}
-        </Button>
-      </div>
+      )}
 
       {coupons.length === 0 ? (
-        <Card>
-          <CardContent className="p-14 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 mb-5">
-              <Ticket className="h-8 w-8 text-orange-600" />
+        /* Etapa 6: Empty state melhorado */
+        <Card className="rounded-xl border border-border">
+          <CardContent className="p-14 sm:p-16 text-center">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 mb-6">
+              <Ticket className="h-10 w-10 text-primary" />
             </div>
-            <p className="font-semibold text-lg text-foreground mb-2">{t('coupons.noCoupons')}</p>
+            <p className="font-semibold text-lg sm:text-xl text-foreground mb-2">{t('coupons.noCoupons')}</p>
             <p className="text-sm text-muted-foreground mb-8 max-w-md mx-auto">{t('coupons.noCouponsDesc')}</p>
-            <Button size="lg" onClick={openCreate}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t('coupons.addCoupon')}
+            <Button size="lg" onClick={openCreate} className="min-w-[200px]">
+              <Plus className="h-5 w-5 mr-2" />
+              Criar primeiro cupom
             </Button>
           </CardContent>
         </Card>
@@ -330,7 +341,7 @@ export default function AdminCoupons() {
         <>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-              <TabsList className="h-11 px-1">
+              <TabsList className="h-11 px-1 rounded-xl">
                 <TabsTrigger value="all" className="gap-2 px-4">
                   {t('coupons.filterAll')}
                   <span className="text-xs text-muted-foreground">({stats.all})</span>
@@ -347,7 +358,7 @@ export default function AdminCoupons() {
             </Tabs>
           </div>
 
-          <Card>
+          <Card className="rounded-xl border border-border">
             {filteredCoupons.length === 0 ? (
               <CardContent className="py-16 text-center">
                 <p className="text-muted-foreground mb-4">
@@ -358,73 +369,141 @@ export default function AdminCoupons() {
                 </Button>
               </CardContent>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('coupons.tableCode')}</TableHead>
-                    <TableHead>{t('coupons.tableType')}</TableHead>
-                    <TableHead>{t('coupons.tableValue')}</TableHead>
-                    <TableHead>{t('coupons.tableUses')}</TableHead>
-                    <TableHead>{t('coupons.tableStatus')}</TableHead>
-                    <TableHead>{t('coupons.tableValid')}</TableHead>
-                    <TableHead className="w-[100px] text-right">{t('coupons.tableActions')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                {/* Etapa 3: Tabela desktop com ajustes */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent border-b border-border">
+                        <TableHead className="px-4 py-4">{t('coupons.tableCode')}</TableHead>
+                        <TableHead className="px-4 py-4">{t('coupons.tableType')}</TableHead>
+                        <TableHead className="px-4 py-4">{t('coupons.tableValue')}</TableHead>
+                        <TableHead className="px-4 py-4">{t('coupons.tableUses')}</TableHead>
+                        <TableHead className="px-4 py-4">{t('coupons.tableStatus')}</TableHead>
+                        <TableHead className="px-4 py-4">{t('coupons.tableValid')}</TableHead>
+                        <TableHead className="w-[100px] px-4 py-4 text-right">{t('coupons.tableActions')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredCoupons.map((coupon) => (
+                        <TableRow
+                          key={coupon.id}
+                          className="hover:bg-muted/50 transition-colors border-b border-border last:border-0"
+                        >
+                          <TableCell className="px-4 py-4">
+                            <code className="font-mono font-semibold text-primary bg-primary/10 px-2 py-1 rounded-md">
+                              {coupon.code}
+                            </code>
+                          </TableCell>
+                          <TableCell className="px-4 py-4">
+                            <span className="text-sm text-muted-foreground">
+                              {coupon.discount_type === 'percent' ? t('coupons.percent') : t('coupons.fixed')}
+                            </span>
+                          </TableCell>
+                          <TableCell className="px-4 py-4">
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatDiscount(coupon)}</span>
+                          </TableCell>
+                          <TableCell className="px-4 py-4">
+                            <span className="text-sm">
+                              {coupon.use_count}
+                              {coupon.max_uses != null ? ` / ${coupon.max_uses}` : ''}
+                            </span>
+                          </TableCell>
+                          <TableCell className="px-4 py-4">
+                            <Badge
+                              variant="outline"
+                              className={coupon.is_active ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}
+                            >
+                              {coupon.is_active ? t('coupons.filterActive') : t('coupons.filterInactive')}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="px-4 py-4 text-sm text-muted-foreground">{formatValidity(coupon)}</TableCell>
+                          <TableCell className="px-4 py-4 text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEdit(coupon)}
+                                aria-label={`Editar cupom ${coupon.code}`}
+                                title="Editar"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeleteTarget({ id: coupon.id, name: coupon.code })}
+                                className="text-destructive hover:text-destructive"
+                                aria-label={`Excluir cupom ${coupon.code}`}
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Etapa 4: Cards responsivos mobile */}
+                <div className="md:hidden divide-y divide-border">
                   {filteredCoupons.map((coupon) => (
-                    <TableRow key={coupon.id}>
-                      <TableCell>
-                        <code className="font-mono font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                          {coupon.code}
-                        </code>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {coupon.discount_type === 'percent' ? t('coupons.percent') : t('coupons.fixed')}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-semibold text-emerald-600">{formatDiscount(coupon)}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">
-                          {coupon.use_count}
-                          {coupon.max_uses != null ? ` / ${coupon.max_uses}` : ''}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={coupon.is_active ? 'bg-emerald-500/15 text-emerald-700' : 'bg-slate-200 text-slate-600'}>
-                          {coupon.is_active ? t('coupons.filterActive') : t('coupons.filterInactive')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{formatValidity(coupon)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => openEdit(coupon)} title="Editar">
-                            <Pencil className="h-4 w-4" />
+                    <Card key={coupon.id} className="rounded-none border-0 shadow-none">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <code className="font-mono font-semibold text-primary text-sm">{coupon.code}</code>
+                          <Badge
+                            variant="outline"
+                            className={`shrink-0 ${coupon.is_active ? 'bg-emerald-500/15 text-emerald-700' : 'bg-muted text-muted-foreground'}`}
+                          >
+                            {coupon.is_active ? t('coupons.filterActive') : t('coupons.filterInactive')}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                          <span>
+                            {coupon.discount_type === 'percent' ? t('coupons.percent') : t('coupons.fixed')} · <strong className="text-emerald-600 text-foreground">{formatDiscount(coupon)}</strong>
+                          </span>
+                          <span>
+                            {coupon.use_count}
+                            {coupon.max_uses != null ? ` / ${coupon.max_uses}` : ''}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{formatValidity(coupon)}</p>
+                        <div className="flex justify-end gap-2 pt-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEdit(coupon)}
+                            aria-label={`Editar cupom ${coupon.code}`}
+                          >
+                            <Pencil className="h-3.5 w-3.5 mr-1" />
+                            Editar
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => setDeleteTarget({ id: coupon.id, name: coupon.code })}
-                            className="text-destructive hover:text-destructive"
-                            title="Excluir"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            aria-label={`Excluir cupom ${coupon.code}`}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5 mr-1" />
+                            Excluir
                           </Button>
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </CardContent>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </Card>
         </>
       )}
 
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-xl">
           <DialogHeader>
             <DialogTitle>{t('coupons.deleteTitle')}</DialogTitle>
             <DialogDescription>
@@ -457,7 +536,7 @@ export default function AdminCoupons() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader className="border-b border-border/60 pb-4">
             <DialogTitle className="flex items-center gap-2.5 text-xl">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Ticket className="h-5 w-5" />
               </div>
               {editingCoupon ? 'Editar cupom' : t('coupons.addCoupon')}
@@ -466,133 +545,127 @@ export default function AdminCoupons() {
               Configure o código e o valor do desconto. O cliente digita o código no checkout.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="code">{t('coupons.code')} *</Label>
-              <Input
-                id="code"
-                value={form.code}
-                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
-                placeholder={t('coupons.codePlaceholder')}
-                className="font-mono uppercase"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+            {/* Seção 1: Básico */}
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold text-foreground">Básico</h3>
               <div className="space-y-2">
-                <Label>{t('coupons.discountType')}</Label>
-                <div className="flex gap-2">
-                  <label
-                    className={`flex-1 flex items-center justify-center py-2.5 px-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-medium ${
-                      form.discount_type === 'percent'
-                        ? 'border-orange-500 bg-orange-50 text-orange-700'
-                        : 'border-border hover:border-orange-300'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="discount_type"
-                      checked={form.discount_type === 'percent'}
-                      onChange={() => setForm((f) => ({ ...f, discount_type: 'percent', discount_value: f.discount_value || '10' }))}
-                      className="sr-only"
-                    />
-                    {t('coupons.percent')}
-                  </label>
-                  <label
-                    className={`flex-1 flex items-center justify-center py-2.5 px-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-medium ${
-                      form.discount_type === 'fixed'
-                        ? 'border-orange-500 bg-orange-50 text-orange-700'
-                        : 'border-border hover:border-orange-300'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="discount_type"
-                      checked={form.discount_type === 'fixed'}
-                      onChange={() => setForm((f) => ({ ...f, discount_type: 'fixed', discount_value: '' }))}
-                      className="sr-only"
-                    />
-                    {t('coupons.fixed')}
-                  </label>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="discount_value">{t('coupons.discountValue')} *</Label>
-                <div className="relative">
-                  {form.discount_type === 'percent' ? (
-                    <>
-                      <Input
-                        id="discount_value"
-                        type="number"
-                        min={1}
-                        max={100}
-                        value={form.discount_value}
-                        onChange={(e) => setForm((f) => ({ ...f, discount_value: e.target.value }))}
-                        placeholder={t('coupons.discountPercentPlaceholder')}
-                        className="pr-8"
-                        required
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{getCurrencySymbol(currency)}</span>
-                      <Input
-                        id="discount_value"
-                        type="text"
-                        inputMode="decimal"
-                        value={form.discount_value}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            discount_value: currency === 'PYG' ? e.target.value.replace(/\D/g, '') : e.target.value,
-                          }))
-                        }
-                        placeholder={t('coupons.discountFixedPlaceholder')}
-                        className="pl-10"
-                        required
-                      />
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="max_uses">{t('coupons.maxUses')}</Label>
+                <Label htmlFor="code">{t('coupons.code')} *</Label>
                 <Input
-                  id="max_uses"
-                  type="number"
-                  min={1}
-                  value={form.max_uses}
-                  onChange={(e) => setForm((f) => ({ ...f, max_uses: e.target.value }))}
-                  placeholder={t('coupons.maxUsesPlaceholder')}
+                  id="code"
+                  value={form.code}
+                  onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+                  placeholder={t('coupons.codePlaceholder')}
+                  className="font-mono uppercase"
+                  required
                 />
               </div>
-              <div className="space-y-2 flex flex-col justify-end">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.is_active}
-                    onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-                    className="rounded border-input text-orange-500 focus:ring-orange-500"
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{t('coupons.discountType')}</Label>
+                  <div className="flex gap-2">
+                    <label
+                      className={`flex-1 flex items-center justify-center py-2.5 px-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-medium ${
+                        form.discount_type === 'percent'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="discount_type"
+                        checked={form.discount_type === 'percent'}
+                        onChange={() => setForm((f) => ({ ...f, discount_type: 'percent', discount_value: f.discount_value || '10' }))}
+                        className="sr-only"
+                      />
+                      {t('coupons.percent')}
+                    </label>
+                    <label
+                      className={`flex-1 flex items-center justify-center py-2.5 px-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-medium ${
+                        form.discount_type === 'fixed'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="discount_type"
+                        checked={form.discount_type === 'fixed'}
+                        onChange={() => setForm((f) => ({ ...f, discount_type: 'fixed', discount_value: '' }))}
+                        className="sr-only"
+                      />
+                      {t('coupons.fixed')}
+                    </label>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="discount_value">{t('coupons.discountValue')} *</Label>
+                  <div className="relative">
+                    {form.discount_type === 'percent' ? (
+                      <>
+                        <Input
+                          id="discount_value"
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={form.discount_value}
+                          onChange={(e) => setForm((f) => ({ ...f, discount_value: e.target.value }))}
+                          placeholder={t('coupons.discountPercentPlaceholder')}
+                          className="pr-8"
+                          required
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{getCurrencySymbol(currency)}</span>
+                        <Input
+                          id="discount_value"
+                          type="text"
+                          inputMode="decimal"
+                          value={form.discount_value}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              discount_value: currency === 'PYG' ? e.target.value.replace(/\D/g, '') : e.target.value,
+                            }))
+                          }
+                          placeholder={t('coupons.discountFixedPlaceholder')}
+                          className="pl-10"
+                          required
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Seção 2: Limites */}
+            <section className="space-y-4 border-t border-border/60 pt-4">
+              <h3 className="text-sm font-semibold text-foreground">Limites</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="max_uses">{t('coupons.maxUses')}</Label>
+                  <Input
+                    id="max_uses"
+                    type="number"
+                    min={1}
+                    value={form.max_uses}
+                    onChange={(e) => setForm((f) => ({ ...f, max_uses: e.target.value }))}
+                    placeholder={t('coupons.maxUsesPlaceholder')}
                   />
-                  <span className="text-sm font-medium">{t('coupons.isActive')}</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="valid_from">{t('coupons.validFrom')}</Label>
-                <Input
-                  id="valid_from"
-                  type="date"
-                  value={form.valid_from}
-                  onChange={(e) => setForm((f) => ({ ...f, valid_from: e.target.value }))}
-                />
+                  <p className="text-xs text-muted-foreground">Deixe vazio para ilimitado</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="valid_from">{t('coupons.validFrom')}</Label>
+                  <Input
+                    id="valid_from"
+                    type="date"
+                    value={form.valid_from}
+                    onChange={(e) => setForm((f) => ({ ...f, valid_from: e.target.value }))}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="valid_until">{t('coupons.validUntil')}</Label>
@@ -603,7 +676,24 @@ export default function AdminCoupons() {
                   onChange={(e) => setForm((f) => ({ ...f, valid_until: e.target.value }))}
                 />
               </div>
-            </div>
+            </section>
+
+            {/* Seção 3: Status */}
+            <section className="space-y-4 border-t border-border/60 pt-4">
+              <h3 className="text-sm font-semibold text-foreground">Status</h3>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.is_active}
+                  onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
+                  className="rounded border-input text-primary focus:ring-primary"
+                />
+                <div>
+                  <span className="text-sm font-medium">{t('coupons.isActive')}</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">Cupom ativo pode ser aplicado no checkout.</p>
+                </div>
+              </label>
+            </section>
 
             <DialogFooter className="pt-4 border-t border-border/60">
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)} disabled={saving}>
