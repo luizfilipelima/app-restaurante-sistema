@@ -23,6 +23,7 @@ export function invalidatePublicMenuCache(queryClient: QueryClient, restaurantSl
 
   // Invalida zonas de entrega
   queryClient.invalidateQueries({ queryKey: ['deliveryZones'] });
+  queryClient.invalidateQueries({ queryKey: ['deliveryDistanceTiers'] });
 
   // Invalida bio do restaurante (LinkBio)
   if (restaurantSlug) {

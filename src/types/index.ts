@@ -140,6 +140,10 @@ export interface Restaurant {
   delivery_zones_enabled?: boolean | null;
   /** Modo de zonas: disabled | zones | kilometers. Prioridade sobre delivery_zones_enabled. */
   delivery_zones_mode?: 'disabled' | 'zones' | 'kilometers' | null;
+  /** Latitude do restaurante (modo quilometragem). Usada como origem do cálculo de distância. */
+  restaurant_lat?: number | null;
+  /** Longitude do restaurante (modo quilometragem). Usada como origem do cálculo de distância. */
+  restaurant_lng?: number | null;
   /** Quando false, esconde a seção de cupom no checkout. Quando true, cupons disponíveis. */
   discount_coupons_enabled?: boolean | null;
   /** Templates personalizáveis de mensagens WhatsApp */
@@ -366,6 +370,16 @@ export interface DeliveryZone {
   /** Raio de alcance em metros (ex: 2000 = 2 km) */
   radius_meters?: number | null;
   created_at: string;
+}
+
+/** Faixa de preço por distância (modo quilometragem). km_max null = acima de km_min */
+export interface DeliveryDistanceTier {
+  id: string;
+  restaurant_id: string;
+  km_min: number;
+  km_max: number | null;
+  fee: number;
+  created_at?: string;
 }
 
 export interface Order {

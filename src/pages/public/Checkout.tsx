@@ -38,7 +38,8 @@ import {
   QrCode, Landmark, Info, Copy, AlertCircle, Ticket, Loader2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones, useHasActiveCoupons, validateCoupon } from '@/hooks/queries';
+import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones, useDeliveryDistanceTiers, useHasActiveCoupons, validateCoupon } from '@/hooks/queries';
+import { getDeliveryFeeByDistance } from '@/lib/geo';
 
 const MapAddressPicker = lazy(() => import('@/components/public/MapAddressPicker'));
 import LoyaltyCard from '@/components/public/LoyaltyCard';
@@ -113,11 +114,18 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   // ── Entrega ──
   const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
   const { data: rawZones = [] } = useDeliveryZones(restaurantId ?? null);
+  const { data: tiersData = [] } = useDeliveryDistanceTiers(restaurantId ?? null);
+  const tiers = tiersData ?? [];
   const { data: hasActiveCoupons = false } = useHasActiveCoupons(restaurantId ?? null);
-  const r = currentRestaurant as { delivery_zones_enabled?: boolean | null; delivery_zones_mode?: 'disabled' | 'zones' | 'kilometers' | null };
+  const r = currentRestaurant as {
+    delivery_zones_enabled?: boolean | null;
+    delivery_zones_mode?: 'disabled' | 'zones' | 'kilometers' | null;
+    restaurant_lat?: number | null;
+    restaurant_lng?: number | null;
+  };
   const mode = r?.delivery_zones_mode ?? (r?.delivery_zones_enabled === false ? 'disabled' : 'zones');
   const deliveryZonesEnabled = mode !== 'disabled';
-  const zones = deliveryZonesEnabled ? rawZones.filter((z) => z.is_active) : [];
+  const zones = deliveryZonesEnabled && mode === 'zones' ? rawZones.filter((z) => z.is_active) : [];
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
   const [zoneSelectKey, setZoneSelectKey] = useState(0); // Força remount do Select ao alterar zona (workaround Radix em mobile)
   const [latitude, setLatitude] = useState<number>(-25.5278);
@@ -286,7 +294,16 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
 
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
-  const deliveryFee = deliveryType === DeliveryType.DELIVERY ? (selectedZone?.fee || 0) : 0;
+  const isKilometersMode = mode === 'kilometers';
+  const restaurantLat = r?.restaurant_lat != null ? Number(r.restaurant_lat) : null;
+  const restaurantLng = r?.restaurant_lng != null ? Number(r.restaurant_lng) : null;
+  const kmDeliveryResult = isKilometersMode && restaurantLat != null && restaurantLng != null && tiers.length > 0
+    ? getDeliveryFeeByDistance(restaurantLat, restaurantLng, latitude, longitude, tiers.map((t) => ({ km_min: Number(t.km_min), km_max: t.km_max != null ? Number(t.km_max) : null, fee: t.fee })))
+    : null;
+  const deliveryFee = deliveryType === DeliveryType.DELIVERY
+    ? (isKilometersMode ? (kmDeliveryResult?.fee ?? 0) : (selectedZone?.fee || 0))
+    : 0;
+  const isOutsideDeliveryArea = isKilometersMode && kmDeliveryResult === null && restaurantLat != null && restaurantLng != null && tiers.length > 0;
   const subtotal = getSubtotal();
   const couponsEnabled = (currentRestaurant as { discount_coupons_enabled?: boolean | null })?.discount_coupons_enabled !== false;
   const showCouponCard = couponsEnabled && hasActiveCoupons;
@@ -359,12 +376,17 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       return;
     }
 
-    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && zones.length > 0 && !selectedZoneId) {
+    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && mode === 'zones' && zones.length > 0 && !selectedZoneId) {
       setFormError(t('checkout.errorSelectZone'));
       return;
     }
 
-    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && zones.length > 0 && !addressDetails.trim()) {
+    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && isKilometersMode && isOutsideDeliveryArea) {
+      setFormError('Sua localização está fora da área de entrega.');
+      return;
+    }
+
+    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && ((mode === 'zones' && zones.length > 0) || isKilometersMode) && !addressDetails.trim()) {
       setFormError(t('checkout.errorFillAddressDetails'));
       return;
     }
@@ -409,10 +431,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           : '';
         return `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''}${addonsStr} — ${formatCurrency(itemTotal, baseCurrency)}`;
       }).join('\n');
-      const bairro = deliveryType === DeliveryType.DELIVERY && selectedZoneId
+      const bairro = deliveryType === DeliveryType.DELIVERY && mode === 'zones' && selectedZoneId
         ? (zones.find((z) => z.id === selectedZoneId)?.location_name ?? '')
         : '';
-      const endereco = deliveryType === DeliveryType.DELIVERY && zones.length > 0
+      const endereco = deliveryType === DeliveryType.DELIVERY && (zones.length > 0 || isKilometersMode)
         ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
         : '';
       const trocoRaw = paymentMethod === PaymentMethod.CASH && changeFor ? changeFor.replace(/\D/g, '') : '';
@@ -445,7 +467,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         bairro,
         endereco,
         detalhes_endereco: deliveryType === DeliveryType.DELIVERY
-          ? (zones.length > 0 ? (addressDetails?.trim() ?? '') : 'Localização a ser enviada via WhatsApp após o pedido')
+          ? (zones.length > 0 || isKilometersMode ? (addressDetails?.trim() ?? '') : 'Localização a ser enviada via WhatsApp após o pedido')
           : '',
         pagamento:         paymentLabel,
         pagamento_detalhes: pagamentoDetalhes,
@@ -486,15 +508,15 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         customer_name: nameToUse,
         customer_phone: normalizePhoneWithCountryCode(phoneToUse, phoneCountry),
         delivery_type: finalDeliveryType,
-        delivery_zone_id: finalDeliveryType === DeliveryType.DELIVERY ? (selectedZoneId || null) : null,
+        delivery_zone_id: finalDeliveryType === DeliveryType.DELIVERY && mode === 'zones' ? (selectedZoneId || null) : null,
         delivery_address:
           finalDeliveryType === DeliveryType.DELIVERY
-            ? (zones.length > 0 ? `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` : 'A definir via WhatsApp')
+            ? (zones.length > 0 || isKilometersMode ? `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` : 'A definir via WhatsApp')
             : null,
-        latitude: finalDeliveryType === DeliveryType.DELIVERY && zones.length > 0 ? latitude : null,
-        longitude: finalDeliveryType === DeliveryType.DELIVERY && zones.length > 0 ? longitude : null,
+        latitude: finalDeliveryType === DeliveryType.DELIVERY && (zones.length > 0 || isKilometersMode) ? latitude : null,
+        longitude: finalDeliveryType === DeliveryType.DELIVERY && (zones.length > 0 || isKilometersMode) ? longitude : null,
         address_details: finalDeliveryType === DeliveryType.DELIVERY
-          ? (zones.length === 0 ? 'Localização a ser enviada via WhatsApp após o pedido' : (addressDetails.trim() || null))
+          ? (zones.length === 0 && !isKilometersMode ? 'Localização a ser enviada via WhatsApp após o pedido' : (addressDetails.trim() || null))
           : null,
         delivery_fee: finalDeliveryFee,
         subtotal,
@@ -869,8 +891,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
         )}
 
-        {/* ── 4. Zona de entrega (apenas delivery, não-mesa) — zonas ativas ── */}
-        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && zones.length > 0 && (
+        {/* ── 4. Zona de entrega (modo zonas) — apenas quando zonas ativas ── */}
+        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && mode === 'zones' && zones.length > 0 && (
           <div className="relative z-10 bg-card rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-border overflow-hidden rounded-t-2xl">
               <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -924,7 +946,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         )}
 
         {/* ── 4b. Card informativo quando zonas desativadas (envio de localização via WhatsApp) ── */}
-        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && zones.length === 0 && (
+        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && mode === 'disabled' && (
           <div className="relative z-10 bg-card rounded-2xl shadow-sm overflow-hidden border border-warning/30 bg-warning/5">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-warning/20">
               <div className="h-6 w-6 rounded-lg bg-warning/20 flex items-center justify-center flex-shrink-0">
@@ -941,8 +963,25 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           </div>
         )}
 
-        {/* ── 5. Endereço de entrega com mapa — só aparece quando há zonas ativas e zona selecionada ── */}
-        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && zones.length > 0 && selectedZoneId && (
+        {/* ── 4c. Modo quilometragem não configurado ── */}
+        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && mode === 'kilometers' && (tiers.length === 0 || restaurantLat == null || restaurantLng == null) && (
+          <div className="relative z-10 bg-card rounded-2xl shadow-sm overflow-hidden border border-amber-200 bg-amber-50/50">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-amber-200">
+              <div className="h-6 w-6 rounded-lg bg-amber-200 flex items-center justify-center flex-shrink-0">
+                <Info className="h-3.5 w-3.5 text-amber-700" />
+              </div>
+              <span className="text-sm font-semibold text-amber-800">Entrega por quilometragem</span>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-amber-800 leading-relaxed">
+                O restaurante ainda está configurando a entrega por distância. Entre em contato ou aguarde a conclusão da configuração.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── 5. Endereço de entrega com mapa — zonas: após zona selecionada; quilometragem: direto ── */}
+        {!isTableOrder && deliveryType === DeliveryType.DELIVERY && ((mode === 'zones' && zones.length > 0 && selectedZoneId) || (mode === 'kilometers' && tiers.length > 0 && restaurantLat != null && restaurantLng != null)) && (
           <div className="relative z-10 bg-card rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-border">
               <div className="h-6 w-6 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
@@ -952,12 +991,31 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               {addressDetails.trim() && (
                 <Check className="h-4 w-4 text-success ml-auto flex-shrink-0" />
               )}
+              {isKilometersMode && kmDeliveryResult != null && (
+                <span className="text-xs text-muted-foreground ml-auto">
+                  ~{kmDeliveryResult.distanceKm.toFixed(1)} km
+                </span>
+              )}
             </div>
 
             <div className="p-4 space-y-3">
+              {isOutsideDeliveryArea && (
+                <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  Sua localização está fora da área de entrega. Arraste o mapa para uma área atendida.
+                </div>
+              )}
               {(() => {
-                const centerLat = selectedZone?.center_lat != null ? Number(selectedZone.center_lat) : latitude;
-                const centerLng = selectedZone?.center_lng != null ? Number(selectedZone.center_lng) : longitude;
+                const centerLat = mode === 'zones' && selectedZone?.center_lat != null
+                  ? Number(selectedZone.center_lat)
+                  : isKilometersMode && restaurantLat != null
+                    ? restaurantLat
+                    : latitude;
+                const centerLng = mode === 'zones' && selectedZone?.center_lng != null
+                  ? Number(selectedZone.center_lng)
+                  : isKilometersMode && restaurantLng != null
+                    ? restaurantLng
+                    : longitude;
                 const hasValidCoords = Number.isFinite(centerLat) && Number.isFinite(centerLng);
                 if (!hasValidCoords) return <Skeleton className="h-64 w-full rounded-xl" />;
                 return (
@@ -968,9 +1026,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       lng={longitude}
                       onLocationChange={handleMapLocationChange}
                       height="256px"
-                      zoneCenterLat={selectedZone?.center_lat != null ? Number(selectedZone.center_lat) : undefined}
-                      zoneCenterLng={selectedZone?.center_lng != null ? Number(selectedZone.center_lng) : undefined}
-                      zoneRadiusMeters={selectedZone?.radius_meters != null ? Number(selectedZone.radius_meters) : undefined}
+                      zoneCenterLat={mode === 'zones' && selectedZone?.center_lat != null ? Number(selectedZone.center_lat) : undefined}
+                      zoneCenterLng={mode === 'zones' && selectedZone?.center_lng != null ? Number(selectedZone.center_lng) : undefined}
+                      zoneRadiusMeters={mode === 'zones' && selectedZone?.radius_meters != null ? Number(selectedZone.radius_meters) : undefined}
                     />
                   </Suspense>
                 );
@@ -1331,7 +1389,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   <span className="text-muted-foreground">{t('checkout.deliveryFee')}</span>
                   {deliveryFee === 0 ? (
                     <span className="font-semibold text-success">
-                      {selectedZoneId ? `${t('checkout.free')} 🎉` : '—'}
+                      {(selectedZoneId || (isKilometersMode && kmDeliveryResult != null)) ? `${t('checkout.free')} 🎉` : '—'}
                     </span>
                   ) : (
                     <span className="font-semibold text-foreground tabular-nums">
@@ -1399,7 +1457,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 : 'bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white dark:text-[hsl(var(--background))]'
             }`}
             onClick={handleCheckout}
-            disabled={loading}
+            disabled={loading || (!isTableOrder && deliveryType === DeliveryType.DELIVERY && isKilometersMode && isOutsideDeliveryArea)}
           >
             {loading ? (
               <>

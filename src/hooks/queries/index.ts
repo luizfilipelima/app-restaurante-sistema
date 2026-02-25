@@ -12,6 +12,12 @@ export { useProductOffers, useActiveOffers, useActiveOffersByRestaurantId, fetch
 export { useDiscountCoupons, validateCoupon, useHasActiveCoupons } from './useDiscountCoupons';
 export type { UpsellRow } from './useProductUpsells';
 export { useDeliveryZones } from './useDeliveryZones';
+export {
+  useDeliveryDistanceTiers,
+  useCreateDeliveryDistanceTier,
+  useUpdateDeliveryDistanceTier,
+  useDeleteDeliveryDistanceTier,
+} from './useDeliveryDistanceTiers';
 export { useRestaurantMenuData } from './useRestaurantMenuData';
 export type { RestaurantMenuData } from './useRestaurantMenuData';
 export { useTables } from './useTables';

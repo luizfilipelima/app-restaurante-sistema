@@ -1,10 +1,10 @@
-import { useState, Suspense, lazy, useCallback } from 'react';
+import { useState, useEffect, Suspense, lazy, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
 import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
-import { useDeliveryZones } from '@/hooks/queries';
+import { useDeliveryZones, useDeliveryDistanceTiers, useCreateDeliveryDistanceTier, useUpdateDeliveryDistanceTier, useDeleteDeliveryDistanceTier } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,10 +21,11 @@ import {
 import { formatCurrency } from '@/lib/utils';
 import { convertPriceToStorage, convertPriceFromStorage, convertBetweenCurrencies, getCurrencySymbol, formatPriceInputPyG } from '@/lib/priceHelper';
 import type { CurrencyCode } from '@/lib/priceHelper';
-import type { DeliveryZone } from '@/types';
+import type { DeliveryZone, DeliveryDistanceTier } from '@/types';
 import { Plus, Edit, Trash2, MapPin, Truck, Loader2, Gauge } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 const ZoneRadiusMapEditor = lazy(() => import('@/components/admin/ZoneRadiusMapEditor'));
+const RestaurantLocationMapEditor = lazy(() => import('@/components/admin/RestaurantLocationMapEditor'));
 
 const RADIUS_MIN = 500;
 const RADIUS_MAX = 10000;
@@ -62,8 +63,18 @@ export default function AdminDeliveryZones() {
   const baseCurrency = useAdminCurrency();
   const { data: zonesData, isLoading: loading, refetch } = useDeliveryZones(restaurantId);
   const zones = zonesData ?? [];
+  const { data: tiersData = [], refetch: refetchTiers } = useDeliveryDistanceTiers(restaurantId);
+  const tiers = tiersData ?? [];
+  const createTier = useCreateDeliveryDistanceTier(restaurantId, restaurant?.slug);
+  const updateTier = useUpdateDeliveryDistanceTier(restaurantId, restaurant?.slug);
+  const deleteTier = useDeleteDeliveryDistanceTier(restaurantId, restaurant?.slug);
 
-  const restaurantWithMode = restaurantData as { delivery_zones_enabled?: boolean | null; delivery_zones_mode?: 'disabled' | 'zones' | 'kilometers' | null };
+  const restaurantWithMode = restaurantData as {
+    delivery_zones_enabled?: boolean | null;
+    delivery_zones_mode?: 'disabled' | 'zones' | 'kilometers' | null;
+    restaurant_lat?: number | null;
+    restaurant_lng?: number | null;
+  };
   const rawMode = restaurantWithMode?.delivery_zones_mode;
   const deliveryZonesMode: 'disabled' | 'zones' | 'kilometers' = rawMode ?? (restaurantWithMode?.delivery_zones_enabled === false ? 'disabled' : 'zones');
 
@@ -94,6 +105,23 @@ export default function AdminDeliveryZones() {
   const [feeCurrency, setFeeCurrency] = useState<CurrencyCode>(baseCurrency);
   const [formData, setFormData] = useState(() => emptyForm(baseCurrency));
   const [togglingGlobal, setTogglingGlobal] = useState(false);
+  const [restaurantLat, setRestaurantLat] = useState<number>(getDefaultCenter(baseCurrency)[0]);
+  const [restaurantLng, setRestaurantLng] = useState<number>(getDefaultCenter(baseCurrency)[1]);
+  const [savingRestaurantLocation, setSavingRestaurantLocation] = useState(false);
+  const [showTierForm, setShowTierForm] = useState(false);
+  const [editingTier, setEditingTier] = useState<DeliveryDistanceTier | null>(null);
+  const [tierForm, setTierForm] = useState({ kmMin: '0', kmMax: '', feeInput: '0' });
+
+  useEffect(() => {
+    if (restaurantWithMode?.restaurant_lat != null && restaurantWithMode?.restaurant_lng != null) {
+      setRestaurantLat(Number(restaurantWithMode.restaurant_lat));
+      setRestaurantLng(Number(restaurantWithMode.restaurant_lng));
+    } else {
+      const [lat, lng] = getDefaultCenter(baseCurrency);
+      setRestaurantLat(lat);
+      setRestaurantLng(lng);
+    }
+  }, [restaurantWithMode?.restaurant_lat, restaurantWithMode?.restaurant_lng, baseCurrency]);
 
   const resetForm = useCallback(() => {
     setEditingZone(null);
@@ -220,6 +248,102 @@ export default function AdminDeliveryZones() {
     }
   };
 
+  const saveRestaurantLocation = async () => {
+    if (!restaurantId) return;
+    setSavingRestaurantLocation(true);
+    try {
+      const { error } = await supabase
+        .from('restaurants')
+        .update({
+          restaurant_lat: restaurantLat,
+          restaurant_lng: restaurantLng,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', restaurantId);
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
+      invalidatePublicMenuCache(queryClient, restaurant?.slug);
+      toast({ title: 'Localização do restaurante salva' });
+    } catch (err) {
+      console.error('Erro ao salvar localização:', err);
+      toast({ title: 'Erro ao salvar localização', variant: 'destructive' });
+    } finally {
+      setSavingRestaurantLocation(false);
+    }
+  };
+
+  const resetTierForm = useCallback(() => {
+    setShowTierForm(false);
+    setEditingTier(null);
+    setTierForm({ kmMin: '0', kmMax: '', feeInput: '0' });
+  }, []);
+
+  const openEditTier = useCallback((tier: DeliveryDistanceTier) => {
+    setEditingTier(tier);
+    setTierForm({
+      kmMin: String(tier.km_min),
+      kmMax: tier.km_max != null ? String(tier.km_max) : '',
+      feeInput: convertPriceFromStorage(tier.fee, baseCurrency),
+    });
+    setShowTierForm(true);
+  }, [baseCurrency]);
+
+  const handleSaveTier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurantId) return;
+    const kmMin = parseFloat(tierForm.kmMin.replace(',', '.'));
+    const kmMax = tierForm.kmMax.trim() ? parseFloat(tierForm.kmMax.replace(',', '.')) : null;
+    if (isNaN(kmMin) || kmMin < 0) {
+      toast({ title: 'Km inicial inválido', variant: 'destructive' });
+      return;
+    }
+    if (kmMax != null && (isNaN(kmMax) || kmMax <= kmMin)) {
+      toast({ title: 'Km final deve ser maior que o inicial', variant: 'destructive' });
+      return;
+    }
+    const valueInFee = convertPriceToStorage(tierForm.feeInput, feeCurrency);
+    const feeInBase = feeCurrency === baseCurrency
+      ? valueInFee
+      : convertBetweenCurrencies(valueInFee, feeCurrency, baseCurrency, exchangeRates);
+
+    try {
+      if (editingTier) {
+        await updateTier.mutateAsync({
+          id: editingTier.id,
+          km_min: kmMin,
+          km_max: kmMax,
+          fee: feeInBase,
+        });
+        toast({ title: 'Faixa atualizada' });
+      } else {
+        await createTier.mutateAsync({
+          km_min: kmMin,
+          km_max: kmMax,
+          fee: feeInBase,
+        });
+        toast({ title: 'Faixa adicionada' });
+      }
+      resetTierForm();
+      refetchTiers();
+    } catch (err) {
+      console.error('Erro ao salvar faixa:', err);
+      toast({ title: 'Erro ao salvar faixa', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteTier = async (id: string) => {
+    if (!confirm('Excluir esta faixa de preço?')) return;
+    try {
+      await deleteTier.mutateAsync(id);
+      toast({ title: 'Faixa excluída' });
+      resetTierForm();
+      refetchTiers();
+    } catch (err) {
+      console.error('Erro ao excluir faixa:', err);
+      toast({ title: 'Erro ao excluir faixa', variant: 'destructive' });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[320px]">
@@ -294,7 +418,7 @@ export default function AdminDeliveryZones() {
                 className={`relative z-10 flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-xs font-medium transition-colors ${
                   deliveryZonesMode === 'kilometers' ? 'text-white' : 'text-slate-500 hover:text-slate-700'
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
-                title="Modo por quilometragem (em breve)"
+                title="Modo por quilometragem: frete calculado pela distância"
               >
                 {togglingGlobal && deliveryZonesMode === 'kilometers' && <Loader2 className="h-3 w-3 animate-spin shrink-0" />}
                 <Gauge className="h-3 w-3 shrink-0" />
@@ -307,22 +431,177 @@ export default function AdminDeliveryZones() {
               ? 'Checkout exibe card pedindo localização via WhatsApp.'
               : deliveryZonesMode === 'zones'
                 ? 'Cliente escolhe a zona e vê a taxa no checkout.'
-                : 'Modo quilometragem (em breve).'}
+                : 'Cliente posiciona o endereço no mapa; frete calculado pela distância.'}
           </p>
         </div>
-        <Button
-          onClick={() => { resetForm(); setShowForm(true); setFormData(emptyForm(baseCurrency)); }}
-          data-testid="delivery-zone-new"
-          size="lg"
-          className="w-full sm:w-auto shrink-0 bg-[#F87116] hover:bg-orange-600 text-white shadow-md font-semibold"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Nova Zona
-        </Button>
+        {deliveryZonesMode === 'zones' && (
+          <Button
+            onClick={() => { resetForm(); setShowForm(true); setFormData(emptyForm(baseCurrency)); }}
+            data-testid="delivery-zone-new"
+            size="lg"
+            className="w-full sm:w-auto shrink-0 bg-[#F87116] hover:bg-orange-600 text-white shadow-md font-semibold"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Nova Zona
+          </Button>
+        )}
       </div>
 
-      {/* ── Formulário Nova/Editar Zona ────────────────────────────────────────── */}
-      {showForm && (
+      {/* ── Modo Quilometragem: Localização + Faixas de preço ───────────────────── */}
+      {deliveryZonesMode === 'kilometers' && (
+        <>
+          <Card className="border-slate-200 shadow-lg overflow-hidden">
+            <CardHeader className="bg-slate-50/80 border-b">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-orange-600" />
+                Localização do Restaurante
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Defina o endereço do restaurante para o cálculo da distância no checkout.
+              </p>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <Suspense fallback={<Skeleton className="h-[280px] w-full rounded-xl" />}>
+                <RestaurantLocationMapEditor
+                  centerLat={restaurantLat}
+                  centerLng={restaurantLng}
+                  onCenterChange={(lat, lng) => { setRestaurantLat(lat); setRestaurantLng(lng); }}
+                  height="280px"
+                />
+              </Suspense>
+              <Button
+                onClick={saveRestaurantLocation}
+                disabled={savingRestaurantLocation}
+                className="bg-[#F87116] hover:bg-orange-600"
+              >
+                {savingRestaurantLocation && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Salvar Localização
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 shadow-lg overflow-hidden">
+            <CardHeader className="bg-slate-50/80 border-b">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Gauge className="h-5 w-5 text-orange-600" />
+                Faixas de Preço por Distância
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Configure o valor do frete conforme a distância em km (ex: 0–2 km = R$ 5, 2–5 km = R$ 10).
+              </p>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-6">
+              {showTierForm && (
+                <form onSubmit={handleSaveTier} className="p-4 bg-muted/50 rounded-xl space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Km inicial</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={tierForm.kmMin}
+                        onChange={(e) => setTierForm({ ...tierForm, kmMin: e.target.value })}
+                        placeholder="0"
+                        required
+                        className="mt-1.5"
+                      />
+                    </div>
+                    <div>
+                      <Label>Km final (vazio = acima do inicial)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={tierForm.kmMax}
+                        onChange={(e) => setTierForm({ ...tierForm, kmMax: e.target.value })}
+                        placeholder="Ex: 5"
+                        className="mt-1.5"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Taxa de entrega ({getCurrencySymbol(feeCurrency)})</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={tierForm.feeInput}
+                      onChange={(e) =>
+                        setTierForm({
+                          ...tierForm,
+                          feeInput: feeCurrency === 'PYG' ? formatPriceInputPyG(e.target.value) : e.target.value,
+                        })
+                      }
+                      placeholder={feeCurrency === 'PYG' ? '0' : '0,00'}
+                      required
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit" disabled={createTier.isPending || updateTier.isPending}>
+                      {(createTier.isPending || updateTier.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      {editingTier ? 'Atualizar' : 'Adicionar'}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={resetTierForm}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </form>
+              )}
+              {!showTierForm && (
+                <Button
+                  variant="outline"
+                  onClick={() => { resetTierForm(); setShowTierForm(true); }}
+                  className="border-dashed"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar faixa de preço
+                </Button>
+              )}
+              {tiers.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-slate-700">Faixas configuradas</h3>
+                  <div className="space-y-2">
+                    {tiers.map((tier) => (
+                      <div
+                        key={tier.id}
+                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200"
+                      >
+                        <span className="font-medium text-slate-800">
+                          {Number(tier.km_min)} km até {tier.km_max != null ? `${Number(tier.km_max)} km` : '+'}
+                          {' → '}
+                          {tier.fee === 0 ? 'Grátis' : formatCurrency(tier.fee, baseCurrency)}
+                        </span>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => openEditTier(tier)}>
+                            Editar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeleteTier(tier.id)}
+                          >
+                            Excluir
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {tiers.length === 0 && !showTierForm && (
+                <p className="text-sm text-muted-foreground">
+                  Adicione ao menos uma faixa para que o cliente veja o frete no checkout.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* ── Formulário Nova/Editar Zona (modo zones) ────────────────────────────────────────── */}
+      {showForm && deliveryZonesMode === 'zones' && (
         <Card className="border-slate-200 shadow-lg overflow-hidden">
           <CardHeader className="bg-slate-50/80 border-b">
             <CardTitle className="text-lg">
@@ -415,8 +694,8 @@ export default function AdminDeliveryZones() {
         </Card>
       )}
 
-      {/* ── Lista de zonas ou empty state ──────────────────────────────────────── */}
-      {zones.length === 0 ? (
+      {/* ── Lista de zonas ou empty state (modo zones) ──────────────────────────────────────── */}
+      {deliveryZonesMode === 'zones' && zones.length === 0 ? (
         <Card className="border-dashed border-2 border-slate-200 bg-slate-50/30">
           <CardContent className="flex flex-col items-center justify-center py-16 px-6">
             <div className="h-16 w-16 rounded-2xl bg-slate-200/60 flex items-center justify-center mb-4">
@@ -432,7 +711,7 @@ export default function AdminDeliveryZones() {
             </Button>
           </CardContent>
         </Card>
-      ) : (
+      ) : deliveryZonesMode === 'zones' ? (
         <div>
           <h2 className="text-lg font-semibold text-slate-800 mb-4">
             Zonas configuradas
@@ -493,7 +772,7 @@ export default function AdminDeliveryZones() {
             ))}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
