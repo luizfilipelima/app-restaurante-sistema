@@ -9,7 +9,8 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import type { DashboardMenuMatrix, DashboardMenuMatrixItem } from '@/types/dashboard-analytics';
 
 export type Quadrant = 'estrela' | 'burro' | 'quebra_cabeca' | 'cao';
@@ -76,7 +77,7 @@ function BCGTooltipContent({
     <div className="rounded-lg border bg-white p-3 shadow-lg min-w-[200px]">
       <p className="font-semibold text-slate-900">{point.name}</p>
       <p className="text-sm text-slate-600 mt-0.5">
-        Vendas: {point.total_sold} un. · Margem: {formatCurrency(point.avg_margin, currency)}
+        Vendas: {point.total_sold} un. · Margem: {formatPrice(point.avg_margin, currency)}
       </p>
       <p className="text-xs font-medium mt-2" style={{ color: info.color }}>
         {info.label}
@@ -136,7 +137,7 @@ export function MenuMatrixBCG({ menuMatrix, currency = 'BRL' }: MenuMatrixBCGPro
             name="Margem"
             stroke="#888"
             style={{ fontSize: '12px' }}
-            tickFormatter={(v) => formatCurrency(v, currency)}
+            tickFormatter={(v) => formatPrice(v, currency)}
           />
           <Tooltip
             content={<BCGTooltipContent currency={currency} />}

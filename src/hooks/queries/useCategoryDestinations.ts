@@ -2,39 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/core/supabase';
 import type { PrintDestination } from '@/types';
 
-export interface CategoryDestination {
-  id: string;
-  name: string;
-  print_destination: PrintDestination;
-}
-
-/** Retorna um Map de nome-da-categoria → print_destination. */
-async function fetchCategoryDestinations(
-  restaurantId: string | null
-): Promise<Map<string, PrintDestination>> {
-  if (!restaurantId) return new Map();
-  const { data, error } = await supabase
-    .from('categories')
-    .select('id, name, print_destination')
-    .eq('restaurant_id', restaurantId);
-  if (error) throw error;
-  const map = new Map<string, PrintDestination>();
-  for (const cat of data ?? []) {
-    map.set(cat.name, (cat.print_destination as PrintDestination) ?? 'kitchen');
-  }
-  return map;
-}
-
-/** Hook: Map<categoryName, PrintDestination> para o restaurante atual. */
-export function useCategoryDestinations(restaurantId: string | null) {
-  return useQuery({
-    queryKey: ['categoryDestinations', restaurantId],
-    queryFn: () => fetchCategoryDestinations(restaurantId),
-    enabled: !!restaurantId,
-    staleTime: 60_000,
-  });
-}
-
 /**
  * Retorna um Map de product_id → PrintDestination a partir do campo
  * print_destination da tabela products (por produto).

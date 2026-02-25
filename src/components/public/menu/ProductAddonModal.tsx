@@ -4,7 +4,8 @@
  */
 import { useState, useEffect } from 'react';
 import { Product } from '@/types';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -74,7 +75,7 @@ export default function ProductAddonModal({
   const addonsTotal = selectedAddons.reduce((s, a) => s + a.price, 0);
   const unitPrice = basePrice + addonsTotal;
   const total = unitPrice * quantity;
-  const fmt = (v: number) => formatCurrency(convertForDisplay ? convertForDisplay(v) : v, currency);
+  const fmt = (v: number) => formatPrice(convertForDisplay ? convertForDisplay(v) : v, currency);
 
   const handleAdd = () => {
     onAddToCart({

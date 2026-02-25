@@ -2,7 +2,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/core/supabase';
 import { useTranslation } from 'react-i18next';
-import { formatCurrency, hasBankAccountData, formatBankAccountLines } from '@/lib/core/utils';
+import { hasBankAccountData, formatBankAccountLines } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import {
   CheckCircle2,
@@ -599,17 +600,17 @@ export default function OrderTracking({ tenantSlug: tenantSlugProp }: OrderTrack
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>{t('tracking.subtotal')}</span>
-              <span>{formatCurrency(order.subtotal, currency)}</span>
+              <span>{formatPrice(order.subtotal, currency)}</span>
             </div>
             {order.delivery_fee > 0 && (
               <div className="flex justify-between text-muted-foreground">
                 <span>{t('tracking.deliveryFee')}</span>
-                <span>{formatCurrency(order.delivery_fee, currency)}</span>
+                <span>{formatPrice(order.delivery_fee, currency)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-foreground pt-1.5 border-t border-border">
               <span>{t('tracking.total')}</span>
-              <span>{formatCurrency(order.total, currency)}</span>
+              <span>{formatPrice(order.total, currency)}</span>
             </div>
           </div>
 

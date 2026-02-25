@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { convertBetweenCurrencies, type CurrencyCode, type ExchangeRates } from '@/lib/priceHelper';
-import { formatCurrency } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 
 interface RestaurantLike {
   id?: string;
@@ -82,7 +82,7 @@ export function useMenuCurrency(restaurant: RestaurantLike | null) {
   );
 
   const formatForDisplay = useCallback(
-    (value: number) => formatCurrency(convertForDisplay(value), displayCurrency),
+    (value: number) => formatPrice(convertForDisplay(value), displayCurrency),
     [displayCurrency, convertForDisplay]
   );
 

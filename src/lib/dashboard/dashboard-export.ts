@@ -2,7 +2,8 @@ import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 
 const PAYMENT_LABELS: Record<string, string> = {
   pix: 'PIX',
@@ -71,9 +72,9 @@ export function exportDashboardCSV({
   const k = analytics.kpis;
   sections.push(csvRows([
     ['=== INDICADORES PRINCIPAIS ==='],
-    ['Faturamento', formatCurrency(k.total_faturado, currency)],
+    ['Faturamento', formatPrice(k.total_faturado, currency)],
     ['Total de Pedidos', String(k.total_pedidos)],
-    ['Ticket Médio', formatCurrency(k.ticket_medio, currency)],
+    ['Ticket Médio', formatPrice(k.ticket_medio, currency)],
     ['Pedidos Pendentes', String(k.pedidos_pendentes)],
     [],
   ]));
@@ -83,7 +84,7 @@ export function exportDashboardCSV({
     const f = analytics.financial;
     sections.push(csvRows([
       ['=== FINANCEIRO ==='],
-      ['Lucro Estimado (Receita - CMV)', formatCurrency(f.gross_profit, currency)],
+      ['Lucro Estimado (Receita - CMV)', formatPrice(f.gross_profit, currency)],
       [],
     ]));
   }
@@ -104,7 +105,7 @@ export function exportDashboardCSV({
       ['Data', 'Faturamento', 'Pedidos'],
       ...analytics.sales_trend.map((d) => [
         format(new Date(d.date), 'dd/MM/yyyy', { locale: ptBR }),
-        formatCurrency(d.revenue, currency),
+        formatPrice(d.revenue, currency),
         String(d.orders),
       ]),
       [],
@@ -118,7 +119,7 @@ export function exportDashboardCSV({
       ['Método', 'Total'],
       ...analytics.payment_methods.map((pm) => [
         PAYMENT_LABELS[pm.name] ?? pm.name,
-        formatCurrency(pm.value, currency),
+        formatPrice(pm.value, currency),
       ]),
       [],
     ]));
@@ -131,9 +132,9 @@ export function exportDashboardCSV({
       ['Canal', 'Faturamento', 'Pedidos', 'Ticket Médio'],
       ...analytics.channels.map((c) => [
         CHANNEL_LABELS[c.channel] ?? c.channel,
-        formatCurrency(c.total_vendas, currency),
+        formatPrice(c.total_vendas, currency),
         String(c.total_pedidos),
-        formatCurrency(
+        formatPrice(
           c.total_pedidos > 0 ? c.total_vendas / c.total_pedidos : 0,
           currency
         ),
@@ -190,7 +191,7 @@ export function exportDashboardCSV({
       ...analytics.retention_risk.map((c) => [
         c.nome,
         c.telefone,
-        formatCurrency(c.total_gasto, currency),
+        formatPrice(c.total_gasto, currency),
       ]),
       [],
     ]));
@@ -227,7 +228,7 @@ export function exportDashboardXLSX({
   areaLabel,
 }: ExportParams) {
   const wb = XLSX.utils.book_new();
-  const fmtCurr = (v: number) => formatCurrency(v, currency);
+  const fmtCurr = (v: number) => formatPrice(v, currency);
   const dateStr = format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR });
 
   // ── Aba 1: Resumo

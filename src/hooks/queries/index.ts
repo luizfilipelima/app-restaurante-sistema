@@ -3,8 +3,6 @@ export { useRestaurant } from './useRestaurant';
 export { useCouriers } from './useCouriers';
 export { useCourierMetrics } from './useCourierMetrics';
 export type { CourierMetrics } from './useCourierMetrics';
-export { useOrderCoordinates } from './useOrderCoordinates';
-export type { OrderCoordinate } from './useOrderCoordinates';
 export { useProductUpsells, useSaveProductUpsells, fetchUpsellsForProducts } from './useProductUpsells';
 export { useProductComboItems, useProductComboItemsMap, useSaveProductComboItems } from './useProductComboItems';
 export { useProductAddons, useProductAddonsMap, useSaveProductAddons } from './useProductAddons';
@@ -56,8 +54,7 @@ export type { UseOrdersParams, OrderSourceFilter } from './useOrders';
 export { isDeliveryOrPickupOrder, getOrderSector } from './useOrders';
 export type { OrderSectorKey } from './useOrders';
 export { usePrintSettings } from './usePrintSettings';
-export { useCategoryDestinations, useProductPrintDestinations } from './useCategoryDestinations';
-export type { CategoryDestination } from './useCategoryDestinations';
+export { useProductPrintDestinations } from './useCategoryDestinations';
 export {
   useLoyaltyProgram,
   useSaveLoyaltyProgram,

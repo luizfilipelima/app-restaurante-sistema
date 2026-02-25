@@ -23,7 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Bike, Plus, Pencil, Trash2, Phone, User, Loader2, Package, Clock, DollarSign } from 'lucide-react';
-import { generateWhatsAppLink, formatCurrency, normalizePhoneWithCountryCode } from '@/lib/core/utils';
+import { generateWhatsAppLink, normalizePhoneWithCountryCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import { toast } from '@/hooks/shared/use-toast';
 import { useCourierMetrics } from '@/hooks/queries';
 import { useAdminCurrency } from '@/contexts/AdminRestaurantContext';
@@ -233,7 +234,7 @@ export default function AdminCouriers() {
                         <span className="text-slate-500 flex items-center gap-1">
                           <DollarSign className="h-3.5 w-3.5" /> Taxas
                         </span>
-                        <span className="font-bold">{formatCurrency(m.total_fees, currency)}</span>
+                        <span className="font-bold">{formatPrice(m.total_fees, currency)}</span>
                       </div>
                     </div>
                   </div>

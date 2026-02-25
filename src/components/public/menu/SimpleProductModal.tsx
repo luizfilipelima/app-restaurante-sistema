@@ -8,7 +8,8 @@ import { useCartStore } from '@/store/cartStore';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
 import { Minus, Plus, ArrowLeft } from 'lucide-react';
 import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
@@ -54,7 +55,7 @@ export default function SimpleProductModal({
   };
 
   const total = basePrice * quantity;
-  const fmt = (v: number) => formatCurrency(convertForDisplay ? convertForDisplay(v) : v, currency);
+  const fmt = (v: number) => formatPrice(convertForDisplay ? convertForDisplay(v) : v, currency);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>

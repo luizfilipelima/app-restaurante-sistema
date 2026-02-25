@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/table';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/shared/use-toast';
-import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/core/utils';
+import { generateSlug, getCardapioPublicUrl } from '@/lib/core/utils';
 import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
 import { uploadProductImage } from '@/lib/imageUpload';
 import {
@@ -1697,7 +1697,7 @@ export default function AdminMenu() {
                         </div>
                       ))}
                       <p className="text-xs text-muted-foreground">
-                        Preço sugerido: {formatCurrency(comboItems.reduce((s, ci) => s + (Number(ci.product.price_sale || ci.product.price) || 0) * ci.quantity, 0), currency)}
+                        Preço sugerido: {formatPrice(comboItems.reduce((s, ci) => s + (Number(ci.product.price_sale || ci.product.price) || 0) * ci.quantity, 0), currency)}
                         <button type="button" className="ml-2 text-primary font-medium hover:underline"
                           onClick={() => {
                             const sum = comboItems.reduce((s, ci) => s + (Number(ci.product.price_sale || ci.product.price) || 0) * ci.quantity, 0);
@@ -1730,7 +1730,7 @@ export default function AdminMenu() {
                               }}>
                               {p.image_url ? <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover" /> : <div className="w-8 h-8 rounded bg-muted flex items-center justify-center"><Package className="h-4 w-4" /></div>}
                               <span className="flex-1 text-sm font-medium truncate">{p.name}</span>
-                              <span className="text-xs text-muted-foreground">{formatCurrency(Number(p.price_sale || p.price), currency)}</span>
+                              <span className="text-xs text-muted-foreground">{formatPrice(Number(p.price_sale || p.price), currency)}</span>
                               <Plus className="h-4 w-4 text-primary" />
                             </button>
                           ))}

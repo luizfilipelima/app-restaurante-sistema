@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/shared/use-toast';
-import { formatCurrency } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import { exportDashboardCSV, exportDashboardXLSX } from '@/lib/dashboard/dashboard-export';
 import {
   DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2,
@@ -568,7 +568,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             <p className="text-3xl font-bold text-slate-900 mt-2">
-              {formatCurrency(metrics.totalRevenue, currency)}
+              {formatPrice(metrics.totalRevenue, currency)}
             </p>
             {prevMetrics.totalRevenue > 0 && (
               <p className={`text-xs font-medium mt-1 flex items-center gap-1 ${Number(revPct) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -597,11 +597,11 @@ export default function AdminDashboard() {
               </div>
             </div>
             <p className={`text-3xl font-bold mt-2 ${grossProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-              {formatCurrency(grossProfit, currency)}
+              {formatPrice(grossProfit, currency)}
             </p>
             {totalCost > 0 && (
               <p className="text-xs text-slate-500 mt-0.5">
-                CMV: {formatCurrency(totalCost, currency)}
+                CMV: {formatPrice(totalCost, currency)}
                 {costByIngredients > 0 && (
                   <span className="text-emerald-600 ml-1" title="Parte do CMV vinda de receitas de ingredientes">
                     (ingredientes)
@@ -621,7 +621,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             <p className="text-3xl font-bold text-slate-900 mt-2">
-              {formatCurrency(metrics.averageTicket, currency)}
+              {formatPrice(metrics.averageTicket, currency)}
             </p>
             <p className="text-xs text-slate-400 mt-1">{t('dashboard.kpis.avgOrderDesc')}</p>
           </motion.div>
@@ -803,7 +803,7 @@ export default function AdminDashboard() {
                   <XAxis dataKey="date" stroke="#888" style={{ fontSize: '12px' }} />
                   <YAxis stroke="#888" style={{ fontSize: '12px' }} />
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value, currency)}
+                    formatter={(value: number) => formatPrice(value, currency)}
                     contentStyle={{
                       borderRadius: '8px',
                       border: 'none',
@@ -903,7 +903,7 @@ export default function AdminDashboard() {
                           ))}
                         </Pie>
                         <Tooltip
-                          formatter={(v: number) => [formatCurrency(v, currency), '']}
+                          formatter={(v: number) => [formatPrice(v, currency), '']}
                           contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                         />
                         <Legend formatter={(v) => paymentMethodNames[v] || v} wrapperStyle={{ fontSize: '13px' }} />
@@ -918,7 +918,7 @@ export default function AdminDashboard() {
                         <div key={pm.name} className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                           <span className="text-xs text-slate-600 flex-1">{paymentMethodNames[pm.name] ?? pm.name}</span>
-                          <span className="text-xs font-semibold text-slate-800">{formatCurrency(pm.value, currency)}</span>
+                          <span className="text-xs font-semibold text-slate-800">{formatPrice(pm.value, currency)}</span>
                           <span className="text-[11px] text-slate-400 w-8 text-right">{pct}%</span>
                         </div>
                       );
@@ -1136,10 +1136,10 @@ export default function AdminDashboard() {
                   Receita Buffet
                 </h3>
                 <p className="text-2xl font-bold text-slate-900">
-                  {formatCurrency(buffetMetrics.totalBuffetRevenue, currency)}
+                  {formatPrice(buffetMetrics.totalBuffetRevenue, currency)}
                 </p>
                 <p className="text-sm text-slate-500">
-                  Ticket médio: {formatCurrency(buffetMetrics.averageBuffetTicket, currency)}
+                  Ticket médio: {formatPrice(buffetMetrics.averageBuffetTicket, currency)}
                 </p>
               </div>
 
@@ -1149,7 +1149,7 @@ export default function AdminDashboard() {
                   CMV Real
                 </h3>
                 <p className="text-2xl font-bold text-slate-900">
-                  {formatCurrency(buffetMetrics.realCMV, currency)}
+                  {formatPrice(buffetMetrics.realCMV, currency)}
                 </p>
                 <p className="text-sm text-slate-500">
                   Margem: {buffetMetrics.profitMargin.toFixed(1)}%
@@ -1162,7 +1162,7 @@ export default function AdminDashboard() {
                   Lucro Real
                 </h3>
                 <p className="text-2xl font-bold text-emerald-600">
-                  {formatCurrency(buffetMetrics.profit, currency)}
+                  {formatPrice(buffetMetrics.profit, currency)}
                 </p>
                 <p className="text-sm text-slate-500">
                   {buffetMetrics.profitMargin.toFixed(1)}% de margem

@@ -26,8 +26,8 @@ import {
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { useTableOrderStore } from '@/store/tableOrderStore';
 import { useSharingMeta } from '@/hooks/shared/useSharingMeta';
-import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours, getBankAccountForCurrency, hasBankAccountData, formatBankAccountLines } from '@/lib/core/utils';
-import { convertBetweenCurrencies, type CurrencyCode } from '@/lib/priceHelper';
+import { generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours, getBankAccountForCurrency, hasBankAccountData, formatBankAccountLines } from '@/lib/core/utils';
+import { convertBetweenCurrencies, formatPrice, type CurrencyCode } from '@/lib/priceHelper';
 import { processTemplate, getTemplate } from '@/lib/whatsapp/whatsappTemplates';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
@@ -444,9 +444,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           (i.pizzaEdgePrice ?? 0) * i.quantity +
           (i.pizzaDoughPrice ?? 0) * i.quantity;
         const addonsStr = i.addons && i.addons.length > 0
-          ? ' + ' + i.addons.map((a) => a.name + (a.price > 0 ? ` (+${formatCurrency(a.price, baseCurrency)})` : '')).join(', ')
+          ? ' + ' + i.addons.map((a) => a.name + (a.price > 0 ? ` (+${formatPrice(a.price, baseCurrency)})` : '')).join(', ')
           : '';
-        return `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''}${addonsStr} — ${formatCurrency(itemTotal, baseCurrency)}`;
+        return `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''}${addonsStr} — ${formatPrice(itemTotal, baseCurrency)}`;
       }).join('\n');
       const bairro = deliveryType === DeliveryType.DELIVERY && mode === 'zones' && selectedZoneId
         ? (zones.find((z) => z.id === selectedZoneId)?.location_name ?? '')
@@ -455,7 +455,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
         : '';
       const trocoRaw = paymentMethod === PaymentMethod.CASH && changeFor ? changeFor.replace(/\D/g, '') : '';
-      const trocoFormatted = trocoRaw ? formatCurrency(parseInt(trocoRaw, 10), baseCurrency) : '';
+      const trocoFormatted = trocoRaw ? formatPrice(parseInt(trocoRaw, 10), baseCurrency) : '';
       const paymentLabels: Record<string, string> = {
         pix: 'PIX',
         card: 'Cartão na entrega',
@@ -471,7 +471,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       if (paymentMethod === PaymentMethod.BANK_TRANSFER && (displayCurrency === 'PYG' || displayCurrency === 'ARS') && bankAccountSnapshot && hasBankAccountData(bankAccountSnapshot)) {
         pagamentoDetalhes = formatBankAccountLines(bankAccountSnapshot).join(' | ');
       }
-      const taxaLine = deliveryFee > 0 ? `Taxa entrega: ${formatCurrency(deliveryFee, baseCurrency)}` : '';
+      const taxaLine = deliveryFee > 0 ? `Taxa entrega: ${formatPrice(deliveryFee, baseCurrency)}` : '';
       const contaRest = bankAccountSnapshot && hasBankAccountData(bankAccountSnapshot)
         ? formatBankAccountLines(bankAccountSnapshot).join(' | ')
         : '';
@@ -491,9 +491,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         pix_restaurante:   (currentRestaurant?.pix_key || '').trim() || undefined,
         conta_restaurante: contaRest || undefined,
         troco:             trocoFormatted,
-        subtotal:          formatCurrency(subtotal, baseCurrency),
+        subtotal:          formatPrice(subtotal, baseCurrency),
         taxa_entrega:      taxaLine,
-        total:             formatCurrency(total, baseCurrency),
+        total:             formatPrice(total, baseCurrency),
         itens:             itemsText,
         observacoes:       notes?.trim() ?? '',
       });
@@ -782,11 +782,11 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   {!isTableOrder && (
                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0 ml-1">
                       <span className={`text-sm font-bold tabular-nums ${item.isLoyaltyReward ? 'text-warning' : 'text-foreground'}`}>
-                        {item.isLoyaltyReward ? t('checkout.free') : formatCurrency(convertForDisplay(itemTotal), displayCurrency)}
+                        {item.isLoyaltyReward ? t('checkout.free') : formatPrice(convertForDisplay(itemTotal), displayCurrency)}
                       </span>
                       {item.quantity > 1 && (
                         <span className="text-[10px] text-muted-foreground tabular-nums">
-                          {formatCurrency(unitDisplay, displayCurrency)} cada
+                          {formatPrice(unitDisplay, displayCurrency)} cada
                         </span>
                       )}
                     </div>
@@ -938,7 +938,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                         <div className="flex items-center justify-between gap-6 w-full">
                           <span>{zone.location_name}</span>
                           <span className="text-muted-foreground text-xs font-semibold">
-                            {zone.fee === 0 ? t('checkout.free') : formatCurrency(convertForDisplay(zone.fee), displayCurrency)}
+                            {zone.fee === 0 ? t('checkout.free') : formatPrice(convertForDisplay(zone.fee), displayCurrency)}
                           </span>
                         </div>
                       </SelectItem>
@@ -1339,7 +1339,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       {t('checkout.couponApplied')} — {appliedCoupon.code}
                     </p>
                     <p className="text-xs text-success mt-0.5">
-                      {t('checkout.discount')}: {formatCurrency(convertForDisplay(appliedCoupon.discountAmount), displayCurrency)}
+                      {t('checkout.discount')}: {formatPrice(convertForDisplay(appliedCoupon.discountAmount), displayCurrency)}
                     </p>
                   </div>
                   <button
@@ -1448,7 +1448,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">{t('checkout.subtotal')}</span>
                 <span className="font-semibold text-foreground tabular-nums">
-                  {formatCurrency(convertForDisplay(subtotal), displayCurrency)}
+                  {formatPrice(convertForDisplay(subtotal), displayCurrency)}
                 </span>
               </div>
 
@@ -1461,7 +1461,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     </span>
                   ) : (
                     <span className="font-semibold text-foreground tabular-nums">
-                      {formatCurrency(convertForDisplay(deliveryFee), displayCurrency)}
+                      {formatPrice(convertForDisplay(deliveryFee), displayCurrency)}
                     </span>
                   )}
                 </div>
@@ -1471,7 +1471,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">{t('checkout.discount')}</span>
                   <span className="font-semibold text-success tabular-nums">
-                    − {formatCurrency(convertForDisplay(discountAmount), displayCurrency)}
+                    − {formatPrice(convertForDisplay(discountAmount), displayCurrency)}
                   </span>
                 </div>
               )}
@@ -1479,13 +1479,13 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               <div className="flex justify-between items-center pt-2.5 border-t border-border">
                 <span className="font-bold text-foreground">{t('checkout.total')}</span>
                 <span className="text-xl font-black text-foreground tabular-nums">
-                  {formatCurrency(convertForDisplay(total), displayCurrency)}
+                  {formatPrice(convertForDisplay(total), displayCurrency)}
                 </span>
               </div>
 
               {paymentCurrencies.length > 1 && displayCurrency !== baseCurrency && (
                 <p className="text-[10px] text-muted-foreground text-right">
-                  ≈ {formatCurrency(total, baseCurrency)} (valor base)
+                  ≈ {formatPrice(total, baseCurrency)} (valor base)
                 </p>
               )}
             </div>
@@ -1539,7 +1539,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 </span>
                 {!isTableOrder && (
                   <span className="bg-white/20 dark:bg-[hsl(var(--background))]/30 px-2.5 py-1 rounded-lg text-sm font-bold tabular-nums">
-                    {formatCurrency(convertForDisplay(total), displayCurrency)}
+                    {formatPrice(convertForDisplay(total), displayCurrency)}
                   </span>
                 )}
                 <Send className="h-4 w-4 flex-shrink-0" />

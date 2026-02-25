@@ -16,12 +16,12 @@ import { useRestaurant, useHallZones } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { supabase } from '@/lib/core/supabase';
 import {
-  formatCurrency,
   getComandaPublicUrl,
   type CurrencyCode,
 } from '@/lib/core/utils';
 import {
   convertBetweenCurrencies,
+  formatPrice,
   getCurrencySymbol,
   convertPriceFromStorage,
   type ExchangeRates,
@@ -365,7 +365,7 @@ function QueueCard({
           </div>
         </div>
         <div className="flex-shrink-0 text-right">
-          <p className="text-sm font-bold text-foreground">{formatCurrency(total, currency)}</p>
+          <p className="text-sm font-bold text-foreground">{formatPrice(total, currency)}</p>
           <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 justify-end mt-0.5">
             <Clock className="h-2.5 w-2.5" />
             {formatDistanceToNow(new Date(item.createdAt), { addSuffix: false, locale: dateLocale })}
@@ -1007,13 +1007,13 @@ function CashierContent() {
             (restaurant.print_settings_by_sector as any) ?? undefined
           );
         }
-        toast({ title: t('cashier.comandaClosed'), description: `${selected.shortCode} — ${formatCurrency(totalToPay, currency)}` });
+        toast({ title: t('cashier.comandaClosed'), description: `${selected.shortCode} — ${formatPrice(totalToPay, currency)}` });
       } else if (selected.type === 'comanda_buffet') {
         await supabase
           .from('comandas')
           .update({ status: 'closed', closed_at: new Date().toISOString() })
           .eq('id', selected.comandaId);
-        toast({ title: t('cashier.buffetClosed'), description: `#${selected.number} — ${formatCurrency(totalToPay, currency)}` });
+        toast({ title: t('cashier.buffetClosed'), description: `#${selected.number} — ${formatPrice(totalToPay, currency)}` });
       } else if (isTableGroup(selected)) {
         for (const tbl of selected.items) {
           await supabase
@@ -1031,7 +1031,7 @@ function CashierContent() {
             );
           }
         }
-        toast({ title: t('cashier.orderPaid'), description: `${selected.label} — ${formatCurrency(totalToPay, currency)}` });
+        toast({ title: t('cashier.orderPaid'), description: `${selected.label} — ${formatPrice(totalToPay, currency)}` });
       } else if (selected.type === 'table') {
         await supabase
           .from('orders')
@@ -1047,7 +1047,7 @@ function CashierContent() {
             (restaurant.print_settings_by_sector as any) ?? undefined
           );
         }
-        toast({ title: t('cashier.orderPaid'), description: `${selected.tableNumber} — ${formatCurrency(totalToPay, currency)}` });
+        toast({ title: t('cashier.orderPaid'), description: `${selected.tableNumber} — ${formatPrice(totalToPay, currency)}` });
       }
 
       setSelected(null);
@@ -1247,13 +1247,13 @@ function CashierContent() {
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('cashier.totalToReceive')}</p>
             <p className="text-2xl font-bold text-foreground mt-1 tabular-nums">
-              {formatCurrency(totalToReceive, baseCurrency)}
+              {formatPrice(totalToReceive, baseCurrency)}
             </p>
           </div>
           <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 p-5 shadow-sm ring-1 ring-emerald-500/5">
             <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">{t('cashier.totalReceivedToday')}</p>
             <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1 tabular-nums">
-              {formatCurrency(totalReceivedToday, baseCurrency)}
+              {formatPrice(totalReceivedToday, baseCurrency)}
             </p>
           </div>
         </div>
@@ -1415,12 +1415,12 @@ function CashierContent() {
                   tableItemsGrouped.map((group) => (
                     <div key={group.label} className="px-4 py-3 border-b border-border/60 last:border-0">
                       <p className="text-xs font-semibold text-muted-foreground mb-1.5">
-                        {group.label} — {formatCurrency(group.subtotal, currency)}
+                        {group.label} — {formatPrice(group.subtotal, currency)}
                       </p>
                       {group.items.map((it, i) => (
                         <div key={i} className="flex justify-between items-center text-sm py-0.5">
                           <span className="truncate flex-1">{Number(it.qty) % 1 === 0 ? `${it.qty}×` : it.qty} {it.name}</span>
-                          <span className="font-medium tabular-nums">{formatCurrency(Number(it.price), currency)}</span>
+                          <span className="font-medium tabular-nums">{formatPrice(Number(it.price), currency)}</span>
                         </div>
                       ))}
                     </div>
@@ -1432,7 +1432,7 @@ function CashierContent() {
                         {Number(it.qty) % 1 === 0 ? `${it.qty}×` : it.qty} {it.name}
                       </span>
                       <span className="text-sm font-semibold tabular-nums">
-                        {formatCurrency(Number(it.price), currency)}
+                        {formatPrice(Number(it.price), currency)}
                       </span>
                     </div>
                   ))
@@ -1443,7 +1443,7 @@ function CashierContent() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-semibold">{t('cashier.totalToPay')}</span>
                   <span className="text-2xl font-black tabular-nums">
-                    {formatCurrency(totalToPay, currency)}
+                    {formatPrice(totalToPay, currency)}
                   </span>
                 </div>
               </div>
@@ -1511,7 +1511,7 @@ function CashierContent() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{t('cashier.received')}</span>
                   <span className="font-semibold tabular-nums">
-                    {formatCurrency(receivedInBase, baseCurrency)}
+                    {formatPrice(receivedInBase, baseCurrency)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -1521,14 +1521,14 @@ function CashierContent() {
                       remaining <= 0 ? 'text-emerald-600' : 'text-amber-600'
                     }`}
                   >
-                    {formatCurrency(remainingInBase, baseCurrency)}
+                    {formatPrice(remainingInBase, baseCurrency)}
                   </span>
                 </div>
                 {changeAmount > 0 && (
                   <div className="rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800 p-3">
                     <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-1">{t('cashier.changeSuggested')}</p>
                     <p className="text-sm font-bold text-amber-900 dark:text-amber-100">
-                      {formatCurrency(changeInBase, baseCurrency)}
+                      {formatPrice(changeInBase, baseCurrency)}
                     </p>
                     {paymentCurrencies.length > 1 && paymentCurrencies.some((c) => c !== baseCurrency) && (
                       <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">

@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import type {
   CashierCompletedItem,
   CashierCompletedDateRange,
@@ -93,7 +94,7 @@ function exportToCSV(
       typeInfo.label,
       getItemsText(item),
       item.paymentMethods,
-      formatCurrency(item.totalAmount, currency).replace(/\u00a0/g, ' '),
+      formatPrice(item.totalAmount, currency).replace(/\u00a0/g, ' '),
     ];
   });
 
@@ -191,7 +192,7 @@ function CashierCompletedRow({
         </td>
         <td className="py-3 px-4 text-right">
           <span className="text-sm font-bold text-foreground">
-            {formatCurrency(item.totalAmount, currency)}
+            {formatPrice(item.totalAmount, currency)}
           </span>
         </td>
         <td className="py-3 px-4">
@@ -253,14 +254,14 @@ function CashierCompletedRow({
                           )}
                         </span>
                         <span className="font-semibold">
-                          {formatCurrency(Number(oi.total_price), currency)}
+                          {formatPrice(Number(oi.total_price), currency)}
                         </span>
                       </div>
                     ))}
                     <div className="border-t pt-2 mt-2">
                       <div className="flex justify-between text-sm font-bold">
                         <span>{t('cashier.totalToPay')}</span>
-                        <span>{formatCurrency(Number(item.order.total), currency)}</span>
+                        <span>{formatPrice(Number(item.order.total), currency)}</span>
                       </div>
                     </div>
                   </div>
@@ -281,14 +282,14 @@ function CashierCompletedRow({
                           {bi.quantity}× {bi.description}
                         </span>
                         <span className="font-semibold">
-                          {formatCurrency(bi.total_price, currency)}
+                          {formatPrice(bi.total_price, currency)}
                         </span>
                       </div>
                     ))}
                     <div className="border-t pt-2 mt-2">
                       <div className="flex justify-between text-sm font-bold">
                         <span>{t('cashier.totalToPay')}</span>
-                        <span>{formatCurrency(item.totalAmount, currency)}</span>
+                        <span>{formatPrice(item.totalAmount, currency)}</span>
                       </div>
                     </div>
                   </div>
@@ -400,7 +401,7 @@ export function CashierCompletedView({
           },
           {
             label: t('cashierCompleted.kpiRevenue'),
-            value: isLoading ? '—' : formatCurrency(stats.total, currency),
+            value: isLoading ? '—' : formatPrice(stats.total, currency),
             icon: <TrendingUp className="h-4 w-4" />,
             color: 'from-blue-400 to-indigo-600',
             bg: 'bg-blue-50 dark:bg-blue-950/30',
@@ -408,7 +409,7 @@ export function CashierCompletedView({
           },
           {
             label: t('cashierCompleted.kpiAvgTicket'),
-            value: isLoading ? '—' : formatCurrency(stats.avg, currency),
+            value: isLoading ? '—' : formatPrice(stats.avg, currency),
             icon: <Receipt className="h-4 w-4" />,
             color: 'from-purple-400 to-pink-600',
             bg: 'bg-purple-50 dark:bg-purple-950/30',
@@ -519,7 +520,7 @@ export function CashierCompletedView({
                 : t('cashierCompleted.ordersInPeriodPlur')}
             </p>
             <p className="text-sm font-bold text-foreground">
-              {t('cashierCompleted.total')}: {formatCurrency(stats.total, currency)}
+              {t('cashierCompleted.total')}: {formatPrice(stats.total, currency)}
             </p>
           </div>
         )}

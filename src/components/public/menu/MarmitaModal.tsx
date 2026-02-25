@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
 import { Check, UtensilsCrossed, Minus, Plus, X } from 'lucide-react';
 
@@ -214,7 +215,7 @@ export default function MarmitaModal({
                         {size.weight_grams}g
                       </div>
                       <div className={`text-sm font-semibold ${selectedSize?.id === size.id ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {formatCurrency(size.base_price, currency)}
+                        {formatPrice(size.base_price, currency)}
                       </div>
                     </div>
                     {selectedSize?.id === size.id && (
@@ -259,7 +260,7 @@ export default function MarmitaModal({
                             <p className="text-xs sm:text-sm text-muted-foreground">{protein.description}</p>
                           )}
                           <div className="text-xs sm:text-sm text-muted-foreground mt-1">
-                            {formatCurrency(protein.price_per_gram, currency)}/g
+                            {formatPrice(protein.price_per_gram, currency)}/g
                           </div>
                         </div>
                         {selected ? (
@@ -314,7 +315,7 @@ export default function MarmitaModal({
                               <Plus className="h-4 w-4" />
                             </Button>
                             <span className="text-sm text-muted-foreground ml-auto">
-                              {formatCurrency(protein.price_per_gram * selected.grams, currency)}
+                              {formatPrice(protein.price_per_gram * selected.grams, currency)}
                             </span>
                           </div>
                         </div>
@@ -362,7 +363,7 @@ export default function MarmitaModal({
                           </div>
                           {side.price_per_gram > 0 && (
                             <div className="text-xs text-muted-foreground mt-1">
-                              +{formatCurrency(side.price_per_gram * selectedSize.weight_grams, currency)}
+                              +{formatPrice(side.price_per_gram * selectedSize.weight_grams, currency)}
                             </div>
                           )}
                         </button>
@@ -415,7 +416,7 @@ export default function MarmitaModal({
             </div>
             <div className="text-right min-w-0 flex-shrink-0">
               <span className="text-xs text-muted-foreground block mb-1">{t('marmitaModal.total')}</span>
-              <span className="text-xl sm:text-2xl font-bold text-foreground whitespace-nowrap">{formatCurrency(calculatePrice() * quantity, currency)}</span>
+              <span className="text-xl sm:text-2xl font-bold text-foreground whitespace-nowrap">{formatPrice(calculatePrice() * quantity, currency)}</span>
             </div>
           </div>
           <Button

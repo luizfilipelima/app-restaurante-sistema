@@ -9,7 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatCurrency, formatBRLReais } from '@/lib/core/utils';
+import { formatBRLReais } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import {
   BarChart,
   Bar,
@@ -130,10 +131,10 @@ export default function SaasMetrics() {
       ['Total Restaurantes', String(metrics.total_tenants)],
       ['Novos (7 dias)', String(metrics.new_tenants_7d)],
       ['Novos (30 dias)', String(metrics.new_tenants_30d)],
-      ['GMV Total (BRL)', formatCurrency(metrics.gmv_total_brl)],
-      ['GMV 7 dias', formatCurrency(metrics.gmv_7d_brl)],
-      ['GMV 30 dias', formatCurrency(metrics.gmv_30d_brl)],
-      ['Ticket Médio', formatCurrency(metrics.ticket_medio_brl)],
+      ['GMV Total (BRL)', formatPrice(metrics.gmv_total_brl, 'BRL')],
+      ['GMV 7 dias', formatPrice(metrics.gmv_7d_brl, 'BRL')],
+      ['GMV 30 dias', formatPrice(metrics.gmv_30d_brl, 'BRL')],
+      ['Ticket Médio', formatPrice(metrics.ticket_medio_brl, 'BRL')],
       ['ARPU', formatBRLReais(arpu)],
     ];
     const csv = rows.map((r) => r.join(';')).join('\n');
@@ -270,7 +271,7 @@ export default function SaasMetrics() {
               <TrendingUp className="h-4 w-4 text-emerald-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{formatCurrency(metrics.gmv_total_brl)}</p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{formatPrice(metrics.gmv_total_brl, 'BRL')}</p>
           <p className="text-xs text-slate-400 mt-1">Faturamento total (convertido BRL)</p>
         </motion.div>
 
@@ -281,7 +282,7 @@ export default function SaasMetrics() {
               <Calendar className="h-4 w-4 text-sky-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{formatCurrency(metrics.gmv_7d_brl)}</p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{formatPrice(metrics.gmv_7d_brl, 'BRL')}</p>
           <p className="text-xs text-slate-400 mt-1">Últimos 7 dias</p>
         </motion.div>
 
@@ -292,7 +293,7 @@ export default function SaasMetrics() {
               <Calendar className="h-4 w-4 text-violet-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{formatCurrency(metrics.gmv_30d_brl)}</p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{formatPrice(metrics.gmv_30d_brl, 'BRL')}</p>
           <p className="text-xs text-slate-400 mt-1">Últimos 30 dias</p>
         </motion.div>
 
@@ -303,7 +304,7 @@ export default function SaasMetrics() {
               <ShoppingCart className="h-4 w-4 text-amber-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{formatCurrency(metrics.ticket_medio_brl)}</p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">{formatPrice(metrics.ticket_medio_brl, 'BRL')}</p>
           <p className="text-xs text-slate-400 mt-1">Por pedido (BRL)</p>
         </motion.div>
 
@@ -503,9 +504,9 @@ export default function SaasMetrics() {
                         {r.plan_label}
                       </span>
                     </td>
-                    <td className="py-3 px-2 text-right font-medium text-slate-700">{formatCurrency(r.gmv_7d_brl)}</td>
-                    <td className="py-3 px-2 text-right font-medium text-slate-700">{formatCurrency(r.gmv_30d_brl)}</td>
-                    <td className="py-3 px-2 text-right font-semibold text-slate-800">{formatCurrency(r.gmv_total_brl)}</td>
+                    <td className="py-3 px-2 text-right font-medium text-slate-700">{formatPrice(r.gmv_7d_brl, 'BRL')}</td>
+                    <td className="py-3 px-2 text-right font-medium text-slate-700">{formatPrice(r.gmv_30d_brl, 'BRL')}</td>
+                    <td className="py-3 px-2 text-right font-semibold text-slate-800">{formatPrice(r.gmv_total_brl, 'BRL')}</td>
                     <td className="py-3 px-2 text-right text-slate-600">{r.orders_total}</td>
                   </tr>
                 ))

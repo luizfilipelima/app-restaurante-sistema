@@ -13,7 +13,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import Barcode from 'react-barcode';
 import { supabase } from '@/lib/core/supabase';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import {
   ShoppingBag,
   AlertCircle,
@@ -141,7 +142,7 @@ function CartDrawer({
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-card-foreground truncate">{product.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {formatCurrency(product.price, currency)} × {quantity}
+                  {formatPrice(product.price, currency)} × {quantity}
                 </p>
               </div>
               <div className="flex items-center gap-1">
@@ -166,7 +167,7 @@ function CartDrawer({
         <div className="p-4 border-t border-border space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground font-medium">Total</span>
-            <span className="text-lg font-black text-foreground">{formatCurrency(total, currency)}</span>
+            <span className="text-lg font-black text-foreground">{formatPrice(total, currency)}</span>
           </div>
           <button
             onClick={onConfirm}
@@ -390,7 +391,7 @@ function MenuTab({ restaurantId, currency, comanda, onItemAdded }: MenuTabProps)
                         </p>
                       )}
                       <p className="text-sm font-bold text-primary mt-1.5">
-                        {formatCurrency(product.price, currency)}
+                        {formatPrice(product.price, currency)}
                       </p>
                       <div className="flex items-center gap-2 mt-2.5">
                         <div className="flex items-center gap-1 border border-border rounded-lg">
@@ -454,7 +455,7 @@ function MenuTab({ restaurantId, currency, comanda, onItemAdded }: MenuTabProps)
             {cart.reduce((s, i) => s + i.quantity, 0)} itens no carrinho
           </span>
           <span className="text-sm font-black">
-            {formatCurrency(
+            {formatPrice(
               cart.reduce((s, i) => s + i.product.price * i.quantity, 0),
               currency
             )}
@@ -627,7 +628,7 @@ function ComandaTab({ comanda, items, currency, onSaveCustomerName }: ComandaTab
                     )}
                   </div>
                   <span className="flex-shrink-0 text-sm font-semibold text-foreground">
-                    {formatCurrency(Number(item.total_price), currency)}
+                    {formatPrice(Number(item.total_price), currency)}
                   </span>
                 </div>
               ))}
@@ -635,7 +636,7 @@ function ComandaTab({ comanda, items, currency, onSaveCustomerName }: ComandaTab
             <div className="px-4 py-3.5 bg-muted border-t border-border flex items-center justify-between">
               <span className="text-sm font-semibold text-muted-foreground">Total parcial</span>
               <span className="text-lg font-black text-foreground">
-                {formatCurrency(total, currency)}
+                {formatPrice(total, currency)}
               </span>
             </div>
           </>
@@ -981,7 +982,7 @@ export default function VirtualComanda({ tenantSlug: slugFromSubdomain }: Virtua
               </span>
             </div>
             <span className="text-sm font-black text-primary-foreground">
-              {formatCurrency(items.reduce((s, i) => s + Number(i.total_price), 0), currency)}
+              {formatPrice(items.reduce((s, i) => s + Number(i.total_price), 0), currency)}
             </span>
           </button>
         </div>

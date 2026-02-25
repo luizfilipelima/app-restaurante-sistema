@@ -47,7 +47,7 @@ import {
 import { Tag, Plus, Pencil, Trash2, Loader2, ArrowRight, Package, Calendar, Repeat, Infinity } from 'lucide-react';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { toast } from '@/hooks/shared/use-toast';
-import { formatCurrency } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import { convertPriceToStorage, convertPriceFromStorage, getCurrencySymbol } from '@/lib/priceHelper';
 import { format, isBefore, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -409,8 +409,8 @@ export default function AdminOffers() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <span className="line-through text-muted-foreground text-sm">{formatCurrency(offer.original_price, currency)}</span>
-                            <span className="font-semibold text-orange-600">{formatCurrency(offer.offer_price, currency)}</span>
+                            <span className="line-through text-muted-foreground text-sm">{formatPrice(offer.original_price, currency)}</span>
+                            <span className="font-semibold text-orange-600">{formatPrice(offer.offer_price, currency)}</span>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -534,7 +534,7 @@ export default function AdminOffers() {
                           ) : (
                             <Package className="h-4 w-4 text-muted-foreground" />
                           )}
-                          {p.name} — {formatCurrency(Number(p.price_sale || p.price), currency)}
+                          {p.name} — {formatPrice(Number(p.price_sale || p.price), currency)}
                         </span>
                       </SelectItem>
                     ))}

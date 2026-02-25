@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
 import { Check, Pizza as PizzaIcon, Minus, Plus, X } from 'lucide-react';
 
@@ -175,7 +176,7 @@ export default function PizzaModal({
                         </div>
                       )}
                       <div className={`text-sm font-semibold ${selectedSize?.id === size.id ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {formatCurrency(product.price, currency)}
+                        {formatPrice(product.price, currency)}
                       </div>
                     </div>
                     {selectedSize?.id === size.id && (
@@ -246,7 +247,7 @@ export default function PizzaModal({
                         )}
                         {flavor.price > 0 && (
                           <div className={`text-xs font-semibold mt-1 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
-                            +{formatCurrency(flavor.price, currency)}
+                            +{formatPrice(flavor.price, currency)}
                           </div>
                         )}
                       </div>
@@ -287,7 +288,7 @@ export default function PizzaModal({
                       >
                         {dough.name}{' '}
                         {dough.extra_price > 0 && (
-                          <span className="text-xs opacity-90">(+{formatCurrency(dough.extra_price, currency)})</span>
+                          <span className="text-xs opacity-90">(+{formatPrice(dough.extra_price, currency)})</span>
                         )}
                       </button>
                     ))}
@@ -326,7 +327,7 @@ export default function PizzaModal({
                       >
                         <span className="font-semibold text-base text-foreground">{edge.name}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-muted-foreground">+{formatCurrency(edge.price, currency)}</span>
+                          <span className="text-sm font-bold text-muted-foreground">+{formatPrice(edge.price, currency)}</span>
                           {selectedEdge?.id === edge.id && (
                             <div className="bg-primary rounded-full p-1.5 flex-shrink-0">
                               <Check className="h-4 w-4 text-primary-foreground" />
@@ -403,7 +404,7 @@ export default function PizzaModal({
             <div className="text-right min-w-0 flex-shrink-0">
               <span className="text-xs text-muted-foreground block mb-1">{t('pizzaModal.total')}</span>
               <span className="text-xl sm:text-2xl font-bold text-foreground whitespace-nowrap">
-                {formatCurrency(calculatePrice() * quantity, currency)}
+                {formatPrice(calculatePrice() * quantity, currency)}
               </span>
             </div>
           </div>

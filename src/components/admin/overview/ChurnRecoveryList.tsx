@@ -1,6 +1,7 @@
 import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import type { DashboardRetentionRiskItem } from '@/types/dashboard-analytics';
 
 function normalizePhone(phone: string | null | undefined): string {
@@ -50,7 +51,7 @@ export function ChurnRecoveryList({ clients, currency = 'BRL' }: ChurnRecoveryLi
                 {nome}
               </p>
               <p className="text-sm text-slate-500">
-                Total gasto: {formatCurrency(Number(client.total_gasto), currency)}
+                Total gasto: {formatPrice(Number(client.total_gasto), currency)}
               </p>
             </div>
             {hasPhone ? (

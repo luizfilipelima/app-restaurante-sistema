@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import type { DatabaseOrder } from '@/types';
 import type { CompletedOrdersDateRange } from '@/hooks/queries/useCompletedOrders';
 import { useCompletedOrders } from '@/hooks/queries/useCompletedOrders';
@@ -80,7 +81,7 @@ function exportToCSV(orders: DatabaseOrder[], restaurantName: string, currency: 
       ? 'Mesa'
       : paymentMethodLabels[order.payment_method] ?? order.payment_method;
 
-    const fmt = (v: number) => formatCurrency(v, currency).replace(/\u00a0/g, ' ');
+    const fmt = (v: number) => formatPrice(v, currency).replace(/\u00a0/g, ' ');
 
     return [
       `#${order.id.slice(0, 8).toUpperCase()}`,
@@ -209,7 +210,7 @@ function OrderRow({ order, currency, onPrint }: OrderRowProps) {
         {/* Total */}
         <td className="py-3 px-4 text-right">
           <span className="text-sm font-bold text-foreground">
-            {formatCurrency(Number(order.total), currency)}
+            {formatPrice(Number(order.total), currency)}
           </span>
         </td>
         {/* Ações */}
@@ -267,7 +268,7 @@ function OrderRow({ order, currency, onPrint }: OrderRowProps) {
                         </div>
                       </div>
                       <span className="text-xs font-semibold text-foreground flex-shrink-0">
-                        {formatCurrency(Number(item.total_price), currency)}
+                        {formatPrice(Number(item.total_price), currency)}
                       </span>
                     </div>
                   ))}
@@ -275,18 +276,18 @@ function OrderRow({ order, currency, onPrint }: OrderRowProps) {
                     {Number(order.delivery_fee) > 0 && (
                       <div className="flex justify-between text-xs text-muted-foreground">
                         <span>Subtotal</span>
-                        <span>{formatCurrency(Number(order.subtotal), currency)}</span>
+                        <span>{formatPrice(Number(order.subtotal), currency)}</span>
                       </div>
                     )}
                     {Number(order.delivery_fee) > 0 && (
                       <div className="flex justify-between text-xs text-muted-foreground">
                         <span>Taxa de entrega</span>
-                        <span>{formatCurrency(Number(order.delivery_fee), currency)}</span>
+                        <span>{formatPrice(Number(order.delivery_fee), currency)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-sm font-bold text-foreground">
                       <span>Total</span>
-                      <span>{formatCurrency(Number(order.total), currency)}</span>
+                      <span>{formatPrice(Number(order.total), currency)}</span>
                     </div>
                   </div>
                 </div>
@@ -330,7 +331,7 @@ function OrderRow({ order, currency, onPrint }: OrderRowProps) {
                       Troco
                     </p>
                     <p className="text-xs text-foreground/80">
-                      Para {formatCurrency(Number(order.payment_change_for), currency)}
+                      Para {formatPrice(Number(order.payment_change_for), currency)}
                     </p>
                   </div>
                 )}
@@ -418,7 +419,7 @@ export function CompletedOrdersView({
           },
           {
             label: 'Faturamento',
-            value: isLoading ? '—' : formatCurrency(stats.total, currency),
+            value: isLoading ? '—' : formatPrice(stats.total, currency),
             icon: <TrendingUp className="h-4 w-4" />,
             color: 'from-blue-400 to-indigo-600',
             bg: 'bg-blue-50',
@@ -426,7 +427,7 @@ export function CompletedOrdersView({
           },
           {
             label: 'Ticket médio',
-            value: isLoading ? '—' : formatCurrency(stats.avg, currency),
+            value: isLoading ? '—' : formatPrice(stats.avg, currency),
             icon: <Receipt className="h-4 w-4" />,
             color: 'from-purple-400 to-pink-600',
             bg: 'bg-purple-50',
@@ -526,7 +527,7 @@ export function CompletedOrdersView({
               {orders.length} {orders.length === 1 ? 'pedido' : 'pedidos'} no período
             </p>
             <p className="text-sm font-bold text-foreground">
-              Total: {formatCurrency(stats.total, currency)}
+              Total: {formatPrice(stats.total, currency)}
             </p>
           </div>
         )}

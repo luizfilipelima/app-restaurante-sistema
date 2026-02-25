@@ -33,8 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatCurrency } from '@/lib/core/utils';
-import { convertPriceToStorage, convertPriceFromStorage, convertBetweenCurrencies, getCurrencySymbol, formatPriceInputPyG } from '@/lib/priceHelper';
+import { convertPriceToStorage, convertPriceFromStorage, convertBetweenCurrencies, getCurrencySymbol, formatPrice, formatPriceInputPyG } from '@/lib/priceHelper';
 import type { CurrencyCode } from '@/lib/priceHelper';
 import type { DeliveryZone, DeliveryDistanceTier } from '@/types';
 import { Plus, Edit, Trash2, MapPin, Truck, Loader2, Gauge, MapPinned, Package } from 'lucide-react';
@@ -373,7 +372,7 @@ export default function AdminDeliveryZones() {
   };
 
   const getTierLabel = (tier: DeliveryDistanceTier) =>
-    `${Number(tier.km_min)} km até ${tier.km_max != null ? `${Number(tier.km_max)} km` : '+'} → ${tier.fee === 0 ? 'Grátis' : formatCurrency(tier.fee, baseCurrency)}`;
+    `${Number(tier.km_min)} km até ${tier.km_max != null ? `${Number(tier.km_max)} km` : '+'} → ${tier.fee === 0 ? 'Grátis' : formatPrice(tier.fee, baseCurrency)}`;
 
   if (loading) {
     return (
@@ -505,7 +504,7 @@ export default function AdminDeliveryZones() {
                       </div>
                       <div className="mb-4">
                         <p className="text-xl font-bold text-primary">
-                          {zone.fee === 0 ? 'Grátis' : formatCurrency(zone.fee, baseCurrency)}
+                          {zone.fee === 0 ? 'Grátis' : formatPrice(zone.fee, baseCurrency)}
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           Raio {(zone.radius_meters ?? 2000) >= 1000

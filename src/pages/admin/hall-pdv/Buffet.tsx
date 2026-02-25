@@ -7,7 +7,7 @@ import { useOfflineSync } from '@/hooks/shared/useOfflineSync';
 import { supabase } from '@/lib/core/supabase';
 import { Product, ComandaWithItems } from '@/types';
 import { offlineDB } from '@/lib/offline-db';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
 import {
   convertPriceToStorage,
   convertPriceFromStorage,
@@ -280,7 +280,7 @@ function ScannerPanel({
                   <Scale className="h-3.5 w-3.5" />
                   {selectedProduct.name}
                   <span className="ml-auto font-normal text-amber-600">
-                    {formatCurrency(selectedProduct.price_sale ?? selectedProduct.price ?? buffetPricePerKg ?? 0, currency)}/kg
+                    {formatPrice(selectedProduct.price_sale ?? selectedProduct.price ?? buffetPricePerKg ?? 0, currency)}/kg
                   </span>
                 </div>
                 <div className="flex gap-2">
@@ -327,7 +327,7 @@ function ScannerPanel({
                   <span className="text-sm font-bold text-[#F87116] text-right">
                     {exchangeRates && paymentCurrencies?.length
                       ? formatTotalMultiCurrency(selectedComanda.total_amount, currency, exchangeRates, paymentCurrencies)
-                      : formatCurrency(selectedComanda.total_amount, currency)}
+                      : formatPrice(selectedComanda.total_amount, currency)}
                   </span>
                   <button onClick={onDeselectComanda} className="h-6 w-6 flex-shrink-0 flex items-center justify-center rounded-md text-slate-400 hover:bg-orange-100 hover:text-slate-600 transition-colors">
                     <X className="h-3.5 w-3.5" />
@@ -372,7 +372,7 @@ function ScannerPanel({
                         ? <Loader2 className="h-4 w-4 animate-spin" />
                         : exchangeRates && paymentCurrencies?.length
                           ? formatTotalMultiCurrency(activeVirtualComanda.total_amount, currency, exchangeRates, paymentCurrencies)
-                          : formatCurrency(activeVirtualComanda.total_amount, currency)
+                          : formatPrice(activeVirtualComanda.total_amount, currency)
                       }
                     </span>
                     <button onClick={onDeselectVirtual} className="h-6 w-6 flex-shrink-0 flex items-center justify-center rounded-md text-emerald-400 hover:bg-emerald-100 hover:text-emerald-700 transition-colors">
@@ -439,7 +439,7 @@ function ScannerPanel({
                   {product.name}
                 </p>
                 <p className="text-[10px] text-slate-500">
-                  {formatCurrency(product.price_sale ?? product.price ?? buffetPricePerKg ?? 0, currency)}
+                  {formatPrice(product.price_sale ?? product.price ?? buffetPricePerKg ?? 0, currency)}
                   {product.is_by_weight && <span className="text-amber-600 font-medium">/kg</span>}
                   {product.sku && <span className="ml-2 text-slate-400 font-mono">{product.sku}</span>}
                 </p>
@@ -519,7 +519,7 @@ function ComandaCard({
           <p className={`text-xl font-extrabold leading-none tabular-nums ${isSelected ? 'text-[#F87116]' : 'text-slate-900'}`}>
             {exchangeRates && paymentCurrencies?.length
               ? formatTotalMultiCurrency(comanda.total_amount, currency, exchangeRates, paymentCurrencies)
-              : formatCurrency(comanda.total_amount, currency)}
+              : formatPrice(comanda.total_amount, currency)}
           </p>
         </div>
       </div>
@@ -541,11 +541,11 @@ function ComandaCard({
                     <p className="text-slate-400">
                       {item.quantity % 1 !== 0 ? item.quantity.toFixed(3) : item.quantity}
                       {' × '}
-                      {formatCurrency(item.unit_price, currency)}
+                      {formatPrice(item.unit_price, currency)}
                     </p>
                   </div>
                   <span className="font-semibold text-slate-700 flex-shrink-0 tabular-nums">
-                    {formatCurrency(item.total_price, currency)}
+                    {formatPrice(item.total_price, currency)}
                   </span>
                 </div>
               ))}
@@ -953,7 +953,7 @@ export default function Buffet() {
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Abertas', value: String(comandas.length), icon: Receipt, color: 'text-[#F87116]', bg: 'bg-orange-50' },
-          { label: 'Total aberto', value: paymentCurrencies.length ? formatTotalMultiCurrency(totalAberto, currency, exchangeRates, paymentCurrencies) : formatCurrency(totalAberto, currency), icon: ShoppingBag, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Total aberto', value: paymentCurrencies.length ? formatTotalMultiCurrency(totalAberto, currency, exchangeRates, paymentCurrencies) : formatPrice(totalAberto, currency), icon: ShoppingBag, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: 'Selecionada', value: selectedComanda ? `#${selectedComanda.number}` : '—', icon: Zap, color: 'text-indigo-600', bg: 'bg-indigo-50' },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className="rounded-xl border border-slate-100 bg-white px-4 py-3 flex items-center gap-3 shadow-sm">
@@ -1069,7 +1069,7 @@ export default function Buffet() {
                 <p className="text-3xl font-extrabold text-slate-900 tracking-tight">
                   {paymentCurrencies.length
                     ? formatTotalMultiCurrency(deletingComanda.total_amount, currency, exchangeRates, paymentCurrencies)
-                    : formatCurrency(deletingComanda.total_amount, currency)}
+                    : formatPrice(deletingComanda.total_amount, currency)}
                 </p>
                 <p className="text-xs text-slate-400 mt-1">
                   {deletingComanda.items?.length ?? 0} item(s) · {formatTimeOpen(deletingComanda.opened_at)} aberta

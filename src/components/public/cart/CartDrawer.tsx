@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
 import { Plus, Minus, Trash2, Sparkles, ShoppingBag, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -90,7 +91,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
     onCheckout();
   };
 
-  const fmt = (v: number) => formatCurrency(convertForDisplay ? convertForDisplay(v) : v, currency);
+  const fmt = (v: number) => formatPrice(convertForDisplay ? convertForDisplay(v) : v, currency);
 
   return (
     <AnimatePresence>

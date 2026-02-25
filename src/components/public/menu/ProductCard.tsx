@@ -4,7 +4,8 @@
  */
 import { memo } from 'react';
 import { Product } from '@/types';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
 import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
@@ -101,11 +102,11 @@ function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', con
           <div className="min-w-0">
             {isOffer && (
               <span className="text-xs text-muted-foreground line-through mr-2">
-                {formatCurrency(convertForDisplay ? convertForDisplay(offer.originalPrice) : offer.originalPrice, currency)}
+                {formatPrice(convertForDisplay ? convertForDisplay(offer.originalPrice) : offer.originalPrice, currency)}
               </span>
             )}
             <span className="text-sm font-semibold text-foreground tabular-nums">
-              {formatCurrency(displayPrice, currency)}
+              {formatPrice(displayPrice, currency)}
             </span>
           </div>
 

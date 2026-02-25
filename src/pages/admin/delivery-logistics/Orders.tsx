@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/shared/use-toast';
-import { formatCurrency, formatPhone, getCardapioPublicUrl, ensurePhoneForWhatsApp, inferPhoneCountry, normalizePhoneWithCountryCode } from '@/lib/core/utils';
+import { formatPhone, getCardapioPublicUrl, ensurePhoneForWhatsApp, inferPhoneCountry, normalizePhoneWithCountryCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -310,11 +311,11 @@ export default function AdminOrders() {
         .join('\n');
 
       const orderLang = ((dispatchOrder as { customer_language?: string })?.customer_language === 'es' || (restaurant as { language?: string })?.language === 'es') ? 'es' as const : 'pt' as const;
-      const subtotalFmt = formatCurrency(dispatchOrder.subtotal ?? 0, currency);
+      const subtotalFmt = formatPrice(dispatchOrder.subtotal ?? 0, currency);
       const taxaFmt = dispatchOrder.delivery_fee != null && dispatchOrder.delivery_fee > 0
-        ? formatCurrency(dispatchOrder.delivery_fee, currency)
+        ? formatPrice(dispatchOrder.delivery_fee, currency)
         : '';
-      const totalFmt = formatCurrency(dispatchOrder.total ?? 0, currency);
+      const totalFmt = formatPrice(dispatchOrder.total ?? 0, currency);
       const restaurantCountry = (restaurant as { phone_country?: string })?.phone_country === 'PY' ? 'PY' as const
         : (restaurant as { phone_country?: string })?.phone_country === 'AR' ? 'AR' as const : 'BR' as const;
       const digits = (dispatchOrder.customer_phone ?? '').replace(/\D/g, '');
@@ -805,7 +806,7 @@ export default function AdminOrders() {
                                 )}
                               </div>
                               <span className="text-sm font-bold text-foreground">
-                                {formatCurrency(
+                                {formatPrice(
                                   (order.total != null && order.total !== 0)
                                     ? order.total
                                     : (order.order_items?.reduce((s, i) => s + (i.total_price ?? 0), 0) ?? 0),

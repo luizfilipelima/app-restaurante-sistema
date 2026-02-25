@@ -33,7 +33,7 @@ import {
 import { Ticket, Plus, Pencil, Trash2, Loader2, ArrowRight } from 'lucide-react';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { toast } from '@/hooks/shared/use-toast';
-import { formatCurrency } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import { convertPriceToStorage, convertPriceFromStorage, getCurrencySymbol } from '@/lib/priceHelper';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -222,7 +222,7 @@ export default function AdminCoupons() {
   const formatDiscount = (c: DiscountCoupon) =>
     c.discount_type === 'percent'
       ? `${c.discount_value}%`
-      : formatCurrency(c.discount_value, currency);
+      : formatPrice(c.discount_value, currency);
 
   const formatValidity = (c: DiscountCoupon) => {
     if (!c.valid_from && !c.valid_until) return '—';

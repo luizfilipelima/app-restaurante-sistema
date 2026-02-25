@@ -7,19 +7,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Re-export para compatibilidade; preferir import de @/lib/priceHelper */
 export type CurrencyCode = 'BRL' | 'PYG' | 'ARS' | 'USD';
-
-/** 
- * Formata valor na moeda informada usando a estratégia de armazenamento:
- * - BRL: valor vem em centavos do banco, divide por 100
- * - PYG: valor vem inteiro do banco, usa direto
- * 
- * @deprecated Use formatPrice de priceHelper.ts diretamente para melhor performance
- * Mantido para compatibilidade durante migração
- */
-export function formatCurrency(value: number, currency: CurrencyCode = 'BRL'): string {
-  return formatPrice(value, currency);
-}
 
 /** Formata valor em BRL já em reais (ex.: subscription_plans.price_brl). Não divide por 100. */
 export function formatBRLReais(value: number): string {
@@ -91,9 +80,9 @@ export function generateWhatsAppLink(phone: string, message: string): string {
   return `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
 }
 
-/** Formata valor em Guaranies (Paraguai). Prefira formatCurrency(value, 'PYG'). */
+/** Formata valor em Guaranies (Paraguai). */
 export function formatGuarani(value: number): string {
-  return formatCurrency(value, 'PYG');
+  return formatPrice(value, 'PYG');
 }
 
 /**

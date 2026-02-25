@@ -17,7 +17,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { formatCurrency, generateSlug } from '@/lib/core/utils';
+import { generateSlug } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -274,7 +275,7 @@ function RestaurantCard({
             <div className="w-px h-3 bg-slate-200" />
             <div className="flex items-center gap-1 text-xs text-slate-500">
               <ReceiptText className="h-3 w-3 text-slate-400" />
-              <span className="font-medium text-slate-700">{formatCurrency(revenue, (restaurant.currency as 'BRL' | 'PYG' | 'ARS') || 'BRL')}</span>
+              <span className="font-medium text-slate-700">{formatPrice(revenue, (restaurant.currency as 'BRL' | 'PYG' | 'ARS') || 'BRL')}</span>
             </div>
           </div>
 
@@ -636,7 +637,7 @@ export default function SuperAdminDashboard() {
           label="GMV total (BRL)"
           value={
             (metrics.revenueByCurrency && Object.keys(metrics.revenueByCurrency).length > 0)
-              ? formatCurrency(gmvInBRL, 'BRL')
+              ? formatPrice(gmvInBRL, 'BRL')
               : '—'
           }
           sub="Convertido com câmbio configurado"
@@ -655,8 +656,8 @@ export default function SuperAdminDashboard() {
           value={
             (metrics.ordersByCurrency && Object.keys(metrics.ordersByCurrency).length > 0) ||
             (metrics.revenueByCurrency && Object.keys(metrics.revenueByCurrency ?? {}).length > 0)
-              ? formatCurrency(ticketMedioBRL, 'BRL')
-              : formatCurrency(0)
+              ? formatPrice(ticketMedioBRL, 'BRL')
+              : formatPrice(0, 'BRL')
           }
           sub="por pedido, convertido para Real"
           icon={TrendingUp}

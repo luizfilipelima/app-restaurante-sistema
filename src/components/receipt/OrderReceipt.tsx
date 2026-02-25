@@ -1,6 +1,7 @@
 import { DatabaseOrder } from '@/types';
 import type { PrintSettingsBySector } from '@/types';
-import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
+import { type CurrencyCode } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -107,7 +108,7 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
           <div className="receipt-row">
             <strong>Pagamento:</strong> {paymentLabel}
             {order.payment_method === 'cash' && order.payment_change_for != null && paymentLabel === 'Dinheiro' && (
-              <> (Troco p/ {formatCurrency(Number(order.payment_change_for), currency)})</>
+              <> (Troco p/ {formatPrice(Number(order.payment_change_for), currency)})</>
             )}
           </div>
           <div className="receipt-row receipt-date">
@@ -135,7 +136,7 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
                   {item.product_name}{addonsStr}
                   {item.observations ? ` (${item.observations})` : ''}
                 </span>
-                <span>{formatCurrency(Number(item.total_price), currency)}</span>
+                <span>{formatPrice(Number(item.total_price), currency)}</span>
               </div>
             );
           })}
@@ -146,23 +147,23 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
         <section className="receipt-section receipt-totals">
           <div className="receipt-row">
             <span>Subtotal</span>
-            <span>{formatCurrency(subtotal, currency)}</span>
+            <span>{formatPrice(subtotal, currency)}</span>
           </div>
           {deliveryFee > 0 && (
             <div className="receipt-row">
               <span>Taxa de entrega</span>
-              <span>{formatCurrency(deliveryFee, currency)}</span>
+              <span>{formatPrice(deliveryFee, currency)}</span>
             </div>
           )}
           {waiterTipAmount > 0 && (
             <div className="receipt-row">
               <span>Taxa de garçom ({waiterTipPct}%)</span>
-              <span>{formatCurrency(waiterTipAmount, currency)}</span>
+              <span>{formatPrice(waiterTipAmount, currency)}</span>
             </div>
           )}
           <div className="receipt-row receipt-total">
             <span>TOTAL</span>
-            <span>{formatCurrency(total, currency)}</span>
+            <span>{formatPrice(total, currency)}</span>
           </div>
         </section>
 

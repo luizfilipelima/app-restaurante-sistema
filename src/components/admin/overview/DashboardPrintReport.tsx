@@ -11,7 +11,7 @@
  */
 
 import { forwardRef } from 'react';
-import { formatCurrency } from '@/lib/core/utils';
+import { formatPrice } from '@/lib/priceHelper';
 import type { CurrencyCode } from '@/lib/priceHelper';
 import { format } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
@@ -253,7 +253,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
                   background: '#fafafa',
                 }}>
                   <div style={{ fontSize: 8, color: '#6b7280', marginBottom: 2 }}>{t('print.revenue')}</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: '#111827' }}>{formatCurrency(totalRevenue, currency)}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#111827' }}>{formatPrice(totalRevenue, currency)}</div>
                 </div>
                 <div style={{
                   flex: '1 1 100px',
@@ -264,7 +264,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
                   background: '#fafafa',
                 }}>
                   <div style={{ fontSize: 8, color: '#6b7280', marginBottom: 2 }}>{t('print.estimatedProfit')}</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: grossProfit >= 0 ? '#059669' : '#dc2626' }}>{formatCurrency(grossProfit, currency)}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: grossProfit >= 0 ? '#059669' : '#dc2626' }}>{formatPrice(grossProfit, currency)}</div>
                 </div>
                 <div style={{
                   flex: '1 1 100px',
@@ -275,7 +275,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
                   background: '#fafafa',
                 }}>
                   <div style={{ fontSize: 8, color: '#6b7280', marginBottom: 2 }}>{t('print.avgTicket')}</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: '#111827' }}>{formatCurrency(avgTicket, currency)}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#111827' }}>{formatPrice(avgTicket, currency)}</div>
                 </div>
               </div>
               <KpiRow label={t('print.totalOrders')} value={String(totalOrders)} />
@@ -285,9 +285,9 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
           {isThermal && (
             <div style={{ marginBottom: 12 }}>
               <div style={{ fontSize: 9, fontWeight: 800, marginBottom: 4, color: '#111827' }}>{t('print.financial')}</div>
-              <KpiRow label={t('print.revenue')} value={formatCurrency(totalRevenue, currency)} highlight />
-              <KpiRow label={t('print.estimatedProfit')} value={formatCurrency(grossProfit, currency)} />
-              <KpiRow label={t('print.avgTicket')} value={formatCurrency(avgTicket, currency)} />
+              <KpiRow label={t('print.revenue')} value={formatPrice(totalRevenue, currency)} highlight />
+              <KpiRow label={t('print.estimatedProfit')} value={formatPrice(grossProfit, currency)} />
+              <KpiRow label={t('print.avgTicket')} value={formatPrice(avgTicket, currency)} />
               <KpiRow label={t('print.totalOrders')} value={String(totalOrders)} />
             </div>
           )}
@@ -364,7 +364,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
                   <KpiRow
                     key={pm.name}
                     label={`${name} (${pct}%)`}
-                    value={formatCurrency(pm.value, currency)}
+                    value={formatPrice(pm.value, currency)}
                   />
                 ) : (
                   <BarRow
@@ -372,7 +372,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
                     label={`${name} (${pct}%)`}
                     value={pm.value}
                     max={maxPayment}
-                    formatted={formatCurrency(pm.value, currency)}
+                    formatted={formatPrice(pm.value, currency)}
                   />
                 );
               })}
@@ -440,7 +440,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1, fontSize: 9 }}>
                     <span style={{ fontWeight: 600 }}>{d.date}</span>
                     <span>
-                      {formatCurrency(d.revenue, currency)}
+                      {formatPrice(d.revenue, currency)}
                       <span style={{ color: '#6b7280', fontSize: 9, marginLeft: 6 }}>({d.orders})</span>
                     </span>
                   </div>
