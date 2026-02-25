@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import type { DashboardKPIs } from '@/types/dashboard-analytics';
-import { isUUID } from '@/hooks/useResolveRestaurantId';
+import { isUUID } from '@/hooks/admin/useResolveRestaurantId';
 
 export interface UseDashboardKPIsParams {
   tenantId: string | null;

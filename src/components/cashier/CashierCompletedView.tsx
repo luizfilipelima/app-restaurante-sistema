@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
 import type {
   CashierCompletedItem,
   CashierCompletedDateRange,

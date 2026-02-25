@@ -4,8 +4,8 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
-import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/core/supabase';
+import { toast } from '@/hooks/shared/use-toast';
 
 export interface ExpoOrderItem {
   id: string;

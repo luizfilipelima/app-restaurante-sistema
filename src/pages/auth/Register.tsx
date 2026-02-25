@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
-import { generateSlug } from '@/lib/utils';
+import { supabase } from '@/lib/core/supabase';
+import { generateSlug } from '@/lib/core/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import {
   Loader2,
   AlertCircle,

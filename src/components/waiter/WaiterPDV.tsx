@@ -7,16 +7,16 @@
  */
 
 import { useState, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatPrice } from '@/lib/priceHelper';
 import { ArrowLeft, Send, Plus, Minus, Trash2, Loader2, User } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import type { Product } from '@/types';
 import type { TableWithStatus } from '@/hooks/queries';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/core/utils';
 
 export interface WaiterPDVItem {
   productId: string;

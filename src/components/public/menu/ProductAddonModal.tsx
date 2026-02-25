@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from 'react';
 import { Product } from '@/types';
-import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';

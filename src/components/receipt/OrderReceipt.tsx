@@ -1,6 +1,6 @@
 import { DatabaseOrder } from '@/types';
 import type { PrintSettingsBySector } from '@/types';
-import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 

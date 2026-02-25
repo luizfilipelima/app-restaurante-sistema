@@ -2,12 +2,12 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
-import { useComandas } from '@/hooks/useComandas';
-import { useOfflineSync } from '@/hooks/useOfflineSync';
-import { supabase } from '@/lib/supabase';
+import { useComandas } from '@/hooks/orders/useComandas';
+import { useOfflineSync } from '@/hooks/shared/useOfflineSync';
+import { supabase } from '@/lib/core/supabase';
 import { Product, ComandaWithItems } from '@/types';
 import { offlineDB } from '@/lib/offline-db';
-import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
 import {
   convertPriceToStorage,
   convertPriceFromStorage,
@@ -18,7 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { FeatureGuard } from '@/components/auth/FeatureGuard';
 import { motion, AnimatePresence } from 'framer-motion';

@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
-import { computeDashboardAdvancedStatsFallback } from '@/lib/dashboard-fallback';
-import { isUUID } from '@/hooks/useResolveRestaurantId';
+import { computeDashboardAdvancedStatsFallback } from '@/lib/dashboard/dashboard-fallback';
+import { isUUID } from '@/hooks/admin/useResolveRestaurantId';
 
 export interface UseDashboardStatsParams {
   tenantId: string | null;

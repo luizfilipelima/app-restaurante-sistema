@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { formatPrice } from './priceHelper';
+import { formatPrice } from '../priceHelper';
 import type { BankAccountByCountry, PaymentBankAccountSnapshot } from '@/types';
 
 export function cn(...inputs: ClassValue[]) {

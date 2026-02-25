@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { useAdminRestaurantId, useAdminCurrency, useAdminBasePath, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
-import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
+import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
 import { useDiscountCoupons } from '@/hooks/queries/useDiscountCoupons';
 import type { DiscountCoupon } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -31,9 +31,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Ticket, Plus, Pencil, Trash2, Loader2, ArrowRight } from 'lucide-react';
-import { useAdminTranslation } from '@/hooks/useAdminTranslation';
-import { toast } from '@/hooks/use-toast';
-import { formatCurrency } from '@/lib/utils';
+import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
+import { toast } from '@/hooks/shared/use-toast';
+import { formatCurrency } from '@/lib/core/utils';
 import { convertPriceToStorage, convertPriceFromStorage, getCurrencySymbol } from '@/lib/priceHelper';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';

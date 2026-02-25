@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
-import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
 
 const PAYMENT_LABELS: Record<string, string> = {
   pix: 'PIX',

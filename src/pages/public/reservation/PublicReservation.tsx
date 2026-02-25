@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Barcode from 'react-barcode';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, CheckCircle2, CalendarClock, AlertCircle } from 'lucide-react';
-import { normalizePhoneWithCountryCode } from '@/lib/utils';
+import { normalizePhoneWithCountryCode } from '@/lib/core/utils';
 import { PhoneCountryInput } from '@/components/ui/PhoneCountryInput';
 
 interface Restaurant {

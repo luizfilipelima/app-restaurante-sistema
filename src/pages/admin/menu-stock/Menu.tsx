@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import {
   convertPriceToStorage,
@@ -41,9 +41,9 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { useQueryClient } from '@tanstack/react-query';
-import { toast } from '@/hooks/use-toast';
-import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/utils';
-import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
+import { toast } from '@/hooks/shared/use-toast';
+import { formatCurrency, generateSlug, getCardapioPublicUrl } from '@/lib/core/utils';
+import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
 import { uploadProductImage } from '@/lib/imageUpload';
 import {
   DndContext,
@@ -93,13 +93,13 @@ import {
   Smartphone,
   Palette,
 } from 'lucide-react';
-import MenuQRCodeCard from '@/components/admin/MenuQRCodeCard';
-import MenuMobilePreview from '@/components/admin/MenuMobilePreview';
-import MenuThemeSelector from '@/components/admin/MenuThemeSelector';
-import CategoryIconPicker from '@/components/admin/CategoryIconPicker';
-import { getCategoryIconComponent } from '@/lib/categoryIcons';
-import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/ProductAddonsSection';
-import ProductAllergensLabelsSection from '@/components/admin/ProductAllergensLabelsSection';
+import MenuQRCodeCard from '@/components/admin/menu-stock/MenuQRCodeCard';
+import MenuMobilePreview from '@/components/admin/menu-stock/MenuMobilePreview';
+import MenuThemeSelector from '@/components/admin/menu-stock/MenuThemeSelector';
+import CategoryIconPicker from '@/components/admin/menu-stock/CategoryIconPicker';
+import { getCategoryIconComponent } from '@/lib/menu/categoryIcons';
+import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/menu-stock/ProductAddonsSection';
+import ProductAllergensLabelsSection from '@/components/admin/menu-stock/ProductAllergensLabelsSection';
 import { useProductUpsells, useSaveProductUpsells, useProductComboItems, useProductAddons, useSaveProductAddons } from '@/hooks/queries';
 
 // ─── Constants ────────────────────────────────────────────────────────────────

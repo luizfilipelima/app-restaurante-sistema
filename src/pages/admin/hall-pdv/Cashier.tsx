@@ -14,12 +14,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant, useHallZones } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import {
   formatCurrency,
   getComandaPublicUrl,
   type CurrencyCode,
-} from '@/lib/utils';
+} from '@/lib/core/utils';
 import {
   convertBetweenCurrencies,
   getCurrencySymbol,
@@ -27,8 +27,8 @@ import {
   type ExchangeRates,
 } from '@/lib/priceHelper';
 import { FeatureGuard } from '@/components/auth/FeatureGuard';
-import { toast } from '@/hooks/use-toast';
-import { usePrinter } from '@/hooks/usePrinter';
+import { toast } from '@/hooks/shared/use-toast';
+import { usePrinter } from '@/hooks/printer/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,7 +62,7 @@ import {
   ListChecks,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { CashierCompletedView } from '@/components/cashier/CashierCompletedView';
 import { useTables } from '@/hooks/queries';
 

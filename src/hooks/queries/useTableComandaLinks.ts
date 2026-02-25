@@ -3,7 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import type { TableComandaLink } from '@/types';
 
 export interface TableComandaLinkWithComanda extends TableComandaLink {

@@ -1,7 +1,7 @@
 import { Outlet, useParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
-import { useResolveRestaurantId } from '@/hooks/useResolveRestaurantId';
+import { useResolveRestaurantId } from '@/hooks/admin/useResolveRestaurantId';
 
 /**
  * Envolve o AdminLayout para três cenários de rota:

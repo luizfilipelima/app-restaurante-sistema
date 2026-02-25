@@ -3,7 +3,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import type { Product } from '@/types';
 
 async function fetchAdminProducts(restaurantId: string | null): Promise<Product[]> {

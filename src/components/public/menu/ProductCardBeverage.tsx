@@ -4,7 +4,7 @@
 import { memo } from 'react';
 import ProductCard from './ProductCard';
 import type { Product } from '@/types';
-import type { CurrencyCode } from '@/lib/utils';
+import type { CurrencyCode } from '@/lib/core/utils';
 
 interface ProductCardBeverageProps {
   product: Product;

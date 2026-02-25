@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { convertBetweenCurrencies, type CurrencyCode, type ExchangeRates } from '@/lib/priceHelper';
 
 export type PlanFilter = 'all' | 'core' | 'standard' | 'enterprise';

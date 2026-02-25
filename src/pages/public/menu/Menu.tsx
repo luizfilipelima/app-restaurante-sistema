@@ -1,13 +1,13 @@
 import { useEffect, useState, useMemo, lazy, Suspense, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { getSubdomain } from '@/lib/subdomain';
+import { getSubdomain } from '@/lib/core/subdomain';
 import { Restaurant, Product, Category, Subcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useTableOrderStore } from '@/store/tableOrderStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { useRestaurantMenuData, useActiveOffersByRestaurantId, useLoyaltyProgram, useLoyaltyStatus } from '@/hooks/queries';
 import { ShoppingCart, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2, ArrowLeft, Info } from 'lucide-react';
-import { getCategoryIconComponent } from '@/lib/categoryIcons';
+import { getCategoryIconComponent } from '@/lib/menu/categoryIcons';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,23 +17,23 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useSharingMeta } from '@/hooks/useSharingMeta';
-import { isWithinOpeningHours, normalizePhoneWithCountryCode } from '@/lib/utils';
-import { useMenuCurrency } from '@/hooks/useMenuCurrency';
-import MenuSettingsPopover from '@/components/public/MenuSettingsPopover';
-import RestaurantInfoModal from '@/components/public/RestaurantInfoModal';
+import { useSharingMeta } from '@/hooks/shared/useSharingMeta';
+import { isWithinOpeningHours, normalizePhoneWithCountryCode } from '@/lib/core/utils';
+import { useMenuCurrency } from '@/hooks/menu/useMenuCurrency';
+import MenuSettingsPopover from '@/components/public/menu/MenuSettingsPopover';
+import RestaurantInfoModal from '@/components/public/_shared/RestaurantInfoModal';
 import { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
-import ProductCard from '@/components/public/ProductCard';
-import InitialSplashScreen from '@/components/public/InitialSplashScreen';
-import LoyaltySignIn from '@/components/public/LoyaltySignIn';
-import LoyaltyCard from '@/components/public/LoyaltyCard';
+import ProductCard from '@/components/public/menu/ProductCard';
+import InitialSplashScreen from '@/components/public/_shared/InitialSplashScreen';
+import LoyaltySignIn from '@/components/public/loyalty/LoyaltySignIn';
+import LoyaltyCard from '@/components/public/loyalty/LoyaltyCard';
 
 // Lazy: CartDrawer importa framer-motion — só carrega quando o carrinho for aberto
-const CartDrawer = lazy(() => import('@/components/public/CartDrawer'));
+const CartDrawer = lazy(() => import('@/components/public/cart/CartDrawer'));
 // Lazy: modais só carregam quando o produto for clicado
-const ProductAddonModal = lazy(() => import('@/components/public/ProductAddonModal'));
-const SimpleProductModal = lazy(() => import('@/components/public/SimpleProductModal'));
+const ProductAddonModal = lazy(() => import('@/components/public/menu/ProductAddonModal'));
+const SimpleProductModal = lazy(() => import('@/components/public/menu/SimpleProductModal'));
 
 // MOCK DATA PARA VISUALIZAÇÃO DE DESIGN (Caso banco vazio)
 const MOCK_PRODUCTS: Product[] = [

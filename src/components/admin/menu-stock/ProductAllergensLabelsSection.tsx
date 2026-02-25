@@ -4,8 +4,8 @@
  */
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
-import { ALLERGENS, LABELS, type AllergenId, type LabelId } from '@/lib/allergensLabels';
+import { cn } from '@/lib/core/utils';
+import { ALLERGENS, LABELS, type AllergenId, type LabelId } from '@/lib/menu/allergensLabels';
 
 interface ProductAllergensLabelsSectionProps {
   allergens: string[];

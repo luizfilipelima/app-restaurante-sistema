@@ -13,9 +13,9 @@ import {
   isCustomAccent,
   parseCustomAccent,
   hslToHex,
-} from '@/lib/menuThemes';
-import ThemeColorPicker from '@/components/admin/ThemeColorPicker';
-import type { MenuThemeId } from '@/lib/menuThemes';
+} from '@/lib/menu/menuThemes';
+import ThemeColorPicker from './ThemeColorPicker';
+import type { MenuThemeId } from '@/lib/menu/menuThemes';
 
 interface MenuThemeSelectorProps {
   restaurantId: string | null;
@@ -64,9 +64,9 @@ export default function MenuThemeSelector({
     if (!restaurantId) return;
     setSaving(true);
     try {
-      const { supabase } = await import('@/lib/supabase');
-      const { invalidatePublicMenuCache } = await import('@/lib/invalidatePublicCache');
-      const { queryClient } = await import('@/lib/queryClient');
+      const { supabase } = await import('@/lib/core/supabase');
+      const { invalidatePublicMenuCache } = await import('@/lib/cache/invalidatePublicCache');
+      const { queryClient } = await import('@/lib/core/queryClient');
 
       const accentValue =
         selectedTheme === 'minimal_light' || selectedTheme === 'minimal_dark'
@@ -86,12 +86,12 @@ export default function MenuThemeSelector({
       onAccentChange?.(accentValue);
       invalidatePublicMenuCache(queryClient);
       onInvalidateCache?.();
-      const { clearMenuThemeCache } = await import('@/lib/menuThemeCache');
+      const { clearMenuThemeCache } = await import('@/lib/menu/menuThemeCache');
       clearMenuThemeCache(slug);
-      const { toast } = await import('@/hooks/use-toast');
+      const { toast } = await import('@/hooks/shared/use-toast');
       toast({ title: 'Tema salvo! Atualize o cardápio para ver as mudanças.' });
     } catch (err) {
-      const { toast } = await import('@/hooks/use-toast');
+      const { toast } = await import('@/hooks/shared/use-toast');
       toast({ title: 'Erro ao salvar tema', variant: 'destructive' });
     } finally {
       setSaving(false);

@@ -1,7 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { UserRole } from '@/types';
-import AdminRedirect from './admin/AdminRedirect';
+import AdminRedirect from '../admin/_layout/AdminRedirect';
 
 interface PublicRouteProps {
   children: React.ReactNode;

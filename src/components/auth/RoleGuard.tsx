@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { useCanAccess } from '@/hooks/useUserRole';
+import { useCanAccess } from '@/hooks/auth/useUserRole';
 
 interface RoleGuardProps {
   /**

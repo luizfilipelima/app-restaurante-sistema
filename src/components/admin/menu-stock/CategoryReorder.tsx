@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { Category } from '@/types';
 import {
   DndContext,
@@ -20,7 +20,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import { GripVertical, Loader2, Check, X } from 'lucide-react';
 
 interface CategoryReorderProps {

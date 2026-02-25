@@ -12,8 +12,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import Barcode from 'react-barcode';
-import { supabase } from '@/lib/supabase';
-import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { supabase } from '@/lib/core/supabase';
+import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
 import {
   ShoppingBag,
   AlertCircle,

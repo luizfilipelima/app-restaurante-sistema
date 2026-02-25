@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { CheckCircle2, MessageCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getSubdomain } from '@/lib/subdomain';
+import { getSubdomain } from '@/lib/core/subdomain';
 
 type OrderType = 'delivery' | 'pickup';
 

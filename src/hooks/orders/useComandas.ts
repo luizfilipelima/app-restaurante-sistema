@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { offlineComandaService, offlineDB } from '@/lib/offline-db';
 import { Comanda, ComandaItem, ComandaWithItems } from '@/types';
-import { toast } from '@/hooks/use-toast';
-import { useOfflineSync } from './useOfflineSync';
+import { toast } from '@/hooks/shared/use-toast';
+import { useOfflineSync } from '@/hooks/shared/useOfflineSync';
 
 export function useComandas(restaurantId: string) {
   const [comandas, setComandas] = useState<ComandaWithItems[]>([]);

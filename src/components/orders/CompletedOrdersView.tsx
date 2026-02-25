@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
 import type { DatabaseOrder } from '@/types';
 import type { CompletedOrdersDateRange } from '@/hooks/queries/useCompletedOrders';
 import { useCompletedOrders } from '@/hooks/queries/useCompletedOrders';

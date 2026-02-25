@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import type { DeliveryDistanceTier } from '@/types';
-import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
+import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
 
 /** Busca faixas de preço por distância do restaurante (modo quilometragem). */
 async function fetchDeliveryDistanceTiers(

@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { useTranslation } from 'react-i18next';
-import { formatCurrency, hasBankAccountData, formatBankAccountLines } from '@/lib/utils';
+import { formatCurrency, hasBankAccountData, formatBankAccountLines } from '@/lib/core/utils';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import {
   CheckCircle2,
@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OrderStatus, DeliveryType } from '@/types';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 
 // ── Tipos locais ──────────────────────────────────────────────────────────────
 

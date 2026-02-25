@@ -3,8 +3,8 @@
  */
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
-import { getAllergenById, getLabelById } from '@/lib/allergensLabels';
+import { cn } from '@/lib/core/utils';
+import { getAllergenById, getLabelById } from '@/lib/menu/allergensLabels';
 
 interface ProductAllergensLabelsBadgesProps {
   allergens?: string[] | null;

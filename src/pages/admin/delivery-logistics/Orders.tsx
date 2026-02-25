@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
-import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { useRestaurant } from '@/hooks/queries';
 import { DatabaseOrder, OrderStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from '@/hooks/use-toast';
-import { formatCurrency, formatPhone, getCardapioPublicUrl, ensurePhoneForWhatsApp, inferPhoneCountry, normalizePhoneWithCountryCode } from '@/lib/utils';
+import { toast } from '@/hooks/shared/use-toast';
+import { formatCurrency, formatPhone, getCardapioPublicUrl, ensurePhoneForWhatsApp, inferPhoneCountry, normalizePhoneWithCountryCode } from '@/lib/core/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -21,15 +21,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff, QrCode, Landmark, Store, BookOpen } from 'lucide-react';
-import { WhatsAppTemplatesModal } from '@/components/admin/WhatsAppTemplatesModal';
-import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
+import { WhatsAppTemplatesModal } from '@/components/admin/marketing-sales/WhatsAppTemplatesModal';
+import { processTemplate, getTemplate } from '@/lib/whatsapp/whatsappTemplates';
 import type { WhatsAppTemplates } from '@/types';
 import { RoleGuard } from '@/components/auth/RoleGuard';
-import { ROLES_CANCEL_ORDER } from '@/hooks/useUserRole';
+import { ROLES_CANCEL_ORDER } from '@/hooks/auth/useUserRole';
 import { useCouriers, useOrders, usePrintSettings, useProductPrintDestinations, creditLoyaltyPoint, getOrderSector } from '@/hooks/queries';
-import { isUUID } from '@/hooks/useResolveRestaurantId';
-import { usePrinter } from '@/hooks/usePrinter';
-import type { DualReceiptSlot } from '@/hooks/usePrinter';
+import { isUUID } from '@/hooks/admin/useResolveRestaurantId';
+import { usePrinter } from '@/hooks/printer/usePrinter';
+import type { DualReceiptSlot } from '@/hooks/printer/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
 import type { PrintDestination } from '@/types';
 import { CompletedOrdersView } from '@/components/orders/CompletedOrdersView';

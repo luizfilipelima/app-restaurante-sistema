@@ -1,18 +1,18 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSubdomain } from '@/lib/subdomain';
+import { getSubdomain } from '@/lib/core/subdomain';
 import { useRestaurantMenuData } from '@/hooks/queries';
 import { Clock, Search, Utensils, Coffee, IceCream, UtensilsCrossed, ArrowLeft, ChevronRight, Info } from 'lucide-react';
-import { getCategoryIconComponent } from '@/lib/categoryIcons';
+import { getCategoryIconComponent } from '@/lib/menu/categoryIcons';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSharingMeta } from '@/hooks/useSharingMeta';
-import { isWithinOpeningHours } from '@/lib/utils';
+import { useSharingMeta } from '@/hooks/shared/useSharingMeta';
+import { isWithinOpeningHours } from '@/lib/core/utils';
 import { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
-import MenuSettingsPopover from '@/components/public/MenuSettingsPopover';
-import RestaurantInfoModal from '@/components/public/RestaurantInfoModal';
-import ProductCardViewOnly from '@/components/public/ProductCardViewOnly';
+import MenuSettingsPopover from '@/components/public/menu/MenuSettingsPopover';
+import RestaurantInfoModal from '@/components/public/_shared/RestaurantInfoModal';
+import ProductCardViewOnly from '@/components/public/menu/ProductCardViewOnly';
 
 const CATEGORY_ICONS: Record<string, any> = {
   Marmitas: UtensilsCrossed,

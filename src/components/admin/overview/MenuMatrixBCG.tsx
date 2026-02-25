@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
 import type { DashboardMenuMatrix, DashboardMenuMatrixItem } from '@/types/dashboard-analytics';
 
 export type Quadrant = 'estrela' | 'burro' | 'quebra_cabeca' | 'cao';

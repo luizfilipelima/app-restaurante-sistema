@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { getSubdomain } from '@/lib/subdomain';
-import { isWithinOpeningHours } from '@/lib/utils';
+import { supabase } from '@/lib/core/supabase';
+import { getSubdomain } from '@/lib/core/subdomain';
+import { isWithinOpeningHours } from '@/lib/core/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

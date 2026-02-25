@@ -10,7 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/core/utils';
 
 export type PhoneCountry = 'BR' | 'PY' | 'AR';
 

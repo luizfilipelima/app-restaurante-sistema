@@ -8,7 +8,7 @@ import { useCartStore } from '@/store/cartStore';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
 import { useTranslation } from 'react-i18next';
 import { Minus, Plus, ArrowLeft } from 'lucide-react';
 import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';

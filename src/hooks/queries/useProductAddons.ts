@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import type { ProductAddonGroup, ProductAddonItem } from '@/types';
 
 export interface ProductAddonGroupWithItems extends ProductAddonGroup {

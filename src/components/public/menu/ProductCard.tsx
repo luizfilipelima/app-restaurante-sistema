@@ -4,7 +4,7 @@
  */
 import { memo } from 'react';
 import { Product } from '@/types';
-import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
 import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
 import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';

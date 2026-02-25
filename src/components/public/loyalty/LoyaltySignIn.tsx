@@ -14,7 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from '@/components/ui/select';
-import { normalizePhoneWithCountryCode } from '@/lib/utils';
+import { normalizePhoneWithCountryCode } from '@/lib/core/utils';
 
 export type PhoneCountry = 'BR' | 'PY' | 'AR';
 

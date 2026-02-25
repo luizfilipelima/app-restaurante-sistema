@@ -813,3 +813,6 @@ export interface Feature {
   /** Se false, não exibe na UI de Planos/Preços (features Motor); permanece em plan_features para FeatureGuard */
   is_visible_on_pricing?: boolean;
 }
+
+// Re-exporta tipos de dashboard/analytics para import via @/types
+export * from './dashboard-analytics';

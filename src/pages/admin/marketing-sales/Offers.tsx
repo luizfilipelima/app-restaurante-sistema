@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useAdminRestaurantId, useAdminCurrency, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import { useProductOffers } from '@/hooks/queries';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import type { Product, ProductOffer, OfferRepeatDay } from '@/types';
 
 const REPEAT_DAYS: { key: OfferRepeatDay; label: string }[] = [
@@ -45,9 +45,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tag, Plus, Pencil, Trash2, Loader2, ArrowRight, Package, Calendar, Repeat, Infinity } from 'lucide-react';
-import { useAdminTranslation } from '@/hooks/useAdminTranslation';
-import { toast } from '@/hooks/use-toast';
-import { formatCurrency } from '@/lib/utils';
+import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
+import { toast } from '@/hooks/shared/use-toast';
+import { formatCurrency } from '@/lib/core/utils';
 import { convertPriceToStorage, convertPriceFromStorage, getCurrencySymbol } from '@/lib/priceHelper';
 import { format, isBefore, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';

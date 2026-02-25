@@ -4,7 +4,7 @@
  */
 import { HslColorPicker, HexColorInput } from 'react-colorful';
 import { Label } from '@/components/ui/label';
-import { hslToCustomAccent, hslToHex, hexToHsl, parseCustomAccent } from '@/lib/menuThemes';
+import { hslToCustomAccent, hslToHex, hexToHsl, parseCustomAccent } from '@/lib/menu/menuThemes';
 
 interface ThemeColorPickerProps {
   /** Valor atual: custom:H,S,L ou custom#RRGGBB */

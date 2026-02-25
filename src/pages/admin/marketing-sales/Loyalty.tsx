@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAdminRestaurantId, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
-import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { useRestaurant, useLoyaltyProgram, useLoyaltyMetrics, useSaveLoyaltyProgram, useAdminProducts } from '@/hooks/queries';
 import type { LoyaltyProgram, LoyaltyScoringChannels } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import {
   Gift,
   Star,

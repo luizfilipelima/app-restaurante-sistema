@@ -8,9 +8,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { AdminRestaurantContext, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
-import { useResolveRestaurantId } from '@/hooks/useResolveRestaurantId';
+import { useResolveRestaurantId } from '@/hooks/admin/useResolveRestaurantId';
 import { useRestaurant } from '@/hooks/queries';
 import {
   useTables,
@@ -18,16 +18,16 @@ import {
   useWaiterCalls,
   useHallZones,
 } from '@/hooks/queries';
-import { useReadyOrders } from '@/hooks/useReadyOrders';
-import { TableCard, TableOperationSheet } from '@/pages/admin/Tables';
+import { useReadyOrders } from '@/hooks/orders/useReadyOrders';
+import { TableCard, TableOperationSheet } from '@/pages/admin/hall-pdv/Tables';
 import { ExpoPanel } from '@/components/waiter/ExpoPanel';
 import type { TableWithStatus } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/core/utils';
 import { UtensilsCrossed, Package } from 'lucide-react';
-import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { ptBR, es, enUS } from 'date-fns/locale';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;

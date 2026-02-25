@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { offlineDB } from '@/lib/offline-db';
-import { toast } from '@/hooks/use-toast';
+import { toast } from './use-toast';
 
 type SyncStatus = 'online' | 'offline' | 'syncing';
 

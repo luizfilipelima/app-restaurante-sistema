@@ -11,7 +11,7 @@
  */
 
 import { forwardRef } from 'react';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/lib/core/utils';
 import type { CurrencyCode } from '@/lib/priceHelper';
 import { format } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';

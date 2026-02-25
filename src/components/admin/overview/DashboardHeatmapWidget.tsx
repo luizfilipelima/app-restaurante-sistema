@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import '@/lib/leaflet-heat-init';
+import '@/lib/map/leaflet-heat-init';
 import type { OrderCoordinate } from '@/hooks/queries/useOrderCoordinates';
 import { MapPin } from 'lucide-react';
 

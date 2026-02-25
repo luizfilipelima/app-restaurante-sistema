@@ -3,7 +3,7 @@
  * Layout otimizado para desktop: ícones agrupados por tipo.
  * Modo compact: botão + dropdown para economizar espaço no modal.
  */
-import { CATEGORY_ICON_OPTIONS, getCategoryIconComponent } from '@/lib/categoryIcons';
+import { CATEGORY_ICON_OPTIONS, getCategoryIconComponent } from '@/lib/menu/categoryIcons';
 import { Label } from '@/components/ui/label';
 import {
   DropdownMenu,

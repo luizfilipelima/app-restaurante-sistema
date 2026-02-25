@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
+import { supabase } from '@/lib/core/supabase';
+import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
 import type { ProductOffer, Product } from '@/types';
 
 /** Ofertas ativas/agendadas do restaurante (admin) */

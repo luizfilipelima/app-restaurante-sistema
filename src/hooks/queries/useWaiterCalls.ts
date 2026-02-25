@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import type { WaiterCall } from '@/types';
 
 /** Busca chamados de garçom pendentes. Isolamento por tenant via restaurant_id. */

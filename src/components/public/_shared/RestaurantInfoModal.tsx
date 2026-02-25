@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Phone, Clock, FileText, Instagram, CalendarClock, Users } from 'lucide-react';
-import { generateWhatsAppLink } from '@/lib/utils';
+import { generateWhatsAppLink } from '@/lib/core/utils';
 import type { Restaurant } from '@/types';
 import type { DayKey } from '@/types';
 

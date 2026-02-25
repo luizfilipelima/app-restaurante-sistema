@@ -8,7 +8,7 @@ import {
   Utensils,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/core/utils';
 import { OrderStatus } from '@/types';
 
 type BadgeVariant =

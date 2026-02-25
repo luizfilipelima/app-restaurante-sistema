@@ -6,8 +6,8 @@ import { useAuthStore } from '@/store/authStore';
 import { AdminRestaurantContext, useAdminRestaurantId, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
-import { useCanAccess } from '@/hooks/useUserRole';
-import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { useCanAccess } from '@/hooks/auth/useUserRole';
+import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,11 +17,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useToast } from '@/hooks/use-toast';
-import { useSessionManager } from '@/hooks/useSessionManager';
-import { getCardapioPublicUrl } from '@/lib/utils';
+import { useToast } from '@/hooks/shared/use-toast';
+import { useSessionManager } from '@/hooks/auth/useSessionManager';
+import { getCardapioPublicUrl } from '@/lib/core/utils';
 import { prefetchRoute } from '@/lib/routePrefetch';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import {
   LayoutDashboard,
   UtensilsCrossed,

@@ -2,10 +2,10 @@ import { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
-import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { useDashboardStats, useDashboardKPIs, useDashboardAnalytics, useRestaurant, useLoyaltyMetrics, useLoyaltyProgram } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,16 +25,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useToast } from '@/hooks/use-toast';
-import { formatCurrency } from '@/lib/utils';
-import { exportDashboardCSV, exportDashboardXLSX } from '@/lib/dashboard-export';
+import { useToast } from '@/hooks/shared/use-toast';
+import { formatCurrency } from '@/lib/core/utils';
+import { exportDashboardCSV, exportDashboardXLSX } from '@/lib/dashboard/dashboard-export';
 import {
   DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2,
   MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon, Flame, Bike, HelpCircle,
   Users, LayoutGrid, Download, FileSpreadsheet, FileText, ChevronDown, Printer,
   Gift, Star,
 } from 'lucide-react';
-import DashboardPrintReport from '@/components/admin/DashboardPrintReport';
+import DashboardPrintReport from '@/components/admin/overview/DashboardPrintReport';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -48,8 +48,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChurnRecoveryList } from '@/components/admin/ChurnRecoveryList';
-import { MenuMatrixBCG } from '@/components/admin/MenuMatrixBCG';
+import { ChurnRecoveryList } from '@/components/admin/overview/ChurnRecoveryList';
+import { MenuMatrixBCG } from '@/components/admin/overview/MenuMatrixBCG';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
 type PeriodValue = '30' | '365' | 'max';
 

@@ -9,9 +9,9 @@
  */
 import { useEffect, useState, useMemo, useLayoutEffect } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
-import { getMenuThemeConfig, paletteToCssVars, getSemanticCssVarsForCustomTheme, updateDocumentThemeMeta, resetDocumentThemeMeta } from '@/lib/menuThemes';
-import { getMenuThemeCache, setMenuThemeCache } from '@/lib/menuThemeCache';
+import { supabase } from '@/lib/core/supabase';
+import { getMenuThemeConfig, paletteToCssVars, getSemanticCssVarsForCustomTheme, updateDocumentThemeMeta, resetDocumentThemeMeta } from '@/lib/menu/menuThemes';
+import { getMenuThemeCache, setMenuThemeCache } from '@/lib/menu/menuThemeCache';
 
 export default function MenuThemeWrapper() {
   const { restaurantSlug } = useParams<{ restaurantSlug: string }>();

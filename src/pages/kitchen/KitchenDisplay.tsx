@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { useSessionManager } from '@/hooks/useSessionManager';
+import { useSessionManager } from '@/hooks/auth/useSessionManager';
 import { DatabaseOrder } from '@/types';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import { Clock, AlertTriangle, ChefHat, ArrowRight, LayoutDashboard, UtensilsCrossed, Bike, Scale } from 'lucide-react';
 
 export default function KitchenDisplay() {

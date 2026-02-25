@@ -2,8 +2,8 @@ import { useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import { Download, QrCode, ShoppingCart, Eye } from 'lucide-react';
-import { getCardapioPublicUrl } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
+import { getCardapioPublicUrl } from '@/lib/core/utils';
+import { toast } from '@/hooks/shared/use-toast';
 
 interface MenuQRCodeCardProps {
   slug: string;

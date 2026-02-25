@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatCurrency, formatBRLReais } from '@/lib/utils';
+import { formatCurrency, formatBRLReais } from '@/lib/core/utils';
 import {
   BarChart,
   Bar,

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import type { DiscountCoupon } from '@/types';
 
 /** Verifica se o restaurante tem ao menos um cupom ativo (checkout: esconder card se nenhum ativo). */

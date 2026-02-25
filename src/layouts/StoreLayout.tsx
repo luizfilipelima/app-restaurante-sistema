@@ -1,26 +1,26 @@
 import { useEffect, useState, Suspense, useMemo, useLayoutEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { lazyWithRetry } from '@/lib/lazyWithRetry';
-import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
+import { lazyWithRetry } from '@/lib/core/lazyWithRetry';
+import { useDynamicFavicon } from '@/hooks/shared/useDynamicFavicon';
 import { prefetchRestaurantMenu } from '@/hooks/queries/useRestaurantMenuData';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
-import InitialSplashScreen from '@/components/public/InitialSplashScreen';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { getMenuThemeConfig, paletteToCssVars, getSemanticCssVarsForCustomTheme, updateDocumentThemeMeta, resetDocumentThemeMeta } from '@/lib/menuThemes';
-import { getMenuThemeCache, setMenuThemeCache } from '@/lib/menuThemeCache';
+import InitialSplashScreen from '@/components/public/_shared/InitialSplashScreen';
+import { ErrorBoundary } from '@/components/_routing/ErrorBoundary';
+import { getMenuThemeConfig, paletteToCssVars, getSemanticCssVarsForCustomTheme, updateDocumentThemeMeta, resetDocumentThemeMeta } from '@/lib/menu/menuThemes';
+import { getMenuThemeCache, setMenuThemeCache } from '@/lib/menu/menuThemeCache';
 
 // Rotas públicas — lazy para reduzir bundle inicial (cardápio carrega só o necessário)
-const PublicMenu = lazyWithRetry(() => import('@/pages/public/Menu'));
-const PublicCheckout = lazyWithRetry(() => import('@/pages/public/Checkout'));
-const MenuViewOnly = lazyWithRetry(() => import('@/pages/public/MenuViewOnly'));
-const MenuTable = lazyWithRetry(() => import('@/pages/public/MenuTable'));
-const VirtualComanda = lazyWithRetry(() => import('@/pages/public/VirtualComanda'));
-const PublicReservation = lazyWithRetry(() => import('@/pages/public/PublicReservation'));
-const PublicWaitingQueue = lazyWithRetry(() => import('@/pages/public/PublicWaitingQueue'));
-const OrderTracking = lazyWithRetry(() => import('@/pages/public/OrderTracking'));
-const OrderConfirmation = lazyWithRetry(() => import('@/pages/public/OrderConfirmation'));
-const LinkBio = lazyWithRetry(() => import('@/pages/public/LinkBio'));
+const PublicMenu = lazyWithRetry(() => import('@/pages/public/menu/Menu'));
+const PublicCheckout = lazyWithRetry(() => import('@/pages/public/checkout/Checkout'));
+const MenuViewOnly = lazyWithRetry(() => import('@/pages/public/menu/MenuViewOnly'));
+const MenuTable = lazyWithRetry(() => import('@/pages/public/menu/MenuTable'));
+const VirtualComanda = lazyWithRetry(() => import('@/pages/public/comanda/VirtualComanda'));
+const PublicReservation = lazyWithRetry(() => import('@/pages/public/reservation/PublicReservation'));
+const PublicWaitingQueue = lazyWithRetry(() => import('@/pages/public/reservation/PublicWaitingQueue'));
+const OrderTracking = lazyWithRetry(() => import('@/pages/public/orders/OrderTracking'));
+const OrderConfirmation = lazyWithRetry(() => import('@/pages/public/checkout/OrderConfirmation'));
+const LinkBio = lazyWithRetry(() => import('@/pages/public/link-bio/LinkBio'));
 
 interface StoreLayoutProps {
   /** Slug do tenant (subdomínio), usado para buscar restaurante no Supabase */

@@ -20,13 +20,13 @@ import {
   type LandingUpsertItem,
 } from '@/hooks/queries/useLandingPageContent';
 import { useSubscriptionPlans } from '@/hooks/queries/useSubscriptionManager';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import {
   ExternalLink, Loader2, Check, AlertCircle, Plus, Trash2,
   Palette, Layout, Zap, Grid3x3, MessageSquare, CreditCard,

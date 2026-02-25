@@ -3,7 +3,7 @@
  * Fundo sólido na cor base do tema (--background); ícone animado na cor de detalhe (--primary).
  * Quando dentro de StoreLayout ou MenuThemeWrapper, reflete o tema configurado (claro/escuro + cor).
  */
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/core/utils';
 
 interface InitialSplashScreenProps {
   /** Quando true, aplica fade-out suave antes de desmontar */

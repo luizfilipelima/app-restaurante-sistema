@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, Suspense, lazy, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCartStore } from '@/store/cartStore';
-import { supabase } from '@/lib/supabase';
-import { getSubdomain } from '@/lib/subdomain';
+import { supabase } from '@/lib/core/supabase';
+import { getSubdomain } from '@/lib/core/subdomain';
 import { PaymentMethod, DeliveryType } from '@/types';
 import type { LoyaltyStatus } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -25,10 +25,10 @@ import {
 } from '@/components/ui/dialog';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { useTableOrderStore } from '@/store/tableOrderStore';
-import { useSharingMeta } from '@/hooks/useSharingMeta';
-import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours, getBankAccountForCurrency, hasBankAccountData, formatBankAccountLines } from '@/lib/utils';
+import { useSharingMeta } from '@/hooks/shared/useSharingMeta';
+import { formatCurrency, generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours, getBankAccountForCurrency, hasBankAccountData, formatBankAccountLines } from '@/lib/core/utils';
 import { convertBetweenCurrencies, type CurrencyCode } from '@/lib/priceHelper';
-import { processTemplate, getTemplate } from '@/lib/whatsappTemplates';
+import { processTemplate, getTemplate } from '@/lib/whatsapp/whatsappTemplates';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import {
@@ -39,11 +39,11 @@ import {
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones, useDeliveryDistanceTiers, useHasActiveCoupons, validateCoupon } from '@/hooks/queries';
-import { getDeliveryFeeByDistance } from '@/lib/geo';
+import { getDeliveryFeeByDistance } from '@/lib/geo/geo';
 
-const MapAddressPreview = lazy(() => import('@/components/public/MapAddressPreview'));
-const MapAddressOverlay = lazy(() => import('@/components/public/MapAddressOverlay'));
-import LoyaltyCard from '@/components/public/LoyaltyCard';
+const MapAddressPreview = lazy(() => import('@/components/public/map/MapAddressPreview'));
+const MapAddressOverlay = lazy(() => import('@/components/public/map/MapAddressOverlay'));
+import LoyaltyCard from '@/components/public/loyalty/LoyaltyCard';
 
 // Coordenadas padrão por moeda — Tríplice Fronteira
 const GEO_DEFAULTS: Record<string, [number, number]> = {
@@ -213,8 +213,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   // Prefetch do overlay/mapa quando entrega for selecionada (carrega chunk antes do mapa aparecer)
   useEffect(() => {
     if (!isTableOrder && deliveryType === DeliveryType.DELIVERY) {
-      import('@/components/public/MapAddressOverlay');
-      import('@/components/public/MapAddressPreview');
+      import('@/components/public/map/MapAddressOverlay');
+      import('@/components/public/map/MapAddressPreview');
     }
   }, [isTableOrder, deliveryType]);
 

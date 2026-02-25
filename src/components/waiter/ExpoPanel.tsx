@@ -12,7 +12,7 @@ import {
   Bike,
   Package,
 } from 'lucide-react';
-import type { ExpoOrder } from '@/hooks/useReadyOrders';
+import type { ExpoOrder } from '@/hooks/orders/useReadyOrders';
 
 function secondsWaiting(order: ExpoOrder): number {
   const ts = order.ready_at || order.updated_at;

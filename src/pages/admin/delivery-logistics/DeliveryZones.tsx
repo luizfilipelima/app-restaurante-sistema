@@ -1,9 +1,9 @@
 import { useState, useEffect, Suspense, lazy, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
-import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
+import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
 import { useDeliveryZones, useDeliveryDistanceTiers, useCreateDeliveryDistanceTier, useUpdateDeliveryDistanceTier, useDeleteDeliveryDistanceTier } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,15 +33,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/lib/core/utils';
 import { convertPriceToStorage, convertPriceFromStorage, convertBetweenCurrencies, getCurrencySymbol, formatPriceInputPyG } from '@/lib/priceHelper';
 import type { CurrencyCode } from '@/lib/priceHelper';
 import type { DeliveryZone, DeliveryDistanceTier } from '@/types';
 import { Plus, Edit, Trash2, MapPin, Truck, Loader2, Gauge, MapPinned, Package } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 
-const ZoneRadiusMapEditor = lazy(() => import('@/components/admin/ZoneRadiusMapEditor'));
-const RestaurantLocationMapEditor = lazy(() => import('@/components/admin/RestaurantLocationMapEditor'));
+const ZoneRadiusMapEditor = lazy(() => import('@/components/admin/delivery-logistics/ZoneRadiusMapEditor'));
+const RestaurantLocationMapEditor = lazy(() => import('@/components/admin/delivery-logistics/RestaurantLocationMapEditor'));
 
 const RADIUS_MIN = 500;
 const RADIUS_MAX = 10000;

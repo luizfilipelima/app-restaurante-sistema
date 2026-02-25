@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import {
   useSubscriptionPlans,
   useFeaturesCatalog,
@@ -23,7 +23,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import {
   Check,
   Loader2,

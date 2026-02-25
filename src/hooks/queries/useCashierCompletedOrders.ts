@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
 
 export type CashierCompletedDateRange = 'today' | '7d' | '30d';

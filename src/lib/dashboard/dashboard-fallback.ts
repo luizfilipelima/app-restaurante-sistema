@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
 
 interface ComputeFallbackParams {

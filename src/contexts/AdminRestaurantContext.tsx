@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import { Restaurant } from '@/types';
-import type { CurrencyCode } from '@/lib/utils';
+import type { CurrencyCode } from '@/lib/core/utils';
 
 interface AdminRestaurantContextType {
   /** ID do restaurante sendo gerenciado (do user ou do super-admin) */

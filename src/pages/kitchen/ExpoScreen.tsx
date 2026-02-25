@@ -13,9 +13,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ConciergeBell,

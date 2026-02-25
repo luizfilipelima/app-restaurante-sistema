@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { convertBetweenCurrencies, type CurrencyCode, type ExchangeRates } from '@/lib/priceHelper';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/lib/core/utils';
 
 interface RestaurantLike {
   id?: string;

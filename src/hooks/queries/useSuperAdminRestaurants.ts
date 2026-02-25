@@ -5,7 +5,7 @@
  */
 
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import type { Restaurant } from '@/types';
 
 export interface SuperAdminRestaurantsData {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
-import { useCouriers } from '@/hooks/useCouriers';
+import { useCouriers } from '@/hooks/shared/useCouriers';
 import { Courier, CourierStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,8 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Bike, Plus, Pencil, Trash2, Phone, User, Loader2, Package, Clock, DollarSign } from 'lucide-react';
-import { generateWhatsAppLink, formatCurrency, normalizePhoneWithCountryCode } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
+import { generateWhatsAppLink, formatCurrency, normalizePhoneWithCountryCode } from '@/lib/core/utils';
+import { toast } from '@/hooks/shared/use-toast';
 import { useCourierMetrics } from '@/hooks/queries';
 import { useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 

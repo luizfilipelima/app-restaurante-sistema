@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import type { HallZone } from '@/types';
 
 async function fetchHallZones(restaurantId: string | null): Promise<HallZone[]> {

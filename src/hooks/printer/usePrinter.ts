@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { DatabaseOrder, PrintSettingsBySector } from '@/types';
 import type { OrderReceiptData } from '@/components/receipt/OrderReceipt';
-import type { CurrencyCode } from '@/lib/utils';
+import type { CurrencyCode } from '@/lib/core/utils';
 
 const BODY_PRINT_CLASS = 'print-receipt';
 const BODY_PAPER_58_CLASS = 'receipt-paper-58';

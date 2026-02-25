@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { Category, Subcategory } from '@/types';
 import {
   DndContext,
@@ -36,11 +36,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import { GripVertical, Loader2, Check, X, Plus, Trash2, ChevronDown, ChevronRight, Pencil, Upload } from 'lucide-react';
 import { uploadProductImage } from '@/lib/imageUpload';
-import CategoryIconPicker from '@/components/admin/CategoryIconPicker';
-import { getCategoryIconComponent } from '@/lib/categoryIcons';
+import CategoryIconPicker from './CategoryIconPicker';
+import { getCategoryIconComponent } from '@/lib/menu/categoryIcons';
 
 const CATEGORY_TYPES = [
   { id: 'default', label: 'Padrão', is_pizza: false, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },

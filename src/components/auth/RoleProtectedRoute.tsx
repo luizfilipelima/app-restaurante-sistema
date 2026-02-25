@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useCanAccess, useUserRole } from '@/hooks/useUserRole';
+import { useCanAccess, useUserRole } from '@/hooks/auth/useUserRole';
 import { Loader2 } from 'lucide-react';
 
 interface RoleProtectedRouteProps {

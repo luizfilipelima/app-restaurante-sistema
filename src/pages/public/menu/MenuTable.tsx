@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
-import { getSubdomain } from '@/lib/subdomain';
+import { supabase } from '@/lib/core/supabase';
+import { getSubdomain } from '@/lib/core/subdomain';
 import PublicMenu from './Menu';
 import { useTableOrderStore } from '@/store/tableOrderStore';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import { Loader2 } from 'lucide-react';
 
 interface MenuTableProps {

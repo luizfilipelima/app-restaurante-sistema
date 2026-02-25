@@ -3,7 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 
 export type ReservationStatus = 'pending' | 'confirmed' | 'activated' | 'cancelled' | 'no_show';
 

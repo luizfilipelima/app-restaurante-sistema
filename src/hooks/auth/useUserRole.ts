@@ -16,7 +16,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 
 // ─── Hierarquia numérica de roles ────────────────────────────────────────────
 

@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { useAdminRestaurantId, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
 import {
   useReservations,
@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -47,9 +47,9 @@ import { Plus, CalendarClock, Loader2, X, User, Clock, MapPin, Users, MessageCir
 import { format } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
-import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { PhoneCountryInput } from '@/components/ui/PhoneCountryInput';
-import { generateWhatsAppLink, ensurePhoneForWhatsApp, normalizePhoneWithCountryCode, getCardapioPublicUrl } from '@/lib/utils';
+import { generateWhatsAppLink, ensurePhoneForWhatsApp, normalizePhoneWithCountryCode, getCardapioPublicUrl } from '@/lib/core/utils';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 

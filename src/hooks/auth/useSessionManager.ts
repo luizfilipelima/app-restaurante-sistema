@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 
 const SESSION_ID_KEY = 'app_session_id';
 const HEARTBEAT_INTERVAL = 60000; // 1 minuto

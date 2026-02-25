@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
-import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
-import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
+import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { useAdminLanguageStore } from '@/store/adminLanguageStore';
 import { PrintPaperWidth, type BankAccountByCountry, type PrintSettingsBySector, type SectorPrintSettings } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import {
   Save, Upload, Loader2, Printer,
   Phone, Globe, ImageIcon, AlarmClock, X, Wifi, Store,
@@ -27,8 +27,8 @@ import {
   MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode,
 } from 'lucide-react';
 import { useRestaurant } from '@/hooks/queries';
-import { useCanAccess } from '@/hooks/useUserRole';
-import RestaurantUsersPanel from '@/components/admin/RestaurantUsersPanel';
+import { useCanAccess } from '@/hooks/auth/useUserRole';
+import RestaurantUsersPanel from '@/components/admin/_shared/RestaurantUsersPanel';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 

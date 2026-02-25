@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,8 +20,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useToast } from '@/hooks/shared/use-toast';
+import { useUserRole } from '@/hooks/auth/useUserRole';
 import {
   Users,
   UserPlus,

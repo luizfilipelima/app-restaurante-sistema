@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Restaurant } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { generateSlug } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
+import { generateSlug } from '@/lib/core/utils';
+import { toast } from '@/hooks/shared/use-toast';
 import {
   ArrowLeft,
   Plus,

@@ -9,14 +9,14 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import type { DayKey } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { invalidatePublicMenuCache } from '@/lib/invalidatePublicCache';
+import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
 import { Clock, Sun, XCircle, Loader2, Save, CheckCircle2 } from 'lucide-react';
 
 const DAYS: { key: DayKey; label: string; short: string }[] = [

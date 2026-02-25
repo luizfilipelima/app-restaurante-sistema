@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { useAuthStore } from '@/store/authStore';
 import {
   useSuperAdminRestaurants,
@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { formatCurrency, generateSlug } from '@/lib/utils';
+import { formatCurrency, generateSlug } from '@/lib/core/utils';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -63,7 +63,7 @@ import {
   Banknote,
 } from 'lucide-react';
 import { Restaurant, DayKey, PrintPaperWidth } from '@/types';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 
 // ─── Animações ────────────────────────────────────────────────────────────────
 

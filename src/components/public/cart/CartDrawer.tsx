@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
 import { useTranslation } from 'react-i18next';
 import { Plus, Minus, Trash2, Sparkles, ShoppingBag, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchUpsellsForProducts, type UpsellRow, useLoyaltyStatus } from '@/hooks/queries';
 import type { CartItem } from '@/types';
-import LoyaltyCard, { LoyaltyInvite } from './LoyaltyCard';
+import LoyaltyCard, { LoyaltyInvite } from '../loyalty/LoyaltyCard';
 
 interface CartDrawerProps {
   open: boolean;

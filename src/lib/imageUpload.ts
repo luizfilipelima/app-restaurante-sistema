@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 
 const WEBP_QUALITY = 0.8;
 const BUCKET = 'product-images';

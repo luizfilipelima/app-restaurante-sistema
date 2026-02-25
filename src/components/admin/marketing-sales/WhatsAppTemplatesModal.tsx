@@ -1,12 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { supabase } from '@/lib/core/supabase';
+import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import {
   DEFAULT_TEMPLATES,
   TEMPLATE_VARS,
   processTemplate,
   type TemplateKey,
-} from '@/lib/whatsappTemplates';
+} from '@/lib/whatsapp/whatsappTemplates';
 import type { WhatsAppTemplates } from '@/types';
 import {
   Dialog,
@@ -16,7 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   MessageCircle,

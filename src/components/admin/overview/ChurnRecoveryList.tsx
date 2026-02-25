@@ -1,6 +1,6 @@
 import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, type CurrencyCode } from '@/lib/utils';
+import { formatCurrency, type CurrencyCode } from '@/lib/core/utils';
 import type { DashboardRetentionRiskItem } from '@/types/dashboard-analytics';
 
 function normalizePhone(phone: string | null | undefined): string {

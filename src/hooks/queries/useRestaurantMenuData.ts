@@ -1,6 +1,6 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { queryClient } from '@/lib/queryClient';
-import { supabase } from '@/lib/supabase';
+import { queryClient } from '@/lib/core/queryClient';
+import { supabase } from '@/lib/core/supabase';
 import type {
   Restaurant,
   Product,

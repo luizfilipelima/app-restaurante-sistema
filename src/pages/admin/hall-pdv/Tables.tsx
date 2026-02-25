@@ -8,7 +8,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { useAdminRestaurantId, useAdminRestaurant, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import {
   useTables,
@@ -29,8 +29,8 @@ import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from '@/hooks/use-toast';
-import { getCardapioPublicUrl } from '@/lib/utils';
+import { toast } from '@/hooks/shared/use-toast';
+import { getCardapioPublicUrl } from '@/lib/core/utils';
 import { formatPrice } from '@/lib/priceHelper';
 import {
   Dialog,
@@ -77,10 +77,10 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/core/utils';
 import { WaiterPDV } from '@/components/waiter/WaiterPDV';
-import { useCanAccess } from '@/hooks/useUserRole';
-import { useAdminTranslation } from '@/hooks/useAdminTranslation';
+import { useCanAccess } from '@/hooks/auth/useUserRole';
+import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 

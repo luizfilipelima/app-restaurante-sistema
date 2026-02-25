@@ -16,7 +16,7 @@ import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
 import { FeatureGuard } from '@/components/auth/FeatureGuard';
 import { Button } from '@/components/ui/button';
-import { getComandaPublicUrl } from '@/lib/utils';
+import { getComandaPublicUrl } from '@/lib/core/utils';
 import { Download, Printer, QrCode, ExternalLink, Info, Loader2 } from 'lucide-react';
 
 // URL da comanda: slug.quiero.food/comanda (subdomínio)

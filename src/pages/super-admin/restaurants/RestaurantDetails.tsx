@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { isUUID } from '@/hooks/useResolveRestaurantId';
+import { isUUID } from '@/hooks/admin/useResolveRestaurantId';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/core/supabase';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/shared/use-toast';
 import {
   useSubscriptionPlans,
   useFeaturesCatalog,
@@ -46,7 +46,7 @@ import {
   AlertTriangle,
   Settings,
 } from 'lucide-react';
-import { formatBRLReais } from '@/lib/utils';
+import { formatBRLReais } from '@/lib/core/utils';
 
 // ─── Ordem das categorias nas tabs (primeira = padrão) ────────────────────────
 

@@ -1,25 +1,25 @@
 import { Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { PublicRoute } from './components/PublicRoute';
+import { ProtectedRoute } from './components/_routing/ProtectedRoute';
+import { PublicRoute } from './components/_routing/PublicRoute';
 import { RoleProtectedRoute } from './components/auth/RoleProtectedRoute';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { ErrorBoundary } from './components/_routing/ErrorBoundary';
 import { Toaster } from './components/ui/toaster';
 import { UserRole } from './types';
-import { getSubdomain } from './lib/subdomain';
-import { lazyWithRetry } from './lib/lazyWithRetry';
+import { getSubdomain } from './lib/core/subdomain';
+import { lazyWithRetry } from './lib/core/lazyWithRetry';
 
 // ─── Componentes estruturais — carregam imediatamente (sem lazy) ─────────────
 // Layouts, guards e providers fazem parte do shell da aplicação e devem estar
 // prontos antes de qualquer rota ser resolvida.
 import StoreLayout from './layouts/StoreLayout';
-import AdminLayoutWrapper from './components/admin/AdminLayoutWrapper';
+import AdminLayoutWrapper from './components/admin/_layout/AdminLayoutWrapper';
 import SuperAdminLayout from './components/super-admin/SuperAdminLayout';
 
 // Componente de redirecionamento pós-login (resolve slug → /{slug}/painel)
-import AdminRedirect from './components/admin/AdminRedirect';
-import MenuThemeWrapper from './components/public/MenuThemeWrapper';
+import AdminRedirect from './components/admin/_layout/AdminRedirect';
+import MenuThemeWrapper from './components/public/menu/MenuThemeWrapper';
 
 // ─── Páginas — carregadas sob demanda (lazy) ─────────────────────────────────
 // Cada página gera um chunk JS separado no build, reduzindo o bundle inicial.
@@ -34,48 +34,48 @@ const RegisterPage          = lazyWithRetry(() => import('./pages/auth/Register'
 const UnauthorizedPage      = lazyWithRetry(() => import('./pages/auth/UnauthorizedPage'));
 
 // Super Admin
-const SaasMetrics           = lazyWithRetry(() => import('./pages/super-admin/SaasMetrics'));
-const SuperAdminRestaurants = lazyWithRetry(() => import('./pages/super-admin/Dashboard'));
-const Plans                 = lazyWithRetry(() => import('./pages/super-admin/Plans'));
-const RestaurantDetails     = lazyWithRetry(() => import('./pages/super-admin/RestaurantDetails'));
-const LandingPageEditor     = lazyWithRetry(() => import('./pages/super-admin/LandingPageEditor'));
+const SaasMetrics           = lazyWithRetry(() => import('./pages/super-admin/overview/SaasMetrics'));
+const SuperAdminRestaurants = lazyWithRetry(() => import('./pages/super-admin/restaurants/Dashboard'));
+const Plans                 = lazyWithRetry(() => import('./pages/super-admin/plans/Plans'));
+const RestaurantDetails     = lazyWithRetry(() => import('./pages/super-admin/restaurants/RestaurantDetails'));
+const LandingPageEditor     = lazyWithRetry(() => import('./pages/super-admin/landing/LandingPageEditor'));
 
-// Admin (painel do restaurante)
-const AdminDashboard        = lazyWithRetry(() => import('./pages/admin/Dashboard'));
-const AdminMenu             = lazyWithRetry(() => import('./pages/admin/Menu'));
-const AdminOffers           = lazyWithRetry(() => import('./pages/admin/Offers'));
-const AdminCoupons          = lazyWithRetry(() => import('./pages/admin/Coupons'));
-const AdminLoyalty          = lazyWithRetry(() => import('./pages/admin/Loyalty'));
-const AdminOrders           = lazyWithRetry(() => import('./pages/admin/Orders'));
-const AdminSettings         = lazyWithRetry(() => import('./pages/admin/Settings'));
-const AdminDeliveryZones    = lazyWithRetry(() => import('./pages/admin/DeliveryZones'));
-const AdminHorarios         = lazyWithRetry(() => import('./pages/admin/Horarios'));
-const AdminCouriers         = lazyWithRetry(() => import('./pages/admin/Couriers'));
-const AdminBuffet           = lazyWithRetry(() => import('./pages/admin/Buffet'));
-const AdminCashier          = lazyWithRetry(() => import('./pages/admin/Cashier'));
-const AdminComandaQRCode    = lazyWithRetry(() => import('./pages/admin/ComandaQRCode'));
-const AdminProductsInventory = lazyWithRetry(() => import('./pages/admin/ProductsInventory'));
-const AdminInventory         = lazyWithRetry(() => import('./pages/admin/Inventory'));
-const AdminTables           = lazyWithRetry(() => import('./pages/admin/Tables'));
-const AdminReservations     = lazyWithRetry(() => import('./pages/admin/Reservations'));
-const WaiterTerminal        = lazyWithRetry(() => import('./pages/admin/WaiterTerminal'));
-const UpgradePage           = lazyWithRetry(() => import('./pages/admin/UpgradePage'));
+// Admin (painel do restaurante) — estrutura alinhada ao sidebar
+const AdminDashboard        = lazyWithRetry(() => import('./pages/admin/overview/Dashboard'));
+const AdminMenu             = lazyWithRetry(() => import('./pages/admin/menu-stock/Menu'));
+const AdminOffers           = lazyWithRetry(() => import('./pages/admin/marketing-sales/Offers'));
+const AdminCoupons          = lazyWithRetry(() => import('./pages/admin/marketing-sales/Coupons'));
+const AdminLoyalty          = lazyWithRetry(() => import('./pages/admin/marketing-sales/Loyalty'));
+const AdminOrders           = lazyWithRetry(() => import('./pages/admin/delivery-logistics/Orders'));
+const AdminSettings         = lazyWithRetry(() => import('./pages/admin/_shared/Settings'));
+const AdminDeliveryZones    = lazyWithRetry(() => import('./pages/admin/delivery-logistics/DeliveryZones'));
+const AdminHorarios         = lazyWithRetry(() => import('./pages/admin/delivery-logistics/Horarios'));
+const AdminCouriers         = lazyWithRetry(() => import('./pages/admin/delivery-logistics/Couriers'));
+const AdminBuffet           = lazyWithRetry(() => import('./pages/admin/hall-pdv/Buffet'));
+const AdminCashier          = lazyWithRetry(() => import('./pages/admin/hall-pdv/Cashier'));
+const AdminComandaQRCode    = lazyWithRetry(() => import('./pages/admin/_shared/ComandaQRCode'));
+const AdminProductsInventory = lazyWithRetry(() => import('./pages/admin/menu-stock/ProductsInventory'));
+const AdminInventory         = lazyWithRetry(() => import('./pages/admin/menu-stock/Inventory'));
+const AdminTables           = lazyWithRetry(() => import('./pages/admin/hall-pdv/Tables'));
+const AdminReservations     = lazyWithRetry(() => import('./pages/admin/hall-pdv/Reservations'));
+const WaiterTerminal        = lazyWithRetry(() => import('./pages/admin/_shared/WaiterTerminal'));
+const UpgradePage           = lazyWithRetry(() => import('./pages/admin/_shared/UpgradePage'));
 
 // Cozinha (KDS) e Expedição (Expo Screen)
 const KitchenDisplay        = lazyWithRetry(() => import('./pages/kitchen/KitchenDisplay'));
 const ExpoScreen            = lazyWithRetry(() => import('./pages/kitchen/ExpoScreen'));
 
 // Cardápio público
-const PublicMenu            = lazyWithRetry(() => import('./pages/public/Menu'));
-const PublicCheckout        = lazyWithRetry(() => import('./pages/public/Checkout'));
-const MenuViewOnly          = lazyWithRetry(() => import('./pages/public/MenuViewOnly'));
-const MenuTable             = lazyWithRetry(() => import('./pages/public/MenuTable'));
-const VirtualComanda        = lazyWithRetry(() => import('./pages/public/VirtualComanda'));
-const OrderTracking         = lazyWithRetry(() => import('./pages/public/OrderTracking'));
-const PublicReservation     = lazyWithRetry(() => import('./pages/public/PublicReservation'));
-const PublicWaitingQueue    = lazyWithRetry(() => import('./pages/public/PublicWaitingQueue'));
-const OrderConfirmation     = lazyWithRetry(() => import('./pages/public/OrderConfirmation'));
-const LinkBio               = lazyWithRetry(() => import('./pages/public/LinkBio'));
+const PublicMenu            = lazyWithRetry(() => import('./pages/public/menu/Menu'));
+const PublicCheckout        = lazyWithRetry(() => import('./pages/public/checkout/Checkout'));
+const MenuViewOnly          = lazyWithRetry(() => import('./pages/public/menu/MenuViewOnly'));
+const MenuTable             = lazyWithRetry(() => import('./pages/public/menu/MenuTable'));
+const VirtualComanda        = lazyWithRetry(() => import('./pages/public/comanda/VirtualComanda'));
+const OrderTracking         = lazyWithRetry(() => import('./pages/public/orders/OrderTracking'));
+const PublicReservation     = lazyWithRetry(() => import('./pages/public/reservation/PublicReservation'));
+const PublicWaitingQueue    = lazyWithRetry(() => import('./pages/public/reservation/PublicWaitingQueue'));
+const OrderConfirmation     = lazyWithRetry(() => import('./pages/public/checkout/OrderConfirmation'));
+const LinkBio               = lazyWithRetry(() => import('./pages/public/link-bio/LinkBio'));
 
 // ─── Fallback de carregamento ─────────────────────────────────────────────────
 

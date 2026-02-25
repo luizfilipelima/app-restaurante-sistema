@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MapPin, Search, Loader2 } from 'lucide-react';
 import MapAddressPicker from './MapAddressPicker';
-import { searchAddress, reverseGeocode, formatAddressForDisplay, type GeocodingResult } from '@/lib/geocoding';
+import { searchAddress, reverseGeocode, formatAddressForDisplay, type GeocodingResult } from '@/lib/geo/geocoding';
 
 interface MapAddressOverlayProps {
   open: boolean;
