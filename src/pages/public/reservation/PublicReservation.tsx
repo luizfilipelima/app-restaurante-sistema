@@ -1,10 +1,13 @@
 /**
- * Reserva Pública — Fase 2
- * Cliente faz reserva e recebe comanda digital com código de barras para bipar na chegada.
+ * Reserva Pública — Redesign
+ * Tela inicial: "Fazer nova reserva" e "Acessar minhas reservas".
+ * Minhas reservas: formulário nome + WhatsApp → listagem com código de barras, mesa, data/hora, status.
+ * Mostra posição na fila quando houver.
  */
 
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Barcode from 'react-barcode';
 import { supabase } from '@/lib/core/supabase';
 import { Button } from '@/components/ui/button';
@@ -17,7 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, CheckCircle2, CalendarClock, AlertCircle } from 'lucide-react';
+import {
+  Loader2,
+  CheckCircle2,
+  CalendarClock,
+  AlertCircle,
+  CalendarPlus,
+  UserCheck,
+  ArrowLeft,
+  Users,
+} from 'lucide-react';
 import { normalizePhoneWithCountryCode } from '@/lib/core/utils';
 import { PhoneCountryInput } from '@/components/ui/PhoneCountryInput';
 
@@ -34,20 +46,43 @@ interface TableOption {
   zone_name: string;
 }
 
-type Step = 'form' | 'success';
+interface MyReservation {
+  id: string;
+  short_code: string;
+  table_number: number;
+  customer_name: string;
+  scheduled_at: string;
+  status: string;
+  created_at: string;
+}
+
+interface MyWaitingPosition {
+  id: string;
+  position: number;
+  customer_name: string;
+  status: string;
+  created_at: string;
+}
+
+type MainView = 'home' | 'new' | 'my' | 'success';
+type MyReservationsStep = 'form' | 'list';
+
 
 interface PublicReservationProps {
   tenantSlug?: string;
 }
 
 export default function PublicReservation({ tenantSlug: slugFromLayout }: PublicReservationProps = {}) {
+  const { t } = useTranslation();
   const { restaurantSlug: slugFromParams } = useParams<{ restaurantSlug: string }>();
   const restaurantSlug = slugFromLayout ?? slugFromParams;
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState<Step>('form');
+  const [mainView, setMainView] = useState<MainView>('home');
+  const [myStep, setMyStep] = useState<MyReservationsStep>('form');
 
+  // Novo formulário
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerPhoneCountry, setCustomerPhoneCountry] = useState<'BR' | 'PY' | 'AR'>('BR');
@@ -57,12 +92,21 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Minhas reservas
+  const [myName, setMyName] = useState('');
+  const [myPhone, setMyPhone] = useState('');
+  const [myPhoneCountry, setMyPhoneCountry] = useState<'BR' | 'PY' | 'AR'>('BR');
+  const [myReservations, setMyReservations] = useState<MyReservation[]>([]);
+  const [myWaitingPosition, setMyWaitingPosition] = useState<MyWaitingPosition | null>(null);
+  const [fetchingMy, setFetchingMy] = useState(false);
+
   const [tables, setTables] = useState<TableOption[]>([]);
   const [result, setResult] = useState<{ short_code: string; table_number: string; scheduled_at: string } | null>(null);
 
   useEffect(() => {
     if (restaurant?.phone_country && ['BR', 'PY', 'AR'].includes(restaurant.phone_country)) {
       setCustomerPhoneCountry(restaurant.phone_country);
+      setMyPhoneCountry(restaurant.phone_country);
     }
   }, [restaurant?.phone_country]);
 
@@ -79,12 +123,12 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
           .eq('is_active', true)
           .single();
         if (restErr || !rest) {
-          setError('Restaurante não encontrado.');
+          setError(t('reservation.restaurantNotFound'));
           return;
         }
         setRestaurant(rest);
       } catch {
-        setError('Erro ao carregar.');
+        setError(t('menu.restaurantNotFound'));
       } finally {
         setLoading(false);
       }
@@ -92,7 +136,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
   }, [restaurantSlug]);
 
   useEffect(() => {
-    if (!restaurantSlug || !scheduledDate || !scheduledTime) {
+    if (!restaurantSlug || !scheduledDate || !scheduledTime || mainView !== 'new') {
       setTables([]);
       return;
     }
@@ -115,14 +159,14 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
           return list.length > 0 && !exists ? list[0]!.table_id : prev;
         });
       });
-  }, [restaurantSlug, scheduledDate, scheduledTime]);
+  }, [restaurantSlug, scheduledDate, scheduledTime, mainView]);
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantSlug || !tableId || !customerName.trim() || !scheduledDate || !scheduledTime) {
-      setError('Preencha nome, data, horário e mesa.');
+      setError(t('reservation.errorFillData'));
       return;
     }
     setSubmitting(true);
@@ -141,41 +185,84 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
         p_notes: notes.trim() || null,
       });
       if (rpcErr) {
-        setError(rpcErr.message ?? 'Erro ao criar reserva.');
+        setError(rpcErr.message ?? t('reservation.errorCreate'));
         return;
       }
       const res = data as { short_code: string; table_number: string; scheduled_at: string };
       setResult(res);
-      setStep('success');
+      setMainView('success');
     } catch {
-      setError('Erro ao criar reserva.');
+      setError(t('reservation.errorCreate'));
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleFetchMyReservations = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurantSlug || !myPhone.trim()) {
+      setError(t('reservation.errorPhoneRequired'));
+      return;
+    }
+    setFetchingMy(true);
+    setError(null);
+    setMyReservations([]);
+    setMyWaitingPosition(null);
+    try {
+      const phoneNormalized = normalizePhoneWithCountryCode(myPhone.trim(), myPhoneCountry);
+      const [reservationsRes, positionRes] = await Promise.all([
+        supabase.rpc('list_my_reservations_by_slug', {
+          p_restaurant_slug: restaurantSlug,
+          p_customer_phone: phoneNormalized,
+          p_customer_name: myName.trim() || null,
+        }),
+        supabase.rpc('get_my_waiting_position_by_slug', {
+          p_restaurant_slug: restaurantSlug,
+          p_customer_phone: phoneNormalized,
+        }),
+      ]);
+      const list = (reservationsRes.data ?? []) as MyReservation[];
+      setMyReservations(Array.isArray(list) ? list : []);
+      const pos = positionRes.data as MyWaitingPosition | null;
+      setMyWaitingPosition(pos && typeof pos === 'object' && pos.position != null ? pos : null);
+      setMyStep('list');
+    } catch {
+      setError(t('reservation.errorFetch'));
+    } finally {
+      setFetchingMy(false);
+    }
+  };
+
+  const goBack = () => {
+    setMainView('home');
+    setError(null);
+    setMyStep('form');
+    setMyReservations([]);
+    setMyWaitingPosition(null);
   };
 
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">Carregando…</p>
+        <p className="text-sm text-muted-foreground">{t('reservation.loading')}</p>
       </div>
     );
   }
 
-  if (!restaurant || error && step === 'form') {
+  if (!restaurant || (error && mainView === 'home')) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center bg-background">
         <AlertCircle className="h-12 w-12 text-destructive" />
-        <p className="text-foreground">{error ?? 'Restaurante não encontrado.'}</p>
+        <p className="text-foreground">{error ?? t('reservation.restaurantNotFound')}</p>
         <Link to={restaurantSlug ? `/${restaurantSlug}` : '/'}>
-          <Button variant="outline">Voltar</Button>
+          <Button variant="outline">{t('reservation.back')}</Button>
         </Link>
       </div>
     );
   }
 
-  if (step === 'success' && result) {
+  if (mainView === 'success' && result) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center px-4 py-8">
         <div className="max-w-md w-full text-center space-y-6">
@@ -183,59 +270,255 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
             <CheckCircle2 className="h-8 w-8 text-success" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Reserva confirmada!</h1>
-            <p className="text-muted-foreground mt-1">
-              Apresente o código abaixo na recepção ao chegar.
-            </p>
+          <h1 className="text-xl font-bold text-foreground">{t('reservation.successTitle')}</h1>
+          <p className="text-muted-foreground mt-1">{t('reservation.successSub')}</p>
           </div>
           <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-sm">
-            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Código da comanda</p>
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t('reservation.comandaCode')}</p>
             <p className="text-2xl font-black font-mono text-primary mb-4">{result.short_code}</p>
             <div className="flex justify-center bg-card p-4 rounded-xl">
               <Barcode value={result.short_code} height={48} margin={0} displayValue={false} />
             </div>
             <p className="text-xs text-muted-foreground mt-4">
-              Mesa {result.table_number} · {new Date(result.scheduled_at).toLocaleString('pt-BR', {
+              Mesa {result.table_number} ·{' '}
+              {new Date(result.scheduled_at).toLocaleString('pt-BR', {
                 dateStyle: 'short',
                 timeStyle: 'short',
               })}
             </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Guarde esta tela ou tire um print. O código será bipado na recepção.
-          </p>
-          <Link to={restaurantSlug ? `/${restaurantSlug}` : '/'}>
-            <Button className="w-full">Ir para o cardápio</Button>
-          </Link>
+          <p className="text-sm text-muted-foreground">{t('reservation.saveScreen')}</p>
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={goBack}>
+              {t('reservation.makeNew')}
+            </Button>
+            <Link to={restaurantSlug ? `/${restaurantSlug}` : '/'} className="flex-1">
+              <Button className="w-full">{t('reservation.backToMenu')}</Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Tela inicial
+  if (mainView === 'home') {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="bg-card border-b border-border px-4 py-4 flex items-center gap-3">
+          {restaurant.logo ? (
+            <img src={restaurant.logo} alt={restaurant.name} className="h-10 w-10 rounded-xl object-cover" />
+          ) : (
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <CalendarClock className="h-5 w-5 text-primary" />
+            </div>
+          )}
+          <div>
+            <h1 className="font-bold text-foreground">{restaurant.name}</h1>
+            <p className="text-xs text-muted-foreground">{t('reservation.title')}</p>
+          </div>
+        </header>
+
+        <main className="max-w-md mx-auto px-4 py-8">
+          <p className="text-muted-foreground mb-6 text-center">{t('reservation.chooseOption')}</p>
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={() => setMainView('new')}
+              className="w-full rounded-2xl border-2 border-border bg-card p-6 shadow-sm hover:bg-accent/50 transition-colors text-left flex items-center gap-4"
+            >
+              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <CalendarPlus className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground">{t('reservation.makeNew')}</h2>
+                <p className="text-sm text-muted-foreground">{t('reservation.makeNewSub')}</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMainView('my')}
+              className="w-full rounded-2xl border-2 border-border bg-card p-6 shadow-sm hover:bg-accent/50 transition-colors text-left flex items-center gap-4"
+            >
+              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <UserCheck className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground">{t('reservation.myReservations')}</h2>
+                <p className="text-sm text-muted-foreground">{t('reservation.myReservationsSub')}</p>
+              </div>
+            </button>
+          </div>
+          <p className="text-center text-xs text-muted-foreground mt-8">
+            <Link to={restaurantSlug ? `/${restaurantSlug}` : '/'} className="text-primary hover:underline">
+              {t('reservation.backToMenu')}
+            </Link>
+          </p>
+        </main>
+      </div>
+    );
+  }
+
+  // Minhas reservas — formulário ou listagem
+  if (mainView === 'my') {
+    if (myStep === 'form') {
+      return (
+        <div className="min-h-screen bg-background">
+          <header className="bg-card border-b border-border px-4 py-4 flex items-center gap-3">
+            <button type="button" onClick={goBack} className="p-1 -ml-1 rounded-lg hover:bg-accent">
+              <ArrowLeft className="h-5 w-5 text-foreground" />
+            </button>
+            <div>
+            <h1 className="font-bold text-foreground">{t('reservation.myReservationsTitle')}</h1>
+            <p className="text-xs text-muted-foreground">{t('reservation.myReservationsFormSub')}</p>
+            </div>
+          </header>
+
+          <main className="max-w-md mx-auto px-4 py-6">
+            <form onSubmit={handleFetchMyReservations} className="space-y-4">
+              <div>
+                <Label>{t('reservation.name')}</Label>
+                <Input
+                  value={myName}
+                  onChange={(e) => setMyName(e.target.value)}
+                  placeholder={t('reservation.nameOptional')}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>{t('reservation.whatsappRequired')}</Label>
+                <PhoneCountryInput
+                  value={myPhone}
+                  country={myPhoneCountry}
+                  onValueChange={(phone, country) => {
+                    setMyPhone(phone);
+                    setMyPhoneCountry(country);
+                  }}
+                  showWhatsAppIcon
+                  className="mt-1"
+                />
+              </div>
+              {error && (
+                <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={fetchingMy}>
+                {fetchingMy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {t('reservation.searchMyReservations')}
+              </Button>
+            </form>
+          </main>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="bg-card border-b border-border px-4 py-4 flex items-center gap-3">
+          <button type="button" onClick={() => setMyStep('form')} className="p-1 -ml-1 rounded-lg hover:bg-accent">
+            <ArrowLeft className="h-5 w-5 text-foreground" />
+          </button>
+          <div>
+            <h1 className="font-bold text-foreground">{t('reservation.myReservationsTitle')}</h1>
+            <p className="text-xs text-muted-foreground">{t('reservation.myReservationsListSub')}</p>
+          </div>
+        </header>
+
+        <main className="max-w-md mx-auto px-4 py-6 space-y-6">
+          {myWaitingPosition && (
+            <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-foreground">{t('reservation.waitingPosition')}</h3>
+              </div>
+              <p className="text-2xl font-bold text-primary">#{myWaitingPosition.position}</p>
+              <p className="text-sm text-muted-foreground">{t('reservation.waitingForTable')}</p>
+            </div>
+          )}
+
+          {myReservations.length > 0 ? (
+            <div className="space-y-4">
+              <h3 className="font-semibold text-foreground">{t('reservation.yourReservations')}</h3>
+              {myReservations.map((r) => (
+                <div
+                  key={r.id}
+                  className="rounded-2xl border-2 border-border bg-card p-4 shadow-sm"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        r.status === 'activated' || r.status === 'completed'
+                          ? 'bg-success/20 text-success'
+                          : r.status === 'cancelled' || r.status === 'no_show'
+                            ? 'bg-muted text-muted-foreground'
+                            : 'bg-primary/20 text-primary'
+                      }`}
+                    >
+                      {t(`reservation.status_${r.status}` as const) || r.status}
+                    </span>
+                    <span className="text-sm font-mono font-bold text-primary">{r.short_code}</span>
+                  </div>
+                  <p className="text-sm text-foreground font-medium">{r.customer_name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Mesa {r.table_number} ·{' '}
+                    {new Date(r.scheduled_at).toLocaleString('pt-BR', {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    })}
+                  </p>
+                  <div className="mt-3 flex justify-center bg-background rounded-lg p-2">
+                    <Barcode value={r.short_code} height={36} margin={0} displayValue={false} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : !myWaitingPosition ? (
+            <p className="text-center text-muted-foreground py-8">{t('reservation.noReservationsFound')}</p>
+          ) : null}
+
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={() => setMyStep('form')}>
+              {t('reservation.newSearch')}
+            </Button>
+            <Button variant="outline" className="flex-1" onClick={goBack}>
+              {t('reservation.back')}
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Novo formulário
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border px-4 py-4 flex items-center gap-3">
+        <button type="button" onClick={goBack} className="p-1 -ml-1 rounded-lg hover:bg-accent">
+          <ArrowLeft className="h-5 w-5 text-foreground" />
+        </button>
         {restaurant?.logo ? (
           <img src={restaurant.logo} alt={restaurant.name} className="h-10 w-10 rounded-xl object-cover" />
         ) : (
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center">
-            <CalendarClock className="h-5 w-5 text-white" />
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <CalendarClock className="h-5 w-5 text-primary" />
           </div>
         )}
         <div>
           <h1 className="font-bold text-foreground">{restaurant?.name}</h1>
-          <p className="text-xs text-muted-foreground">Fazer reserva</p>
+          <p className="text-xs text-muted-foreground">{t('reservation.newReservation')}</p>
         </div>
       </header>
 
       <main className="max-w-md mx-auto px-4 py-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmitNew} className="space-y-4">
           <div>
-            <Label>Nome *</Label>
+            <Label>{t('reservation.name')} *</Label>
             <Input
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Seu nome"
+              placeholder={t('checkout.namePlaceholder')}
               required
               className="mt-1"
             />
@@ -245,14 +528,17 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
             <PhoneCountryInput
               value={customerPhone}
               country={customerPhoneCountry}
-              onValueChange={(phone, country) => { setCustomerPhone(phone); setCustomerPhoneCountry(country); }}
+              onValueChange={(phone, country) => {
+                setCustomerPhone(phone);
+                setCustomerPhoneCountry(country);
+              }}
               showWhatsAppIcon
               className="mt-1"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Data *</Label>
+              <Label>{t('reservation.date')}</Label>
               <Input
                 type="date"
                 value={scheduledDate}
@@ -263,7 +549,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
               />
             </div>
             <div>
-              <Label>Horário *</Label>
+              <Label>{t('reservation.time')}</Label>
               <Input
                 type="time"
                 value={scheduledTime}
@@ -274,10 +560,10 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
             </div>
           </div>
           <div>
-            <Label>Mesa *</Label>
+            <Label>{t('reservation.table')}</Label>
             <Select value={tableId} onValueChange={setTableId} required>
               <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Selecione a mesa" />
+                <SelectValue placeholder={t('reservation.selectTable')} />
               </SelectTrigger>
               <SelectContent>
                 {tables.map((t) => (
@@ -289,30 +575,30 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
               </SelectContent>
             </Select>
             {tables.length === 0 && scheduledDate && scheduledTime && (
-              <p className="text-xs text-amber-600 mt-1">Nenhuma mesa disponível nesta data. Tente outro horário.</p>
+              <p className="text-xs text-amber-600 mt-1">{t('reservation.noTablesAvailable')}</p>
             )}
           </div>
           <div>
-            <Label>Observações</Label>
+            <Label>{t('reservation.notes')}</Label>
             <Input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ex: Aniversariante, sem glúten..."
+              placeholder={t('reservation.notesPlaceholder')}
             />
           </div>
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
               {error}
             </div>
           )}
           <Button type="submit" className="w-full" disabled={submitting || tables.length === 0}>
             {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Confirmar reserva
+            {t('reservation.confirmReservation')}
           </Button>
         </form>
         <p className="text-center text-xs text-muted-foreground mt-6">
           <Link to={restaurantSlug ? `/${restaurantSlug}` : '/'} className="text-primary hover:underline">
-            Voltar ao cardápio
+            {t('reservation.backToMenu')}
           </Link>
         </p>
       </main>

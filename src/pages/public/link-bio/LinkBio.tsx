@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/core/supabase';
+import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { getSubdomain } from '@/lib/core/subdomain';
 import { isWithinOpeningHours } from '@/lib/core/utils';
 
@@ -47,6 +48,10 @@ const TEXTS: Record<Lang, {
   openNow: string;
   closedNow: string;
   notFound: string;
+  reserve: string;
+  reserveSub: string;
+  queue: string;
+  queueSub: string;
 }> = {
   pt: {
     deliveryMenu: 'Ver Cardápio de Delivery',
@@ -57,6 +62,10 @@ const TEXTS: Record<Lang, {
     openNow: 'Aberto agora',
     closedNow: 'Fechado no momento',
     notFound: 'Restaurante não encontrado',
+    reserve: 'Reservar',
+    reserveSub: 'Garanta sua mesa',
+    queue: 'Fila de espera',
+    queueSub: 'Sem reserva? Entre na fila',
   },
   es: {
     deliveryMenu: 'Ver Menú de Delivery',
@@ -67,6 +76,10 @@ const TEXTS: Record<Lang, {
     openNow: 'Abierto ahora',
     closedNow: 'Cerrado ahora',
     notFound: 'Restaurante no encontrado',
+    reserve: 'Reservar',
+    reserveSub: 'Asegurá tu mesa',
+    queue: 'Fila de espera',
+    queueSub: '¿Sin reserva? Entrá a la fila',
   },
 };
 
@@ -162,6 +175,8 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
     refetchOnWindowFocus: false,
   });
 
+  const { data: hasReservations } = useFeatureAccess('feature_reservations', restaurant?.id ?? null);
+
   useEffect(() => {
     if (restaurant) {
       setLang((restaurant.language === 'es' ? 'es' : 'pt') as Lang);
@@ -212,7 +227,11 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
   }
 
   const phoneParam = searchParams.get('phone') ?? searchParams.get('wa') ?? searchParams.get('tel');
-  const menuUrl = buildMenuUrl(restaurant.slug) + (phoneParam ? `?phone=${encodeURIComponent(phoneParam)}` : '');
+  const querySuffix = phoneParam ? `?phone=${encodeURIComponent(phoneParam)}` : '';
+  const baseUrl = buildMenuUrl(restaurant.slug);
+  const menuUrl = baseUrl + querySuffix;
+  const reservarUrl = baseUrl + '/reservar' + querySuffix;
+  const filaUrl = baseUrl + '/fila' + querySuffix;
   const whatsAppUrl = buildWhatsAppUrl(restaurant, lang);
   const hasWhatsApp = !!(restaurant.whatsapp || restaurant.phone);
 
@@ -354,15 +373,71 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
             </div>
           </a>
 
+          {/* Reservar — condicional a feature_reservations */}
+          {hasReservations && (
+            <a
+              href={reservarUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`group relative flex items-center gap-4 w-full bg-card rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 delay-[175ms] ease-out ${
+                mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+              }`}
+              style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05)' }}
+            >
+              <div className="absolute inset-0 rounded-2xl border border-border group-hover:border-primary/50 transition-colors duration-200" />
+              <div className="absolute inset-0 rounded-2xl bg-primary/0 group-hover:bg-primary/5 transition-all duration-200" />
+              <div
+                className="relative z-10 w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-[22px] group-hover:scale-105 transition-transform duration-200"
+              >
+                📅
+              </div>
+              <div className="relative z-10 flex-1 min-w-0 text-left">
+                <p className="text-[15px] font-bold text-foreground leading-tight">{t.reserve}</p>
+                <p className="text-[12px] text-muted-foreground mt-0.5 truncate font-medium">{t.reserveSub}</p>
+              </div>
+              <div className="relative z-10 flex-shrink-0">
+                <ArrowIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
+              </div>
+            </a>
+          )}
+
+          {/* Fila de espera — condicional a feature_reservations */}
+          {hasReservations && (
+            <a
+              href={filaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`group relative flex items-center gap-4 w-full bg-card rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 delay-[200ms] ease-out ${
+                mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+              }`}
+              style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05)' }}
+            >
+              <div className="absolute inset-0 rounded-2xl border border-border group-hover:border-primary/50 transition-colors duration-200" />
+              <div className="absolute inset-0 rounded-2xl bg-primary/0 group-hover:bg-primary/5 transition-all duration-200" />
+              <div
+                className="relative z-10 w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-[22px] group-hover:scale-105 transition-transform duration-200"
+              >
+                👥
+              </div>
+              <div className="relative z-10 flex-1 min-w-0 text-left">
+                <p className="text-[15px] font-bold text-foreground leading-tight">{t.queue}</p>
+                <p className="text-[12px] text-muted-foreground mt-0.5 truncate font-medium">{t.queueSub}</p>
+              </div>
+              <div className="relative z-10 flex-shrink-0">
+                <ArrowIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
+              </div>
+            </a>
+          )}
+
           {/* WhatsApp */}
           {hasWhatsApp && (
             <a
               href={whatsAppUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className={`group relative flex items-center gap-4 w-full rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 delay-200 ease-out ${
-                mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-              }`}
+              className={`group relative flex items-center gap-4 w-full rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 ${
+                hasReservations ? 'delay-[225ms]' : 'delay-200'
+              } ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}
               style={{
                 background: 'linear-gradient(135deg, #25D366 0%, #1fba57 100%)',
                 boxShadow: '0 4px 20px rgba(37,211,102,0.35), 0 1px 4px rgba(0,0,0,0.08)',
