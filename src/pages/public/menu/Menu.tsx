@@ -806,7 +806,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               aria-hidden
             />
             <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="sr-only" width={80} height={28} />
-            <span className="text-xs">{t('menu.developedBy')}</span>
           </a>
         </footer>
         </>

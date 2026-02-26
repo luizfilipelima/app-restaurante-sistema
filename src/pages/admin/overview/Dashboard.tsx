@@ -6,7 +6,7 @@ import { supabase } from '@/lib/core/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
-import { useDashboardStats, useDashboardKPIs, useDashboardAnalytics, useRestaurant, useLoyaltyMetrics, useLoyaltyProgram } from '@/hooks/queries';
+import { useDashboardStats, useDashboardAnalytics, useRestaurant, useLoyaltyMetrics, useLoyaltyProgram } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,7 +33,7 @@ import {
   DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2,
   MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon, Flame, Bike, HelpCircle,
   Users, LayoutGrid, Download, FileSpreadsheet, FileText, ChevronDown, Printer,
-  Gift, Star, LayoutDashboard,
+  Gift, Star, LayoutDashboard, Store,
 } from 'lucide-react';
 import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import DashboardPrintReport from '@/components/admin/overview/DashboardPrintReport';
@@ -50,6 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChurnRecoveryList } from '@/components/admin/overview/ChurnRecoveryList';
 import { MenuMatrixBCG } from '@/components/admin/overview/MenuMatrixBCG';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
@@ -107,25 +108,16 @@ export default function AdminDashboard() {
 
   const areaForRpc = areaFilter;
 
-  const kpisQuery = useDashboardKPIs({
-    tenantId: restaurantId,
-    startDate: start,
-    endDate: end,
-    areaFilter: areaForRpc,
-  });
-  const { data: kpisData, isLoading: loadingKPIs } = kpisQuery;
-  useQueryErrorToast(kpisQuery, 'Não foi possível carregar os indicadores do painel.');
-
   const statsQuery = useDashboardStats({
     tenantId: restaurantId,
     startDate: start,
     endDate: end,
     areaFilter: areaForRpc,
   });
-  const { data: statsData, isLoading: loadingBI } = statsQuery;
+  const { data: statsData, isLoading: loadingStats } = statsQuery;
   useQueryErrorToast(statsQuery, 'Não foi possível carregar as estatísticas do painel.');
 
-  const { data: analyticsFallback } = useDashboardAnalytics({
+  const { data: analyticsFallback, isLoading: loadingFallback } = useDashboardAnalytics({
     tenantId: restaurantId,
     startDate: start,
     endDate: end,
@@ -135,6 +127,17 @@ export default function AdminDashboard() {
 
   const analytics = (statsData ?? analyticsFallback) as DashboardAdvancedStatsResponse | undefined;
 
+  // Fonte única para KPIs: analytics (statsData ou fallback) — evita flickering
+  const metrics = useMemo(() => {
+    const k = analytics?.kpis;
+    return {
+      totalRevenue: k?.total_faturado ?? 0,
+      totalOrders: k?.total_pedidos ?? 0,
+      averageTicket: k?.ticket_medio ?? 0,
+      pendingOrders: k?.pedidos_pendentes ?? 0,
+    };
+  }, [analytics?.kpis]);
+
   const { data: prevAnalytics } = useDashboardStats({
     tenantId: restaurantId,
     startDate: prevRange?.start ?? start,
@@ -143,21 +146,27 @@ export default function AdminDashboard() {
     enabled: !!prevRange,
   });
 
+  // Métricas por canal (Salão vs Delivery) — usadas quando filtro = all
+  const { data: statsHall } = useDashboardStats({
+    tenantId: restaurantId,
+    startDate: start,
+    endDate: end,
+    areaFilter: 'table',
+    enabled: !!restaurantId && areaFilter === 'all',
+  });
+  const { data: statsDelivery } = useDashboardStats({
+    tenantId: restaurantId,
+    startDate: start,
+    endDate: end,
+    areaFilter: 'delivery',
+    enabled: !!restaurantId && areaFilter === 'all',
+  });
+
   const { data: loyaltyProgram } = useLoyaltyProgram(restaurantId);
   const { data: loyaltyMetrics } = useLoyaltyMetrics(restaurantId, loyaltyProgram?.orders_required ?? 10);
 
-  const metrics = useMemo(() => {
-    const k = analytics?.kpis ?? kpisData;
-    return {
-      totalRevenue: k?.total_faturado ?? 0,
-      totalOrders: k?.total_pedidos ?? 0,
-      averageTicket: k?.ticket_medio ?? 0,
-      pendingOrders: k?.pedidos_pendentes ?? 0,
-    };
-  }, [analytics?.kpis, kpisData]);
-
-  const hasKpis = !!kpisData || !!(analytics && analytics.kpis);
-  const loading = loadingKPIs && loadingBI && !hasKpis;
+  // Loading: aguarda analytics (stats ou fallback) — evita flickering nos cards
+  const loading = !analytics && (loadingStats || loadingFallback);
 
   const prevMetrics = useMemo(() => ({
     totalRevenue: prevAnalytics?.kpis?.total_faturado ?? 0,
@@ -485,16 +494,45 @@ export default function AdminDashboard() {
           }
           actions={
             <>
-              <Select value={areaFilter} onValueChange={(v) => setAreaFilter(v as AreaValue)}>
-                <SelectTrigger className="w-full sm:w-[150px] h-9 bg-white border-slate-200 text-sm">
-                  <SelectValue placeholder={t('common.all')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {AREA_VALUES.map((v) => (
-                    <SelectItem key={v} value={v}>{t(`dashboard.filters.${v === 'all' ? 'all' : v === 'table' ? 'table' : v === 'pickup' ? 'pickup' : v}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Tabs
+                value={['pickup', 'buffet'].includes(areaFilter) ? 'all' : (areaFilter === 'table' ? 'hallAndPDV' : areaFilter)}
+                onValueChange={(v) => setAreaFilter(v === 'hallAndPDV' ? 'table' : (v as AreaValue))}
+                className="shrink-0"
+              >
+                <TabsList className="h-9 bg-slate-100 border border-slate-200 p-0.5">
+                  <TabsTrigger value="all" className="h-8 px-3 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    {t('dashboard.filters.all')}
+                  </TabsTrigger>
+                  <TabsTrigger value="hallAndPDV" className="h-8 px-3 text-xs gap-1 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <Store className="h-3.5 w-3.5" />
+                    {t('dashboard.filters.hallAndPDV')}
+                  </TabsTrigger>
+                  <TabsTrigger value="delivery" className="h-8 px-3 text-xs gap-1 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <Bike className="h-3.5 w-3.5" />
+                    {t('dashboard.filters.delivery')}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-2.5 text-slate-500 hover:text-slate-700 border-slate-200"
+                    title={t('dashboard.filters.moreFilters')}
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setAreaFilter('pickup')}>
+                    {t('dashboard.filters.pickup')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setAreaFilter('buffet')}>
+                    {t('dashboard.filters.buffet')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Select value={period} onValueChange={(v) => setPeriod(v as PeriodValue)}>
                 <SelectTrigger className="w-full sm:w-[170px] h-9 bg-white border-slate-200 text-sm">
                   <SelectValue placeholder={t('common.period')} />
@@ -544,7 +582,13 @@ export default function AdminDashboard() {
           }
         />
 
-        {/* ══ LINHA 1: KPIs Críticos — Faturamento, Lucro, Ticket Médio ══ */}
+        {/* ══ Seção: Resumo Executivo ══ */}
+        <div className="space-y-1">
+          <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-2">
+            <LayoutDashboard className="h-4 w-4 text-primary" />
+            {t('dashboard.sections.executiveSummary')}
+          </h2>
+        </div>
         <motion.div
           className="grid gap-4 grid-cols-1 sm:grid-cols-3 min-w-0"
           variants={metricContainerVariants}
@@ -653,7 +697,90 @@ export default function AdminDashboard() {
           </motion.div>
         </motion.div>
 
-        {/* ══ LINHA 2: Operação — Tempos + Movimento por Hora ══ */}
+        {/* ══ Seção: Visão por Canal (Salão vs Delivery) ══ */}
+        {areaFilter === 'all' && (statsHall || statsDelivery) && (
+          <>
+          <div className="space-y-1 pt-4">
+            <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
+              {t('dashboard.sections.byChannel')}
+            </h2>
+          </div>
+          <motion.div
+            className="grid gap-4 grid-cols-1 md:grid-cols-2 min-w-0"
+            variants={metricContainerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.div className="admin-card p-5 min-w-0 overflow-hidden" variants={metricCardVariants}>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center">
+                  <Store className="h-4 w-4 text-slate-600" />
+                </div>
+                <h3 className="text-sm font-semibold text-slate-700">{t('dashboard.filters.hallAndPDV')}</h3>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">{t('dashboard.kpis.revenue')}</p>
+                  <p className="text-lg font-bold text-slate-900 mt-0.5">
+                    {formatPrice(statsHall?.kpis?.total_faturado ?? 0, currency)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">{t('dashboard.kpis.orders')}</p>
+                  <p className="text-lg font-bold text-slate-900 mt-0.5">{statsHall?.kpis?.total_pedidos ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">{t('dashboard.kpis.avgTicket')}</p>
+                  <p className="text-lg font-bold text-slate-900 mt-0.5">
+                    {formatPrice(statsHall?.kpis?.ticket_medio ?? 0, currency)}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+            <motion.div className="admin-card p-5 min-w-0 overflow-hidden" variants={metricCardVariants}>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-9 w-9 rounded-lg bg-cyan-50 flex items-center justify-center">
+                  <Bike className="h-4 w-4 text-cyan-600" />
+                </div>
+                <h3 className="text-sm font-semibold text-slate-700">{t('dashboard.filters.delivery')}</h3>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">{t('dashboard.kpis.revenue')}</p>
+                  <p className="text-lg font-bold text-slate-900 mt-0.5">
+                    {formatPrice(statsDelivery?.kpis?.total_faturado ?? 0, currency)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">{t('dashboard.kpis.orders')}</p>
+                  <p className="text-lg font-bold text-slate-900 mt-0.5">{statsDelivery?.kpis?.total_pedidos ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">{t('dashboard.kpis.avgTicket')}</p>
+                  <p className="text-lg font-bold text-slate-900 mt-0.5">
+                    {formatPrice(statsDelivery?.kpis?.ticket_medio ?? 0, currency)}
+                  </p>
+                </div>
+              </div>
+              {(statsDelivery?.operational?.avg_delivery_time ?? 0) > 0 && (
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <p className="text-[10px] text-slate-500">
+                    {t('dashboard.operational.avgDeliveryTime')}: {Math.round(statsDelivery.operational.avg_delivery_time)} min
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+          </>
+        )}
+
+        {/* ══ Seção: Operação ══ */}
+        <div className="space-y-1 pt-4">
+          <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-2">
+            <Flame className="h-4 w-4 text-orange-500" />
+            {t('dashboard.sections.operation')}
+          </h2>
+        </div>
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">
           {/* Tempos Operacionais + Horas Economizadas */}
           <div className="admin-card p-6 min-w-0 overflow-hidden">

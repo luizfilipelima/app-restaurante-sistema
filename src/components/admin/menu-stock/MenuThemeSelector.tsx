@@ -7,7 +7,6 @@ import {
   MENU_THEME_OPTIONS,
   MENU_THEME_ACCENT_OPTIONS,
   normalizeMenuThemeId,
-  getMinimalPreviewColors,
   getPalettePreviewColors,
   getMinimalPalette,
   isCustomAccent,
@@ -234,35 +233,6 @@ export default function MenuThemeSelector({
               label="Escolha a cor"
             />
           )}
-          {/* Visualização tema claro vs escuro com a cor escolhida */}
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="rounded-lg border border-border p-2 space-y-1.5">
-              <p className="text-[10px] font-medium text-muted-foreground">Tema claro</p>
-              <div className="flex gap-0.5">
-                {getMinimalPreviewColors('light', selectedAccent).map((color, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 h-4 rounded-sm border border-white/50 shadow-sm"
-                    style={{ backgroundColor: color }}
-                    title={color}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="rounded-lg border border-border p-2 space-y-1.5">
-              <p className="text-[10px] font-medium text-muted-foreground">Tema escuro</p>
-              <div className="flex gap-0.5">
-                {getMinimalPreviewColors('dark', selectedAccent).map((color, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 h-4 rounded-sm border border-white/10 shadow-sm"
-                    style={{ backgroundColor: color }}
-                    title={color}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       )}
 

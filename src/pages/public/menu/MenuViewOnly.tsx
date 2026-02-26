@@ -437,7 +437,6 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
               aria-hidden
             />
             <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="sr-only" width={80} height={28} />
-            <span className="text-xs">{t('menu.developedBy')}</span>
           </a>
         </footer>
       </main>
