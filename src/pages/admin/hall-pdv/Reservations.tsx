@@ -45,7 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, CalendarClock, Loader2, X, User, Clock, MapPin, Users, MessageCircle, Link2, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { Plus, CalendarClock, Loader2, X, User, MapPin, Users, MessageCircle, Link2, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { format, startOfDay } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
