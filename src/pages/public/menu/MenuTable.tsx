@@ -56,6 +56,17 @@ export default function MenuTable({ tenantSlug: tenantSlugProp }: MenuTableProps
         if (table) {
           setTableFound({ id: table.id, number: table.number });
           setTable(table.id, table.number);
+          // Se ainda não tem nome (localStorage vazio), pré-preencher da reserva ativa
+          const { tableCustomerName } = useTableOrderStore.getState();
+          if (!tableCustomerName?.trim()) {
+            const { data } = await supabase.rpc('get_reservation_customer_for_table', {
+              p_table_id: table.id,
+            });
+            const name = data?.customer_name;
+            if (name?.trim()) {
+              useTableOrderStore.getState().setTableCustomerName(name.trim());
+            }
+          }
         } else {
           setTableFound(null);
         }
