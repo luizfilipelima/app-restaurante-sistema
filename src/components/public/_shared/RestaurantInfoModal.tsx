@@ -6,7 +6,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Phone, Clock, FileText, Instagram, CalendarClock, Users } from 'lucide-react';
+import { Phone, Clock, FileText, Instagram, CalendarClock } from 'lucide-react';
 import { generateWhatsAppLink } from '@/lib/core/utils';
 import type { Restaurant } from '@/types';
 import type { DayKey } from '@/types';
@@ -175,23 +175,15 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
               </div>
             </div>
 
-            {/* Reserva e Fila */}
+            {/* Reserva */}
             <div className="flex flex-col gap-2">
               <Link
                 to={`${base}/reservar`}
-                className="flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium text-sm shadow-sm"
+                className="flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-colors font-medium text-sm shadow-sm"
                 onClick={() => onOpenChange(false)}
               >
                 <CalendarClock className="h-5 w-5 text-primary-foreground" />
                 {lang === 'pt' ? 'Fazer reserva' : 'Hacer reserva'}
-              </Link>
-              <Link
-                to={`${base}/fila`}
-                className="flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-primary/40 bg-transparent text-primary hover:bg-primary/5 transition-colors font-medium text-sm"
-                onClick={() => onOpenChange(false)}
-              >
-                <Users className="h-5 w-5 text-primary" />
-                {lang === 'pt' ? 'Entrar na fila de espera' : 'Entrar en la fila de espera'}
               </Link>
             </div>
 

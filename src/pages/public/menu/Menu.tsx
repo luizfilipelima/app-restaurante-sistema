@@ -825,29 +825,27 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         >
           <div className="px-3 pb-3">
             <Button
-              className="w-full h-16 rounded-3xl bg-transparent hover:bg-transparent shadow-none hover:opacity-95 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch border-0"
+              className="w-full h-16 rounded-3xl bg-primary shadow-lg hover:brightness-105 active:scale-[0.98] transition-all p-0 overflow-hidden flex items-stretch border-0 border border-primary-foreground/10"
               onClick={() => setCartOpen(true)}
             >
-              {/* Left Side: Info — blur + opacidade para contraste com Ver Sacola */}
-              <div className="flex-1 flex items-center justify-start px-4 gap-3.5 bg-primary/40 backdrop-blur-md">
-                <div className="relative">
-                   <div className="bg-primary h-9 w-9 rounded-full flex items-center justify-center border border-primary-foreground/30">
-                      <span className="text-sm font-bold text-primary-foreground">{getItemsCount()}</span>
-                   </div>
+              {/* Left Side: total e quantidade — fundo sólido para legibilidade */}
+              <div className="flex-1 flex items-center justify-start px-4 gap-3.5 min-w-0">
+                <div className="h-9 w-9 rounded-full flex items-center justify-center border border-primary-foreground/30 bg-primary-foreground/15 shrink-0">
+                  <span className="text-sm font-bold text-primary-foreground">{getItemsCount()}</span>
                 </div>
-                <div className="flex flex-col items-start justify-center">
-                  <span className="text-[10px] uppercase tracking-wider text-foreground/80 font-semibold leading-tight">{t('menu.total')}</span>
-                  <span className="text-base font-bold text-foreground leading-tight">{formatForDisplay(getSubtotal())}</span>
+                <div className="flex flex-col items-start justify-center min-w-0">
+                  <span className="text-[10px] uppercase tracking-wider text-primary-foreground/90 font-semibold leading-tight">{t('menu.total')}</span>
+                  <span className="text-base font-bold text-primary-foreground leading-tight truncate max-w-full">{formatForDisplay(getSubtotal())}</span>
                 </div>
               </div>
 
               {/* Divider */}
-              <div className="w-[1px] bg-foreground/20 self-stretch shrink-0" aria-hidden />
+              <div className="w-[1px] bg-primary-foreground/25 self-stretch shrink-0" aria-hidden />
 
-              {/* Right Side: CTA — cor sólida do tema */}
-              <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200">
+              {/* Right Side: CTA Ver bolsa */}
+              <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] text-primary-foreground">
                 <span className="text-sm font-bold">{t('menu.viewBag')}</span>
-                <ChevronRight className="h-4 w-4" aria-hidden />
+                <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
               </div>
             </Button>
           </div>

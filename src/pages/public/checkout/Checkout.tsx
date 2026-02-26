@@ -42,6 +42,7 @@ import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones, useDeliveryDistanc
 import { getDeliveryFeeByDistance } from '@/lib/geo/geo';
 
 const MapAddressPreview = lazy(() => import('@/components/public/map/MapAddressPreview'));
+const MapAddressPicker = lazy(() => import('@/components/public/map/MapAddressPicker'));
 const MapAddressOverlay = lazy(() => import('@/components/public/map/MapAddressOverlay'));
 import LoyaltyCard from '@/components/public/loyalty/LoyaltyCard';
 
@@ -220,6 +221,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     if (!isTableOrder && deliveryType === DeliveryType.DELIVERY) {
       import('@/components/public/map/MapAddressOverlay');
       import('@/components/public/map/MapAddressPreview');
+      import('@/components/public/map/MapAddressPicker');
     }
   }, [isTableOrder, deliveryType]);
 
@@ -1064,36 +1066,44 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 </button>
               )}
 
-              {/* Miniatura do mapa (não interativa) */}
-              {(() => {
-                const centerLat = mode === 'zones' && selectedZone?.center_lat != null
-                  ? Number(selectedZone.center_lat)
-                  : isKilometersMode && restaurantLat != null
+              {/* Modo zonas: mapa arrastável (sem busca de endereço). Modo quilometragem: miniatura não interativa. */}
+              {mode === 'zones' && selectedZone ? (
+                <Suspense fallback={<Skeleton className="h-[256px] w-full rounded-xl" />}>
+                  <MapAddressPicker
+                    key={mapKey}
+                    lat={latitude}
+                    lng={longitude}
+                    onLocationChange={handleMapLocationChange}
+                    zoneCenterLat={selectedZone.center_lat != null ? Number(selectedZone.center_lat) : undefined}
+                    zoneCenterLng={selectedZone.center_lng != null ? Number(selectedZone.center_lng) : undefined}
+                    zoneRadiusMeters={selectedZone.radius_meters != null ? Number(selectedZone.radius_meters) : undefined}
+                    height="256px"
+                  />
+                </Suspense>
+              ) : (
+                (() => {
+                  const centerLat = isKilometersMode && restaurantLat != null
                     ? restaurantLat
                     : latitude;
-                const centerLng = mode === 'zones' && selectedZone?.center_lng != null
-                  ? Number(selectedZone.center_lng)
-                  : isKilometersMode && restaurantLng != null
+                  const centerLng = isKilometersMode && restaurantLng != null
                     ? restaurantLng
                     : longitude;
-                const hasValidCoords = Number.isFinite(centerLat) && Number.isFinite(centerLng);
-                if (!hasValidCoords) return <Skeleton className="h-[120px] w-full rounded-xl" />;
-                return (
-                  <Suspense fallback={<Skeleton className="h-[120px] w-full rounded-xl" />}>
-                    <MapAddressPreview
-                      key={mapKey}
-                      lat={latitude}
-                      lng={longitude}
-                      zoneCenterLat={mode === 'zones' && selectedZone?.center_lat != null ? Number(selectedZone.center_lat) : undefined}
-                      zoneCenterLng={mode === 'zones' && selectedZone?.center_lng != null ? Number(selectedZone.center_lng) : undefined}
-                      zoneRadiusMeters={mode === 'zones' && selectedZone?.radius_meters != null ? Number(selectedZone.radius_meters) : undefined}
-                      restaurantLat={isKilometersMode && restaurantLat != null ? restaurantLat : undefined}
-                      restaurantLng={isKilometersMode && restaurantLng != null ? restaurantLng : undefined}
-                      height="120px"
-                    />
-                  </Suspense>
-                );
-              })()}
+                  const hasValidCoords = Number.isFinite(centerLat) && Number.isFinite(centerLng);
+                  if (!hasValidCoords) return <Skeleton className="h-[120px] w-full rounded-xl" />;
+                  return (
+                    <Suspense fallback={<Skeleton className="h-[120px] w-full rounded-xl" />}>
+                      <MapAddressPreview
+                        key={mapKey}
+                        lat={latitude}
+                        lng={longitude}
+                        restaurantLat={isKilometersMode && restaurantLat != null ? restaurantLat : undefined}
+                        restaurantLng={isKilometersMode && restaurantLng != null ? restaurantLng : undefined}
+                        height="120px"
+                      />
+                    </Suspense>
+                  );
+                })()
+              )}
 
               {isKilometersMode && (
                 <Button

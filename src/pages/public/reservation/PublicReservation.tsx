@@ -366,7 +366,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
       return (
         <div className="min-h-screen bg-background">
           <header className="bg-card border-b border-border px-4 py-4 flex items-center gap-3">
-            <button type="button" onClick={goBack} className="p-1 -ml-1 rounded-lg hover:bg-accent">
+            <button type="button" onClick={goBack} className="p-1 -ml-1 rounded-lg hover:bg-primary/10 active:bg-primary/15 transition-colors">
               <ArrowLeft className="h-5 w-5 text-foreground" />
             </button>
             <div>
@@ -495,7 +495,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border px-4 py-4 flex items-center gap-3">
-        <button type="button" onClick={goBack} className="p-1 -ml-1 rounded-lg hover:bg-accent">
+        <button type="button" onClick={goBack} className="p-1 -ml-1 rounded-lg hover:bg-primary/10 active:bg-primary/15 transition-colors">
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
         {restaurant?.logo ? (
@@ -520,7 +520,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder={t('checkout.namePlaceholder')}
               required
-              className="mt-1"
+              className="mt-1 transition-colors hover:border-primary/40 focus-visible:border-primary"
             />
           </div>
           <div>
@@ -533,7 +533,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
                 setCustomerPhoneCountry(country);
               }}
               showWhatsAppIcon
-              className="mt-1"
+              className="mt-1 [&_input]:transition-colors [&_input]:hover:border-primary/40 [&_input]:focus-visible:border-primary"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -545,7 +545,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
                 onChange={(e) => setScheduledDate(e.target.value)}
                 min={today}
                 required
-                className="mt-1"
+                className="mt-1 transition-colors hover:border-primary/40 focus-visible:border-primary"
               />
             </div>
             <div>
@@ -555,14 +555,14 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
                 value={scheduledTime}
                 onChange={(e) => setScheduledTime(e.target.value)}
                 required
-                className="mt-1"
+                className="mt-1 transition-colors hover:border-primary/40 focus-visible:border-primary"
               />
             </div>
           </div>
           <div>
             <Label>{t('reservation.table')}</Label>
             <Select value={tableId} onValueChange={setTableId} required>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger className="mt-1 transition-colors hover:border-primary/40 hover:bg-muted/80 data-[state=open]:border-primary">
                 <SelectValue placeholder={t('reservation.selectTable')} />
               </SelectTrigger>
               <SelectContent>
@@ -584,6 +584,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={t('reservation.notesPlaceholder')}
+              className="transition-colors hover:border-primary/40 focus-visible:border-primary"
             />
           </div>
           {error && (
@@ -591,13 +592,20 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
               {error}
             </div>
           )}
-          <Button type="submit" className="w-full" disabled={submitting || tables.length === 0}>
+          <Button
+            type="submit"
+            className="w-full hover:brightness-105 active:scale-[0.99] transition-all"
+            disabled={submitting || tables.length === 0}
+          >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             {t('reservation.confirmReservation')}
           </Button>
         </form>
         <p className="text-center text-xs text-muted-foreground mt-6">
-          <Link to={restaurantSlug ? `/${restaurantSlug}` : '/'} className="text-primary hover:underline">
+          <Link
+            to={restaurantSlug ? `/${restaurantSlug}` : '/'}
+            className="text-primary hover:text-primary/90 hover:underline transition-colors"
+          >
             {t('reservation.backToMenu')}
           </Link>
         </p>
