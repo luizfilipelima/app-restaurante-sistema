@@ -98,20 +98,44 @@ async function fetchCashierCompleted({
   ]);
 
   const ordersData = (ordersRes.data ?? []) as any[];
-  ordersData.forEach((o) => {
+  const byTable = new Map<string, any[]>();
+  for (const o of ordersData) {
+    const tid = o.table_id ?? 'unknown';
+    if (!byTable.has(tid)) byTable.set(tid, []);
+    byTable.get(tid)!.push(o);
+  }
+  for (const [, orders] of byTable) {
+    const first = orders[0];
+    const tableNumber = first.tables?.number ?? first.table_id ?? '?';
+    const totalAmount = orders.reduce((s: number, o: any) => s + (o.total ?? 0), 0);
+    const sortedByArrival = [...orders].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const sortedByExit = [...orders].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    const arrivalAt = sortedByArrival[0]?.created_at ?? first.created_at;
+    const exitAt = sortedByExit[0]?.updated_at ?? first.updated_at;
+    const paymentLabels = [...new Set(orders.map((o: any) => pmLabel(o.payment_method ?? 'cash')))];
+    const paymentMethods = paymentLabels.join(', ');
+    const orderItems = orders.flatMap((o: any) => (o.order_items ?? []));
+    const mergedOrder = {
+      ...first,
+      id: first.id,
+      total: totalAmount,
+      order_items: orderItems,
+      customer_name: first.customer_name ?? `Mesa ${tableNumber}`,
+      customer_phone: first.customer_phone,
+    };
     items.push({
-      id: `ord-${o.id}`,
+      id: `table-${first.table_id ?? first.id}`,
       type: 'table',
-      label: `Mesa ${o.tables?.number ?? o.table_id ?? '?'}`,
-      totalAmount: o.total ?? 0,
-      arrivalAt: o.created_at,
-      exitAt: o.updated_at,
-      paymentMethods: pmLabel(o.payment_method ?? 'cash'),
-      customerName: o.customer_name,
-      customerPhone: o.customer_phone,
-      order: o,
+      label: `Mesa ${tableNumber}`,
+      totalAmount,
+      arrivalAt,
+      exitAt,
+      paymentMethods,
+      customerName: first.customer_name,
+      customerPhone: first.customer_phone,
+      order: mergedOrder as import('@/types').DatabaseOrder,
     });
-  });
+  }
 
   const vcData = (vcRes.data ?? []) as any[];
   for (const vc of vcData) {

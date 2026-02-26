@@ -243,6 +243,8 @@
     "confirmReservation": "Confirmar reserva",
     "date": "Data *",
     "time": "Horário *",
+    "selectDatePlaceholder": "Selecione a data",
+    "selectTimePlaceholder": "Selecione o horário",
     "table": "Mesa *",
     "selectTable": "Selecione a mesa",
     "selectDateAndTimeFirst": "Primeiro escolha a data e o horário",

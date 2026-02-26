@@ -29,6 +29,7 @@ import {
   UserCheck,
   ArrowLeft,
   Users,
+  ChevronDown,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR, es } from 'date-fns/locale';
@@ -546,24 +547,42 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>{t('reservation.date')}</Label>
-              <Input
-                type="date"
-                value={scheduledDate}
-                onChange={(e) => setScheduledDate(e.target.value)}
-                min={today}
-                required
-                className="mt-1 transition-colors hover:border-primary/40 focus-visible:border-primary"
-              />
+              <label className="relative mt-1 flex min-h-[44px] cursor-pointer items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2.5 text-sm ring-offset-background transition-colors hover:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <input
+                  type="date"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  min={today}
+                  required
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                  aria-label={t('reservation.date')}
+                />
+                <span className={scheduledDate ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                  {scheduledDate
+                    ? format(new Date(scheduledDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: dateLocale })
+                    : t('reservation.selectDatePlaceholder')}
+                </span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-50" />
+              </label>
             </div>
             <div>
               <Label>{t('reservation.time')}</Label>
-              <Input
-                type="time"
-                value={scheduledTime}
-                onChange={(e) => setScheduledTime(e.target.value)}
-                required
-                className="mt-1 transition-colors hover:border-primary/40 focus-visible:border-primary"
-              />
+              <label className="relative mt-1 flex min-h-[44px] cursor-pointer items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2.5 text-sm ring-offset-background transition-colors hover:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <input
+                  type="time"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  required
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                  aria-label={t('reservation.time')}
+                />
+                <span className={scheduledTime ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                  {scheduledTime
+                    ? scheduledTime.slice(0, 5)
+                    : t('reservation.selectTimePlaceholder')}
+                </span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-50" />
+              </label>
             </div>
           </div>
           {scheduledDate && scheduledTime && (

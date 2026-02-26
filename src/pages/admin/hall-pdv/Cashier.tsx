@@ -483,7 +483,7 @@ function CashierContent() {
           ? supabase
               .from('orders')
               .select(`
-                id, customer_name, total, created_at, table_id,
+                id, customer_name, total, created_at, table_id, bill_requested,
                 delivery_type, order_source,
                 order_items(id, product_name, quantity, unit_price, total_price, observations, customer_name),
                 tables(number, hall_zone_id)
@@ -505,7 +505,9 @@ function CashierContent() {
 
       vcData.forEach((vc) => {
         const resList = vc.reservations;
-        const res = Array.isArray(resList) && resList.length > 0 ? resList[0] : null;
+        const res = resList
+          ? (Array.isArray(resList) ? resList[0] : resList)
+          : null;
         // Não exibir no cashier comandas de reservas pending/confirmed — cliente ainda não chegou
         if (res && ['pending', 'confirmed'].includes(res.status)) return;
         // Comanda vinculada à reserva só aparece na fila do caixa no dia em que foi reservada
@@ -517,6 +519,16 @@ function CashierContent() {
         const reservation = res && res.status === 'activated'
           ? { id: res.id, customer_name: res.customer_name, scheduled_at: res.scheduled_at, late_tolerance_minutes: res.late_tolerance_minutes ?? 15, table_id: res.table_id, status: res.status }
           : undefined;
+
+        // Reserva/comanda só aparece na fila após: (a) usuário confirmar pedido no cardápio, ou (b) garçom acionar enviar conta
+        if (reservation) {
+          const hasItems = ((vc.virtual_comanda_items ?? []).length > 0) || ((vc.total_amount ?? 0) > 0);
+          const tableId = reservation.table_id;
+          const billRequested = tableId
+            ? tableOrders.some((o: any) => o.table_id === tableId && o.bill_requested === true)
+            : false;
+          if (!hasItems && !billRequested) return;
+        }
 
         const vcItems = (vc.virtual_comanda_items ?? []).map((i: any) => ({
           id: i.id,
@@ -741,12 +753,15 @@ function CashierContent() {
 
   const loadQueueRef = useRef(loadQueue);
   loadQueueRef.current = loadQueue;
+  const loadCompletedRef = useRef(loadCompletedToday);
+  loadCompletedRef.current = loadCompletedToday;
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const debouncedLoadQueue = useCallback(() => {
+  const debouncedRefreshCashier = useCallback(() => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
       debounceTimerRef.current = null;
       loadQueueRef.current(false);
+      loadCompletedRef.current();
     }, 500);
   }, []);
 
@@ -755,7 +770,7 @@ function CashierContent() {
   }, [loadQueue]);
 
   useEffect(() => {
-    if (mainView === 'cashier') loadCompletedToday();
+    if (mainView === 'completed') loadCompletedToday();
   }, [mainView, loadCompletedToday]);
 
   useEffect(() => {
@@ -770,7 +785,7 @@ function CashierContent() {
           table: 'virtual_comandas',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        debouncedLoadQueue
+        debouncedRefreshCashier
       )
       .on(
         'postgres_changes',
@@ -780,7 +795,7 @@ function CashierContent() {
           table: 'comandas',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        debouncedLoadQueue
+        debouncedRefreshCashier
       )
       .on(
         'postgres_changes',
@@ -790,7 +805,7 @@ function CashierContent() {
           table: 'orders',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        debouncedLoadQueue
+        debouncedRefreshCashier
       )
       .on(
         'postgres_changes',
@@ -800,14 +815,14 @@ function CashierContent() {
           table: 'reservations',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
-        debouncedLoadQueue
+        debouncedRefreshCashier
       )
       .subscribe((status) => setIsLive(status === 'SUBSCRIBED'));
     return () => {
       supabase.removeChannel(ch);
       setIsLive(false);
     };
-  }, [restaurantId, debouncedLoadQueue, queryClient]);
+  }, [restaurantId, debouncedRefreshCashier, queryClient]);
 
   useEffect(() => {
     if (!restaurantId || isLive) return;
