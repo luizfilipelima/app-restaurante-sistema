@@ -1129,6 +1129,8 @@ function CashierContent() {
       setJustClosed(true);
       loadQueue();
       loadCompletedToday();
+      queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['reservations', restaurantId] });
       scannerRef.current?.focus();
     } catch (err: any) {
       toast({ title: t('cashier.errorFinalize'), description: err?.message, variant: 'destructive' });
