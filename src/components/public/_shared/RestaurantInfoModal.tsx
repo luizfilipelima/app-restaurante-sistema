@@ -127,8 +127,8 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
             {/* Telefone */}
             {waLink && (
               <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-xl bg-success/10 flex items-center justify-center flex-shrink-0">
-                  <Phone className="h-5 w-5 text-success" />
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Phone className="h-5 w-5 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">{t.contact}</p>
@@ -136,7 +136,7 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
                     href={waLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-base font-semibold text-success hover:text-success/90 hover:underline break-all"
+                    className="text-base font-semibold text-primary hover:text-primary/90 hover:underline break-all"
                   >
                     {prefix} {restaurant.phone || restaurant.whatsapp || ''}
                   </a>
@@ -166,8 +166,8 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
 
             {/* Horário */}
             <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-xl bg-warning/10 flex items-center justify-center flex-shrink-0">
-                <Clock className="h-5 w-5 text-warning" />
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Clock className="h-5 w-5 text-primary" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">{t.hours}</p>
@@ -179,18 +179,18 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
             <div className="flex flex-col gap-2">
               <Link
                 to={`${base}/reservar`}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 transition-colors text-primary font-medium text-sm"
+                className="flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium text-sm shadow-sm"
                 onClick={() => onOpenChange(false)}
               >
-                <CalendarClock className="h-5 w-5 text-primary" />
+                <CalendarClock className="h-5 w-5 text-primary-foreground" />
                 {lang === 'pt' ? 'Fazer reserva' : 'Hacer reserva'}
               </Link>
               <Link
                 to={`${base}/fila`}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted hover:bg-muted/80 transition-colors text-foreground font-medium text-sm"
+                className="flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-primary/40 bg-transparent text-primary hover:bg-primary/5 transition-colors font-medium text-sm"
                 onClick={() => onOpenChange(false)}
               >
-                <Users className="h-5 w-5 text-muted-foreground" />
+                <Users className="h-5 w-5 text-primary" />
                 {lang === 'pt' ? 'Entrar na fila de espera' : 'Entrar en la fila de espera'}
               </Link>
             </div>
@@ -198,8 +198,8 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
             {/* Descrição */}
             {restaurant.description?.trim() && (
               <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-5 w-5 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">{t.description}</p>

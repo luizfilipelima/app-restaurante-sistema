@@ -84,6 +84,7 @@ export default function AdminLoyalty() {
         enabled: program.enabled,
         orders_required: program.orders_required,
         reward_description: program.reward_description,
+        reward_product_id: program.reward_product_id ?? undefined,
         scoring_channels: program.scoring_channels ?? defaultChannels,
         points_validity_days: program.points_validity_days ?? undefined,
       });
