@@ -36,6 +36,7 @@ export interface TableWithStatus extends Table {
   /** Dados da reserva quando hasReservation */
   reservationAt?: string | null;
   reservationCustomerName?: string | null;
+  reservationCustomerPhone?: string | null;
 }
 
 async function fetchTableStatuses(restaurantId: string | null): Promise<TableWithStatus[]> {
@@ -68,7 +69,7 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
       try {
         const { data } = await supabase
           .from('reservations')
-          .select('id, table_id, customer_name, scheduled_at, status')
+          .select('id, table_id, customer_name, customer_phone, scheduled_at, status')
           .eq('restaurant_id', restaurantId)
           .in('status', ['pending', 'confirmed']);
         return data ?? [];
@@ -88,13 +89,13 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
 
   const todayStart = startOfDay(new Date()).getTime();
   const todayEnd = endOfDay(new Date()).getTime();
-  const reservationsByTable = new Map<string, { customer_name: string; scheduled_at: string }[]>();
+  const reservationsByTable = new Map<string, { customer_name: string; customer_phone?: string | null; scheduled_at: string }[]>();
   (Array.isArray(reservationsRes) ? reservationsRes : []).forEach((r: any) => {
     if (!r.table_id) return;
     const scheduled = new Date(r.scheduled_at).getTime();
     if (scheduled < todayStart || scheduled > todayEnd) return;
     const list = reservationsByTable.get(r.table_id) ?? [];
-    list.push({ customer_name: r.customer_name, scheduled_at: r.scheduled_at });
+    list.push({ customer_name: r.customer_name, customer_phone: r.customer_phone ?? null, scheduled_at: r.scheduled_at });
     reservationsByTable.set(r.table_id, list);
   });
 
@@ -147,6 +148,7 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
       hasReservation: resList.length > 0,
       reservationAt: nextRes?.scheduled_at ?? null,
       reservationCustomerName: nextRes?.customer_name ?? null,
+      reservationCustomerPhone: nextRes?.customer_phone ?? null,
     } satisfies TableWithStatus;
   });
 }

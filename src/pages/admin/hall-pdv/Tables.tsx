@@ -79,6 +79,8 @@ import {
   Trash2,
   LayoutGrid,
   Banknote,
+  User,
+  Phone,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import type { Locale } from 'date-fns';
@@ -1094,6 +1096,24 @@ export function TableCard({
             </span>
           )}
         </div>
+
+        {/* 2b. Dados da reserva (nome + telefone) */}
+        {table.hasReservation && (table.reservationCustomerName || table.reservationCustomerPhone) && (
+          <div className="shrink-0 flex flex-col gap-0.5 text-xs">
+            {table.reservationCustomerName && (
+              <p className="flex items-center gap-1.5 text-foreground font-medium truncate">
+                <User className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                {table.reservationCustomerName}
+              </p>
+            )}
+            {table.reservationCustomerPhone && (
+              <p className="flex items-center gap-1.5 text-muted-foreground truncate">
+                <Phone className="h-3.5 w-3.5 shrink-0" />
+                {table.reservationCustomerPhone}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* 3. Valor (quando ocupada) */}
         {isOccupied && (

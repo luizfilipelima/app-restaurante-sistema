@@ -704,20 +704,21 @@ function ReservationCard({
         )}
       </div>
 
-      {/* Bloco 2: conteúdo — nome em destaque, mesa/zona, data secundária */}
-      <div className="mt-3 min-w-0">
+      {/* Bloco 2: conteúdo — nome, mesa/zona, data e horário escolhido */}
+      <div className="mt-3 min-w-0 space-y-2">
         <p className="font-semibold text-foreground flex items-center gap-1.5 truncate">
           <User className="h-4 w-4 text-muted-foreground shrink-0" />
           {customerDisplay}
         </p>
-        <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
+        <p className="text-sm text-foreground font-medium flex items-center gap-1.5">
+          <CalendarClock className="h-4 w-4 text-primary/80 shrink-0" />
+          <span className="text-muted-foreground">{t('reservations.scheduledFor')}:</span>{' '}
+          {format(scheduled, "dd/MM/yyyy 'às' HH:mm", { locale: dateLocale })}
+        </p>
+        <p className="text-sm text-muted-foreground flex items-center gap-1.5">
           <MapPin className="h-3.5 w-3.5 shrink-0" />
           {t('reservations.table')} {tableDisplay}
           {zoneName ? ` — ${zoneName}` : ''}
-        </p>
-        <p className="text-xs text-muted-foreground/90 flex items-center gap-1.5 mt-0.5">
-          <Clock className="h-3 w-3 shrink-0" />
-          {format(scheduled, "dd/MM/yyyy 'às' HH:mm", { locale: dateLocale })}
         </p>
       </div>
 
