@@ -53,8 +53,8 @@ async function fetchReservations(
     .eq('restaurant_id', restaurantId);
 
   if (filters?.date) {
-    const dayStart = `${filters.date}T00:00:00`;
-    const dayEnd = `${filters.date}T23:59:59.999`;
+    const dayStart = new Date(`${filters.date}T00:00:00`).toISOString();
+    const dayEnd = new Date(`${filters.date}T23:59:59.999`).toISOString();
     query = query.gte('scheduled_at', dayStart).lte('scheduled_at', dayEnd);
   }
 

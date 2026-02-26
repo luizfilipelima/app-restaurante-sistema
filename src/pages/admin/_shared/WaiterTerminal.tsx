@@ -5,7 +5,7 @@
  * Tabs: Salão (mesas) + Expedição (pedidos prontos para retirada).
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/core/supabase';
@@ -86,7 +86,7 @@ function WaiterTerminalContent() {
   const dateLocale = DATE_LOCALES[lang] ?? ptBR;
 
   const { data: tablesData, refetch: refetchTables } = useTables(restaurantId);
-  const { data: tableStatuses = [] } = useTableStatuses(restaurantId);
+  const { data: tableStatuses = [], refetch: refetchTableStatuses } = useTableStatuses(restaurantId);
   const { data: waiterCallsData } = useWaiterCalls(restaurantId);
   const { data: hallZones = [] } = useHallZones(restaurantId);
   const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
@@ -146,6 +146,18 @@ function WaiterTerminalContent() {
     : gridTablesAll;
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
+  // Sincroniza selectedTable com dados atualizados em tempo real
+  useEffect(() => {
+    if (!selectedTable?.id || tableStatuses.length === 0) return;
+    const fresh = tableStatuses.find((s) => s.id === selectedTable.id);
+    if (fresh) setSelectedTable(fresh);
+  }, [tableStatuses, selectedTable?.id]);
+
+  const handleRefreshSheet = useCallback(() => {
+    queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
+    queryClient.refetchQueries({ queryKey: ['tableOrders'] });
+  }, [queryClient, restaurantId]);
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
@@ -272,6 +284,7 @@ function WaiterTerminalContent() {
           queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
           queryClient.invalidateQueries({ queryKey: ['reservations', restaurantId] });
         }}
+        onRefresh={handleRefreshSheet}
         onTableOrZoneUpdated={() => {
           refetchTables();
           queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });

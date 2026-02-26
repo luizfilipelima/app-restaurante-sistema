@@ -56,6 +56,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetClose,
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -81,6 +82,8 @@ import {
   Banknote,
   User,
   Phone,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import type { Locale } from 'date-fns';
@@ -289,6 +292,13 @@ export default function AdminTables() {
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
+  // Sincroniza selectedTable com dados atualizados em tempo real
+  useEffect(() => {
+    if (!selectedTable?.id || tableStatuses.length === 0) return;
+    const fresh = tableStatuses.find((s) => s.id === selectedTable.id);
+    if (fresh) setSelectedTable(fresh);
+  }, [tableStatuses, selectedTable?.id]);
+
   const terminalUrl = restaurant?.slug
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${restaurant.slug}/terminal-garcom`
     : '';
@@ -483,6 +493,10 @@ export default function AdminTables() {
           queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
           queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
           queryClient.invalidateQueries({ queryKey: ['reservations', restaurantId] });
+        }}
+        onRefresh={() => {
+          queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
+          queryClient.refetchQueries({ queryKey: ['tableOrders'] });
         }}
         onTableOrZoneUpdated={() => {
           refetchTables();
@@ -1178,6 +1192,7 @@ export function TableOperationSheet({
   onOrderPlaced,
   onClosureRequested,
   onAccountClosed,
+  onRefresh,
   onTableOrZoneUpdated,
   onTableDeleted,
   isMobile,
@@ -1201,6 +1216,8 @@ export function TableOperationSheet({
   onClosureRequested: () => void;
   /** Chamado quando a conta da mesa for fechada (pedidos pagos). */
   onAccountClosed?: () => void;
+  /** Chamado ao clicar em refresh — atualizar dados da mesa em tempo real */
+  onRefresh?: () => void;
   onTableOrZoneUpdated: () => void;
   /** Chamado quando a mesa é excluída (apenas modo management). */
   onTableDeleted?: () => void;
@@ -1476,17 +1493,20 @@ export function TableOperationSheet({
     ? getCardapioPublicUrl(restaurant.slug).replace(/\/$/, '') + `/cardapio/${table.number}`
     : '';
 
+  const btnClass = 'rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-9 w-9 flex items-center justify-center';
+
   return (
     <>
       <Sheet open={!!table} onOpenChange={(open) => !open && onClose()}>
         <SheetContent
           side={isMobile ? 'bottom' : 'right'}
+          showCloseButton={false}
           className={cn(
             'flex flex-col overflow-y-auto',
             isMobile && 'h-[85vh] max-h-[85vh] rounded-t-2xl'
           )}
         >
-          <SheetHeader>
+          <SheetHeader className="flex flex-row items-center justify-between space-y-0 pr-12">
             <SheetTitle className="flex items-center gap-2">
               Mesa {table.number}
               {table.hasPendingWaiterCall && (
@@ -1496,6 +1516,23 @@ export function TableOperationSheet({
                 </span>
               )}
             </SheetTitle>
+            <div className="absolute right-4 top-4 flex items-center gap-1">
+              {onRefresh && (
+                <button
+                  type="button"
+                  onClick={() => onRefresh()}
+                  className={btnClass}
+                  title="Atualizar"
+                  aria-label="Atualizar"
+                >
+                  <RefreshCw className="h-5 w-5" />
+                </button>
+              )}
+              <SheetClose className={btnClass}>
+                <X className="h-5 w-5" />
+                <span className="sr-only">Fechar</span>
+              </SheetClose>
+            </div>
           </SheetHeader>
 
           <div className="mt-4 flex flex-1 flex-col gap-6">

@@ -124,7 +124,7 @@ function ReservationsContent() {
       return;
     }
     const dateTime = scheduledDate && scheduledTime
-      ? `${scheduledDate}T${scheduledTime}:00`
+      ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
       : new Date().toISOString();
     try {
       const phoneVal = customerPhone.trim();

@@ -147,7 +147,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
       if (!scheduledDate || !scheduledTime) setTableId('');
       return;
     }
-    const dt = `${scheduledDate}T${scheduledTime}:00`;
+    const dt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
     supabase
       .rpc('get_available_tables_for_reservation', {
         p_restaurant_slug: restaurantSlug,
@@ -180,7 +180,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
     setSubmitting(true);
     setError(null);
     try {
-      const dt = `${scheduledDate}T${scheduledTime}:00`;
+      const dt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
       const phoneVal = customerPhone.trim();
       const phoneNormalized = phoneVal ? normalizePhoneWithCountryCode(phoneVal, customerPhoneCountry) : null;
       const { data, error: rpcErr } = await supabase.rpc('create_reservation_by_slug', {

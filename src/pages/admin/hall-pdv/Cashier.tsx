@@ -43,7 +43,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { format, formatDistanceToNow, startOfDay } from 'date-fns';
+import { format, formatDistanceToNow, startOfDay, endOfDay } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
 import { QRCodeSVG } from 'qrcode.react';
@@ -124,6 +124,8 @@ interface QueueItemTable extends QueueItemBase {
   tableNumber: number;
   hallZoneId: string | null;
   order: import('@/types').DatabaseOrder;
+  /** Se a mesa está vinculada a uma reserva (pending/confirmed/activated) para hoje */
+  hasReservation?: boolean;
 }
 
 type CashierQueueItem = QueueItemComandaDigital | QueueItemComandaBuffet | QueueItemTable;
@@ -140,6 +142,7 @@ interface TableGroup {
   customerName: string | null;
   totalAmount: number;
   createdAt: string;
+  hasReservation?: boolean;
 }
 
 type CashierDisplayItem = CashierQueueItem | TableGroup;
@@ -375,6 +378,13 @@ function QueueCard({
                 )}
                 <Badge className={`text-[10px] font-bold ${badgeClass} border`}>{(item as QueueItemComandaDigital).shortCode}</Badge>
               </>
+            ) : (item.type === 'table' || isTableGroup(item)) && ((item as QueueItemTable & TableGroup).hasReservation) ? (
+              <>
+                <Badge className="text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-900/40 dark:text-violet-300 dark:border-violet-800">
+                  {t('reservations.reserva')}
+                </Badge>
+                <Badge className={`text-[10px] font-bold ${badgeClass} border`}>{item.label}</Badge>
+              </>
             ) : (
               <Badge className={`text-[10px] font-bold ${badgeClass} border`}>{item.label}</Badge>
             )}
@@ -460,7 +470,10 @@ function CashierContent() {
     try {
       const items: CashierQueueItem[] = [];
 
-      const [vcRes, comandasRes, ordersRes] = await Promise.all([
+      const todayStart = startOfDay(new Date()).toISOString();
+      const todayEnd = endOfDay(new Date()).toISOString();
+
+      const [vcRes, comandasRes, ordersRes, reservationsRes] = await Promise.all([
         supabase
           .from('virtual_comandas')
           .select(`
@@ -493,9 +506,20 @@ function CashierContent() {
               .neq('status', 'cancelled')
               .eq('order_source', 'table')
           : { data: [] },
+        hasTables
+          ? supabase
+              .from('reservations')
+              .select('id, table_id')
+              .eq('restaurant_id', restaurantId)
+              .in('status', ['pending', 'confirmed', 'activated'])
+              .gte('scheduled_at', todayStart)
+              .lte('scheduled_at', todayEnd)
+          : { data: [] },
       ]);
 
       const vcData = (vcRes.data ?? []) as any[];
+      const reservationsData = (reservationsRes?.data ?? []) as { table_id: string }[];
+      const tableIdsWithReservation = new Set(reservationsData.map((r) => r.table_id).filter(Boolean));
       const ordersData = (ordersRes.data ?? []) as any[];
       const tableOrders = ordersData.filter(
         (o: any) => (o.order_source === 'table' || o.table_id) && o.order_source !== 'delivery' && o.delivery_type !== 'delivery'
@@ -629,6 +653,7 @@ function CashierContent() {
           tableNumber: Number(tableNum),
           hallZoneId: t?.hall_zone_id ?? null,
           order: o,
+          hasReservation: o.table_id ? tableIdsWithReservation.has(o.table_id) : false,
         });
       });
 
@@ -879,6 +904,7 @@ function CashierContent() {
             customerName: customerLabel,
             totalAmount,
             createdAt: oldest.createdAt,
+            hasReservation: arr.some((i) => i.hasReservation),
           });
         }
       }
