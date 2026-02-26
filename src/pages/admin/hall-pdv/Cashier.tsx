@@ -363,7 +363,21 @@ function QueueCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Badge className={`text-[10px] font-bold ${badgeClass} border`}>{item.label}</Badge>
+            {item.type === 'comanda_digital' && (item as QueueItemComandaDigital).reservation ? (
+              <>
+                <Badge className="text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800">
+                  {t('reservations.reserva')}
+                </Badge>
+                {(item as QueueItemComandaDigital).tableNumber && (
+                  <Badge className="text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800">
+                    {t('cashier.tagMesa')} {(item as QueueItemComandaDigital).tableNumber}
+                  </Badge>
+                )}
+                <Badge className={`text-[10px] font-bold ${badgeClass} border`}>{(item as QueueItemComandaDigital).shortCode}</Badge>
+              </>
+            ) : (
+              <Badge className={`text-[10px] font-bold ${badgeClass} border`}>{item.label}</Badge>
+            )}
           </div>
           <div className="flex items-center gap-1 mt-0.5">
             <User className="h-3 w-3 text-muted-foreground flex-shrink-0" />
@@ -494,6 +508,12 @@ function CashierContent() {
         const res = Array.isArray(resList) && resList.length > 0 ? resList[0] : null;
         // Não exibir no cashier comandas de reservas pending/confirmed — cliente ainda não chegou
         if (res && ['pending', 'confirmed'].includes(res.status)) return;
+        // Comanda vinculada à reserva só aparece na fila do caixa no dia em que foi reservada
+        if (res) {
+          const scheduledDate = new Date(res.scheduled_at).toDateString();
+          const today = new Date().toDateString();
+          if (scheduledDate !== today) return;
+        }
         const reservation = res && res.status === 'activated'
           ? { id: res.id, customer_name: res.customer_name, scheduled_at: res.scheduled_at, late_tolerance_minutes: res.late_tolerance_minutes ?? 15, table_id: res.table_id, status: res.status }
           : undefined;
