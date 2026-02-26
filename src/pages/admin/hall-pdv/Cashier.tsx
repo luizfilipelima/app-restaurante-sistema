@@ -35,7 +35,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { format, formatDistanceToNow, startOfDay } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
@@ -65,7 +72,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { CashierCompletedView } from '@/components/cashier/CashierCompletedView';
-import { useTables } from '@/hooks/queries';
+import { useTables, useCancelVirtualComanda } from '@/hooks/queries';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
@@ -406,6 +413,7 @@ function CashierContent() {
   const scanBufferRef = useRef('');
   const [scanError, setScanError] = useState<string | null>(null);
   const [reservationAction, setReservationAction] = useState<'idle' | 'activating' | 'cancelling' | null>(null);
+  const [showRemoveComandaConfirm, setShowRemoveComandaConfirm] = useState(false);
   const [mainView, setMainView] = useState<'cashier' | 'completed'>('cashier');
   const [completedList, setCompletedList] = useState<CompletedItem[]>([]);
 
@@ -413,6 +421,7 @@ function CashierContent() {
   const { data: hasTables } = useFeatureAccess('feature_tables', restaurantId);
   const { data: hallZones = [] } = useHallZones(restaurantId);
   useTables(restaurantId);
+  const cancelComanda = useCancelVirtualComanda(restaurantId);
 
   const exchangeRates: ExchangeRates = restaurant?.exchange_rates ?? {
     pyg_per_brl: 3600,
@@ -1139,6 +1148,24 @@ function CashierContent() {
     }
   };
 
+  const handleRemoveComanda = async () => {
+    if (!selected || selected.type !== 'comanda_digital' || cancelComanda.isPending) return;
+    const item = selected as QueueItemComandaDigital;
+    try {
+      await cancelComanda.mutateAsync({
+        comandaId: item.virtualComandaId,
+        reservationId: item.reservation?.id ?? null,
+        reservationStatus: item.reservation?.status ?? null,
+      });
+      setShowRemoveComandaConfirm(false);
+      handleClearSelection();
+      loadQueue();
+      toast({ title: t('cashier.removeComandaSuccess') });
+    } catch (err: any) {
+      toast({ title: t('cashier.errorRemoveComanda'), description: err?.message, variant: 'destructive' });
+    }
+  };
+
   const itemsForDisplay = (() => {
     if (!selected) return [];
     if (selected.type === 'comanda_digital') return selected.items.map((i) => ({ name: i.product_name, qty: i.quantity, price: i.total_price }));
@@ -1585,6 +1612,21 @@ function CashierContent() {
                   )}
                   {t('cashier.finalize')}
                 </Button>
+                {selected.type === 'comanda_digital' && (
+                  <Button
+                    variant="ghost"
+                    className="w-full mt-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => setShowRemoveComandaConfirm(true)}
+                    disabled={cancelComanda.isPending || closing}
+                  >
+                    {cancelComanda.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    {t('cashier.removeComanda')}
+                  </Button>
+                )}
               </div>
                 </>
               )}
@@ -1596,6 +1638,29 @@ function CashierContent() {
 
       <OrderReceipt data={receiptData} />
       <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />
+
+      {/* Modal confirmação: Remover comanda da fila */}
+      <Dialog open={showRemoveComandaConfirm} onOpenChange={setShowRemoveComandaConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('cashier.removeComanda')}</DialogTitle>
+            <DialogDescription>
+              {selected?.type === 'comanda_digital' && (selected as QueueItemComandaDigital).items.length > 0
+                ? t('cashier.removeComandaConfirmWithItems')
+                : t('cashier.removeComandaConfirm')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowRemoveComandaConfirm(false)} disabled={cancelComanda.isPending}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="destructive" onClick={handleRemoveComanda} disabled={cancelComanda.isPending}>
+              {cancelComanda.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              {t('cashier.removeComanda')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminPageLayout>
   );
 }

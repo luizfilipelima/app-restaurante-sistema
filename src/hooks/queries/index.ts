@@ -23,6 +23,7 @@ export { useTableStatuses } from './useTableStatuses';
 export { useResetTable, resetTable } from './useResetTable';
 export { useCloseTableAccount } from './useCloseTableAccount';
 export type { CloseTablePaymentMethod } from './useCloseTableAccount';
+export { useCancelVirtualComanda } from './useCancelVirtualComanda';
 export {
   useReservations,
   useCreateReservation,
