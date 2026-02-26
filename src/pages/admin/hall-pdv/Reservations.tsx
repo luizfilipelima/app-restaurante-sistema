@@ -277,7 +277,6 @@ function ReservationsContent() {
             reservations={kanbanReserved}
             variant="reserved"
             hallZones={hallZones}
-            tables={activeTables}
             onCancel={setCancelConfirmTarget}
             cancellingId={cancellingId}
             onChangeTable={canChangeTable ? (r) => { setChangeTableTarget(r); setChangeTableNewTableId(r.table_id ?? ''); } : undefined}
@@ -625,7 +624,6 @@ function KanbanColumn({
   reservations,
   variant,
   hallZones,
-  tables,
   onCancel,
   cancellingId,
   onChangeTable,
@@ -639,7 +637,6 @@ function KanbanColumn({
   reservations: ReservationWithDetails[];
   variant: 'reserved' | 'cancelled' | 'completed';
   hallZones: { id: string; name: string }[];
-  tables?: { id: string; number: number; hall_zone_id: string | null }[];
   onCancel: (id: string) => void;
   cancellingId: string | null;
   onChangeTable?: (r: ReservationWithDetails) => void;
