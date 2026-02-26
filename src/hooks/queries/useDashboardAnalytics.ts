@@ -58,5 +58,7 @@ export function useDashboardAnalytics({
     queryKey: ['dashboard-analytics', tenantId, startKey, endKey, areaFilter],
     queryFn: () => fetchDashboardAnalytics({ tenantId, startDate, endDate, areaFilter }),
     enabled: !!tenantId && isUUID(tenantId) && enabled,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000, // Atualiza a cada 1 min com dashboard aberto
   });
 }

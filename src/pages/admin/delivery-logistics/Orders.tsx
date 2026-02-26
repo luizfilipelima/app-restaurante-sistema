@@ -206,6 +206,9 @@ export default function AdminOrders() {
   const handleRealtimeOrder = useCallback(async (payload: any) => {
     queryClient.invalidateQueries({ queryKey: ['orders', restaurantId] });
     queryClient.invalidateQueries({ queryKey: ['completed-orders', restaurantId] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-analytics'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     refetchOrders();
     if (payload.eventType === 'INSERT' && payload.new?.restaurant_id === restaurantId) {
       const orderId = (payload.new as { id: string }).id;
@@ -388,6 +391,11 @@ export default function AdminOrders() {
 
       await refetchOrders();
 
+      // Atualiza métricas do Dashboard BI (pedidos concluídos refletem nos KPIs e analytics)
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+
       toast({
         id: 'kanban-status',
         title: `Pedido → ${statusConfig[newStatus].label}`,
@@ -426,6 +434,9 @@ export default function AdminOrders() {
       }
 
       await refetchOrders();
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       setOrderToRemove(null);
       toast({
         title: "Pedido removido",

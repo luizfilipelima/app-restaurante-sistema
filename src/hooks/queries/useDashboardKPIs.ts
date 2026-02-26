@@ -47,7 +47,8 @@ export function useDashboardKPIs({
     queryKey: ['dashboard-kpis', tenantId, startKey, endKey, areaFilter],
     queryFn: () => fetchDashboardKPIs({ tenantId, startDate, endDate, areaFilter }),
     enabled: !!tenantId && isUUID(tenantId) && enabled,
-    staleTime: 60 * 1000, // 1 min - KPIs podem ser recarregados menos
+    staleTime: 30 * 1000, // 30s — invalidação do kanban reflete mais rápido
+    refetchInterval: 60 * 1000, // Atualiza a cada 1 min com dashboard aberto
     retry: 1, // Se a RPC não existir (migração não aplicada), fallback usa useDashboardStats
     throwOnError: false, // Silencioso: fallback para useDashboardStats quando RPC não existe
   });
