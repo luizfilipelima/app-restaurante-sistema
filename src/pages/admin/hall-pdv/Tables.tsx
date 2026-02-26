@@ -24,7 +24,9 @@ import {
   useLinkComandaToTable,
   useUnlinkComandaFromTable,
   useResetTable,
+  useCloseTableAccount,
 } from '@/hooks/queries';
+import type { CloseTablePaymentMethod } from '@/hooks/queries';
 import type { TableWithStatus } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
@@ -76,6 +78,7 @@ import {
   RotateCcw,
   Trash2,
   LayoutGrid,
+  Banknote,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import type { Locale } from 'date-fns';
@@ -472,6 +475,12 @@ export default function AdminTables() {
         onClosureRequested={() => {
           queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
           queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+        }}
+        onAccountClosed={() => {
+          setSelectedTable(null);
+          queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+          queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+          queryClient.invalidateQueries({ queryKey: ['reservations', restaurantId] });
         }}
         onTableOrZoneUpdated={() => {
           refetchTables();
@@ -1148,6 +1157,7 @@ export function TableOperationSheet({
   onCallAttended,
   onOrderPlaced,
   onClosureRequested,
+  onAccountClosed,
   onTableOrZoneUpdated,
   onTableDeleted,
   isMobile,
@@ -1164,6 +1174,8 @@ export function TableOperationSheet({
   onCallAttended: () => void;
   onOrderPlaced: () => void;
   onClosureRequested: () => void;
+  /** Chamado quando a conta da mesa for fechada (pedidos pagos). */
+  onAccountClosed?: () => void;
   onTableOrZoneUpdated: () => void;
   /** Chamado quando a mesa é excluída (apenas modo management). */
   onTableDeleted?: () => void;
@@ -1185,7 +1197,11 @@ export function TableOperationSheet({
   const [localHallZoneId, setLocalHallZoneId] = useState<string | null | undefined>(undefined);
   const [deletingTable, setDeletingTable] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCloseAccountDialog, setShowCloseAccountDialog] = useState(false);
+  const [closeAccountPaymentMethod, setCloseAccountPaymentMethod] = useState<CloseTablePaymentMethod>('cash');
   const comandaInputRef = useRef<HTMLInputElement>(null);
+
+  const closeTableAccount = useCloseTableAccount(restaurantId);
 
   // Sincroniza estado local com a mesa (para corrigir bug de zona não atualizar no dropdown)
   useEffect(() => {
@@ -1313,6 +1329,26 @@ export function TableOperationSheet({
       toast({ title: 'Erro ao atualizar zona', variant: 'destructive' });
     } finally {
       setUpdatingTableZone(false);
+    }
+  };
+
+  const handleCloseAccount = async () => {
+    if (!table || closeTableAccount.isPending) return;
+    try {
+      const comandaIds = linkedComandas
+        .filter((l) => l.comandas?.status === 'open' && l.comandas?.id)
+        .map((l) => l.comandas!.id);
+      await closeTableAccount.mutateAsync({
+        tableId: table.id,
+        paymentMethod: closeAccountPaymentMethod,
+        comandaIds: comandaIds.length > 0 ? comandaIds : undefined,
+      });
+      setShowCloseAccountDialog(false);
+      onClose();
+      onAccountClosed?.();
+      toast({ title: t('tablesCentral.accountClosed') });
+    } catch (e: any) {
+      toast({ title: e?.message ?? t('common.error'), variant: 'destructive' });
     }
   };
 
@@ -1613,6 +1649,23 @@ export function TableOperationSheet({
                 </Button>
               )}
 
+              {/* Fechar conta — Mesas e Garçom: marca pedidos como pagos, remove da fila do Caixa */}
+              {table.orderIds.length > 0 && (
+                <Button
+                  size="lg"
+                  className="min-h-[48px] touch-manipulation bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => setShowCloseAccountDialog(true)}
+                  disabled={closeTableAccount.isPending}
+                >
+                  {closeTableAccount.isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Banknote className="h-5 w-5 mr-2" />
+                  )}
+                  {t('tablesCentral.closeAccount')}
+                </Button>
+              )}
+
               {!isManagement && table.billRequested && (
                 <p className="rounded-lg bg-red-100 px-3 py-2 text-sm font-medium text-red-800 dark:bg-red-900/40 dark:text-red-200">
                   Conta solicitada. Mesa na fila do Caixa.
@@ -1635,6 +1688,45 @@ export function TableOperationSheet({
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Modal Fechar conta — seleção de método de pagamento */}
+      <Dialog open={showCloseAccountDialog} onOpenChange={setShowCloseAccountDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('tablesCentral.closeAccount')}</DialogTitle>
+            <DialogDescription>
+              {t('tablesCentral.closeAccountConfirm')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label className="text-sm font-medium">{t('tablesCentral.paymentMethod')}</Label>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {(['cash', 'card', 'pix'] as const).map((method) => (
+                  <Button
+                    key={method}
+                    variant={closeAccountPaymentMethod === method ? 'default' : 'outline'}
+                    size="sm"
+                    className="min-h-[44px]"
+                    onClick={() => setCloseAccountPaymentMethod(method)}
+                  >
+                    {t(`cashier.paymentLabels.${method}`)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowCloseAccountDialog(false)} disabled={closeTableAccount.isPending}>
+              {t('tablesCentral.cancel')}
+            </Button>
+            <Button onClick={handleCloseAccount} disabled={closeTableAccount.isPending}>
+              {closeTableAccount.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {t('tablesCentral.closeAccount')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal confirmação: Excluir mesa definitivamente */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

@@ -483,7 +483,9 @@ function CashierContent() {
       vcData.forEach((vc) => {
         const resList = vc.reservations;
         const res = Array.isArray(resList) && resList.length > 0 ? resList[0] : null;
-        const reservation = res && ['pending', 'confirmed'].includes(res.status)
+        // Não exibir no cashier comandas de reservas pending/confirmed — cliente ainda não chegou
+        if (res && ['pending', 'confirmed'].includes(res.status)) return;
+        const reservation = res && res.status === 'activated'
           ? { id: res.id, customer_name: res.customer_name, scheduled_at: res.scheduled_at, late_tolerance_minutes: res.late_tolerance_minutes ?? 15, table_id: res.table_id, status: res.status }
           : undefined;
 
@@ -761,6 +763,16 @@ function CashierContent() {
         },
         debouncedLoadQueue
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reservations',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        debouncedLoadQueue
+      )
       .subscribe((status) => setIsLive(status === 'SUBSCRIBED'));
     return () => {
       supabase.removeChannel(ch);
@@ -1008,6 +1020,10 @@ function CashierContent() {
             (restaurant.print_settings_by_sector as any) ?? undefined
           );
         }
+        if ((selected as QueueItemComandaDigital).reservation?.id) {
+          await supabase.rpc('complete_reservation', { p_reservation_id: (selected as QueueItemComandaDigital).reservation!.id });
+          queryClient.invalidateQueries({ queryKey: ['reservations', restaurantId] });
+        }
         toast({ title: t('cashier.comandaClosed'), description: `${selected.shortCode} — ${formatPrice(totalToPay, currency)}` });
       } else if (selected.type === 'comanda_buffet') {
         await supabase
@@ -1032,6 +1048,13 @@ function CashierContent() {
             );
           }
         }
+        const tableIds = [...new Set(selected.items.map((tbl) => (tbl.order as { table_id?: string })?.table_id).filter(Boolean))] as string[];
+        for (const tid of tableIds) {
+          await supabase.rpc('complete_reservation_for_table', { p_table_id: tid });
+        }
+        if (tableIds.length > 0) {
+          queryClient.invalidateQueries({ queryKey: ['reservations', restaurantId] });
+        }
         toast({ title: t('cashier.orderPaid'), description: `${selected.label} — ${formatPrice(totalToPay, currency)}` });
       } else if (selected.type === 'table') {
         await supabase
@@ -1047,6 +1070,11 @@ function CashierContent() {
             currency,
             (restaurant.print_settings_by_sector as any) ?? undefined
           );
+        }
+        const tableId = (selected.order as { table_id?: string })?.table_id;
+        if (tableId) {
+          await supabase.rpc('complete_reservation_for_table', { p_table_id: tableId });
+          queryClient.invalidateQueries({ queryKey: ['reservations', restaurantId] });
         }
         toast({ title: t('cashier.orderPaid'), description: `${selected.tableNumber} — ${formatPrice(totalToPay, currency)}` });
       }

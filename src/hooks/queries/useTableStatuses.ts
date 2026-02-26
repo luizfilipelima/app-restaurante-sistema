@@ -6,9 +6,12 @@
  * - occupied: tem pedidos não pagos, sem bill_requested
  * - calling_waiter: tem waiter_call pendente
  * - awaiting_closure: pedidos com bill_requested=true
+ *
+ * hasReservation: apenas quando há reserva para o dia atual (scheduled_at no dia)
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { startOfDay, endOfDay } from 'date-fns';
 import { supabase } from '@/lib/core/supabase';
 import type { Table } from '@/types';
 
@@ -83,9 +86,13 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
     waiterCalls.map((c) => c.table_id).filter(Boolean) as string[]
   );
 
+  const todayStart = startOfDay(new Date()).getTime();
+  const todayEnd = endOfDay(new Date()).getTime();
   const reservationsByTable = new Map<string, { customer_name: string; scheduled_at: string }[]>();
   (Array.isArray(reservationsRes) ? reservationsRes : []).forEach((r: any) => {
     if (!r.table_id) return;
+    const scheduled = new Date(r.scheduled_at).getTime();
+    if (scheduled < todayStart || scheduled > todayEnd) return;
     const list = reservationsByTable.get(r.table_id) ?? [];
     list.push({ customer_name: r.customer_name, scheduled_at: r.scheduled_at });
     reservationsByTable.set(r.table_id, list);

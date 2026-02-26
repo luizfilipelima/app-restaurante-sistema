@@ -5,7 +5,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/core/supabase';
 
-export type ReservationStatus = 'pending' | 'confirmed' | 'activated' | 'cancelled' | 'no_show';
+export type ReservationStatus = 'pending' | 'confirmed' | 'activated' | 'cancelled' | 'no_show' | 'completed';
 
 export interface Reservation {
   id: string;
@@ -33,17 +33,32 @@ export interface ReservationWithDetails extends Reservation {
   zone_name?: string;
 }
 
-async function fetchReservations(restaurantId: string | null): Promise<ReservationWithDetails[]> {
+export interface ReservationFilters {
+  /** Data no formato YYYY-MM-DD para filtrar por scheduled_at no dia */
+  date?: string;
+}
+
+async function fetchReservations(
+  restaurantId: string | null,
+  filters?: ReservationFilters
+): Promise<ReservationWithDetails[]> {
   if (!restaurantId) return [];
-  const { data, error } = await supabase
+  let query = supabase
     .from('reservations')
     .select(`
       *,
       virtual_comandas(short_code),
       tables(number, hall_zone_id)
     `)
-    .eq('restaurant_id', restaurantId)
-    .order('scheduled_at', { ascending: true });
+    .eq('restaurant_id', restaurantId);
+
+  if (filters?.date) {
+    const dayStart = `${filters.date}T00:00:00`;
+    const dayEnd = `${filters.date}T23:59:59.999`;
+    query = query.gte('scheduled_at', dayStart).lte('scheduled_at', dayEnd);
+  }
+
+  const { data, error } = await query.order('scheduled_at', { ascending: true });
 
   if (error) throw error;
   const rows = (data ?? []) as any[];
@@ -59,10 +74,10 @@ async function fetchReservations(restaurantId: string | null): Promise<Reservati
   });
 }
 
-export function useReservations(restaurantId: string | null, filters?: { status?: ReservationStatus[]; from?: string; to?: string }) {
+export function useReservations(restaurantId: string | null, filters?: ReservationFilters) {
   return useQuery({
     queryKey: ['reservations', restaurantId, filters],
-    queryFn: () => fetchReservations(restaurantId),
+    queryFn: () => fetchReservations(restaurantId, filters),
     enabled: !!restaurantId,
     staleTime: 30 * 1000,
   });

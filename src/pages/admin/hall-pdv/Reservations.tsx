@@ -46,7 +46,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, CalendarClock, Loader2, X, User, Clock, MapPin, Users, MessageCircle, Link2, RotateCcw } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, startOfDay } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
@@ -56,12 +56,13 @@ import { generateWhatsAppLink, ensurePhoneForWhatsApp, normalizePhoneWithCountry
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pendente',
-  confirmed: 'Confirmada',
-  activated: 'Ativada',
-  cancelled: 'Cancelada',
-  no_show: 'Não compareceu',
+const STATUS_KEY_MAP: Record<string, string> = {
+  pending: 'statusPending',
+  confirmed: 'statusConfirmed',
+  activated: 'statusActivated',
+  cancelled: 'statusCancelled',
+  completed: 'statusCompleted',
+  no_show: 'statusCancelled', // fallback
 };
 
 function ReservationsContent() {
@@ -73,7 +74,9 @@ function ReservationsContent() {
 
   const { data: hasReservations } = useFeatureAccess('feature_reservations', restaurantId);
   const { data: hasTables } = useFeatureAccess('feature_tables', restaurantId);
-  const { data: reservations = [], isLoading } = useReservations(restaurantId);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const dateFilter = format(selectedDate, 'yyyy-MM-dd');
+  const { data: reservations = [], isLoading } = useReservations(restaurantId, { date: dateFilter });
   const { data: tables = [] } = useTables(restaurantId);
   const { data: hallZones = [] } = useHallZones(restaurantId);
   const createReservation = useCreateReservation(restaurantId);
@@ -100,7 +103,7 @@ function ReservationsContent() {
   const [lateTolerance, setLateTolerance] = useState(15);
   const [notes, setNotes] = useState('');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [cancelConfirmTarget, setCancelConfirmTarget] = useState<string | null>(null);
 
   const activeTables = tables.filter((tbl) => tbl.is_active);
   const reservedTableIds = new Set(
@@ -110,10 +113,9 @@ function ReservationsContent() {
   );
   const freeTables = activeTables.filter((t) => !reservedTableIds.has(t.id));
 
-  const filteredReservations = reservations.filter((r) => {
-    if (statusFilter === 'all') return true;
-    return r.status === statusFilter;
-  });
+  const kanbanReserved = reservations.filter((r) => ['pending', 'confirmed', 'activated'].includes(r.status));
+  const kanbanCancelled = reservations.filter((r) => ['cancelled', 'no_show'].includes(r.status));
+  const kanbanCompleted = reservations.filter((r) => r.status === 'completed');
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,9 +156,13 @@ function ReservationsContent() {
 
   const handleCancel = async (id: string) => {
     setCancellingId(id);
+    setCancelConfirmTarget(null);
     try {
       await cancelReservation.mutateAsync(id);
-      toast({ title: t('reservations.cancelled') });
+      toast({
+        title: t('reservations.cancelled'),
+        description: t('reservations.cancelSuccessDescription'),
+      });
     } catch (err: any) {
       toast({ title: t('reservations.errorCancel'), description: err?.message, variant: 'destructive' });
     } finally {
@@ -227,54 +233,82 @@ function ReservationsContent() {
       />
 
       <div className="flex items-center gap-2 flex-wrap">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('reservations.filterAll')}</SelectItem>
-            <SelectItem value="pending">{t('reservations.statusPending')}</SelectItem>
-            <SelectItem value="confirmed">{t('reservations.statusConfirmed')}</SelectItem>
-            <SelectItem value="activated">{t('reservations.statusActivated')}</SelectItem>
-            <SelectItem value="cancelled">{t('reservations.statusCancelled')}</SelectItem>
-          </SelectContent>
-        </Select>
+        <Label className="text-sm text-muted-foreground flex items-center gap-2">
+          <CalendarClock className="h-4 w-4" />
+          {t('reservations.filterByDate')}
+        </Label>
+        <Input
+          type="date"
+          value={format(selectedDate, 'yyyy-MM-dd')}
+          onChange={(e) => setSelectedDate(e.target.value ? new Date(e.target.value + 'T12:00:00') : new Date())}
+          className="w-[160px]"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setSelectedDate(startOfDay(new Date()))}
+          className={format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') ? 'ring-2 ring-primary' : ''}
+        >
+          {t('reservations.today')}
+        </Button>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : filteredReservations.length === 0 ? (
+      ) : reservations.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-muted bg-muted/20 p-12 text-center">
           <CalendarClock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="font-medium text-muted-foreground">{t('reservations.noReservations')}</p>
+          <p className="font-medium text-muted-foreground">{t('reservations.noReservationsForDate')}</p>
           <p className="text-sm text-muted-foreground mt-1">{t('reservations.noReservationsHint')}</p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredReservations.map((r) => (
-            <ReservationCard
-              key={r.id}
-              reservation={r}
-              hallZones={hallZones}
-              onCancel={() => handleCancel(r.id)}
-              cancelling={cancellingId === r.id}
-              onResetTable={canResetTable ? async () => {
-                if (!restaurantId || !r.table_id) return;
-                if (!window.confirm(t('reservations.tableResetConfirm'))) return;
-                try {
-                  await resetTableMutation.mutateAsync(r.table_id);
-                  toast({ title: t('tablesCentral.resetTable'), description: t('reservations.tableResetSuccess') });
-                } catch (err: any) {
-                  toast({ title: t('common.error'), description: err?.message, variant: 'destructive' });
-                }
-              } : undefined}
-              resettingTable={resetTableMutation.isPending}
-              t={t}
-              dateLocale={dateLocale}
-            />
-          ))}
+        <div className="grid gap-6 lg:grid-cols-3 mt-6">
+          <KanbanColumn
+            title={t('reservations.kanbanReserved')}
+            count={kanbanReserved.length}
+            reservations={kanbanReserved}
+            variant="reserved"
+            hallZones={hallZones}
+            onCancel={setCancelConfirmTarget}
+            cancellingId={cancellingId}
+            onResetTable={canResetTable ? async (r) => {
+              if (!restaurantId || !r.table_id) return;
+              if (!window.confirm(t('reservations.tableResetConfirm'))) return;
+              try {
+                await resetTableMutation.mutateAsync(r.table_id);
+                toast({ title: t('tablesCentral.resetTable'), description: t('reservations.tableResetSuccess') });
+              } catch (err: any) {
+                toast({ title: t('common.error'), description: err?.message, variant: 'destructive' });
+              }
+            } : undefined}
+            resettingTable={resetTableMutation.isPending}
+            t={t}
+            dateLocale={dateLocale}
+          />
+          <KanbanColumn
+            title={t('reservations.kanbanCancelled')}
+            count={kanbanCancelled.length}
+            reservations={kanbanCancelled}
+            variant="cancelled"
+            hallZones={hallZones}
+            onCancel={setCancelConfirmTarget}
+            cancellingId={cancellingId}
+            t={t}
+            dateLocale={dateLocale}
+          />
+          <KanbanColumn
+            title={t('reservations.kanbanCompleted')}
+            count={kanbanCompleted.length}
+            reservations={kanbanCompleted}
+            variant="completed"
+            hallZones={hallZones}
+            onCancel={setCancelConfirmTarget}
+            cancellingId={cancellingId}
+            t={t}
+            dateLocale={dateLocale}
+          />
         </div>
       )}
 
@@ -377,6 +411,29 @@ function ReservationsContent() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de cancelamento */}
+      <Dialog open={!!cancelConfirmTarget} onOpenChange={(open) => !open && setCancelConfirmTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('reservations.cancelReservationConfirm')}</DialogTitle>
+            <DialogDescription>{t('reservations.cancelReservationDescription')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setCancelConfirmTarget(null)} disabled={!!cancellingId}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => cancelConfirmTarget && handleCancel(cancelConfirmTarget)}
+              disabled={!!cancellingId}
+            >
+              {cancellingId ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <X className="h-4 w-4 mr-2" />}
+              {t('reservations.cancelReservationConfirmBtn')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -493,6 +550,75 @@ function ReservationsContent() {
   );
 }
 
+function KanbanColumn({
+  title,
+  count,
+  reservations,
+  variant,
+  hallZones,
+  onCancel,
+  cancellingId,
+  onResetTable,
+  resettingTable,
+  t,
+  dateLocale,
+}: {
+  title: string;
+  count: number;
+  reservations: ReservationWithDetails[];
+  variant: 'reserved' | 'cancelled' | 'completed';
+  hallZones: { id: string; name: string }[];
+  onCancel: (id: string) => void;
+  cancellingId: string | null;
+  onResetTable?: (r: ReservationWithDetails) => void | Promise<void>;
+  resettingTable?: boolean;
+  t: (k: string) => string;
+  dateLocale: Locale;
+}) {
+  const borderClass =
+    variant === 'reserved'
+      ? 'border-amber-300 dark:border-amber-700'
+      : variant === 'cancelled'
+        ? 'border-red-200 dark:border-red-800'
+        : 'border-emerald-200 dark:border-emerald-800';
+  const headerClass =
+    variant === 'reserved'
+      ? 'bg-amber-50 dark:bg-amber-950/30'
+      : variant === 'cancelled'
+        ? 'bg-red-50 dark:bg-red-950/20'
+        : 'bg-emerald-50 dark:bg-emerald-950/20';
+
+  return (
+    <div className={`rounded-xl border-2 ${borderClass} overflow-hidden flex flex-col min-h-[200px]`}>
+      <div className={`px-4 py-3 ${headerClass} border-b ${borderClass}`}>
+        <div className="flex items-center justify-between">
+          <span className="font-semibold text-foreground">{title}</span>
+          <Badge variant="secondary" className="text-xs">{count}</Badge>
+        </div>
+      </div>
+      <div className="flex-1 p-3 space-y-3 overflow-y-auto">
+        {reservations.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">{t('reservations.noReservations')}</p>
+        ) : (
+          reservations.map((r) => (
+            <ReservationCard
+              key={r.id}
+              reservation={r}
+              hallZones={hallZones}
+              onCancel={() => onCancel(r.id)}
+              cancelling={cancellingId === r.id}
+              onResetTable={variant === 'reserved' && onResetTable ? () => onResetTable(r) : undefined}
+              resettingTable={resettingTable}
+              t={t}
+              dateLocale={dateLocale}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ReservationCard({
   reservation,
   hallZones,
@@ -514,12 +640,17 @@ function ReservationCard({
 }) {
   const scheduled = new Date(reservation.scheduled_at);
   const isPending = ['pending', 'confirmed'].includes(reservation.status);
-  const statusLabel = STATUS_LABELS[reservation.status] ?? reservation.status;
+  const statusKey = STATUS_KEY_MAP[reservation.status];
+  const statusLabel = statusKey ? t(`reservations.${statusKey}`) : reservation.status;
 
   return (
     <div
-      className={`rounded-xl border-2 p-4 transition-shadow ${
-        isPending ? 'border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20' : 'border-border bg-card'
+      className={`rounded-lg border p-4 transition-shadow ${
+        reservation.status === 'completed'
+          ? 'border-emerald-200 bg-emerald-50/30 dark:border-emerald-800 dark:bg-emerald-950/20'
+          : ['cancelled', 'no_show'].includes(reservation.status)
+            ? 'border-red-100 bg-red-50/30 dark:border-red-900/30 dark:bg-red-950/10'
+            : 'border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -567,8 +698,11 @@ function ReservationCard({
               className="text-destructive hover:text-destructive"
               onClick={onCancel}
               disabled={cancelling}
+              title={t('reservations.cancelReservation')}
+              aria-label={t('reservations.cancelReservation')}
             >
               {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+              <span className="hidden sm:inline ml-1">{t('reservations.cancelReservation')}</span>
             </Button>
           )}
         </div>

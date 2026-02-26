@@ -266,6 +266,12 @@ function WaiterTerminalContent() {
           queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
           queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
         }}
+        onAccountClosed={() => {
+          setSelectedTable(null);
+          queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+          queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+          queryClient.invalidateQueries({ queryKey: ['reservations', restaurantId] });
+        }}
         onTableOrZoneUpdated={() => {
           refetchTables();
           queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
