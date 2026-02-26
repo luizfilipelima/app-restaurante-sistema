@@ -127,3 +127,21 @@ export function useCancelReservation(restaurantId: string | null) {
     },
   });
 }
+
+export function useUpdateReservationTable(restaurantId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { reservation_id: string; table_id: string }) => {
+      const { data, error } = await supabase.rpc('update_reservation_table', {
+        p_reservation_id: params.reservation_id,
+        p_table_id: params.table_id,
+      });
+      if (error) throw error;
+      return data as { table_number: string };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservations', restaurantId] });
+      qc.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+    },
+  });
+}

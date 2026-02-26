@@ -256,6 +256,11 @@ const pt = {
     cancelReservationDescription:'A mesa ficará disponível e a comanda será encerrada. Esta ação não pode ser desfeita.',
     cancelReservationConfirmBtn: 'Sim, cancelar',
     cancelSuccessDescription:    'Mesa e comanda liberadas.',
+    changeTable:                 'Alterar mesa',
+    changeTableTitle:            'Alterar mesa da reserva',
+    changeTableDesc:             'Selecione a nova mesa para a reserva. A comanda e os pedidos serão vinculados à nova mesa.',
+    changeTableSuccess:          'Mesa alterada para Mesa {{num}}.',
+    errorChangeTable:            'Erro ao alterar mesa',
   },
 
   cashier: {
@@ -701,6 +706,11 @@ const es: typeof pt = {
     cancelReservationDescription:'La mesa quedará disponible y la comanda se cerrará. Esta acción no se puede deshacer.',
     cancelReservationConfirmBtn: 'Sí, cancelar',
     cancelSuccessDescription:    'Mesa y comanda liberadas.',
+    changeTable:                 'Cambiar mesa',
+    changeTableTitle:            'Cambiar mesa de la reserva',
+    changeTableDesc:             'Seleccione la nueva mesa para la reserva. La comanda y los pedidos se vincularán a la nueva mesa.',
+    changeTableSuccess:          'Mesa cambiada a Mesa {{num}}.',
+    errorChangeTable:            'Error al cambiar mesa',
   },
 
   cashier: {
@@ -1146,6 +1156,11 @@ const en: typeof pt = {
     cancelReservationDescription:'The table will be available and the tab will be closed. This action cannot be undone.',
     cancelReservationConfirmBtn: 'Yes, cancel',
     cancelSuccessDescription:    'Table and tab freed.',
+    changeTable:                 'Change table',
+    changeTableTitle:            'Change reservation table',
+    changeTableDesc:             'Select the new table for the reservation. The tab and orders will be linked to the new table.',
+    changeTableSuccess:          'Table changed to Table {{num}}.',
+    errorChangeTable:            'Error changing table',
   },
 
   cashier: {

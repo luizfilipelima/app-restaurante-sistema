@@ -13,6 +13,7 @@ import {
   useReservations,
   useCreateReservation,
   useCancelReservation,
+  useUpdateReservationTable,
   useTables,
   useHallZones,
   useWaitingQueue,
@@ -45,7 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, CalendarClock, Loader2, X, User, MapPin, Users, MessageCircle, Link2, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { Plus, CalendarClock, Loader2, X, User, MapPin, Users, MessageCircle, Link2, RotateCcw, CheckCircle2, ArrowRightLeft } from 'lucide-react';
 import { format, startOfDay } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
@@ -86,7 +87,9 @@ function ReservationsContent() {
   const notifyQueue = useNotifyQueueItem(restaurantId);
   const { data: tableStatuses = [] } = useTableStatuses(restaurantId);
   const resetTableMutation = useResetTable(restaurantId);
+  const updateTableMutation = useUpdateReservationTable(restaurantId);
   const canResetTable = useCanAccess(['manager', 'waiter', 'restaurant_admin', 'super_admin']);
+  const canChangeTable = useCanAccess(['manager', 'waiter', 'restaurant_admin', 'super_admin']);
 
   const [showCreate, setShowCreate] = useState(false);
   const [showWaitingQueue, setShowWaitingQueue] = useState(false);
@@ -104,6 +107,8 @@ function ReservationsContent() {
   const [notes, setNotes] = useState('');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelConfirmTarget, setCancelConfirmTarget] = useState<string | null>(null);
+  const [changeTableTarget, setChangeTableTarget] = useState<ReservationWithDetails | null>(null);
+  const [changeTableNewTableId, setChangeTableNewTableId] = useState<string>('');
 
   const activeTables = tables.filter((tbl) => tbl.is_active);
   const reservedTableIds = new Set(
@@ -272,8 +277,10 @@ function ReservationsContent() {
             reservations={kanbanReserved}
             variant="reserved"
             hallZones={hallZones}
+            tables={activeTables}
             onCancel={setCancelConfirmTarget}
             cancellingId={cancellingId}
+            onChangeTable={canChangeTable ? (r) => { setChangeTableTarget(r); setChangeTableNewTableId(r.table_id ?? ''); } : undefined}
             onResetTable={canResetTable ? async (r) => {
               if (!restaurantId || !r.table_id) return;
               if (!window.confirm(t('reservations.tableResetConfirm'))) return;
@@ -412,6 +419,67 @@ function ReservationsContent() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Alterar mesa da reserva */}
+      <Dialog open={!!changeTableTarget} onOpenChange={(open) => { if (!open) { setChangeTableTarget(null); setChangeTableNewTableId(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('reservations.changeTableTitle')}</DialogTitle>
+            <DialogDescription>{t('reservations.changeTableDesc')}</DialogDescription>
+          </DialogHeader>
+          {changeTableTarget && (
+            <div className="space-y-4">
+              <div>
+                <Label>{t('reservations.table')}</Label>
+                <Select value={changeTableNewTableId} onValueChange={setChangeTableNewTableId} required>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder={t('reservations.selectTable')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeTables.map((tbl) => (
+                      <SelectItem key={tbl.id} value={tbl.id}>
+                        {t('reservations.table')} {tbl.number}
+                        {hallZones.find((z) => z.id === tbl.hall_zone_id) && (
+                          <span className="text-muted-foreground ml-1">
+                            — {hallZones.find((z) => z.id === tbl.hall_zone_id)!.name}
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setChangeTableTarget(null)} disabled={updateTableMutation.isPending}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!changeTableTarget || !changeTableNewTableId || changeTableNewTableId === changeTableTarget.table_id) return;
+                try {
+                  const res = await updateTableMutation.mutateAsync({
+                    reservation_id: changeTableTarget.id,
+                    table_id: changeTableNewTableId,
+                  }) as { table_number: string };
+                  setChangeTableTarget(null);
+                  setChangeTableNewTableId('');
+                  toast({
+                    title: t('reservations.changeTableSuccess', { num: res?.table_number ?? '' }),
+                  });
+                } catch (err: any) {
+                  toast({ title: t('reservations.errorChangeTable'), description: err?.message, variant: 'destructive' });
+                }
+              }}
+              disabled={!changeTableNewTableId || changeTableNewTableId === changeTableTarget?.table_id || updateTableMutation.isPending}
+            >
+              {updateTableMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {t('reservations.changeTable')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -557,8 +625,10 @@ function KanbanColumn({
   reservations,
   variant,
   hallZones,
+  tables,
   onCancel,
   cancellingId,
+  onChangeTable,
   onResetTable,
   resettingTable,
   t,
@@ -569,8 +639,10 @@ function KanbanColumn({
   reservations: ReservationWithDetails[];
   variant: 'reserved' | 'cancelled' | 'completed';
   hallZones: { id: string; name: string }[];
+  tables?: { id: string; number: number; hall_zone_id: string | null }[];
   onCancel: (id: string) => void;
   cancellingId: string | null;
+  onChangeTable?: (r: ReservationWithDetails) => void;
   onResetTable?: (r: ReservationWithDetails) => void | Promise<void>;
   resettingTable?: boolean;
   t: (k: string) => string;
@@ -608,6 +680,7 @@ function KanbanColumn({
               hallZones={hallZones}
               onCancel={() => onCancel(r.id)}
               cancelling={cancellingId === r.id}
+              onChangeTable={variant === 'reserved' && onChangeTable ? () => onChangeTable(r) : undefined}
               onResetTable={variant === 'reserved' && onResetTable ? () => onResetTable(r) : undefined}
               resettingTable={resettingTable}
               t={t}
@@ -659,6 +732,7 @@ function ReservationCard({
   hallZones,
   onCancel,
   cancelling,
+  onChangeTable,
   onResetTable,
   resettingTable,
   t,
@@ -668,6 +742,7 @@ function ReservationCard({
   hallZones: { id: string; name: string }[];
   onCancel: () => void;
   cancelling: boolean;
+  onChangeTable?: () => void;
   onResetTable?: () => void | Promise<void>;
   resettingTable?: boolean;
   t: (k: string) => string;
@@ -684,7 +759,7 @@ function ReservationCard({
   const tableDisplay = reservation.table_number != null ? String(reservation.table_number) : '—';
   const shortCodeDisplay = reservation.short_code ?? '—';
   const customerDisplay = reservation.customer_name?.trim() || '—';
-  const hasActions = (['pending', 'confirmed', 'activated'].includes(reservation.status) && onResetTable) || isPending;
+  const hasActions = (['pending', 'confirmed', 'activated'].includes(reservation.status) && (onResetTable || onChangeTable)) || isPending;
 
   return (
     <div className={`rounded-lg border p-4 transition-shadow ${getCardStyles(reservation.status)}`}>
@@ -725,6 +800,19 @@ function ReservationCard({
       {/* Bloco 3: ações (só renderiza quando houver botões) */}
       {hasActions && (
         <div className="mt-3 pt-3 border-t border-border/60 flex items-center gap-1 flex-wrap">
+          {['pending', 'confirmed', 'activated'].includes(reservation.status) && onChangeTable && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0 gap-1 text-primary hover:text-primary hover:bg-primary/10 dark:hover:bg-primary/20"
+            onClick={onChangeTable}
+            title={t('reservations.changeTable')}
+            aria-label={t('reservations.changeTable')}
+          >
+            <ArrowRightLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">{t('reservations.changeTable')}</span>
+          </Button>
+        )}
           {['pending', 'confirmed', 'activated'].includes(reservation.status) && onResetTable && (
           <Button
             variant={isActivated ? 'default' : 'ghost'}

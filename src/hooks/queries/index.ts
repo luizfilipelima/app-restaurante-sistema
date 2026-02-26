@@ -28,6 +28,7 @@ export {
   useReservations,
   useCreateReservation,
   useCancelReservation,
+  useUpdateReservationTable,
 } from './useReservations';
 export type { Reservation, ReservationWithDetails, ReservationStatus } from './useReservations';
 export {
