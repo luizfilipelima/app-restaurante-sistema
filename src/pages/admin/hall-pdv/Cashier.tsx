@@ -378,7 +378,7 @@ function QueueCard({
                 )}
                 <Badge className={`text-[10px] font-bold ${badgeClass} border`}>{(item as QueueItemComandaDigital).shortCode}</Badge>
               </>
-            ) : (item.type === 'table' || isTableGroup(item)) && ((item as QueueItemTable & TableGroup).hasReservation) ? (
+            ) : (item.type === 'table' && (item as QueueItemTable).hasReservation) || (isTableGroup(item) && (item as TableGroup).hasReservation) ? (
               <>
                 <Badge className="text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-900/40 dark:text-violet-300 dark:border-violet-800">
                   {t('reservations.reserva')}

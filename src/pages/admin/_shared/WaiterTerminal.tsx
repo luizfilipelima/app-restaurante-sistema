@@ -86,7 +86,7 @@ function WaiterTerminalContent() {
   const dateLocale = DATE_LOCALES[lang] ?? ptBR;
 
   const { data: tablesData, refetch: refetchTables } = useTables(restaurantId);
-  const { data: tableStatuses = [], refetch: refetchTableStatuses } = useTableStatuses(restaurantId);
+  const { data: tableStatuses = [] } = useTableStatuses(restaurantId);
   const { data: waiterCallsData } = useWaiterCalls(restaurantId);
   const { data: hallZones = [] } = useHallZones(restaurantId);
   const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
