@@ -30,6 +30,8 @@ import {
   ArrowLeft,
   Users,
 } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR, es } from 'date-fns/locale';
 import { normalizePhoneWithCountryCode } from '@/lib/core/utils';
 import { PhoneCountryInput } from '@/components/ui/PhoneCountryInput';
 
@@ -72,8 +74,11 @@ interface PublicReservationProps {
   tenantSlug?: string;
 }
 
+const DATE_LOCALES = { pt: ptBR, es } as const;
+
 export default function PublicReservation({ tenantSlug: slugFromLayout }: PublicReservationProps = {}) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = DATE_LOCALES[(i18n.language as 'pt' | 'es') ?? 'pt'] ?? ptBR;
   const { restaurantSlug: slugFromParams } = useParams<{ restaurantSlug: string }>();
   const restaurantSlug = slugFromLayout ?? slugFromParams;
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -138,6 +143,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
   useEffect(() => {
     if (!restaurantSlug || !scheduledDate || !scheduledTime || mainView !== 'new') {
       setTables([]);
+      if (!scheduledDate || !scheduledTime) setTableId('');
       return;
     }
     const dt = `${scheduledDate}T${scheduledTime}:00`;
@@ -161,7 +167,8 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
       });
   }, [restaurantSlug, scheduledDate, scheduledTime, mainView]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Data mínima em horário local para permitir reserva no dia atual
+  const today = format(new Date(), 'yyyy-MM-dd');
 
   const handleSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -559,21 +566,43 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
               />
             </div>
           </div>
+          {scheduledDate && scheduledTime && (
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground -mt-1">
+              <CalendarClock className="h-4 w-4 text-primary shrink-0" />
+              {format(new Date(scheduledDate + 'T' + scheduledTime), "EEEE dd/MM · HH:mm", { locale: dateLocale })}
+            </p>
+          )}
           <div>
             <Label>{t('reservation.table')}</Label>
-            <Select value={tableId} onValueChange={setTableId} required>
-              <SelectTrigger className="mt-1 transition-colors hover:border-primary/40 hover:bg-muted/80 data-[state=open]:border-primary">
-                <SelectValue placeholder={t('reservation.selectTable')} />
+            <Select
+              value={tableId}
+              onValueChange={setTableId}
+              required
+              disabled={!scheduledDate || !scheduledTime}
+            >
+              <SelectTrigger className="mt-1 transition-colors hover:border-primary/40 hover:bg-muted/80 data-[state=open]:border-primary disabled:opacity-60">
+                <SelectValue
+                  placeholder={
+                    !scheduledDate || !scheduledTime
+                      ? t('reservation.selectDateAndTimeFirst')
+                      : t('reservation.selectTable')
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                {tables.map((t) => (
-                  <SelectItem key={t.table_id} value={t.table_id}>
-                    Mesa {t.table_number}
-                    {t.zone_name ? ` — ${t.zone_name}` : ''}
+                {tables.map((tbl) => (
+                  <SelectItem key={tbl.table_id} value={tbl.table_id}>
+                    Mesa {tbl.table_number}
+                    {tbl.zone_name ? ` — ${tbl.zone_name}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {(!scheduledDate || !scheduledTime) && (
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {t('reservation.selectDateAndTimeFirst')}
+              </p>
+            )}
             {tables.length === 0 && scheduledDate && scheduledTime && (
               <p className="text-xs text-amber-600 mt-1">{t('reservation.noTablesAvailable')}</p>
             )}

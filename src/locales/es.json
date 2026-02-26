@@ -247,6 +247,7 @@
     "time": "Horario *",
     "table": "Mesa *",
     "selectTable": "Seleccioná la mesa",
+    "selectDateAndTimeFirst": "Primero elegí la fecha y el horario",
     "noTablesAvailable": "Ninguna mesa disponible en esta fecha. Probá otro horario.",
     "notes": "Observaciones",
     "notesPlaceholder": "Ej: Cumpleaños, sin gluten...",

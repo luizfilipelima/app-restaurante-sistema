@@ -45,7 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, CalendarClock, Loader2, X, User, Clock, MapPin, Users, MessageCircle, Link2, RotateCcw } from 'lucide-react';
+import { Plus, CalendarClock, Loader2, X, User, Clock, MapPin, Users, MessageCircle, Link2, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { format, startOfDay } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
@@ -188,7 +188,8 @@ function ReservationsContent() {
     return () => { supabase.removeChannel(ch); };
   }, [restaurantId, queryClient]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Data mínima em horário local para permitir reserva no dia atual
+  const today = format(new Date(), 'yyyy-MM-dd');
   const basePublicUrl = restaurant?.slug ? getCardapioPublicUrl(restaurant.slug) : '';
   const linkReservar = basePublicUrl ? `${basePublicUrl.replace(/\/$/, '')}/reservar` : '';
   const linkFila = basePublicUrl ? `${basePublicUrl.replace(/\/$/, '')}/fila` : '';
@@ -619,6 +620,40 @@ function KanbanColumn({
   );
 }
 
+/** Estilos do card por status: completed/cancelled no_show / reserved (pending, confirmed, activated). */
+function getCardStyles(status: string): string {
+  if (status === 'completed') {
+    return 'border-emerald-200 bg-emerald-50/30 dark:border-emerald-800 dark:bg-emerald-950/20';
+  }
+  if (['cancelled', 'no_show'].includes(status)) {
+    return 'border-red-100 bg-red-50/30 dark:border-red-900/30 dark:bg-red-950/10';
+  }
+  if (status === 'activated') {
+    return 'border-emerald-200 bg-emerald-50/40 dark:border-emerald-700 dark:bg-emerald-950/30';
+  }
+  if (status === 'confirmed') {
+    return 'border-indigo-200 bg-indigo-50/40 dark:border-indigo-800 dark:bg-indigo-950/30';
+  }
+  return 'border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20';
+}
+
+/** Badge do status com cor por tipo (todas as colunas). */
+function getStatusBadgeClass(status: string): string {
+  if (status === 'activated') {
+    return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-200 dark:border-emerald-700';
+  }
+  if (status === 'confirmed') {
+    return 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-200 dark:border-indigo-700';
+  }
+  if (status === 'completed') {
+    return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-200 dark:border-emerald-700';
+  }
+  if (['cancelled', 'no_show'].includes(status)) {
+    return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/50 dark:text-red-200 dark:border-red-700';
+  }
+  return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/50 dark:text-amber-200 dark:border-amber-700';
+}
+
 function ReservationCard({
   reservation,
   hallZones,
@@ -640,73 +675,84 @@ function ReservationCard({
 }) {
   const scheduled = new Date(reservation.scheduled_at);
   const isPending = ['pending', 'confirmed'].includes(reservation.status);
+  const isActivated = reservation.status === 'activated';
   const statusKey = STATUS_KEY_MAP[reservation.status];
   const statusLabel = statusKey ? t(`reservations.${statusKey}`) : reservation.status;
+  const zoneName = reservation.tables?.hall_zone_id
+    ? hallZones.find((z) => z.id === reservation.tables!.hall_zone_id)?.name ?? null
+    : null;
+  const tableDisplay = reservation.table_number != null ? String(reservation.table_number) : '—';
+  const shortCodeDisplay = reservation.short_code ?? '—';
+  const customerDisplay = reservation.customer_name?.trim() || '—';
+  const hasActions = (['pending', 'confirmed', 'activated'].includes(reservation.status) && onResetTable) || isPending;
 
   return (
-    <div
-      className={`rounded-lg border p-4 transition-shadow ${
-        reservation.status === 'completed'
-          ? 'border-emerald-200 bg-emerald-50/30 dark:border-emerald-800 dark:bg-emerald-950/20'
-          : ['cancelled', 'no_show'].includes(reservation.status)
-            ? 'border-red-100 bg-red-50/30 dark:border-red-900/30 dark:bg-red-950/10'
-            : 'border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20'
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge className="bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/40 dark:text-violet-300">
-              {t('reservations.reserva')} {reservation.short_code}
-            </Badge>
-            <Badge variant="outline">{statusLabel}</Badge>
-          </div>
-          <p className="font-semibold mt-2 flex items-center gap-1.5">
-            <User className="h-4 w-4 text-muted-foreground" />
-            {reservation.customer_name}
-          </p>
-          <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
-            <Clock className="h-3.5 w-3.5" />
-            {format(scheduled, "dd/MM/yyyy 'às' HH:mm", { locale: dateLocale })}
-          </p>
-          <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
-            <MapPin className="h-3.5 w-3.5" />
-            {t('reservations.table')} {reservation.table_number}
-            {reservation.tables?.hall_zone_id && hallZones.find((z) => z.id === reservation.tables!.hall_zone_id) && (
-              <> — {hallZones.find((z) => z.id === reservation.tables!.hall_zone_id)!.name}</>
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
-          {['pending', 'confirmed', 'activated'].includes(reservation.status) && onResetTable && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30 gap-1"
-              onClick={onResetTable}
-              disabled={resettingTable}
-              title={t('tablesCentral.resetTable')}
-            >
-              {resettingTable ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-              <span className="hidden sm:inline">{t('tablesCentral.resetTable')}</span>
-            </Button>
-          )}
-          {isPending && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              onClick={onCancel}
-              disabled={cancelling}
-              title={t('reservations.cancelReservation')}
-              aria-label={t('reservations.cancelReservation')}
-            >
-              {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-              <span className="hidden sm:inline ml-1">{t('reservations.cancelReservation')}</span>
-            </Button>
-          )}
-        </div>
+    <div className={`rounded-lg border p-4 transition-shadow ${getCardStyles(reservation.status)}`}>
+      {/* Bloco 1: código + status (sem botões para não quebrar em mobile) */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge className="bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/40 dark:text-violet-300 shrink-0">
+          {t('reservations.reserva')} {shortCodeDisplay}
+        </Badge>
+        <Badge className={`shrink-0 ${getStatusBadgeClass(reservation.status)}`}>
+          {statusLabel}
+        </Badge>
+        {isActivated && (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {t('reservations.atTable')}
+          </span>
+        )}
       </div>
+
+      {/* Bloco 2: conteúdo — nome em destaque, mesa/zona, data secundária */}
+      <div className="mt-3 min-w-0">
+        <p className="font-semibold text-foreground flex items-center gap-1.5 truncate">
+          <User className="h-4 w-4 text-muted-foreground shrink-0" />
+          {customerDisplay}
+        </p>
+        <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
+          <MapPin className="h-3.5 w-3.5 shrink-0" />
+          {t('reservations.table')} {tableDisplay}
+          {zoneName ? ` — ${zoneName}` : ''}
+        </p>
+        <p className="text-xs text-muted-foreground/90 flex items-center gap-1.5 mt-0.5">
+          <Clock className="h-3 w-3 shrink-0" />
+          {format(scheduled, "dd/MM/yyyy 'às' HH:mm", { locale: dateLocale })}
+        </p>
+      </div>
+
+      {/* Bloco 3: ações (só renderiza quando houver botões) */}
+      {hasActions && (
+        <div className="mt-3 pt-3 border-t border-border/60 flex items-center gap-1 flex-wrap">
+          {['pending', 'confirmed', 'activated'].includes(reservation.status) && onResetTable && (
+          <Button
+            variant={isActivated ? 'default' : 'ghost'}
+            size="sm"
+            className={`shrink-0 gap-1 ${isActivated ? 'bg-emerald-600 hover:bg-emerald-700' : 'text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30'}`}
+            onClick={onResetTable}
+            disabled={resettingTable}
+            title={t('tablesCentral.resetTable')}
+          >
+            {resettingTable ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+            <span className="hidden sm:inline">{t('tablesCentral.resetTable')}</span>
+          </Button>
+        )}
+        {isPending && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={onCancel}
+            disabled={cancelling}
+            title={t('reservations.cancelReservation')}
+            aria-label={t('reservations.cancelReservation')}
+          >
+            {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+            <span className="hidden sm:inline ml-1">{t('reservations.cancelReservation')}</span>
+          </Button>
+        )}
+        </div>
+      )}
     </div>
   );
 }

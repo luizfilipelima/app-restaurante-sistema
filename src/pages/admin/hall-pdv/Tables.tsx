@@ -35,7 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/shared/use-toast';
 import { getCardapioPublicUrl } from '@/lib/core/utils';
-import { formatPrice } from '@/lib/priceHelper';
+import { formatPrice, convertBetweenCurrencies, type CurrencyCode, type ExchangeRates } from '@/lib/priceHelper';
 import {
   Dialog,
   DialogContent,
@@ -1166,7 +1166,12 @@ export function TableOperationSheet({
   table: TableWithStatus | null;
   onClose: () => void;
   currency: string;
-  restaurant: { slug?: string } | null;
+  restaurant: {
+    slug?: string;
+    currency?: string;
+    exchange_rates?: ExchangeRates | null;
+    payment_currencies?: string[] | null;
+  } | null;
   hallZones: import('@/types').HallZone[];
   hasBuffet: boolean;
   restaurantId: string | null;
@@ -1199,6 +1204,14 @@ export function TableOperationSheet({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCloseAccountDialog, setShowCloseAccountDialog] = useState(false);
   const [closeAccountPaymentMethod, setCloseAccountPaymentMethod] = useState<CloseTablePaymentMethod>('cash');
+  const baseCurrency: CurrencyCode = (restaurant?.currency as CurrencyCode) || 'BRL';
+  const paymentCurrencies: CurrencyCode[] = (() => {
+    const arr = restaurant?.payment_currencies;
+    if (!Array.isArray(arr) || arr.length === 0) return [baseCurrency];
+    return arr.filter((c): c is CurrencyCode => ['BRL', 'PYG', 'ARS', 'USD'].includes(c));
+  })();
+  const exchangeRates: ExchangeRates = restaurant?.exchange_rates ?? { pyg_per_brl: 3600, ars_per_brl: 1150, usd_per_brl: 0.18 };
+  const [closeAccountDisplayCurrency, setCloseAccountDisplayCurrency] = useState<CurrencyCode>(baseCurrency);
   const comandaInputRef = useRef<HTMLInputElement>(null);
 
   const closeTableAccount = useCloseTableAccount(restaurantId);
@@ -1207,6 +1220,11 @@ export function TableOperationSheet({
   useEffect(() => {
     setLocalHallZoneId(table?.hall_zone_id ?? null);
   }, [table?.id, table?.hall_zone_id]);
+
+  // Ao abrir o modal Fechar conta, resetar moeda de exibição para a base do restaurante
+  useEffect(() => {
+    if (showCloseAccountDialog) setCloseAccountDisplayCurrency(baseCurrency);
+  }, [showCloseAccountDialog, baseCurrency]);
 
   const { data: linkedComandas = [] } = useTableComandaLinks(table?.id ?? null, restaurantId);
   const linkComanda = useLinkComandaToTable(restaurantId);
@@ -1689,17 +1707,80 @@ export function TableOperationSheet({
         </SheetContent>
       </Sheet>
 
-      {/* Modal Fechar conta — seleção de método de pagamento */}
+      {/* Modal Fechar conta — itens, total, câmbio e método de pagamento */}
       <Dialog open={showCloseAccountDialog} onOpenChange={setShowCloseAccountDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{t('tablesCentral.closeAccount')}</DialogTitle>
             <DialogDescription>
               {t('tablesCentral.closeAccountConfirm')}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
+          <div className="space-y-4 py-2 overflow-hidden flex flex-col min-h-0">
+            {/* Resumo: todos os itens */}
+            <div className="flex-shrink-0">
+              <Label className="text-sm font-medium">{t('tablesCentral.itemsTotal')}</Label>
+              {allItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground mt-1">{t('tablesCentral.noItems')}</p>
+              ) : (
+                <ul className="mt-2 max-h-[200px] overflow-y-auto rounded-lg border bg-muted/30 p-2 space-y-1">
+                  {allItems.map((item, i) => {
+                    const itemTotal = Number((item as { total_price?: number }).total_price ?? 0);
+                    const displayTotal = baseCurrency === closeAccountDisplayCurrency
+                      ? itemTotal
+                      : convertBetweenCurrencies(itemTotal, baseCurrency, closeAccountDisplayCurrency, exchangeRates);
+                    return (
+                      <li key={`${item.id}-${i}`} className="flex justify-between text-sm">
+                        <span className="text-muted-foreground truncate pr-2">
+                          {item.product_name} ×{item.quantity}
+                        </span>
+                        <span className="font-medium tabular-nums flex-shrink-0">
+                          {formatPrice(displayTotal, closeAccountDisplayCurrency)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            {/* Total e câmbio */}
+            {totalAmount > 0 && (
+              <div className="flex-shrink-0 space-y-2">
+                <Label className="text-sm font-medium">{t('tablesCentral.total')}</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xl font-bold">
+                    {formatPrice(
+                      baseCurrency === closeAccountDisplayCurrency
+                        ? totalAmount
+                        : convertBetweenCurrencies(totalAmount, baseCurrency, closeAccountDisplayCurrency, exchangeRates),
+                      closeAccountDisplayCurrency
+                    )}
+                  </span>
+                  {paymentCurrencies.length > 1 && (
+                    <div className="flex items-center gap-0.5 p-0.5 bg-muted rounded-lg" role="group" aria-label="Moeda">
+                      {paymentCurrencies.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setCloseAccountDisplayCurrency(c)}
+                          className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all min-w-[36px] ${
+                            closeAccountDisplayCurrency === c
+                              ? 'bg-card text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Método de pagamento */}
+            <div className="flex-shrink-0">
               <Label className="text-sm font-medium">{t('tablesCentral.paymentMethod')}</Label>
               <div className="mt-2 grid grid-cols-3 gap-2">
                 {(['cash', 'card', 'pix'] as const).map((method) => (
@@ -1716,7 +1797,7 @@ export function TableOperationSheet({
               </div>
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 sm:gap-0 flex-shrink-0">
             <Button variant="outline" onClick={() => setShowCloseAccountDialog(false)} disabled={closeTableAccount.isPending}>
               {t('tablesCentral.cancel')}
             </Button>

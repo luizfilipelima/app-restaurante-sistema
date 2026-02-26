@@ -203,6 +203,9 @@ const pt = {
     closeAccountConfirm:     'Fechar conta desta mesa? Os pedidos serão marcados como pagos e a mesa sairá da fila do Caixa.',
     paymentMethod:           'Método de pagamento',
     accountClosed:           'Conta fechada com sucesso!',
+    itemsTotal:              'Itens da conta',
+    noItems:                 'Nenhum item consumido.',
+    total:                   'Total',
   },
 
   reservations: {
@@ -240,6 +243,7 @@ const pt = {
     statusPending:        'Pendente',
     statusConfirmed:      'Confirmada',
     statusActivated:      'Ativada',
+    atTable:              'Na mesa',
     statusCancelled:      'Cancelada',
     reserva:              'Reserva',
     linkReservation:      'Reservar',
@@ -642,6 +646,9 @@ const es: typeof pt = {
     closeAccountConfirm:     '¿Cerrar cuenta de esta mesa? Los pedidos se marcarán como pagados y la mesa saldrá de la fila de la Caja.',
     paymentMethod:           'Método de pago',
     accountClosed:           '¡Cuenta cerrada con éxito!',
+    itemsTotal:              'Ítems de la cuenta',
+    noItems:                 'Ningún ítem consumido.',
+    total:                   'Total',
   },
 
   reservations: {
@@ -679,6 +686,7 @@ const es: typeof pt = {
     statusPending:        'Pendiente',
     statusConfirmed:      'Confirmada',
     statusActivated:      'Activada',
+    atTable:              'En la mesa',
     statusCancelled:      'Cancelada',
     reserva:              'Reserva',
     linkReservation:      'Reservar',
@@ -1081,6 +1089,9 @@ const en: typeof pt = {
     closeAccountConfirm:     'Close bill for this table? Orders will be marked as paid and the table will leave the Cashier queue.',
     paymentMethod:           'Payment method',
     accountClosed:           'Bill closed successfully!',
+    itemsTotal:              'Bill items',
+    noItems:                 'No items.',
+    total:                   'Total',
   },
 
   reservations: {
@@ -1111,6 +1122,7 @@ const en: typeof pt = {
     statusPending:        'Pending',
     statusConfirmed:      'Confirmed',
     statusActivated:      'Activated',
+    atTable:              'At table',
     statusCancelled:      'Cancelled',
     statusCompleted:      'Completed',
     kanbanReserved:       'Reserved',
