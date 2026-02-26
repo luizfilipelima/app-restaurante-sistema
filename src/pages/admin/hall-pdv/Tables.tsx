@@ -23,6 +23,7 @@ import {
   useTableComandaLinks,
   useLinkComandaToTable,
   useUnlinkComandaFromTable,
+  useResetTable,
 } from '@/hooks/queries';
 import type { TableWithStatus } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
@@ -288,37 +289,18 @@ export default function AdminTables() {
     : '';
 
   const [resetTableTarget, setResetTableTarget] = useState<TableWithStatus | null>(null);
-  const [resettingTable, setResettingTable] = useState(false);
-  const canResetTable = useCanAccess(['manager', 'restaurant_admin', 'super_admin']);
+  const resetTableMutation = useResetTable(restaurantId);
+  const canResetTable = useCanAccess(['manager', 'waiter', 'restaurant_admin', 'super_admin']);
 
   const handleResetTable = async () => {
-    if (!resetTableTarget || !restaurantId || resettingTable) return;
-    setResettingTable(true);
+    if (!resetTableTarget || !restaurantId || resetTableMutation.isPending) return;
     try {
-      const orderIds = resetTableTarget.orderIds ?? [];
-      if (orderIds.length > 0) {
-        const { error: orderErr } = await supabase
-          .from('orders')
-          .update({ status: 'cancelled', table_id: null })
-          .in('id', orderIds);
-        if (orderErr) throw orderErr;
-      }
-      const { error: unlinkErr } = await supabase
-        .from('table_comanda_links')
-        .delete()
-        .eq('table_id', resetTableTarget.id)
-        .eq('restaurant_id', restaurantId);
-      if (unlinkErr) throw unlinkErr;
-      queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
-      queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
-      queryClient.invalidateQueries({ queryKey: ['tableComandaLinks'] });
+      await resetTableMutation.mutateAsync(resetTableTarget.id);
       if (selectedTable?.id === resetTableTarget.id) setSelectedTable(null);
       setResetTableTarget(null);
       toast({ title: 'Mesa resetada!', description: 'A mesa voltou ao status Livre.' });
     } catch {
       toast({ title: 'Erro ao resetar mesa', variant: 'destructive' });
-    } finally {
-      setResettingTable(false);
     }
   };
 
@@ -443,12 +425,12 @@ export default function AdminTables() {
             </p>
           )}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setResetTableTarget(null)} disabled={resettingTable}>
+            <Button variant="outline" onClick={() => setResetTableTarget(null)} disabled={resetTableMutation.isPending}>
               {t('tablesCentral.cancel')}
             </Button>
-            <Button variant="destructive" onClick={handleResetTable} disabled={resettingTable}>
-              {resettingTable ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
-              {resettingTable ? t('tablesCentral.resetting') : t('tablesCentral.yesReset')}
+            <Button variant="destructive" onClick={handleResetTable} disabled={resetTableMutation.isPending}>
+              {resetTableMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+              {resetTableMutation.isPending ? t('tablesCentral.resetting') : t('tablesCentral.yesReset')}
             </Button>
           </DialogFooter>
         </DialogContent>

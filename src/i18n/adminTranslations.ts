@@ -225,6 +225,8 @@ const pt = {
     reserva:              'Reserva',
     linkReservation:      'Reservar',
     linkWaitingQueue:     'Fila de espera',
+    tableResetSuccess:    'Mesa resetada e disponível para nova reserva.',
+    tableResetConfirm:    'Deseja resetar a mesa? Pedidos serão cancelados e a comanda será desvinculada da reserva.',
   },
 
   cashier: {
@@ -633,6 +635,8 @@ const es: typeof pt = {
     reserva:              'Reserva',
     linkReservation:      'Reservar',
     linkWaitingQueue:     'Fila de espera',
+    tableResetSuccess:    'Mesa resetada y disponible para nueva reserva.',
+    tableResetConfirm:    '¿Desea resetear la mesa? Los pedidos serán cancelados y la comanda se desvinculará de la reserva.',
   },
 
   cashier: {
@@ -1041,6 +1045,8 @@ const en: typeof pt = {
     reserva:              'Reservation',
     linkReservation:      'Make reservation',
     linkWaitingQueue:     'Waiting queue',
+    tableResetSuccess:    'Table reset and available for new reservation.',
+    tableResetConfirm:    'Reset this table? Orders will be cancelled and the tab will be unlinked from the reservation.',
   },
 
   cashier: {

@@ -19,6 +19,7 @@ import {
   useAddToWaitingQueue,
   useNotifyQueueItem,
   useTableStatuses,
+  useResetTable,
   type ReservationWithDetails,
 } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
@@ -44,11 +45,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, CalendarClock, Loader2, X, User, Clock, MapPin, Users, MessageCircle, Link2 } from 'lucide-react';
+import { Plus, CalendarClock, Loader2, X, User, Clock, MapPin, Users, MessageCircle, Link2, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
+import { useCanAccess } from '@/hooks/auth/useUserRole';
 import { PhoneCountryInput } from '@/components/ui/PhoneCountryInput';
 import { generateWhatsAppLink, ensurePhoneForWhatsApp, normalizePhoneWithCountryCode, getCardapioPublicUrl } from '@/lib/core/utils';
 
@@ -80,6 +82,8 @@ function ReservationsContent() {
   const addToQueue = useAddToWaitingQueue(restaurantId);
   const notifyQueue = useNotifyQueueItem(restaurantId);
   const { data: tableStatuses = [] } = useTableStatuses(restaurantId);
+  const resetTableMutation = useResetTable(restaurantId);
+  const canResetTable = useCanAccess(['manager', 'waiter', 'restaurant_admin', 'super_admin']);
 
   const [showCreate, setShowCreate] = useState(false);
   const [showWaitingQueue, setShowWaitingQueue] = useState(false);
@@ -256,6 +260,17 @@ function ReservationsContent() {
               hallZones={hallZones}
               onCancel={() => handleCancel(r.id)}
               cancelling={cancellingId === r.id}
+              onResetTable={canResetTable ? async () => {
+                if (!restaurantId || !r.table_id) return;
+                if (!window.confirm(t('reservations.tableResetConfirm'))) return;
+                try {
+                  await resetTableMutation.mutateAsync(r.table_id);
+                  toast({ title: t('tablesCentral.resetTable'), description: t('reservations.tableResetSuccess') });
+                } catch (err: any) {
+                  toast({ title: t('common.error'), description: err?.message, variant: 'destructive' });
+                }
+              } : undefined}
+              resettingTable={resetTableMutation.isPending}
               t={t}
               dateLocale={dateLocale}
             />
@@ -483,6 +498,8 @@ function ReservationCard({
   hallZones,
   onCancel,
   cancelling,
+  onResetTable,
+  resettingTable,
   t,
   dateLocale,
 }: {
@@ -490,6 +507,8 @@ function ReservationCard({
   hallZones: { id: string; name: string }[];
   onCancel: () => void;
   cancelling: boolean;
+  onResetTable?: () => void | Promise<void>;
+  resettingTable?: boolean;
   t: (k: string) => string;
   dateLocale: Locale;
 }) {
@@ -527,17 +546,32 @@ function ReservationCard({
             )}
           </p>
         </div>
-        {isPending && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={onCancel}
-            disabled={cancelling}
-          >
-            {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {['pending', 'confirmed', 'activated'].includes(reservation.status) && onResetTable && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30 gap-1"
+              onClick={onResetTable}
+              disabled={resettingTable}
+              title={t('tablesCentral.resetTable')}
+            >
+              {resettingTable ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              <span className="hidden sm:inline">{t('tablesCentral.resetTable')}</span>
+            </Button>
+          )}
+          {isPending && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={onCancel}
+              disabled={cancelling}
+            >
+              {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

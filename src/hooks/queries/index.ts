@@ -20,6 +20,7 @@ export { useRestaurantMenuData } from './useRestaurantMenuData';
 export type { RestaurantMenuData } from './useRestaurantMenuData';
 export { useTables } from './useTables';
 export { useTableStatuses } from './useTableStatuses';
+export { useResetTable, resetTable } from './useResetTable';
 export {
   useReservations,
   useCreateReservation,
