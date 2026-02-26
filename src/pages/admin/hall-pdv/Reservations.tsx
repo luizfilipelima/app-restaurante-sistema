@@ -46,6 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, CalendarClock, Loader2, X, User, MapPin, Users, MessageCircle, Link2, RotateCcw, CheckCircle2, ArrowRightLeft } from 'lucide-react';
 import { format, startOfDay } from 'date-fns';
 import type { Locale } from 'date-fns';
@@ -270,52 +271,86 @@ function ReservationsContent() {
           <p className="text-sm text-muted-foreground mt-1">{t('reservations.noReservationsHint')}</p>
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-3 mt-6">
-          <KanbanColumn
-            title={t('reservations.kanbanReserved')}
-            count={kanbanReserved.length}
-            reservations={kanbanReserved}
-            variant="reserved"
-            hallZones={hallZones}
-            onCancel={setCancelConfirmTarget}
-            cancellingId={cancellingId}
-            onChangeTable={canChangeTable ? (r) => { setChangeTableTarget(r); setChangeTableNewTableId(r.table_id ?? ''); } : undefined}
-            onResetTable={canResetTable ? async (r) => {
-              if (!restaurantId || !r.table_id) return;
-              if (!window.confirm(t('reservations.tableResetConfirm'))) return;
-              try {
-                await resetTableMutation.mutateAsync(r.table_id);
-                toast({ title: t('tablesCentral.resetTable'), description: t('reservations.tableResetSuccess') });
-              } catch (err: any) {
-                toast({ title: t('common.error'), description: err?.message, variant: 'destructive' });
-              }
-            } : undefined}
-            resettingTable={resetTableMutation.isPending}
-            t={t}
-            dateLocale={dateLocale}
-          />
-          <KanbanColumn
-            title={t('reservations.kanbanCancelled')}
-            count={kanbanCancelled.length}
-            reservations={kanbanCancelled}
-            variant="cancelled"
-            hallZones={hallZones}
-            onCancel={setCancelConfirmTarget}
-            cancellingId={cancellingId}
-            t={t}
-            dateLocale={dateLocale}
-          />
-          <KanbanColumn
-            title={t('reservations.kanbanCompleted')}
-            count={kanbanCompleted.length}
-            reservations={kanbanCompleted}
-            variant="completed"
-            hallZones={hallZones}
-            onCancel={setCancelConfirmTarget}
-            cancellingId={cancellingId}
-            t={t}
-            dateLocale={dateLocale}
-          />
+        <div className="mt-6 space-y-8">
+          {/* Principal: Kanban de Reservadas (cards) */}
+          <section>
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              {t('reservations.kanbanReserved')}
+              <Badge variant="secondary" className="text-xs">{kanbanReserved.length}</Badge>
+            </h2>
+            <KanbanColumn
+              title=""
+              count={0}
+              reservations={kanbanReserved}
+              variant="reserved"
+              hallZones={hallZones}
+              onCancel={setCancelConfirmTarget}
+              cancellingId={cancellingId}
+              onChangeTable={canChangeTable ? (r) => { setChangeTableTarget(r); setChangeTableNewTableId(r.table_id ?? ''); } : undefined}
+              onResetTable={canResetTable ? async (r) => {
+                if (!restaurantId || !r.table_id) return;
+                if (!window.confirm(t('reservations.tableResetConfirm'))) return;
+                try {
+                  await resetTableMutation.mutateAsync(r.table_id);
+                  toast({ title: t('tablesCentral.resetTable'), description: t('reservations.tableResetSuccess') });
+                } catch (err: any) {
+                  toast({ title: t('common.error'), description: err?.message, variant: 'destructive' });
+                }
+              } : undefined}
+              resettingTable={resetTableMutation.isPending}
+              hideHeader
+              t={t}
+              dateLocale={dateLocale}
+            />
+          </section>
+
+          {/* Histórico: Tabs Cancelados | Concluídos (listas) */}
+          <section className="rounded-xl border-2 border-muted bg-muted/10 overflow-hidden">
+            <Tabs defaultValue="cancelled" className="w-full">
+              <div className="border-b border-border bg-card/50 px-4">
+                <TabsList className="h-12 w-full max-w-md bg-transparent p-0 gap-0">
+                  <TabsTrigger
+                    value="cancelled"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-destructive data-[state=active]:text-destructive gap-2 px-6"
+                  >
+                    {t('reservations.kanbanCancelled')}
+                    <Badge variant="secondary" className="text-xs">{kanbanCancelled.length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="completed"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary gap-2 px-6"
+                  >
+                    {t('reservations.kanbanCompleted')}
+                    <Badge variant="secondary" className="text-xs">{kanbanCompleted.length}</Badge>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              <TabsContent value="cancelled" className="mt-0 p-4">
+                {kanbanCancelled.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">{t('reservations.noReservations')}</p>
+                ) : (
+                  <ReservationList
+                    reservations={kanbanCancelled}
+                    hallZones={hallZones}
+                    t={t}
+                    dateLocale={dateLocale}
+                  />
+                )}
+              </TabsContent>
+              <TabsContent value="completed" className="mt-0 p-4">
+                {kanbanCompleted.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">{t('reservations.noReservations')}</p>
+                ) : (
+                  <ReservationList
+                    reservations={kanbanCompleted}
+                    hallZones={hallZones}
+                    t={t}
+                    dateLocale={dateLocale}
+                  />
+                )}
+              </TabsContent>
+            </Tabs>
+          </section>
         </div>
       )}
 
@@ -629,6 +664,7 @@ function KanbanColumn({
   onChangeTable,
   onResetTable,
   resettingTable,
+  hideHeader,
   t,
   dateLocale,
 }: {
@@ -642,6 +678,7 @@ function KanbanColumn({
   onChangeTable?: (r: ReservationWithDetails) => void;
   onResetTable?: (r: ReservationWithDetails) => void | Promise<void>;
   resettingTable?: boolean;
+  hideHeader?: boolean;
   t: (k: string) => string;
   dateLocale: Locale;
 }) {
@@ -660,12 +697,14 @@ function KanbanColumn({
 
   return (
     <div className={`rounded-xl border-2 ${borderClass} overflow-hidden flex flex-col min-h-[200px]`}>
-      <div className={`px-4 py-3 ${headerClass} border-b ${borderClass}`}>
-        <div className="flex items-center justify-between">
-          <span className="font-semibold text-foreground">{title}</span>
-          <Badge variant="secondary" className="text-xs">{count}</Badge>
+      {!hideHeader && (
+        <div className={`px-4 py-3 ${headerClass} border-b ${borderClass}`}>
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-foreground">{title}</span>
+            <Badge variant="secondary" className="text-xs">{count}</Badge>
+          </div>
         </div>
-      </div>
+      )}
       <div className="flex-1 p-3 space-y-3 overflow-y-auto">
         {reservations.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">{t('reservations.noReservations')}</p>
@@ -685,6 +724,85 @@ function KanbanColumn({
             />
           ))
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Lista compacta de reservas (Cancelados/Concluídos). */
+function ReservationList({
+  reservations,
+  hallZones,
+  t,
+  dateLocale,
+}: {
+  reservations: ReservationWithDetails[];
+  hallZones: { id: string; name: string }[];
+  t: (k: string) => string;
+  dateLocale: Locale;
+}) {
+  return (
+    <div className="divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
+      <div className="hidden sm:grid sm:grid-cols-12 gap-3 px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50">
+        <div className="sm:col-span-2">{t('reservations.code')}</div>
+        <div className="sm:col-span-3">{t('reservations.customerName')}</div>
+        <div className="sm:col-span-1">{t('reservations.table')}</div>
+        <div className="sm:col-span-2">{t('reservations.scheduledFor')}</div>
+        <div className="sm:col-span-2">{t('reservations.statusColumn')}</div>
+        <div className="sm:col-span-2">{t('reservations.notes')}</div>
+      </div>
+      {reservations.map((r) => (
+        <ReservationListRow key={r.id} reservation={r} hallZones={hallZones} t={t} dateLocale={dateLocale} />
+      ))}
+    </div>
+  );
+}
+
+function ReservationListRow({
+  reservation,
+  hallZones,
+  t,
+  dateLocale,
+}: {
+  reservation: ReservationWithDetails;
+  hallZones: { id: string; name: string }[];
+  t: (k: string) => string;
+  dateLocale: Locale;
+}) {
+  const scheduled = new Date(reservation.scheduled_at);
+  const statusKey = STATUS_KEY_MAP[reservation.status];
+  const statusLabel = statusKey ? t(`reservations.${statusKey}`) : reservation.status;
+  const zoneName = reservation.tables?.hall_zone_id
+    ? hallZones.find((z) => z.id === reservation.tables!.hall_zone_id)?.name ?? null
+    : null;
+  const tableDisplay = reservation.table_number != null ? String(reservation.table_number) : '—';
+  const notesShort = reservation.notes?.trim() ? (reservation.notes!.length > 40 ? reservation.notes!.slice(0, 40) + '…' : reservation.notes!.trim()) : '—';
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-12 gap-1 sm:gap-3 px-4 py-3 sm:py-2.5 hover:bg-muted/30 transition-colors items-start sm:items-center">
+      <div className="sm:col-span-2 flex items-center gap-2">
+        <span className="font-mono font-semibold text-primary">{reservation.short_code ?? '—'}</span>
+        <Badge className={`shrink-0 text-[10px] sm:hidden ${getStatusBadgeClass(reservation.status)}`}>
+          {statusLabel}
+        </Badge>
+      </div>
+      <div className="sm:col-span-3 font-medium text-foreground truncate">
+        {reservation.customer_name?.trim() || '—'}
+      </div>
+      <div className="sm:col-span-1 text-sm text-muted-foreground">
+        {t('reservations.table')} {tableDisplay}
+        {zoneName ? ` — ${zoneName}` : ''}
+      </div>
+      <div className="sm:col-span-2 text-sm text-muted-foreground">
+        {format(scheduled, "dd/MM 'às' HH:mm", { locale: dateLocale })}
+      </div>
+      <div className="hidden sm:block sm:col-span-2">
+        <Badge className={`shrink-0 text-[10px] ${getStatusBadgeClass(reservation.status)}`}>
+          {statusLabel}
+        </Badge>
+      </div>
+      <div className="sm:col-span-2 text-sm text-muted-foreground truncate">
+        {notesShort}
       </div>
     </div>
   );
@@ -792,6 +910,15 @@ function ReservationCard({
           {t('reservations.table')} {tableDisplay}
           {zoneName ? ` — ${zoneName}` : ''}
         </p>
+        {reservation.notes?.trim() && (
+          <p className="text-sm text-muted-foreground flex items-start gap-1.5">
+            <MessageCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>
+              <span className="font-medium text-foreground/90">{t('reservations.notes')}:</span>{' '}
+              {reservation.notes.trim()}
+            </span>
+          </p>
+        )}
       </div>
 
       {/* Bloco 3: ações (só renderiza quando houver botões) */}
