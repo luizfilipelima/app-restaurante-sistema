@@ -56,7 +56,6 @@ import { MenuMatrixBCG } from '@/components/admin/overview/MenuMatrixBCG';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
 type PeriodValue = '30' | '365' | 'max';
 
-const AREA_VALUES = ['all', 'delivery', 'table', 'pickup', 'buffet'] as const;
 type AreaValue = 'all' | 'delivery' | 'table' | 'pickup' | 'buffet';
 
 // ─── Variantes de animação stagger para os cards de métrica ─────────────────
@@ -762,13 +761,16 @@ export default function AdminDashboard() {
                   </p>
                 </div>
               </div>
-              {(statsDelivery?.operational?.avg_delivery_time ?? 0) > 0 && (
-                <div className="mt-3 pt-3 border-t border-slate-100">
-                  <p className="text-[10px] text-slate-500">
-                    {t('dashboard.operational.avgDeliveryTime')}: {Math.round(statsDelivery.operational.avg_delivery_time)} min
-                  </p>
-                </div>
-              )}
+              {(() => {
+                const avgDelivery = statsDelivery?.operational?.avg_delivery_time ?? 0;
+                return avgDelivery > 0 ? (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <p className="text-[10px] text-slate-500">
+                      {t('dashboard.operational.avgDeliveryTime')}: {Math.round(avgDelivery)} min
+                    </p>
+                  </div>
+                ) : null;
+              })()}
             </motion.div>
           </motion.div>
           </>
