@@ -78,6 +78,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
     const cartItem: CartItem = {
       productId: p.id,
       productName: p.name,
+      imageUrl: p.image_url ?? undefined,
       quantity: 1,
       unitPrice: Number(p.price_sale || p.price),
       isUpsell: true,
@@ -204,14 +205,31 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                     </div>
                   )}
 
-                  {/* Cart Items */}
+                  {/* Cart Items — layout alinhado aos cards do cardápio (imagem à esquerda, bordas arredondadas) */}
                   {items.map((item, index) => {
                     const itemTotal = item.unitPrice * item.quantity;
                     return (
-                      <div key={index} className="bg-card border border-border rounded-2xl p-3.5 shadow-sm">
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-foreground text-sm leading-snug">{item.productName}</h4>
+                      <div key={index} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                        <div className="flex gap-3 p-3.5">
+                          {/* Imagem à esquerda — mesmo padrão visual do cardápio */}
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 min-w-16 min-h-16 sm:min-w-20 sm:min-h-20 rounded-xl overflow-hidden bg-muted flex-shrink-0 ring-1 ring-border">
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.productName}
+                                className="w-full h-full object-cover object-center"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <span className="text-2xl opacity-25">🍽</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0 flex flex-col gap-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-foreground text-sm leading-snug">{item.productName}</h4>
                             {item.isPizza && (
                               <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
                                 {item.pizzaSize && <p>{t('cart.size')}: {item.pizzaSize}</p>}
@@ -232,34 +250,36 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                             {item.observations && (
                               <p className="text-xs text-primary mt-1 italic line-clamp-1">Obs: {item.observations}</p>
                             )}
-                          </div>
-                          <button
-                            onClick={() => removeItem(index)}
-                            className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-95 touch-manipulation transition-all flex-shrink-0"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
+                              </div>
+                              <button
+                                onClick={() => removeItem(index)}
+                                className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-95 touch-manipulation transition-all flex-shrink-0"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
 
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center bg-muted rounded-xl overflow-hidden">
-                            <button
-                              className="h-9 w-9 flex items-center justify-center text-foreground hover:bg-muted-foreground/20 active:scale-95 touch-manipulation transition-all"
-                              onClick={() => updateQuantity(index, item.quantity - 1)}
-                            >
-                              <Minus className="h-3.5 w-3.5" />
-                            </button>
-                            <span className="w-8 text-center text-sm font-bold text-foreground">{item.quantity}</span>
-                            <button
-                              className="h-9 w-9 flex items-center justify-center text-foreground hover:bg-muted-foreground/20 active:scale-95 touch-manipulation transition-all"
-                              onClick={() => updateQuantity(index, item.quantity + 1)}
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                            </button>
+                            <div className="flex items-center justify-between mt-auto">
+                              <div className="flex items-center bg-muted rounded-xl overflow-hidden">
+                                <button
+                                  className="h-9 w-9 flex items-center justify-center text-foreground hover:bg-muted-foreground/20 active:scale-95 touch-manipulation transition-all"
+                                  onClick={() => updateQuantity(index, item.quantity - 1)}
+                                >
+                                  <Minus className="h-3.5 w-3.5" />
+                                </button>
+                                <span className="w-8 text-center text-sm font-bold text-foreground">{item.quantity}</span>
+                                <button
+                                  className="h-9 w-9 flex items-center justify-center text-foreground hover:bg-muted-foreground/20 active:scale-95 touch-manipulation transition-all"
+                                  onClick={() => updateQuantity(index, item.quantity + 1)}
+                                >
+                                  <Plus className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                              <span className="font-bold text-foreground text-sm">
+                                {fmt(itemTotal)}
+                              </span>
+                            </div>
                           </div>
-                          <span className="font-bold text-foreground text-sm">
-                            {fmt(itemTotal)}
-                          </span>
                         </div>
                       </div>
                     );

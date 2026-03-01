@@ -5,7 +5,7 @@
  * Tabs: Salão (mesas) + Expedição (pedidos prontos para retirada).
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/core/supabase';
@@ -29,6 +29,7 @@ import { cn } from '@/lib/core/utils';
 import { UtensilsCrossed, Package, Wifi, WifiOff } from 'lucide-react';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { ptBR, es, enUS } from 'date-fns/locale';
+import { playWaiterBeep, primeWaiterAudio } from '@/lib/sounds/playWaiterBeep';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
@@ -95,12 +96,30 @@ function WaiterTerminalContent() {
   const [selectedTable, setSelectedTable] = useState<TableWithStatus | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
+  const audioPrimedRef = useRef(false);
+
+  // Permite áudio no primeiro toque/clique (Chrome exige interação antes de tocar som)
+  useEffect(() => {
+    if (audioPrimedRef.current) return;
+    const prime = () => {
+      audioPrimedRef.current = true;
+      primeWaiterAudio();
+    };
+    document.addEventListener('click', prime, { once: true });
+    document.addEventListener('touchstart', prime, { once: true, capture: true });
+    return () => {
+      document.removeEventListener('click', prime);
+      document.removeEventListener('touchstart', prime, { capture: true });
+    };
+  }, []);
 
   useEffect(() => {
     if (!restaurantId) return;
     const ch = supabase
       .channel('waiter-terminal-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'waiter_calls', filter: `restaurant_id=eq.${restaurantId}` }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'waiter_calls', filter: `restaurant_id=eq.${restaurantId}` }, (payload: { eventType?: string; data?: { type?: string } }) => {
+        const isNewCall = (payload?.eventType ?? payload?.data?.type ?? '') === 'INSERT';
+        if (isNewCall) playWaiterBeep();
         queryClient.refetchQueries({ queryKey: ['waiterCalls', restaurantId] });
         queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
       })

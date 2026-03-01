@@ -496,6 +496,8 @@ export interface OrderItem {
 export interface CartItem {
   productId?: string;
   productName: string;
+  /** URL da imagem do produto — exibida no carrinho */
+  imageUrl?: string | null;
   quantity: number;
   unitPrice: number;
   observations?: string;

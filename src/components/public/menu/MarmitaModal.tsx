@@ -124,6 +124,7 @@ export default function MarmitaModal({
     addItem({
       productId: product.id,
       productName: product.name,
+      imageUrl: product.image_url ?? undefined,
       quantity,
       unitPrice,
       isMarmita: true,

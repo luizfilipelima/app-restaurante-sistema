@@ -474,16 +474,16 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
         <RestaurantInfoModal open={infoModalOpen} onOpenChange={setInfoModalOpen} restaurant={restaurant} />
 
-        {/* Barra Mesa + Chamar Garçom - modo mesa */}
+        {/* Barra Mesa + Chamar Garçom - modo mesa — respeita tema do restaurante */}
         {tableNumber != null && onCallWaiter && (
-          <div className="border-t border-amber-200/60 bg-amber-50/90">
-            <div className="container mx-auto max-w-6xl flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 flex-wrap">
-              <div className="flex items-center gap-2 flex-wrap min-w-0">
-                <span className="text-sm font-semibold text-amber-900">
+          <div className="border-t border-border bg-primary/5 dark:bg-primary/10">
+            <div className="container mx-auto max-w-6xl flex items-center justify-between gap-3 px-3 sm:px-4 py-3 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+                <span className="text-sm font-semibold text-foreground">
                   {t('menu.tableLabel')} {tableNumber}
                 </span>
                 {tableCustomerName?.trim() && (
-                  <span className="text-xs text-amber-800 bg-amber-100/80 px-2 py-1 rounded-lg">
+                  <span className="text-xs text-foreground bg-primary/15 dark:bg-primary/25 px-2.5 py-1.5 rounded-lg border border-primary/20 font-medium">
                     Pedindo como: <strong>{tableCustomerName}</strong>
                   </span>
                 )}
@@ -492,7 +492,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 onClick={onCallWaiter}
                 disabled={callingWaiter}
                 size="sm"
-                className="flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold shadow-sm shrink-0"
+                className="flex items-center gap-2 min-h-[44px] px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm shrink-0 touch-manipulation"
               >
                 {callingWaiter ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -946,6 +946,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               useCartStore.getState().addItem({
                 productId: addonModalProduct.product.id,
                 productName: addonModalProduct.product.name,
+                imageUrl: addonModalProduct.product.image_url ?? undefined,
                 quantity: qty,
                 unitPrice,
                 addons: addons.length > 0 ? addons : undefined,

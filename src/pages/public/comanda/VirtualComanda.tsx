@@ -137,8 +137,23 @@ function CartDrawer({
           {items.map(({ product, quantity }) => (
             <div
               key={product.id}
-              className="flex items-center gap-3 p-3 rounded-xl bg-muted border border-border"
+              className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border shadow-sm overflow-hidden"
             >
+              {/* Imagem — mesmo padrão visual do cardápio */}
+              <div className="w-14 h-14 sm:w-16 sm:h-16 min-w-14 min-h-14 sm:min-w-16 sm:min-h-16 rounded-xl overflow-hidden bg-muted flex-shrink-0 ring-1 ring-border">
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full h-full object-cover object-center"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="text-xl opacity-25">🍽</span>
+                  </div>
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-card-foreground truncate">{product.name}</p>
                 <p className="text-xs text-muted-foreground">

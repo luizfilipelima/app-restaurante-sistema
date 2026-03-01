@@ -47,6 +47,7 @@ export default function SimpleProductModal({
     addItem({
       productId: product.id,
       productName: product.name,
+      imageUrl: product.image_url ?? undefined,
       quantity,
       unitPrice: basePrice,
       observations: observations.trim() || undefined,

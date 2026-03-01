@@ -90,6 +90,7 @@ export default function PizzaModal({
     addItem({
       productId: product.id,
       productName: product.name,
+      imageUrl: product.image_url ?? undefined,
       quantity,
       unitPrice,
       isPizza: true,

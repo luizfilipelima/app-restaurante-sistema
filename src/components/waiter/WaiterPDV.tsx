@@ -21,6 +21,7 @@ import { cn } from '@/lib/core/utils';
 export interface WaiterPDVItem {
   productId: string;
   productName: string;
+  imageUrl?: string | null;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
@@ -73,7 +74,12 @@ export function WaiterPDV({ table, restaurantId, currency, products, onOrderPlac
       setCart((prev) =>
         prev.map((item) =>
           item === existing
-            ? { ...item, quantity: item.quantity + 1, totalPrice: (item.quantity + 1) * item.unitPrice }
+            ? {
+                ...item,
+                imageUrl: item.imageUrl ?? p.image_url ?? undefined,
+                quantity: item.quantity + 1,
+                totalPrice: (item.quantity + 1) * item.unitPrice,
+              }
             : item
         )
       );
@@ -83,6 +89,7 @@ export function WaiterPDV({ table, restaurantId, currency, products, onOrderPlac
         {
           productId: p.id,
           productName: p.name,
+          imageUrl: p.image_url ?? undefined,
           quantity: 1,
           unitPrice: price,
           totalPrice: price,
@@ -219,12 +226,28 @@ export function WaiterPDV({ table, restaurantId, currency, products, onOrderPlac
                   key={p.id}
                   type="button"
                   onClick={() => addSimpleProduct(p)}
-                  className="flex flex-col items-stretch rounded-xl border bg-white p-4 text-left shadow-sm hover:shadow-md active:scale-[0.98] transition-all touch-manipulation min-h-[100px]"
+                  className="flex items-stretch gap-3 rounded-xl border bg-white p-3 text-left shadow-sm hover:shadow-md active:scale-[0.98] transition-all touch-manipulation overflow-hidden"
                 >
-                  <span className="font-medium text-slate-900 line-clamp-2 text-sm">{p.name}</span>
-                  <span className="mt-2 text-base font-bold text-primary">
-                    {formatPrice(price, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
-                  </span>
+                  <div className="w-14 h-14 min-w-14 min-h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0 ring-1 ring-border">
+                    {p.image_url ? (
+                      <img
+                        src={p.image_url}
+                        alt={p.name}
+                        className="w-full h-full object-cover object-center"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-xl opacity-25">🍽</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <span className="font-medium text-slate-900 line-clamp-2 text-sm">{p.name}</span>
+                    <span className="mt-1 text-base font-bold text-primary">
+                      {formatPrice(price, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
+                    </span>
+                  </div>
                 </button>
               );
             })}
@@ -262,8 +285,22 @@ export function WaiterPDV({ table, restaurantId, currency, products, onOrderPlac
                   {cart.map((item, i) => (
                     <li
                       key={`${item.productId}-${i}`}
-                      className="flex items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
+                      className="flex items-center gap-3 rounded-xl border bg-muted/30 px-3 py-2.5 text-sm overflow-hidden"
                     >
+                      <div className="w-12 h-12 min-w-12 min-h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 ring-1 ring-border">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.productName}
+                            className="w-full h-full object-cover object-center"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-lg opacity-25">🍽</span>
+                          </div>
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <span className="font-medium truncate block">{item.productName}</span>
                         <span className="text-xs text-muted-foreground">

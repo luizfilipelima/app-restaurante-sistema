@@ -102,7 +102,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
   const [searchParams] = useSearchParams();
   const tableIdFromUrl = searchParams.get('tableId');
   const tableNumberFromUrl = searchParams.get('tableNumber');
-  const { tableId: tableIdStore, tableNumber: tableNumberStore, tableCustomerName, setTableCustomerName, clearTable, setTable } = useTableOrderStore();
+  const { tableId: tableIdStore, tableNumber: tableNumberStore, tableCustomerName, clearTable, setTable } = useTableOrderStore();
   const tableId = tableIdFromUrl || tableIdStore;
   const tableNumber = tableNumberFromUrl ? parseInt(tableNumberFromUrl, 10) : tableNumberStore;
   const isTableOrder = !!(tableId && tableNumber);
@@ -835,14 +835,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 <span className="text-sm font-semibold text-card-foreground">Seu nome (divisão da conta)</span>
               </div>
               <div className="p-4">
-                <Input
-                  value={tableCustomerName ?? ''}
-                  onChange={(e) => { setTableCustomerName(e.target.value.trim() || null); setFormError(null); }}
-                  placeholder="Ex: João, Maria"
-                  className="h-12 text-base bg-muted border-border rounded-xl focus:bg-background"
-                  autoComplete="name"
-                />
-                <p className="text-xs text-muted-foreground mt-2">Identifique seu pedido para facilitar a divisão da conta na mesa.</p>
+                <div className="h-12 px-4 flex items-center rounded-xl bg-muted/60 border border-border text-base font-medium text-foreground">
+                  {tableCustomerName?.trim() || (
+                    <span className="text-muted-foreground italic">Informe seu nome no cardápio antes de finalizar</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Nome definido ao entrar no cardápio da mesa. Para alterar, volte ao cardápio.</p>
               </div>
             </div>
           </div>
