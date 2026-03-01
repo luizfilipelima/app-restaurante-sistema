@@ -27,7 +27,7 @@ interface CartDrawerProps {
 
 export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL', convertForDisplay, restaurantId, customerPhone, tableCustomerName, tableNumber }: CartDrawerProps) {
   const { t } = useTranslation();
-  const { items, orderedTableItems, addItem, updateQuantity, removeItem, getSubtotal, getOrderedSubtotal } = useCartStore();
+  const { items, orderedTableItems, addItem, updateQuantity, removeItem, getSubtotal } = useCartStore();
   const isTableOrder = tableNumber != null;
   const [upsellRows, setUpsellRows] = useState<UpsellRow[]>([]);
 
