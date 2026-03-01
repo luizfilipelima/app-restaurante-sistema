@@ -1248,8 +1248,10 @@ function CashierContent() {
     if (!selected || excludingOrder || !restaurantId) return;
     const tableIds: string[] = [];
     if (isTableGroup(selected)) {
-      const ids = new Set(selected.items.map((i) => (i.order as { table_id?: string })?.table_id).filter(Boolean));
-      tableIds.push(...ids);
+      const ids = selected.items
+        .map((i) => (i.order as { table_id?: string })?.table_id)
+        .filter((id): id is string => !!id);
+      tableIds.push(...new Set(ids));
     } else if (selected.type === 'table') {
       const tid = (selected.order as { table_id?: string })?.table_id;
       if (tid) tableIds.push(tid);
