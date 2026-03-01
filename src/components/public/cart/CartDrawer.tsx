@@ -148,17 +148,8 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
               )}
             </div>
 
-            {/* Loyalty banner */}
-            {items.length > 0 && (
-              loyaltyStatus
-                ? <LoyaltyCard status={loyaltyStatus} compact />
-                : loyaltyStatus === null && restaurantId
-                  ? <LoyaltyInvite enabled={true} />
-                  : null
-            )}
-
-            {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3">
+            {/* Scrollable content — plano de fidelidade e itens com mesmo padrão visual */}
+            <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
               {items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-4">
                   <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
@@ -168,6 +159,17 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                 </div>
               ) : (
                 <>
+                  {/* Plano de fidelidade — mesmo padrão de card que os itens */}
+                  {loyaltyStatus ? (
+                    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                      <LoyaltyCard status={loyaltyStatus} compact noMargin />
+                    </div>
+                  ) : loyaltyStatus === null && restaurantId ? (
+                    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                      <LoyaltyInvite enabled={true} noMargin />
+                    </div>
+                  ) : null}
+
                   {/* Upsell (order bump) — usa cores do tema do restaurante */}
                   {upsellRows.length > 0 && (
                     <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3 space-y-2">

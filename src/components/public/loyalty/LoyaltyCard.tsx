@@ -6,13 +6,15 @@ interface LoyaltyCardProps {
   status: LoyaltyStatus | null | undefined;
   /** Exibir versão compacta (dentro do CartDrawer) */
   compact?: boolean;
+  /** Remover margin quando dentro de um card container (ex.: CartDrawer) */
+  noMargin?: boolean;
 }
 
 /**
  * Exibe o progresso de fidelidade do cliente com selos visuais.
  * Quando status.enabled é false, não renderiza nada.
  */
-export default function LoyaltyCard({ status, compact = false }: LoyaltyCardProps) {
+export default function LoyaltyCard({ status, compact = false, noMargin = false }: LoyaltyCardProps) {
   const { t } = useTranslation();
 
   if (!status?.enabled) return null;
@@ -31,7 +33,7 @@ export default function LoyaltyCard({ status, compact = false }: LoyaltyCardProp
 
   if (compact) {
     return (
-      <div className={`mx-3 mb-2 rounded-xl border px-3 py-2.5 ${
+      <div className={`rounded-xl border px-3 py-2.5 ${noMargin ? '' : 'mx-3 mb-2'} ${
         isGoalReached
           ? 'border-warning/50 bg-warning/10 dark:bg-warning/20'
           : 'border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10'
@@ -136,11 +138,11 @@ export default function LoyaltyCard({ status, compact = false }: LoyaltyCardProp
 }
 
 /** Versão convite (quando o cliente ainda não tem pontos ou telefone não reconhecido) */
-export function LoyaltyInvite({ enabled }: { enabled: boolean }) {
+export function LoyaltyInvite({ enabled, noMargin }: { enabled: boolean; noMargin?: boolean }) {
   const { t } = useTranslation();
   if (!enabled) return null;
   return (
-    <div className="mx-3 mb-2 rounded-xl border border-primary/20 bg-primary/5 dark:bg-primary/10 px-3 py-2 flex items-start gap-2">
+    <div className={`rounded-xl border border-primary/20 bg-primary/5 dark:bg-primary/10 px-3 py-2 flex items-start gap-2 ${noMargin ? '' : 'mx-3 mb-2'}`}>
       <Star className="h-3.5 w-3.5 text-primary flex-shrink-0 mt-0.5" />
       <div>
         <p className="text-[11px] font-semibold text-primary">{t('loyalty.inviteFirst')}</p>

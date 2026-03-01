@@ -126,7 +126,6 @@ export default function MenuTable({ tenantSlug: tenantSlugProp }: MenuTableProps
       .channel(`menu-table-reset-${tableId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `table_id=eq.${tableId}` }, onTableRelatedChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: `table_id=eq.${tableId}` }, onTableRelatedChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tables', filter: `id=eq.${tableId}` }, onTableRelatedChange)
       .subscribe();
 
     return () => {
