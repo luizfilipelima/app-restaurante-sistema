@@ -55,6 +55,8 @@ export type { TableComandaLinkWithComanda } from './useTableComandaLinks';
 export type { TableOrderWithItems } from './useTableOrders';
 export { useWaiterCalls } from './useWaiterCalls';
 export { useWaiterHallZone } from './useWaiterHallZone';
+export { useWaiterProfile, useUpdateMyWaiterHallZone } from './useWaiterProfile';
+export type { WaiterProfile } from './useWaiterProfile';
 export { useAdminProducts } from './useAdminProducts';
 export { useOrders } from './useOrders';
 export type { UseOrdersParams, OrderSourceFilter } from './useOrders';

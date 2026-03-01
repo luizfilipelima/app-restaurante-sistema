@@ -18,6 +18,8 @@ import {
   useWaiterCalls,
   useHallZones,
   useWaiterHallZone,
+  useWaiterProfile,
+  useUpdateMyWaiterHallZone,
 } from '@/hooks/queries';
 import { useReadyOrders } from '@/hooks/orders/useReadyOrders';
 import { TableCard, TableOperationSheet } from '@/pages/admin/hall-pdv/Tables';
@@ -27,12 +29,24 @@ import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/core/utils';
-import { UtensilsCrossed, Package, Wifi, WifiOff, Bell } from 'lucide-react';
+import { UtensilsCrossed, Package, Wifi, WifiOff, Bell, User } from 'lucide-react';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { ptBR, es, enUS } from 'date-fns/locale';
 import { playWaiterBeep, primeWaiterAudio } from '@/lib/sounds/playWaiterBeep';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/hooks/shared/use-toast';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
+
+function ProfileRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span className="text-xs text-slate-500">{label}</span>
+      <p className="text-sm font-medium text-slate-900 truncate">{value || '—'}</p>
+    </div>
+  );
+}
 
 // ─── Shell com contexto de restaurante ───────────────────────────────────────
 
@@ -92,6 +106,8 @@ function WaiterTerminalContent() {
   const { data: waiterCallsData } = useWaiterCalls(restaurantId);
   const { data: hallZones = [] } = useHallZones(restaurantId);
   const { data: waiterHallZoneId } = useWaiterHallZone(restaurantId);
+  const { data: waiterProfile, isLoading: profileLoading } = useWaiterProfile(restaurantId);
+  const updateMyZone = useUpdateMyWaiterHallZone(restaurantId);
   const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
   const zoneTableIdsStable = useMemo(() => {
     if (!waiterHallZoneId || !tablesData) return null;
@@ -103,6 +119,7 @@ function WaiterTerminalContent() {
 
   const [selectedTable, setSelectedTable] = useState<TableWithStatus | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [isLive, setIsLive] = useState(false);
   const [callNotification, setCallNotification] = useState<{ tableNumber: number } | null>(null);
   const audioPrimedRef = useRef(false);
@@ -240,7 +257,16 @@ function WaiterTerminalContent() {
           <div className="p-4">
             <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
               <h1 className="text-lg font-bold text-slate-900">Terminal do Garçom</h1>
-              <div
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setProfileOpen(true)}
+                  className="flex items-center justify-center h-9 w-9 rounded-full border border-slate-200 bg-white hover:bg-slate-50 transition-colors touch-manipulation"
+                  aria-label="Meu perfil"
+                >
+                  <User className="h-5 w-5 text-slate-600" />
+                </button>
+                <div
                 className={cn(
                   'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-semibold transition-all shrink-0',
                   isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800' : 'bg-slate-100 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400'
@@ -258,6 +284,7 @@ function WaiterTerminalContent() {
                     Conectando…
                   </>
                 )}
+                </div>
               </div>
             </div>
             <TabsList className="grid w-full grid-cols-2 h-12">
@@ -353,6 +380,68 @@ function WaiterTerminalContent() {
           </TabsContent>
         </main>
       </Tabs>
+
+      {/* Sheet de Perfil do Garçom */}
+      <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
+        <SheetContent side="right" className="w-full max-w-sm overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Meu perfil</SheetTitle>
+          </SheetHeader>
+          <div className="mt-6 space-y-4">
+            {profileLoading ? (
+              <p className="text-sm text-slate-500">Carregando perfil…</p>
+            ) : waiterProfile ? (
+              <>
+                <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+                  <ProfileRow label="Login" value={waiterProfile.login} />
+                  <ProfileRow label="E-mail" value={waiterProfile.email} />
+                  <ProfileRow label="Usuário" value={waiterProfile.usuario} />
+                  <ProfileRow label="Nome" value={waiterProfile.first_name || waiterProfile.full_name || '—'} />
+                  <ProfileRow label="Sobrenome" value={waiterProfile.last_name || '—'} />
+                  <ProfileRow label="Cargo" value={waiterProfile.role === 'waiter' ? 'Garçom' : waiterProfile.role} />
+                </div>
+                {hallZones.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">Zona que atendo</label>
+                    <p className="text-xs text-slate-500">
+                      Só recebo notificações, bips e vibrações de mesas nesta zona.
+                    </p>
+                    <Select
+                      value={waiterProfile.hall_zone_id ?? '__all__'}
+                      onValueChange={(v) => {
+                        const zoneId = v === '__all__' ? null : v;
+                        updateMyZone.mutate(zoneId, {
+                          onSuccess: () => {
+                            toast({ title: 'Zona atualizada', description: 'Suas preferências foram salvas.' });
+                          },
+                          onError: () => {
+                            toast({ title: 'Erro ao atualizar zona', variant: 'destructive' });
+                          },
+                        });
+                      }}
+                      disabled={updateMyZone.isPending}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a zona" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todas as zonas</SelectItem>
+                        {hallZones.map((z) => (
+                          <SelectItem key={z.id} value={z.id}>
+                            {z.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-slate-500">Perfil não disponível.</p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Modal de Operação */}
       <TableOperationSheet

@@ -346,24 +346,30 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
               )}
             </div>
 
-            {/* Footer — botão de enviar só aparece quando há itens pendentes (novos) */}
-            {items.length > 0 && (
+            {/* Footer — em mesa: sempre aparece quando há itens (pedidos ou novos); botão só clicável com itens novos */}
+            {(!isTableOrder && items.length > 0) || (isTableOrder && (orderedTableItems.length > 0 || items.length > 0)) ? (
               <div className="flex-shrink-0 border-t border-border bg-card px-4 pt-3 pb-4 space-y-3">
-                {/* Subtotal + CTA */}
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm text-muted-foreground font-medium">{t('cart.subtotal')}</span>
+                  <span className="text-sm text-muted-foreground font-medium">
+                    {isTableOrder && items.length === 0 ? t('cart.subtotalNewItems') : t('cart.subtotal')}
+                  </span>
                   <span className="text-xl font-bold text-foreground">{fmt(getSubtotal())}</span>
                 </div>
                 <button
-                  onClick={handleCheckout}
+                  onClick={items.length > 0 ? handleCheckout : undefined}
                   data-testid="cart-checkout"
-                  className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 active:scale-[0.98] text-primary-foreground font-bold text-base flex items-center justify-between px-5 shadow-lg transition-all touch-manipulation"
+                  disabled={items.length === 0}
+                  className={`w-full h-14 rounded-2xl font-bold text-base flex items-center justify-between px-5 shadow-lg transition-all touch-manipulation ${
+                    items.length > 0
+                      ? 'bg-primary hover:bg-primary/90 active:scale-[0.98] text-primary-foreground cursor-pointer'
+                      : 'bg-muted text-muted-foreground cursor-not-allowed opacity-70'
+                  }`}
                 >
                   <span>{isTableOrder ? t('cart.sendToKitchen') : t('cart.finalize')}</span>
                   <ChevronRight className="h-5 w-5 opacity-90" />
                 </button>
               </div>
-            )}
+            ) : null}
           </motion.div>
         </>
       )}
