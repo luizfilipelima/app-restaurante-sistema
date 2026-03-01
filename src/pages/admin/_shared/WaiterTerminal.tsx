@@ -434,7 +434,7 @@ function WaiterTerminalContent() {
                   <ProfileRow label="Usuário" value={displayProfile.usuario} />
                   <ProfileRow label="Cargo" value={ROLE_LABELS[displayProfile.role] ?? displayProfile.role} />
                 </div>
-                {hallZones.length > 0 && (
+                {hallZones.length > 0 && displayProfile.role !== 'super_admin' && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Minha zona</label>
                     <p className="text-xs text-slate-500">
@@ -448,8 +448,11 @@ function WaiterTerminalContent() {
                           onSuccess: () => {
                             toast({ title: 'Zona atualizada', description: 'Suas preferências foram salvas.' });
                           },
-                          onError: () => {
-                            toast({ title: 'Erro ao atualizar zona', variant: 'destructive' });
+                          onError: (err: Error) => {
+                            const msg = err?.message?.includes('permission_denied') || err?.message?.includes('vínculo')
+                              ? 'Você não tem vínculo com este restaurante para definir zona.'
+                              : 'Erro ao atualizar zona.';
+                            toast({ title: msg, variant: 'destructive' });
                           },
                         });
                       }}
