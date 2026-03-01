@@ -48,7 +48,8 @@ BEGIN
     )
   LIMIT 1;
 
-  IF v_login IS NULL THEN
+  -- Sem linha: v_email e v_login ficam NULL. Aceita usuário só com email (login opcional).
+  IF v_email IS NULL AND v_login IS NULL THEN
     RETURN NULL;
   END IF;
 
@@ -68,9 +69,9 @@ BEGIN
   END IF;
 
   RETURN jsonb_build_object(
-    'login',        v_login,
+    'login',        COALESCE(v_login, ''),
     'email',        COALESCE(v_email, ''),
-    'usuario',      COALESCE(v_login, v_email),
+    'usuario',      COALESCE(v_login, v_email, ''),
     'full_name',    v_full_name,
     'first_name',   v_first_name,
     'last_name',    v_last_name,

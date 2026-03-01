@@ -36,11 +36,15 @@ import { playWaiterBeep, primeWaiterAudio } from '@/lib/sounds/playWaiterBeep';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/shared/use-toast';
+import { useAuthStore } from '@/store/authStore';
+import { useUserRole } from '@/hooks/auth/useUserRole';
+import type { WaiterProfile } from '@/hooks/queries';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Proprietário',
+  restaurant_admin: 'Proprietário',
   manager: 'Gerente',
   waiter: 'Garçom',
   cashier: 'Operador de caixa',
@@ -117,6 +121,27 @@ function WaiterTerminalContent() {
   const { data: waiterHallZoneId } = useWaiterHallZone(restaurantId);
   const { data: waiterProfile, isLoading: profileLoading } = useWaiterProfile(restaurantId);
   const updateMyZone = useUpdateMyWaiterHallZone(restaurantId);
+  const { user, session } = useAuthStore();
+  const { role: effectiveRole } = useUserRole();
+
+  // Fallback quando a RPC retorna null (migration não aplicada, edge case, etc.)
+  const displayProfile = useMemo((): WaiterProfile | null => {
+    if (waiterProfile) return waiterProfile;
+    if (!user) return null;
+    const meta = session?.user?.user_metadata ?? (session?.user as { raw_user_meta_data?: { full_name?: string } })?.raw_user_meta_data;
+    const fullName = meta?.full_name ?? '';
+    const parts = fullName.trim() ? fullName.trim().split(/\s+/) : [];
+    return {
+      login: user.login ?? '',
+      email: user.email ?? '',
+      usuario: user.login ?? user.email ?? '',
+      full_name: fullName,
+      first_name: parts[0] ?? '',
+      last_name: parts.length > 1 ? parts.slice(1).join(' ') : '',
+      role: effectiveRole ?? user.role ?? 'owner',
+      hall_zone_id: null,
+    };
+  }, [waiterProfile, user, effectiveRole]);
   const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
   const zoneTableIdsStable = useMemo(() => {
     if (!waiterHallZoneId || !tablesData) return null;
@@ -402,24 +427,24 @@ function WaiterTerminalContent() {
           <div className="mt-6 space-y-4">
             {profileLoading ? (
               <p className="text-sm text-slate-500">Carregando perfil…</p>
-            ) : waiterProfile ? (
+            ) : displayProfile ? (
               <>
                 <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-                  <ProfileRow label="Login" value={waiterProfile.login} />
-                  <ProfileRow label="E-mail" value={waiterProfile.email} />
-                  <ProfileRow label="Usuário" value={waiterProfile.usuario} />
-                  <ProfileRow label="Nome" value={waiterProfile.first_name || waiterProfile.full_name || '—'} />
-                  <ProfileRow label="Sobrenome" value={waiterProfile.last_name || '—'} />
-                  <ProfileRow label="Cargo" value={ROLE_LABELS[waiterProfile.role] ?? waiterProfile.role} />
+                  <ProfileRow label="Login" value={displayProfile.login} />
+                  <ProfileRow label="E-mail" value={displayProfile.email} />
+                  <ProfileRow label="Usuário" value={displayProfile.usuario} />
+                  <ProfileRow label="Nome" value={displayProfile.first_name || displayProfile.full_name || '—'} />
+                  <ProfileRow label="Sobrenome" value={displayProfile.last_name || '—'} />
+                  <ProfileRow label="Cargo" value={ROLE_LABELS[displayProfile.role] ?? displayProfile.role} />
                 </div>
-                {hallZones.length > 0 && waiterProfile.role === 'waiter' && (
+                {hallZones.length > 0 && displayProfile.role === 'waiter' && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Zona que atendo</label>
                     <p className="text-xs text-slate-500">
                       Só recebo notificações, bips e vibrações de mesas nesta zona.
                     </p>
                     <Select
-                      value={waiterProfile.hall_zone_id ?? '__all__'}
+                      value={displayProfile.hall_zone_id ?? waiterHallZoneId ?? '__all__'}
                       onValueChange={(v) => {
                         const zoneId = v === '__all__' ? null : v;
                         updateMyZone.mutate(zoneId, {
