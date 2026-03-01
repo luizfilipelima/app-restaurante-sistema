@@ -438,6 +438,8 @@ function CashierContent() {
   const [scanError, setScanError] = useState<string | null>(null);
   const [reservationAction, setReservationAction] = useState<'idle' | 'activating' | 'cancelling' | null>(null);
   const [showRemoveComandaConfirm, setShowRemoveComandaConfirm] = useState(false);
+  const [showExcludeOrderConfirm, setShowExcludeOrderConfirm] = useState(false);
+  const [excludingOrder, setExcludingOrder] = useState(false);
   const [mainView, setMainView] = useState<'cashier' | 'completed'>('cashier');
   const [completedList, setCompletedList] = useState<CompletedItem[]>([]);
 
@@ -1242,6 +1244,34 @@ function CashierContent() {
     }
   };
 
+  const handleExcludeTableOrder = async () => {
+    if (!selected || excludingOrder) return;
+    const orderIds: string[] = isTableGroup(selected)
+      ? selected.items.map((i) => i.orderId)
+      : selected.type === 'table'
+        ? [selected.orderId]
+        : [];
+    if (orderIds.length === 0) return;
+    setExcludingOrder(true);
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .in('id', orderIds);
+      if (error) throw error;
+      setShowExcludeOrderConfirm(false);
+      handleClearSelection();
+      loadQueue();
+      queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+      toast({ title: t('cashier.excludeOrderSuccess') });
+    } catch (err: any) {
+      toast({ title: t('cashier.errorExcludeOrder'), description: err?.message, variant: 'destructive' });
+    } finally {
+      setExcludingOrder(false);
+    }
+  };
+
   const itemsForDisplay = (() => {
     if (!selected) return [];
     if (selected.type === 'comanda_digital') return selected.items.map((i) => ({ name: i.product_name, qty: i.quantity, price: i.total_price }));
@@ -1703,6 +1733,21 @@ function CashierContent() {
                     {t('cashier.removeComanda')}
                   </Button>
                 )}
+                {(selected.type === 'table' || isTableGroup(selected)) && (
+                  <Button
+                    variant="ghost"
+                    className="w-full mt-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => setShowExcludeOrderConfirm(true)}
+                    disabled={excludingOrder || closing}
+                  >
+                    {excludingOrder ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    {t('cashier.excludeOrder')}
+                  </Button>
+                )}
               </div>
                 </>
               )}
@@ -1733,6 +1778,29 @@ function CashierContent() {
             <Button variant="destructive" onClick={handleRemoveComanda} disabled={cancelComanda.isPending}>
               {cancelComanda.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
               {t('cashier.removeComanda')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal confirmação: Excluir pedido de mesa da fila */}
+      <Dialog open={showExcludeOrderConfirm} onOpenChange={setShowExcludeOrderConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('cashier.excludeOrder')}</DialogTitle>
+            <DialogDescription>
+              {selected && isTableGroup(selected) && selected.items.length > 1
+                ? t('cashier.excludeOrderConfirmMultiple', { count: selected.items.length })
+                : t('cashier.excludeOrderConfirm')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowExcludeOrderConfirm(false)} disabled={excludingOrder}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="destructive" onClick={handleExcludeTableOrder} disabled={excludingOrder}>
+              {excludingOrder ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              {t('cashier.excludeOrder')}
             </Button>
           </DialogFooter>
         </DialogContent>
