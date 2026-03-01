@@ -41,7 +41,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { format, subDays } from 'date-fns';
+import { format, subDays, subHours, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Select,
@@ -54,7 +54,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChurnRecoveryList } from '@/components/admin/overview/ChurnRecoveryList';
 import { MenuMatrixBCG } from '@/components/admin/overview/MenuMatrixBCG';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
-type PeriodValue = '30' | '365' | 'max';
+type PeriodValue = '24h' | '7' | '30' | '365' | 'max' | 'custom';
 
 type AreaValue = 'all' | 'delivery' | 'table' | 'pickup' | 'buffet';
 
@@ -72,10 +72,18 @@ const metricCardVariants = {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function getDateRange(period: PeriodValue) {
-  const end = new Date();
+function getDateRange(period: PeriodValue, customStart?: Date, customEnd?: Date) {
+  const now = new Date();
+  if (period === 'custom' && customStart && customEnd && !isNaN(customStart.getTime()) && !isNaN(customEnd.getTime())) {
+    const s = startOfDay(customStart);
+    const e = endOfDay(customEnd);
+    return { start: s <= e ? s : e, end: s <= e ? e : s };
+  }
   let start: Date;
-  if (period === '30') start = subDays(end, 30);
+  const end = now;
+  if (period === '24h') start = subHours(end, 24);
+  else if (period === '7') start = subDays(end, 7);
+  else if (period === '30' || period === 'custom') start = subDays(end, 30);
   else if (period === '365') start = subDays(end, 365);
   else start = new Date(2020, 0, 1);
   return { start, end };
@@ -90,6 +98,8 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const { data: restaurant } = useRestaurant(restaurantId);
   const [period, setPeriod] = useState<PeriodValue>('30');
+  const [customStartStr, setCustomStartStr] = useState('');
+  const [customEndStr, setCustomEndStr] = useState('');
   const [areaFilter, setAreaFilter] = useState<AreaValue>('all');
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetPassword, setResetPassword] = useState('');
@@ -98,8 +108,15 @@ export default function AdminDashboard() {
   const [exporting, setExporting] = useState(false);
   const [printing,  setPrinting]  = useState(false);
 
-  const { start, end } = useMemo(() => getDateRange(period), [period]);
+  const customStart = customStartStr ? new Date(customStartStr) : undefined;
+  const customEnd = customEndStr ? new Date(customEndStr) : undefined;
+  const { start, end } = useMemo(
+    () => getDateRange(period, customStart, customEnd),
+    [period, customStartStr, customEndStr],
+  );
   const prevRange = useMemo(() => {
+    if (period === '24h') return { start: subHours(start, 24), end: start };
+    if (period === '7') return { start: subDays(start, 7), end: start };
     if (period === '30') return { start: subDays(start, 30), end: start };
     if (period === '365') return { start: subDays(start, 365), end: start };
     return null;
@@ -191,7 +208,16 @@ export default function AdminDashboard() {
   const costByIngredients = financial?.cost_by_ingredients ?? 0;
 
   const restaurantName = restaurant?.name ?? 'Restaurante';
-  const periodLabel = period === '30' ? t('dashboard.filters.last30') : period === '365' ? t('dashboard.filters.lastYear') : t('dashboard.filters.allTime');
+  const periodLabel = (() => {
+    if (period === '24h') return t('dashboard.filters.last24h');
+    if (period === '7') return t('dashboard.filters.last7days');
+    if (period === '30') return t('dashboard.filters.last30');
+    if (period === '365') return t('dashboard.filters.lastYear');
+    if (period === 'custom' && customStartStr && customEndStr) {
+      return `${format(new Date(customStartStr), 'dd/MM/yyyy')} – ${format(new Date(customEndStr), 'dd/MM/yyyy')}`;
+    }
+    return t('dashboard.filters.allTime');
+  })();
   const areaLabel = ((): string => {
     const map: Record<AreaValue, string> = {
       all:      t('dashboard.filters.all'),
@@ -532,16 +558,47 @@ export default function AdminDashboard() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Select value={period} onValueChange={(v) => setPeriod(v as PeriodValue)}>
-                <SelectTrigger className="w-full sm:w-[170px] h-9 bg-white border-slate-200 text-sm">
+              <Select
+                value={period}
+                onValueChange={(v) => {
+                  setPeriod(v as PeriodValue);
+                  if (v === 'custom') {
+                    const e = new Date();
+                    const s = subDays(e, 30);
+                    setCustomStartStr(format(s, 'yyyy-MM-dd'));
+                    setCustomEndStr(format(e, 'yyyy-MM-dd'));
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[180px] h-9 bg-white border-slate-200 text-sm">
                   <SelectValue placeholder={t('common.period')} />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="24h">{t('dashboard.filters.last24h')}</SelectItem>
+                  <SelectItem value="7">{t('dashboard.filters.last7days')}</SelectItem>
                   <SelectItem value="30">{t('dashboard.filters.last30')}</SelectItem>
                   <SelectItem value="365">{t('dashboard.filters.lastYear')}</SelectItem>
                   <SelectItem value="max">{t('dashboard.filters.allTime')}</SelectItem>
+                  <SelectItem value="custom">{t('dashboard.filters.customPeriod')}</SelectItem>
                 </SelectContent>
               </Select>
+              {period === 'custom' && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Input
+                    type="date"
+                    value={customStartStr}
+                    onChange={(e) => setCustomStartStr(e.target.value)}
+                    className="h-9 w-[140px] text-sm"
+                  />
+                  <span className="text-slate-400 text-sm">–</span>
+                  <Input
+                    type="date"
+                    value={customEndStr}
+                    onChange={(e) => setCustomEndStr(e.target.value)}
+                    className="h-9 w-[140px] text-sm"
+                  />
+                </div>
+              )}
               <Button
                 variant="outline"
                 size="sm"

@@ -82,6 +82,7 @@ export default function MenuTable({ tenantSlug: tenantSlugProp }: MenuTableProps
           const isFresh = available === true;
           if (isFresh) {
             clearTableStorage(table.id);
+            clearCart();
             setTable(table.id, table.number, { skipLoadFromStorage: true });
           } else {
             setTable(table.id, table.number);
@@ -108,7 +109,7 @@ export default function MenuTable({ tenantSlug: tenantSlugProp }: MenuTableProps
 
     load();
     return () => clearTable();
-  }, [restaurantSlug, tableNum]);
+  }, [restaurantSlug, tableNum, clearCart, clearTableStorage, setTable]);
 
   useEffect(() => {
     if (!tableFound?.id) return;
