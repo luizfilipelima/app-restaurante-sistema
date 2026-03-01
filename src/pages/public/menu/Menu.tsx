@@ -169,7 +169,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     navigate(query ? `${base}?${query}` : base);
   };
 
-  const { getItemsCount, getSubtotal, setRestaurant: setCartRestaurant, restaurantId: cartRestaurantId, removeInactiveProducts } = useCartStore();
+  const { getItemsCount, getSubtotal, getOrderedItemsCount, getOrderedSubtotal, setRestaurant: setCartRestaurant, restaurantId: cartRestaurantId, removeInactiveProducts } = useCartStore();
   const { setCurrentRestaurant } = useRestaurantStore();
 
   // Dados salvos para fidelidade e checkout (nome, telefone, país)
@@ -814,8 +814,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       </main>
     </div>
 
-      {/* Cart FAB (Mobile) — só aparece após o splash inicial terminar */}
-      {getItemsCount() > 0 && !splashOverlay && (
+      {/* Cart FAB (Mobile) — só aparece após o splash inicial terminar; em mesa, mostra também quando há itens pedidos */}
+      {((getItemsCount() > 0) || (isTableOrder && getOrderedItemsCount() > 0)) && !splashOverlay && (
         <div 
           className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
           style={{ 
@@ -830,14 +830,18 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               onClick={() => setCartOpen(true)}
               className="w-full h-16 rounded-3xl shadow-lg overflow-hidden flex items-stretch active:scale-[0.98] transition-transform cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              {/* Left Side: total e quantidade — transparente com blur (tema do restaurante) */}
+              {/* Left Side: total e quantidade — em mesa sem itens pendentes, mostra itens pedidos */}
               <div className="flex-1 flex items-center justify-start px-4 gap-3.5 min-w-0 bg-background/50 dark:bg-background/40 backdrop-blur-xl">
                 <div className="h-9 w-9 rounded-full flex items-center justify-center border border-foreground/20 bg-foreground/10 shrink-0">
-                  <span className="text-sm font-bold text-foreground">{getItemsCount()}</span>
+                  <span className="text-sm font-bold text-foreground">
+                    {getItemsCount() > 0 ? getItemsCount() : getOrderedItemsCount()}
+                  </span>
                 </div>
                 <div className="flex flex-col items-start justify-center min-w-0">
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold leading-tight">{t('menu.total')}</span>
-                  <span className="text-base font-bold text-foreground leading-tight truncate max-w-full">{formatForDisplay(getSubtotal())}</span>
+                  <span className="text-base font-bold text-foreground leading-tight truncate max-w-full">
+                    {formatForDisplay(getItemsCount() > 0 ? getSubtotal() : getOrderedSubtotal())}
+                  </span>
                 </div>
               </div>
 

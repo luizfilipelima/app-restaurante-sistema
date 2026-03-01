@@ -39,6 +39,9 @@
     "optional": "· opcional",
     "subtotal": "Subtotal",
     "finalize": "Finalizar Pedido",
+    "orderedItems": "Itens pedidos",
+    "newItems": "Novos itens",
+    "sendToKitchen": "Enviar pedido para cozinha",
     "upsellTitle": "Aproveite também",
     "upsellAdd": "Adicionar"
   },

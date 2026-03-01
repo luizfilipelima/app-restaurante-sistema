@@ -5,7 +5,7 @@
  * Tabs: Salão (mesas) + Expedição (pedidos prontos para retirada).
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/core/supabase';
@@ -17,6 +17,7 @@ import {
   useTableStatuses,
   useWaiterCalls,
   useHallZones,
+  useWaiterHallZone,
 } from '@/hooks/queries';
 import { useReadyOrders } from '@/hooks/orders/useReadyOrders';
 import { TableCard, TableOperationSheet } from '@/pages/admin/hall-pdv/Tables';
@@ -90,14 +91,22 @@ function WaiterTerminalContent() {
   const { data: tableStatuses = [] } = useTableStatuses(restaurantId);
   const { data: waiterCallsData } = useWaiterCalls(restaurantId);
   const { data: hallZones = [] } = useHallZones(restaurantId);
+  const { data: waiterHallZoneId } = useWaiterHallZone(restaurantId);
   const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
-  const { orders: readyOrders, loading: readyLoading, delivering, handleDeliver, count: readyCount } = useReadyOrders(restaurantId);
+  const zoneTableIdsStable = useMemo(() => {
+    if (!waiterHallZoneId || !tablesData) return null;
+    return new Set(tablesData.filter((t) => t.hall_zone_id === waiterHallZoneId).map((t) => t.id));
+  }, [waiterHallZoneId, tablesData]);
+  const { orders: readyOrdersRaw, loading: readyLoading, delivering, handleDeliver } = useReadyOrders(restaurantId, {
+    tableIdsForNotification: zoneTableIdsStable,
+  });
 
   const [selectedTable, setSelectedTable] = useState<TableWithStatus | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
   const [callNotification, setCallNotification] = useState<{ tableNumber: number } | null>(null);
   const audioPrimedRef = useRef(false);
+  const tablesAndZoneRef = useRef<{ tableIdToZone: Map<string, string | null>; waiterZone: string | null }>({ tableIdToZone: new Map(), waiterZone: null });
 
   // Permite áudio no primeiro toque/clique (Chrome exige interação antes de tocar som)
   useEffect(() => {
@@ -118,14 +127,20 @@ function WaiterTerminalContent() {
     if (!restaurantId) return;
     const ch = supabase
       .channel('waiter-terminal-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'waiter_calls', filter: `restaurant_id=eq.${restaurantId}` }, (payload: { eventType?: string; new?: { table_number?: number }; data?: { type?: string } }) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'waiter_calls', filter: `restaurant_id=eq.${restaurantId}` }, (payload: { eventType?: string; new?: { table_id?: string; table_number?: number }; data?: { type?: string } }) => {
         const isNewCall = (payload?.eventType ?? payload?.data?.type ?? '') === 'INSERT';
         if (isNewCall) {
-          playWaiterBeep();
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate(1000);
+          const { tableIdToZone, waiterZone } = tablesAndZoneRef.current;
+          const tableId = payload?.new?.table_id;
+          const tableZone = tableId ? tableIdToZone.get(tableId) : null;
+          const isInMyZone = !waiterZone || tableZone === waiterZone;
+          if (isInMyZone) {
+            playWaiterBeep();
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+              navigator.vibrate(1000);
+            }
+            setCallNotification({ tableNumber: payload?.new?.table_number ?? 0 });
           }
-          setCallNotification({ tableNumber: payload?.new?.table_number ?? 0 });
         }
         queryClient.refetchQueries({ queryKey: ['waiterCalls', restaurantId] });
         queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
@@ -164,16 +179,38 @@ function WaiterTerminalContent() {
   }, [restaurantId, queryClient, refetchTables]);
 
   const tables = tablesData ?? [];
-  const pendingCalls = (waiterCallsData ?? []).filter((c) => c.status === 'pending');
+  const effectiveZoneId = waiterHallZoneId ?? selectedZoneId;
 
   const gridTablesAll: TableWithStatus[] = tables.map((t) => {
     const st = tableStatuses.find((s) => s.id === t.id);
     return st ?? { ...t, status: 'free' as const, itemsCount: 0, totalAmount: 0, openedAt: null, orderIds: [], hasPendingWaiterCall: false, billRequested: false };
   });
 
-  const gridTables = selectedZoneId
-    ? gridTablesAll.filter((t) => t.hall_zone_id === selectedZoneId)
+  const gridTables = effectiveZoneId
+    ? gridTablesAll.filter((t) => t.hall_zone_id === effectiveZoneId)
     : gridTablesAll;
+
+  const tableIdToZone = new Map(tables.map((t) => [t.id, t.hall_zone_id ?? null]));
+  const zoneTableIds = effectiveZoneId
+    ? new Set(tables.filter((t) => t.hall_zone_id === effectiveZoneId).map((t) => t.id))
+    : null;
+
+  const pendingCalls = (waiterCallsData ?? []).filter((c) => {
+    if (c.status !== 'pending') return false;
+    if (!zoneTableIds || !c.table_id) return true;
+    return zoneTableIds.has(c.table_id);
+  });
+
+  const readyOrders = waiterHallZoneId
+    ? readyOrdersRaw.filter((o) => {
+        if (!o.table_id) return false;
+        const tbl = o.tables as { hall_zone_id?: string | null } | undefined;
+        return tbl?.hall_zone_id === waiterHallZoneId;
+      })
+    : readyOrdersRaw;
+  const readyCount = readyOrders.length;
+
+  tablesAndZoneRef.current = { tableIdToZone, waiterZone: waiterHallZoneId ?? null };
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
@@ -244,7 +281,7 @@ function WaiterTerminalContent() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="salao" className="mt-0 pt-3">
-              {hallZones.length > 0 && (
+              {hallZones.length > 0 && !waiterHallZoneId && (
                 <div className="overflow-x-auto -mx-4 px-4 scrollbar-thin">
                   <div className="flex gap-2 min-w-max pb-1">
                     <button
@@ -273,6 +310,11 @@ function WaiterTerminalContent() {
                   </div>
                 </div>
               )}
+              {waiterHallZoneId && hallZones.length > 0 && (
+                <p className="text-xs text-muted-foreground py-1">
+                  Zona: {hallZones.find((z) => z.id === waiterHallZoneId)?.name ?? '—'}
+                </p>
+              )}
             </TabsContent>
           </div>
         </header>
@@ -296,7 +338,7 @@ function WaiterTerminalContent() {
             {gridTables.filter((t) => t.is_active).length === 0 && (
               <div className="rounded-xl border border-dashed bg-white/50 p-12 text-center">
                 <p className="text-muted-foreground">
-                  {selectedZoneId ? t('tablesCentral.noTablesInZone') : t('tablesCentral.noTables')}
+                  {effectiveZoneId ? t('tablesCentral.noTablesInZone') : t('tablesCentral.noTables')}
                 </p>
               </div>
             )}

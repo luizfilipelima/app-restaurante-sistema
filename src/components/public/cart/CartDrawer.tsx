@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { type CurrencyCode } from '@/lib/core/utils';
 import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
-import { Plus, Minus, Trash2, Sparkles, ShoppingBag, ChevronRight } from 'lucide-react';
+import { Plus, Minus, Trash2, Sparkles, ShoppingBag, ChevronRight, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchUpsellsForProducts, type UpsellRow, useLoyaltyStatus } from '@/hooks/queries';
 import type { CartItem } from '@/types';
@@ -27,7 +27,8 @@ interface CartDrawerProps {
 
 export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL', convertForDisplay, restaurantId, customerPhone, tableCustomerName, tableNumber }: CartDrawerProps) {
   const { t } = useTranslation();
-  const { items, addItem, updateQuantity, removeItem, getSubtotal } = useCartStore();
+  const { items, orderedTableItems, addItem, updateQuantity, removeItem, getSubtotal, getOrderedSubtotal } = useCartStore();
+  const isTableOrder = tableNumber != null;
   const [upsellRows, setUpsellRows] = useState<UpsellRow[]>([]);
 
   const { data: loyaltyStatus } = useLoyaltyStatus(
@@ -130,9 +131,9 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                     <ShoppingBag className="h-4 w-4 text-primary-foreground" />
                   </div>
                   <h2 className="text-lg font-bold text-foreground">{t('cart.title')}</h2>
-                  {items.length > 0 && (
+                  {(items.length > 0 || (isTableOrder && orderedTableItems.length > 0)) && (
                     <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                      {items.length}
+                      {items.length > 0 ? items.reduce((s, i) => s + i.quantity, 0) : orderedTableItems.reduce((s, i) => s + i.quantity, 0)}
                     </span>
                   )}
                 </div>
@@ -150,7 +151,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
 
             {/* Scrollable content — plano de fidelidade e itens com mesmo padrão visual */}
             <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
-              {items.length === 0 ? (
+              {items.length === 0 && (!isTableOrder || orderedTableItems.length === 0) ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-4">
                   <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
                     <ShoppingBag className="h-7 w-7 text-muted-foreground" />
@@ -159,6 +160,54 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                 </div>
               ) : (
                 <>
+                  {/* Itens já pedidos (mesa) — read-only */}
+                  {isTableOrder && orderedTableItems.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Check className="h-3.5 w-3.5 text-success" />
+                        {t('cart.orderedItems')}
+                      </h3>
+                      <div className="space-y-2">
+                        {orderedTableItems.map((item, index) => {
+                          const itemTotal =
+                            item.unitPrice * item.quantity +
+                            (item.pizzaEdgePrice ?? 0) * item.quantity +
+                            (item.pizzaDoughPrice ?? 0) * item.quantity;
+                          return (
+                            <div key={`ordered-${index}`} className="bg-muted/50 border border-border rounded-2xl overflow-hidden">
+                              <div className="flex gap-3 p-3.5">
+                                <div className="w-16 h-16 sm:w-20 sm:h-20 min-w-16 min-h-16 sm:min-w-20 sm:min-h-20 rounded-xl overflow-hidden bg-muted flex-shrink-0 ring-1 ring-border opacity-90">
+                                  {item.imageUrl ? (
+                                    <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-cover" loading="lazy" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <span className="text-2xl opacity-25">🍽</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-foreground/90 text-sm leading-snug">{item.productName}</h4>
+                                  {item.isPizza && (
+                                    <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                                      {item.pizzaSize && <p>{t('cart.size')}: {item.pizzaSize}</p>}
+                                      {item.pizzaFlavors && item.pizzaFlavors.length > 0 && (
+                                        <p className="line-clamp-1">{t('cart.flavors')}: {item.pizzaFlavors.join(', ')}</p>
+                                      )}
+                                    </div>
+                                  )}
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {item.quantity}× {fmt(item.unitPrice)}
+                                  </p>
+                                </div>
+                                <span className="font-bold text-foreground/90 text-sm self-center">{fmt(itemTotal)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Plano de fidelidade — mesmo padrão de card que os itens */}
                   {loyaltyStatus ? (
                     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -205,6 +254,13 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                         })}
                       </div>
                     </div>
+                  )}
+
+                  {/* Novos itens (pendentes) — quando mesa e há itens pedidos + novos */}
+                  {isTableOrder && orderedTableItems.length > 0 && items.length > 0 && (
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pt-1">
+                      {t('cart.newItems')}
+                    </h3>
                   )}
 
                   {/* Cart Items — layout alinhado aos cards do cardápio (imagem à esquerda, bordas arredondadas) */}
@@ -290,7 +346,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
               )}
             </div>
 
-            {/* Footer */}
+            {/* Footer — botão de enviar só aparece quando há itens pendentes (novos) */}
             {items.length > 0 && (
               <div className="flex-shrink-0 border-t border-border bg-card px-4 pt-3 pb-4 space-y-3">
                 {/* Subtotal + CTA */}
@@ -303,7 +359,7 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                   data-testid="cart-checkout"
                   className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 active:scale-[0.98] text-primary-foreground font-bold text-base flex items-center justify-between px-5 shadow-lg transition-all touch-manipulation"
                 >
-                  <span>{t('cart.finalize')}</span>
+                  <span>{isTableOrder ? t('cart.sendToKitchen') : t('cart.finalize')}</span>
                   <ChevronRight className="h-5 w-5 opacity-90" />
                 </button>
               </div>

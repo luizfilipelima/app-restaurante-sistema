@@ -25,8 +25,8 @@ export interface ExpoOrder {
   customer_name: string;
   order_source?: string | null;
   table_id?: string | null;
-  /** Número da mesa (via join tables). Usado para exibir "Mesa X" na expedição. */
-  tables?: { number: number } | null;
+  /** Número da mesa e zona (via join tables). Usado para exibir "Mesa X" e filtrar por zona do garçom. */
+  tables?: { number: number; hall_zone_id?: string | null } | null;
   notes?: string | null;
   status: string;
   updated_at: string;
@@ -35,7 +35,13 @@ export interface ExpoOrder {
   order_items: ExpoOrderItem[];
 }
 
-export function useReadyOrders(restaurantId: string | null) {
+export interface UseReadyOrdersOptions {
+  /** Quando fornecido, só dispara toast de "pronto" para pedidos cuja mesa está no set. */
+  tableIdsForNotification?: Set<string> | null;
+}
+
+export function useReadyOrders(restaurantId: string | null, options?: UseReadyOrdersOptions) {
+  const { tableIdsForNotification } = options ?? {};
   const [orders, setOrders] = useState<ExpoOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [delivering, setDelivering] = useState<string | null>(null);
@@ -48,7 +54,7 @@ export function useReadyOrders(restaurantId: string | null) {
         .select(`
           id, restaurant_id, customer_name, order_source, table_id, notes,
           status, updated_at, ready_at, accepted_at, delivered_at,
-          tables(number),
+          tables(number, hall_zone_id),
           order_items(id, product_name, quantity, observations,
             pizza_size, pizza_flavors, pizza_dough, pizza_edge, addons)
         `)
@@ -97,12 +103,18 @@ export function useReadyOrders(restaurantId: string | null) {
           const newStatus = (payload.new as { status?: string })?.status;
           const oldStatus = (payload.old as { status?: string })?.status;
           if (newStatus === 'ready' && oldStatus !== 'ready') {
-            const orderName = (payload.new as { customer_name?: string })?.customer_name || 'Pedido';
-            toast({
-              title: '🔔 Pronto para entrega!',
-              description: `${orderName} está aguardando no balcão`,
-              className: 'bg-emerald-600 text-white border-none',
-            });
+            const tableId = (payload.new as { table_id?: string })?.table_id;
+            const shouldNotify =
+              !tableIdsForNotification ||
+              (tableId != null && tableIdsForNotification.has(tableId));
+            if (shouldNotify) {
+              const orderName = (payload.new as { customer_name?: string })?.customer_name || 'Pedido';
+              toast({
+                title: '🔔 Pronto para entrega!',
+                description: `${orderName} está aguardando no balcão`,
+                className: 'bg-emerald-600 text-white border-none',
+              });
+            }
           }
           loadOrders();
         }
@@ -110,7 +122,7 @@ export function useReadyOrders(restaurantId: string | null) {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [restaurantId, loadOrders]);
+  }, [restaurantId, loadOrders, tableIdsForNotification]);
 
   const handleDeliver = useCallback(async (order: ExpoOrder) => {
     setDelivering(order.id);

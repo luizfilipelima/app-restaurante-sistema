@@ -41,6 +41,9 @@
     "sendLocationDesc": "Al finalizar el pedido, envía tu ubicación por WhatsApp para facilitar la entrega.",
     "subtotal": "Subtotal",
     "finalize": "Finalizar Pedido",
+    "orderedItems": "Items pedidos",
+    "newItems": "Nuevos items",
+    "sendToKitchen": "Enviar pedido a cocina",
     "upsellTitle": "También te puede gustar",
     "upsellAdd": "Añadir"
   },

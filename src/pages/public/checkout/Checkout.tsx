@@ -70,7 +70,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     (subdomain && !['app', 'www', 'localhost'].includes(subdomain) ? subdomain : null);
 
   const navigate = useNavigate();
-  const { items, restaurantId, addItem, updateQuantity, removeItem, getSubtotal, clearCart, orderNotes, setOrderNotes } = useCartStore();
+  const { items, restaurantId, addItem, updateQuantity, removeItem, getSubtotal, clearCart, orderNotes, setOrderNotes, markTableItemsAsOrdered } = useCartStore();
   const { t } = useTranslation();
   const { currentRestaurant } = useRestaurantStore();
 
@@ -627,8 +627,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           setTimeout(() => handleBackToMenu(), 800);
         }
       } else {
-        // Pedido de mesa — não usa WhatsApp, não limpa carrinho (cliente vê itens até conta fechada/mesa resetada)
+        // Pedido de mesa — marca itens como já pedidos (ficam visíveis até conta fechada/mesa resetada)
         whatsappWin?.close();
+        markTableItemsAsOrdered();
         toast({ title: t('checkout.tableOrderSuccess'), variant: 'default' });
         setTimeout(() => handleBackToMenu(), 1200);
       }

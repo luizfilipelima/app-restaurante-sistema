@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/shared/use-toast';
 import { useUserRole } from '@/hooks/auth/useUserRole';
+import { useHallZones } from '@/hooks/queries';
 import {
   Users,
   UserPlus,
@@ -42,6 +43,7 @@ import {
   Briefcase,
   CreditCard,
   SendHorizonal,
+  MapPin,
 } from 'lucide-react';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -52,6 +54,7 @@ interface RestaurantUser {
   login: string | null;
   system_role: string;
   restaurant_role: RestaurantRole;
+  hall_zone_id?: string | null;
   is_active: boolean;
   email_confirmed: boolean;
   created_at: string;
@@ -167,10 +170,31 @@ export default function RestaurantUsersPanel({
     refetchOnWindowFocus: false,
   });
 
+  const { data: hallZones = [] } = useHallZones(restaurantId);
+
   const invalidate = useCallback(
     () => queryClient.invalidateQueries({ queryKey }),
     [queryClient, queryKey]
   );
+
+  // ── Mutation: alterar zona do garçom ─────────────────────────────────────────
+  const updateWaiterZone = useMutation({
+    mutationFn: async ({ userId, hallZoneId }: { userId: string; hallZoneId: string | null }) => {
+      const { data, error } = await supabase.rpc('super_admin_update_waiter_hall_zone', {
+        p_user_id: userId,
+        p_restaurant_id: restaurantId,
+        p_hall_zone_id: hallZoneId,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: 'Zona do garçom atualizada.' });
+      invalidate();
+    },
+    onError: (err) =>
+      toast({ title: 'Erro ao atualizar zona', description: String(err), variant: 'destructive' }),
+  });
 
   // ── Mutation: alterar cargo ───────────────────────────────────────────────────
   const updateRole = useMutation({
@@ -451,6 +475,35 @@ export default function RestaurantUsersPanel({
                             {roleConfig.label}
                             <ChevronDown className="h-2.5 w-2.5 opacity-60" />
                           </button>
+                        )}
+
+                        {/* Zona do garçom — só para role waiter */}
+                        {user.restaurant_role === 'waiter' && hallZones.length > 0 && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <MapPin className="h-3 w-3 text-slate-400" />
+                            <Select
+                              value={user.hall_zone_id ?? '__all__'}
+                              onValueChange={(v) =>
+                                updateWaiterZone.mutate({
+                                  userId: user.user_id,
+                                  hallZoneId: v === '__all__' ? null : v,
+                                })
+                              }
+                              disabled={updateWaiterZone.isPending || !canEditThisUser}
+                            >
+                              <SelectTrigger className="h-7 text-xs w-44">
+                                <SelectValue placeholder="Zona" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__all__">Todas as zonas</SelectItem>
+                                {hallZones.map((z) => (
+                                  <SelectItem key={z.id} value={z.id}>
+                                    {z.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         )}
                       </div>
 

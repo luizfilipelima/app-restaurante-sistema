@@ -4,6 +4,8 @@ import { CartItem } from '@/types';
 
 interface CartState {
   items: CartItem[];
+  /** Itens já enviados para a cozinha (pedido de mesa) — exibidos como read-only até conta fechada */
+  orderedTableItems: CartItem[];
   restaurantId: string | null;
   /** Observações gerais do pedido (campo opcional no carrinho) */
   orderNotes: string;
@@ -11,8 +13,12 @@ interface CartState {
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
   clearCart: () => void;
+  /** Marca itens atuais como já pedidos (após envio para cozinha em pedido de mesa) */
+  markTableItemsAsOrdered: () => void;
   getSubtotal: () => number;
   getItemsCount: () => number;
+  getOrderedSubtotal: () => number;
+  getOrderedItemsCount: () => number;
   setRestaurant: (restaurantId: string) => void;
   setOrderNotes: (notes: string) => void;
   /** Remove itens cujo productId não está em activeProductIds (produto desativado/excluído no Admin). */
@@ -23,15 +29,16 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      orderedTableItems: [],
       restaurantId: null,
       orderNotes: '',
 
       setRestaurant: (restaurantId: string) => {
         const currentRestaurantId = get().restaurantId;
         
-        // Se trocar de restaurante, limpa o carrinho
+        // Se trocar de restaurante, limpa o carrinho e itens pedidos
         if (currentRestaurantId && currentRestaurantId !== restaurantId) {
-          set({ items: [], restaurantId });
+          set({ items: [], orderedTableItems: [], restaurantId });
         } else {
           set({ restaurantId });
         }
@@ -97,7 +104,15 @@ export const useCartStore = create<CartState>()(
       },
 
       clearCart: () => {
-        set({ items: [], restaurantId: null, orderNotes: '' });
+        set({ items: [], orderedTableItems: [], restaurantId: null, orderNotes: '' });
+      },
+
+      markTableItemsAsOrdered: () => {
+        const { items } = get();
+        set({
+          orderedTableItems: [...items],
+          items: [],
+        });
       },
 
       setOrderNotes: (notes: string) => {
@@ -119,6 +134,21 @@ export const useCartStore = create<CartState>()(
         return items.reduce((count, item) => count + item.quantity, 0);
       },
 
+      getOrderedSubtotal: () => {
+        const items = get().orderedTableItems;
+        return items.reduce((total, item) => {
+          const base = item.unitPrice * item.quantity;
+          const edge = (item.pizzaEdgePrice ?? 0) * item.quantity;
+          const dough = (item.pizzaDoughPrice ?? 0) * item.quantity;
+          return total + base + edge + dough;
+        }, 0);
+      },
+
+      getOrderedItemsCount: () => {
+        const items = get().orderedTableItems;
+        return items.reduce((count, item) => count + item.quantity, 0);
+      },
+
       removeInactiveProducts: (activeProductIds: Set<string>) => {
         const { items, restaurantId } = get();
         if (restaurantId && items.length > 0) {
@@ -131,15 +161,17 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'cart-storage',
-      version: 1,
-      migrate: (persistedState: unknown) => {
-        const s = persistedState as { items?: CartItem[]; restaurantId?: string | null; orderNotes?: string };
-        return {
+      version: 2,
+      migrate: (persistedState: unknown, version: number) => {
+        const s = persistedState as { items?: CartItem[]; orderedTableItems?: CartItem[]; restaurantId?: string | null; orderNotes?: string };
+        const migrated = {
           ...s,
           items: s?.items ?? [],
+          orderedTableItems: version < 2 ? [] : (s?.orderedTableItems ?? []),
           restaurantId: s?.restaurantId ?? null,
           orderNotes: s?.orderNotes ?? '',
         };
+        return migrated;
       },
     }
   )
