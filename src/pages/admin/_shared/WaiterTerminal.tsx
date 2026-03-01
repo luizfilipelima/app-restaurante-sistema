@@ -33,11 +33,20 @@ import { UtensilsCrossed, Package, Wifi, WifiOff, Bell, User } from 'lucide-reac
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { ptBR, es, enUS } from 'date-fns/locale';
 import { playWaiterBeep, primeWaiterAudio } from '@/lib/sounds/playWaiterBeep';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/shared/use-toast';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
+
+const ROLE_LABELS: Record<string, string> = {
+  owner: 'Proprietário',
+  manager: 'Gerente',
+  waiter: 'Garçom',
+  cashier: 'Operador de caixa',
+  kitchen: 'Cozinha',
+  super_admin: 'Super administrador',
+};
 
 function ProfileRow({ label, value }: { label: string; value: string }) {
   return (
@@ -383,9 +392,12 @@ function WaiterTerminalContent() {
 
       {/* Sheet de Perfil do Garçom */}
       <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
-        <SheetContent side="right" className="w-full max-w-sm overflow-y-auto">
+        <SheetContent side="right" className="w-full max-w-sm overflow-y-auto" aria-describedby="profile-description">
           <SheetHeader>
             <SheetTitle>Meu perfil</SheetTitle>
+            <SheetDescription id="profile-description">
+              Dados da sua conta e zona de atendimento.
+            </SheetDescription>
           </SheetHeader>
           <div className="mt-6 space-y-4">
             {profileLoading ? (
@@ -398,9 +410,9 @@ function WaiterTerminalContent() {
                   <ProfileRow label="Usuário" value={waiterProfile.usuario} />
                   <ProfileRow label="Nome" value={waiterProfile.first_name || waiterProfile.full_name || '—'} />
                   <ProfileRow label="Sobrenome" value={waiterProfile.last_name || '—'} />
-                  <ProfileRow label="Cargo" value={waiterProfile.role === 'waiter' ? 'Garçom' : waiterProfile.role} />
+                  <ProfileRow label="Cargo" value={ROLE_LABELS[waiterProfile.role] ?? waiterProfile.role} />
                 </div>
-                {hallZones.length > 0 && (
+                {hallZones.length > 0 && waiterProfile.role === 'waiter' && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Zona que atendo</label>
                     <p className="text-xs text-slate-500">

@@ -7,7 +7,9 @@
 -- Notificações, bips e vibrações já são filtradas pela zona (mesas vinculadas).
 -- =============================================================================
 
--- 1. RPC para o garçom obter seu perfil (login, email, nome, cargo, zona)
+-- 1. RPC para o usuário do Terminal obter seu perfil (login, email, nome, cargo, zona)
+-- Qualquer usuário com acesso ao restaurante (owner, manager, waiter, cashier) pode ver o perfil.
+-- hall_zone_id só existe para role=waiter (define zona que atende).
 CREATE OR REPLACE FUNCTION public.get_my_waiter_profile(p_restaurant_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -29,18 +31,21 @@ BEGIN
     u.login,
     au.email,
     COALESCE(au.raw_user_meta_data->>'full_name', au.raw_user_meta_data->>'name', ''),
-    COALESCE(rur.role::TEXT, 'waiter'),
-    rur.hall_zone_id
+    COALESCE(rur.role::TEXT, CASE WHEN u.role = 'restaurant_admin' THEN 'owner' ELSE u.role::TEXT END),
+    CASE WHEN rur.role = 'waiter' THEN rur.hall_zone_id ELSE NULL END
   INTO v_login, v_email, v_full_name, v_role, v_hall_zone_id
   FROM public.users u
   JOIN auth.users au ON au.id = u.id
-  JOIN public.restaurant_user_roles rur
+  LEFT JOIN public.restaurant_user_roles rur
     ON rur.user_id = u.id
    AND rur.restaurant_id = p_restaurant_id
-   AND rur.role = 'waiter'
    AND rur.is_active = true
   WHERE u.id = auth.uid()
-    AND (u.restaurant_id = p_restaurant_id OR rur.restaurant_id = p_restaurant_id)
+    AND (
+      u.restaurant_id = p_restaurant_id
+      OR rur.restaurant_id IS NOT NULL
+      OR u.role = 'super_admin'
+    )
   LIMIT 1;
 
   IF v_login IS NULL THEN
