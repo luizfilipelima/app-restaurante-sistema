@@ -23,7 +23,7 @@ export default function MenuTable({ tenantSlug: tenantSlugProp }: MenuTableProps
   const [loading, setLoading] = useState(true);
   const [tableFound, setTableFound] = useState<{ id: string; number: number } | null>(null);
   const [callingWaiter, setCallingWaiter] = useState(false);
-  const { setTable, clearTable } = useTableOrderStore();
+  const { setTable, clearTable, clearTableStorage } = useTableOrderStore();
 
   useEffect(() => {
     if (!restaurantSlug || Number.isNaN(tableNum) || tableNum < 1) {
@@ -55,16 +55,24 @@ export default function MenuTable({ tenantSlug: tenantSlugProp }: MenuTableProps
 
         if (table) {
           setTableFound({ id: table.id, number: table.number });
-          setTable(table.id, table.number);
-          // Se ainda não tem nome (localStorage vazio), pré-preencher da reserva ativa
-          const { tableCustomerName } = useTableOrderStore.getState();
-          if (!tableCustomerName?.trim()) {
-            const { data } = await supabase.rpc('get_reservation_customer_for_table', {
-              p_table_id: table.id,
-            });
-            const name = data?.customer_name;
-            if (name?.trim()) {
-              useTableOrderStore.getState().setTableCustomerName(name.trim());
+          const { data: available } = await supabase.rpc('is_table_available_for_new_session', {
+            p_table_id: table.id,
+          });
+          const isFresh = available === true;
+          if (isFresh) {
+            clearTableStorage(table.id);
+            setTable(table.id, table.number, { skipLoadFromStorage: true });
+          } else {
+            setTable(table.id, table.number);
+            const { tableCustomerName } = useTableOrderStore.getState();
+            if (!tableCustomerName?.trim()) {
+              const { data } = await supabase.rpc('get_reservation_customer_for_table', {
+                p_table_id: table.id,
+              });
+              const name = data?.customer_name;
+              if (name?.trim()) {
+                useTableOrderStore.getState().setTableCustomerName(name.trim());
+              }
             }
           }
         } else {

@@ -1061,6 +1061,18 @@ function CashierContent() {
     if (!selected || closing || !canFinalize) return;
     setClosing(true);
     const primaryMethod = payments.length > 0 ? (payments[0].method as 'cash' | 'card' | 'pix') : 'cash';
+    const { data: { user } } = await supabase.auth.getUser();
+    const closedByUserId = user?.id ?? null;
+    const orderUpdatePayload = (method: string) => {
+      const payload: Record<string, unknown> = { status: 'completed', is_paid: true, payment_method: method };
+      if (closedByUserId) payload.closed_by_user_id = closedByUserId;
+      return payload;
+    };
+    const comandaUpdatePayload = () => {
+      const payload: Record<string, unknown> = { status: 'closed', closed_at: new Date().toISOString() };
+      if (closedByUserId) payload.closed_by_user_id = closedByUserId;
+      return payload;
+    };
     try {
       if (selected.type === 'comanda_digital') {
         const { error } = await supabase.rpc('cashier_complete_comanda', {
@@ -1071,7 +1083,7 @@ function CashierContent() {
         if (selected.linkedTableOrderIds?.length) {
           await supabase
             .from('orders')
-            .update({ status: 'completed', is_paid: true, payment_method: primaryMethod })
+            .update(orderUpdatePayload(primaryMethod))
             .in('id', selected.linkedTableOrderIds);
         }
         const { data: fullOrder } = await supabase
@@ -1098,14 +1110,14 @@ function CashierContent() {
       } else if (selected.type === 'comanda_buffet') {
         await supabase
           .from('comandas')
-          .update({ status: 'closed', closed_at: new Date().toISOString() })
+          .update(comandaUpdatePayload())
           .eq('id', selected.comandaId);
         toast({ title: t('cashier.buffetClosed'), description: `#${selected.number} — ${formatPrice(totalToPay, currency)}` });
       } else if (isTableGroup(selected)) {
         for (const tbl of selected.items) {
           await supabase
             .from('orders')
-            .update({ status: 'completed', is_paid: true, payment_method: primaryMethod })
+            .update(orderUpdatePayload(primaryMethod))
             .eq('id', tbl.orderId);
           const fullOrder = { ...tbl.order, status: 'completed', is_paid: true };
           if (restaurant && restaurant.print_auto_on_new_order !== false) {
@@ -1129,7 +1141,7 @@ function CashierContent() {
       } else if (selected.type === 'table') {
         await supabase
           .from('orders')
-          .update({ status: 'completed', is_paid: true, payment_method: primaryMethod })
+          .update(orderUpdatePayload(primaryMethod))
           .eq('id', selected.orderId);
         const fullOrder = { ...selected.order, status: 'completed', is_paid: true };
         if (restaurant && restaurant.print_auto_on_new_order !== false) {
@@ -1157,6 +1169,7 @@ function CashierContent() {
       loadCompletedToday();
       queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
       queryClient.invalidateQueries({ queryKey: ['reservations', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['cashier-completed'] });
       scannerRef.current?.focus();
     } catch (err: any) {
       toast({ title: t('cashier.errorFinalize'), description: err?.message, variant: 'destructive' });

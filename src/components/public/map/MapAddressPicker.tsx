@@ -41,7 +41,9 @@ function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }
       map.setView(center, zoom); // setView evita animação no mount — reduz piscada
     } else if (prevCenter.current[0] !== lat || prevCenter.current[1] !== lng) {
       prevCenter.current = [lat, lng];
-      map.flyTo(center, zoom, { duration: 0.5 });
+      // Preserva o zoom atual do usuário ao mover o mapa (evita reset ao dar zoom e arrastar)
+      const currentZoom = map.getZoom();
+      map.flyTo(center, currentZoom, { duration: 0.5 });
     }
   }, [map, center, zoom]);
   return null;

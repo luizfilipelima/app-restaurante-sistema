@@ -18,16 +18,21 @@ export interface CloseTableAccountParams {
 
 async function closeTableAccount(params: CloseTableAccountParams): Promise<void> {
   const { tableId, paymentMethod, comandaIds = [] } = params;
+  const { data: { user } } = await supabase.auth.getUser();
+  const closedByUserId = user?.id ?? null;
+
+  const orderUpdate: Record<string, unknown> = {
+    status: 'completed',
+    is_paid: true,
+    payment_method: paymentMethod,
+    updated_at: new Date().toISOString(),
+  };
+  if (closedByUserId) orderUpdate.closed_by_user_id = closedByUserId;
 
   // 1. Marcar pedidos da mesa como pagos
   const { error: ordersError } = await supabase
     .from('orders')
-    .update({
-      status: 'completed',
-      is_paid: true,
-      payment_method: paymentMethod,
-      updated_at: new Date().toISOString(),
-    })
+    .update(orderUpdate)
     .eq('table_id', tableId);
 
   if (ordersError) throw ordersError;
@@ -38,12 +43,14 @@ async function closeTableAccount(params: CloseTableAccountParams): Promise<void>
 
   // 3. Fechar comandas físicas (buffet) vinculadas
   if (comandaIds.length > 0) {
+    const comandaUpdate: Record<string, unknown> = {
+      status: 'closed',
+      closed_at: new Date().toISOString(),
+    };
+    if (closedByUserId) comandaUpdate.closed_by_user_id = closedByUserId;
     const { error: comandasError } = await supabase
       .from('comandas')
-      .update({
-        status: 'closed',
-        closed_at: new Date().toISOString(),
-      })
+      .update(comandaUpdate)
       .in('id', comandaIds)
       .eq('status', 'open');
 
@@ -61,6 +68,7 @@ export function useCloseTableAccount(restaurantId: string | null) {
       qc.invalidateQueries({ queryKey: ['tableOrders'] });
       qc.invalidateQueries({ queryKey: ['reservations', restaurantId] });
       qc.invalidateQueries({ queryKey: ['tableComandaLinks', vars.tableId, restaurantId] });
+      qc.invalidateQueries({ queryKey: ['cashier-completed'] });
     },
   });
 }

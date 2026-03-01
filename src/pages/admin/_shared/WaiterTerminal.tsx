@@ -26,7 +26,7 @@ import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/core/utils';
-import { UtensilsCrossed, Package } from 'lucide-react';
+import { UtensilsCrossed, Package, Wifi, WifiOff } from 'lucide-react';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { ptBR, es, enUS } from 'date-fns/locale';
 
@@ -94,6 +94,7 @@ function WaiterTerminalContent() {
 
   const [selectedTable, setSelectedTable] = useState<TableWithStatus | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [isLive, setIsLive] = useState(false);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -129,8 +130,11 @@ function WaiterTerminalContent() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: `restaurant_id=eq.${restaurantId}` }, () => {
         queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
       })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+      .subscribe((status) => setIsLive(status === 'SUBSCRIBED'));
+    return () => {
+      supabase.removeChannel(ch);
+      setIsLive(false);
+    };
   }, [restaurantId, queryClient, refetchTables]);
 
   const tables = tablesData ?? [];
@@ -165,7 +169,28 @@ function WaiterTerminalContent() {
         {/* Top bar fixa — Tabs Salão | Expedição (com badge) */}
         <header className="sticky top-0 z-10 border-b bg-white shadow-sm safe-area-inset-top">
           <div className="p-4">
-            <h1 className="text-lg font-bold text-slate-900 mb-3">Terminal do Garçom</h1>
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+              <h1 className="text-lg font-bold text-slate-900">Terminal do Garçom</h1>
+              <div
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-semibold transition-all shrink-0',
+                  isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800' : 'bg-slate-100 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400'
+                )}
+              >
+                {isLive ? (
+                  <>
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <Wifi className="h-3 w-3" />
+                    Ao Vivo
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="h-3 w-3" />
+                    Conectando…
+                  </>
+                )}
+              </div>
+            </div>
             <TabsList className="grid w-full grid-cols-2 h-12">
               <TabsTrigger value="salao" className="gap-2">
                 <UtensilsCrossed className="h-4 w-4" />

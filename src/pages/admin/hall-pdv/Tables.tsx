@@ -85,7 +85,7 @@ import {
   RefreshCw,
   X,
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
 import { cn } from '@/lib/core/utils';
@@ -1111,9 +1111,15 @@ export function TableCard({
           )}
         </div>
 
-        {/* 2b. Dados da reserva (nome + telefone) */}
-        {table.hasReservation && (table.reservationCustomerName || table.reservationCustomerPhone) && (
+        {/* 2b. Dados da reserva (horário + nome + telefone) */}
+        {table.hasReservation && (
           <div className="shrink-0 flex flex-col gap-0.5 text-xs">
+            {table.reservationAt && (
+              <p className="flex items-center gap-1.5 text-violet-700 dark:text-violet-300 font-medium">
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                {t('reservations.time')}: {format(new Date(table.reservationAt), 'HH:mm', { locale: dateLocale })}
+              </p>
+            )}
             {table.reservationCustomerName && (
               <p className="flex items-center gap-1.5 text-foreground font-medium truncate">
                 <User className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />

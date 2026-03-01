@@ -76,6 +76,7 @@ function exportToCSV(
     t('cashierCompleted.colTime'),
     t('cashierCompleted.colClient'),
     t('cashierCompleted.colPhone'),
+    t('cashierCompleted.colAttendedBy'),
     t('cashierCompleted.colType'),
     t('cashierCompleted.colItems'),
     t('cashierCompleted.colPayment'),
@@ -91,6 +92,7 @@ function exportToCSV(
       format(date, 'HH:mm'),
       item.customerName ?? '—',
       item.customerPhone ?? '—',
+      item.closedByEmail ?? '—',
       typeInfo.label,
       getItemsText(item),
       item.paymentMethods,
@@ -167,6 +169,11 @@ function CashierCompletedRow({
           </div>
         </td>
         <td className="py-3 px-4">
+          <span className="text-xs text-muted-foreground truncate max-w-[140px] block" title={item.closedByEmail ?? undefined}>
+            {item.closedByEmail ?? '—'}
+          </span>
+        </td>
+        <td className="py-3 px-4">
           <span
             className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
               item.type === 'table'
@@ -232,7 +239,7 @@ function CashierCompletedRow({
 
       {expanded && (
         <tr className="bg-muted/20 border-b border-border/30">
-          <td colSpan={8} className="px-4 py-4">
+          <td colSpan={9} className="px-4 py-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {item.order?.order_items && item.order.order_items.length > 0 && (
                 <div>
@@ -477,6 +484,9 @@ export function CashierCompletedView({
                   </th>
                   <th className="py-2.5 px-4 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
                     {t('cashierCompleted.colClient')}
+                  </th>
+                  <th className="py-2.5 px-4 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    {t('cashierCompleted.colAttendedBy')}
                   </th>
                   <th className="py-2.5 px-4 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
                     {t('cashierCompleted.colType')}
