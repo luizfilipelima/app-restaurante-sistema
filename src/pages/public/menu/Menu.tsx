@@ -5,7 +5,7 @@ import { Restaurant, Product, Category, Subcategory } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useTableOrderStore } from '@/store/tableOrderStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
-import { useRestaurantMenuData, useActiveOffersByRestaurantId, useLoyaltyProgram, useLoyaltyStatus } from '@/hooks/queries';
+import { useRestaurantMenuData, useActiveOffersByRestaurantId, useLoyaltyProgram, useLoyaltyStatus, useUpdateTableCustomerName } from '@/hooks/queries';
 import { ShoppingCart, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2, ArrowLeft, Info } from 'lucide-react';
 import { getCategoryIconComponent } from '@/lib/menu/categoryIcons';
 import { Button } from '@/components/ui/button';
@@ -154,6 +154,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
   const isTableOrder = !!(tableId && tableNumber);
   const { tableCustomerName, setTableCustomerName } = useTableOrderStore();
+  const updateTableCustomerName = useUpdateTableCustomerName();
   const [welcomeNameInput, setWelcomeNameInput] = useState('');
   const showWelcomeModal = isTableOrder && !tableCustomerName?.trim();
 
@@ -877,15 +878,24 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 placeholder="Ex: João, Maria"
                 value={welcomeNameInput}
                 onChange={(e) => setWelcomeNameInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && welcomeNameInput.trim() && (setTableCustomerName(welcomeNameInput.trim()), setWelcomeNameInput(''))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && welcomeNameInput.trim()) {
+                    const name = welcomeNameInput.trim();
+                    setTableCustomerName(name);
+                    setWelcomeNameInput('');
+                    if (tableId) updateTableCustomerName.mutate({ tableId, customerName: name });
+                  }
+                }}
                 className="h-14 text-base rounded-2xl border-2 border-border bg-muted focus:bg-card focus:border-primary focus:ring-2 focus:ring-primary/20 px-4"
                 autoFocus
               />
               <Button
                 onClick={() => {
                   if (welcomeNameInput.trim()) {
-                    setTableCustomerName(welcomeNameInput.trim());
+                    const name = welcomeNameInput.trim();
+                    setTableCustomerName(name);
                     setWelcomeNameInput('');
+                    if (tableId) updateTableCustomerName.mutate({ tableId, customerName: name });
                   }
                 }}
                 disabled={!welcomeNameInput.trim()}

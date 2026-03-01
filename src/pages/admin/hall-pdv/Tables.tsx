@@ -1111,19 +1111,22 @@ export function TableCard({
           )}
         </div>
 
-        {/* 2b. Dados da reserva (horário + nome + telefone) */}
+        {/* 2b. Nome do cliente — prioridade: nome salvo no cardápio > nome da reserva */}
+        {(table.currentCustomerName || (table.hasReservation && table.reservationCustomerName)) && (
+          <div className="shrink-0 flex flex-col gap-0.5 text-xs">
+            <p className="flex items-center gap-1.5 text-foreground font-medium truncate">
+              <User className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+              {table.currentCustomerName || table.reservationCustomerName}
+            </p>
+          </div>
+        )}
+        {/* 2c. Dados da reserva (horário + telefone) — só quando não há nome do cliente no cardápio ou quando há reserva */}
         {table.hasReservation && (
           <div className="shrink-0 flex flex-col gap-0.5 text-xs">
             {table.reservationAt && (
               <p className="flex items-center gap-1.5 text-violet-700 dark:text-violet-300 font-medium">
                 <Clock className="h-3.5 w-3.5 shrink-0" />
                 {t('reservations.time')}: {format(new Date(table.reservationAt), 'HH:mm', { locale: dateLocale })}
-              </p>
-            )}
-            {table.reservationCustomerName && (
-              <p className="flex items-center gap-1.5 text-foreground font-medium truncate">
-                <User className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                {table.reservationCustomerName}
               </p>
             )}
             {table.reservationCustomerPhone && (
@@ -1230,7 +1233,8 @@ export function TableOperationSheet({
   isMobile: boolean;
 }) {
   const isManagement = mode === 'management';
-  const { t } = useAdminTranslation();
+  const { t, lang } = useAdminTranslation();
+  const dateLocale = DATE_LOCALES[lang] ?? ptBR;
   const { data: orders = [] } = useTableOrders(table?.orderIds ?? []);
   const { data: productsData = [] } = useAdminProducts(restaurantId);
 
@@ -1542,6 +1546,42 @@ export function TableOperationSheet({
           </SheetHeader>
 
           <div className="mt-4 flex flex-1 flex-col gap-6">
+            {/* Informações do cliente — nome, reserva (horário, observações) */}
+            {(table.currentCustomerName || table.reservationCustomerName || table.hasReservation) && (
+              <section className="rounded-lg border bg-muted/30 p-3">
+                <h3 className="mb-2 flex items-center gap-2 font-semibold">
+                  <User className="h-4 w-4" />
+                  Cliente
+                </h3>
+                <div className="space-y-2 text-sm">
+                  {(table.currentCustomerName || table.reservationCustomerName) && (
+                    <p className="flex items-center gap-2 font-medium text-foreground">
+                      <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      {table.currentCustomerName || table.reservationCustomerName}
+                    </p>
+                  )}
+                  {table.hasReservation && table.reservationAt && (
+                    <p className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5 shrink-0" />
+                      {t('reservations.time')}: {format(new Date(table.reservationAt), 'HH:mm', { locale: dateLocale })}
+                    </p>
+                  )}
+                  {table.hasReservation && table.reservationCustomerPhone && (
+                    <p className="flex items-center gap-2 text-muted-foreground">
+                      <Phone className="h-3.5 w-3.5 shrink-0" />
+                      {table.reservationCustomerPhone}
+                    </p>
+                  )}
+                  {table.hasReservation && table.reservationNotes?.trim() && (
+                    <p className="flex flex-col gap-1 text-muted-foreground">
+                      <span className="font-medium text-foreground">{t('reservations.notes')}:</span>
+                      <span className="whitespace-pre-wrap">{table.reservationNotes.trim()}</span>
+                    </p>
+                  )}
+                </div>
+              </section>
+            )}
+
             {/* Zona da Mesa (editar — apenas modo gestão) */}
             {isManagement && hallZones.length > 0 && (
               <section>
@@ -1600,8 +1640,8 @@ export function TableOperationSheet({
               )}
             </section>
 
-            {/* Comandas Vinculadas — Central de Mesas (sempre) e Terminal (quando mesa ocupada) */}
-            {hasBuffet && (isManagement || table.status !== 'free') && (
+            {/* Comandas Vinculadas — apenas na Central de Mesas; oculto no Terminal do Garçom */}
+            {hasBuffet && isManagement && (
               <section>
                 <h3 className="mb-2 flex items-center gap-2 font-semibold">
                   <Link2 className="h-4 w-4" />

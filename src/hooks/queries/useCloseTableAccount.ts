@@ -41,6 +41,12 @@ async function closeTableAccount(params: CloseTableAccountParams): Promise<void>
   const { error: resError } = await supabase.rpc('complete_reservation_for_table', { p_table_id: tableId });
   if (resError) throw resError;
 
+  // 2b. Limpar nome do cliente na mesa (privacidade para próximo uso)
+  await supabase
+    .from('tables')
+    .update({ current_customer_name: null, updated_at: new Date().toISOString() })
+    .eq('id', tableId);
+
   // 3. Fechar comandas físicas (buffet) vinculadas
   if (comandaIds.length > 0) {
     const comandaUpdate: Record<string, unknown> = {

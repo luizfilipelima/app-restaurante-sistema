@@ -37,6 +37,10 @@ export interface TableWithStatus extends Table {
   reservationAt?: string | null;
   reservationCustomerName?: string | null;
   reservationCustomerPhone?: string | null;
+  /** Observações da reserva */
+  reservationNotes?: string | null;
+  /** Nome do cliente salvo no cardápio (antes do pedido) — aparece em tempo real no painel */
+  currentCustomerName?: string | null;
 }
 
 async function fetchTableStatuses(restaurantId: string | null): Promise<TableWithStatus[]> {
@@ -45,7 +49,7 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
   const [tablesRes, ordersRes, waiterCallsRes, reservationsRes] = await Promise.all([
     supabase
       .from('tables')
-      .select('id, restaurant_id, number, name, is_active, order_index, hall_zone_id, created_at, updated_at')
+      .select('id, restaurant_id, number, name, is_active, order_index, hall_zone_id, current_customer_name, created_at, updated_at')
       .eq('restaurant_id', restaurantId)
       .order('order_index', { ascending: true })
       .order('number', { ascending: true }),
@@ -69,7 +73,7 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
       try {
         const { data } = await supabase
           .from('reservations')
-          .select('id, table_id, customer_name, customer_phone, scheduled_at, status')
+          .select('id, table_id, customer_name, customer_phone, scheduled_at, notes, status')
           .eq('restaurant_id', restaurantId)
           .in('status', ['pending', 'confirmed']);
         return data ?? [];
@@ -89,13 +93,13 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
 
   const todayStart = startOfDay(new Date()).getTime();
   const todayEnd = endOfDay(new Date()).getTime();
-  const reservationsByTable = new Map<string, { customer_name: string; customer_phone?: string | null; scheduled_at: string }[]>();
+  const reservationsByTable = new Map<string, { customer_name: string; customer_phone?: string | null; scheduled_at: string; notes?: string | null }[]>();
   (Array.isArray(reservationsRes) ? reservationsRes : []).forEach((r: any) => {
     if (!r.table_id) return;
     const scheduled = new Date(r.scheduled_at).getTime();
     if (scheduled < todayStart || scheduled > todayEnd) return;
     const list = reservationsByTable.get(r.table_id) ?? [];
-    list.push({ customer_name: r.customer_name, customer_phone: r.customer_phone ?? null, scheduled_at: r.scheduled_at });
+    list.push({ customer_name: r.customer_name, customer_phone: r.customer_phone ?? null, scheduled_at: r.scheduled_at, notes: r.notes ?? null });
     reservationsByTable.set(r.table_id, list);
   });
 
@@ -149,6 +153,8 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
       reservationAt: nextRes?.scheduled_at ?? null,
       reservationCustomerName: nextRes?.customer_name ?? null,
       reservationCustomerPhone: nextRes?.customer_phone ?? null,
+      reservationNotes: nextRes?.notes ?? null,
+      currentCustomerName: (t as { current_customer_name?: string | null }).current_customer_name ?? null,
     } satisfies TableWithStatus;
   });
 }

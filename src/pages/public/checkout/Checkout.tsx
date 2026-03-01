@@ -38,7 +38,7 @@ import {
   QrCode, Landmark, Info, Copy, AlertCircle, Ticket, Loader2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones, useDeliveryDistanceTiers, useHasActiveCoupons, validateCoupon } from '@/hooks/queries';
+import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones, useDeliveryDistanceTiers, useHasActiveCoupons, validateCoupon, updateTableCustomerNameFn } from '@/hooks/queries';
 import { getDeliveryFeeByDistance } from '@/lib/geo/geo';
 
 const MapAddressPreview = lazy(() => import('@/components/public/map/MapAddressPreview'));
@@ -112,6 +112,18 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       setTable(tableId, tableNumber);
     }
   }, [isTableOrder, tableId, tableNumber, tableIdStore, setTable]);
+
+  // Persistir nome do cliente na mesa no servidor (debounced) para aparecer no painel do garçom em tempo real
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!isTableOrder || !tableId) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      updateTableCustomerNameFn({ tableId, customerName: tableCustomerName }).catch(() => {});
+    }, 500);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [isTableOrder, tableId, tableCustomerName]);
 
   // ── Entrega ──
   const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.DELIVERY);
