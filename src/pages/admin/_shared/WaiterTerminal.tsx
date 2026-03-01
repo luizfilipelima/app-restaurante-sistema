@@ -421,7 +421,7 @@ function WaiterTerminalContent() {
           <SheetHeader>
             <SheetTitle>Meu perfil</SheetTitle>
             <SheetDescription id="profile-description">
-              Dados da sua conta e zona de atendimento.
+              Dados da conta e zona de atendimento no Terminal.
             </SheetDescription>
           </SheetHeader>
           <div className="mt-6 space-y-4">
@@ -430,18 +430,15 @@ function WaiterTerminalContent() {
             ) : displayProfile ? (
               <>
                 <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-                  <ProfileRow label="Login" value={displayProfile.login} />
                   <ProfileRow label="E-mail" value={displayProfile.email} />
                   <ProfileRow label="Usuário" value={displayProfile.usuario} />
-                  <ProfileRow label="Nome" value={displayProfile.first_name || displayProfile.full_name || '—'} />
-                  <ProfileRow label="Sobrenome" value={displayProfile.last_name || '—'} />
                   <ProfileRow label="Cargo" value={ROLE_LABELS[displayProfile.role] ?? displayProfile.role} />
                 </div>
-                {hallZones.length > 0 && displayProfile.role === 'waiter' && (
+                {hallZones.length > 0 && (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">Zona que atendo</label>
+                    <label className="text-sm font-medium text-slate-700">Minha zona</label>
                     <p className="text-xs text-slate-500">
-                      Só recebo notificações, bips e vibrações de mesas nesta zona.
+                      Filtra mesas, chamados e notificações pela zona selecionada.
                     </p>
                     <Select
                       value={displayProfile.hall_zone_id ?? waiterHallZoneId ?? '__all__'}
