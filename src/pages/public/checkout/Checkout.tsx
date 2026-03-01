@@ -38,6 +38,7 @@ import {
   QrCode, Landmark, Info, Copy, AlertCircle, Ticket, Loader2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from '@/hooks/shared/use-toast';
 import { fetchLoyaltyStatus, redeemLoyalty, useDeliveryZones, useDeliveryDistanceTiers, useHasActiveCoupons, validateCoupon, updateTableCustomerNameFn } from '@/hooks/queries';
 import { getDeliveryFeeByDistance } from '@/lib/geo/geo';
 
@@ -626,10 +627,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           setTimeout(() => handleBackToMenu(), 800);
         }
       } else {
-        // Pedido de mesa — não usa WhatsApp
+        // Pedido de mesa — não usa WhatsApp, não limpa carrinho (cliente vê itens até conta fechada/mesa resetada)
         whatsappWin?.close();
-        clearCart();
-        setTimeout(() => handleBackToMenu(), 1500);
+        toast({ title: t('checkout.tableOrderSuccess'), variant: 'default' });
+        setTimeout(() => handleBackToMenu(), 1200);
       }
     } catch (error: unknown) {
       // Fecha a aba em branco se o pedido falhou

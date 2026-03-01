@@ -112,6 +112,7 @@
     "errorInvalidCartDesc": "Volte ao cardápio e adicione os itens novamente.",
     "errorRestaurantClosed": "Restaurante fechado",
     "errorRestaurantClosedDesc": "No momento estamos fora do horário de funcionamento. Tente novamente mais tarde.",
+    "tableOrderSuccess": "Pedido concluído!",
     "successOrderTitle": "Pedido realizado!",
     "successOrderDesc": "Redirecionando para o WhatsApp...",
     "errorFinalizeTitle": "Erro ao finalizar pedido"
