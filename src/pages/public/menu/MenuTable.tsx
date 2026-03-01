@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/core/supabase';
 import { getSubdomain } from '@/lib/core/subdomain';
 import PublicMenu from './Menu';
 import { useTableOrderStore } from '@/store/tableOrderStore';
+import { useCartStore } from '@/store/cartStore';
 import { toast } from '@/hooks/shared/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -24,6 +25,26 @@ export default function MenuTable({ tenantSlug: tenantSlugProp }: MenuTableProps
   const [tableFound, setTableFound] = useState<{ id: string; number: number } | null>(null);
   const [callingWaiter, setCallingWaiter] = useState(false);
   const { setTable, clearTable, clearTableStorage } = useTableOrderStore();
+  const clearCart = useCartStore((s) => s.clearCart);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const checkAndClearIfTableReset = useCallback(async (tableId: string) => {
+    try {
+      const { data: available } = await supabase.rpc('is_table_available_for_new_session', {
+        p_table_id: tableId,
+      });
+      if (available === true) {
+        clearTableStorage(tableId);
+        clearCart();
+        const { tableId: currentId, tableNumber } = useTableOrderStore.getState();
+        if (currentId === tableId && tableNumber != null) {
+          setTable(tableId, tableNumber, { skipLoadFromStorage: true });
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [clearTableStorage, clearCart, setTable]);
 
   useEffect(() => {
     if (!restaurantSlug || Number.isNaN(tableNum) || tableNum < 1) {
@@ -88,6 +109,31 @@ export default function MenuTable({ tenantSlug: tenantSlugProp }: MenuTableProps
     load();
     return () => clearTable();
   }, [restaurantSlug, tableNum]);
+
+  useEffect(() => {
+    if (!tableFound?.id) return;
+    const tableId = tableFound.id;
+
+    const onTableRelatedChange = () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        debounceRef.current = null;
+        checkAndClearIfTableReset(tableId);
+      }, 600);
+    };
+
+    const ch = supabase
+      .channel(`menu-table-reset-${tableId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `table_id=eq.${tableId}` }, onTableRelatedChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: `table_id=eq.${tableId}` }, onTableRelatedChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tables', filter: `id=eq.${tableId}` }, onTableRelatedChange)
+      .subscribe();
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      supabase.removeChannel(ch);
+    };
+  }, [tableFound?.id, checkAndClearIfTableReset]);
 
   const handleCallWaiter = async () => {
     if (!tableFound) return;

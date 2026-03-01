@@ -26,7 +26,7 @@ import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/core/utils';
-import { UtensilsCrossed, Package, Wifi, WifiOff } from 'lucide-react';
+import { UtensilsCrossed, Package, Wifi, WifiOff, Bell } from 'lucide-react';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { ptBR, es, enUS } from 'date-fns/locale';
 import { playWaiterBeep, primeWaiterAudio } from '@/lib/sounds/playWaiterBeep';
@@ -96,6 +96,7 @@ function WaiterTerminalContent() {
   const [selectedTable, setSelectedTable] = useState<TableWithStatus | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
+  const [callNotification, setCallNotification] = useState<{ tableNumber: number } | null>(null);
   const audioPrimedRef = useRef(false);
 
   // Permite áudio no primeiro toque/clique (Chrome exige interação antes de tocar som)
@@ -117,9 +118,15 @@ function WaiterTerminalContent() {
     if (!restaurantId) return;
     const ch = supabase
       .channel('waiter-terminal-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'waiter_calls', filter: `restaurant_id=eq.${restaurantId}` }, (payload: { eventType?: string; data?: { type?: string } }) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'waiter_calls', filter: `restaurant_id=eq.${restaurantId}` }, (payload: { eventType?: string; new?: { table_number?: number }; data?: { type?: string } }) => {
         const isNewCall = (payload?.eventType ?? payload?.data?.type ?? '') === 'INSERT';
-        if (isNewCall) playWaiterBeep();
+        if (isNewCall) {
+          playWaiterBeep();
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate(1000);
+          }
+          setCallNotification({ tableNumber: payload?.new?.table_number ?? 0 });
+        }
         queryClient.refetchQueries({ queryKey: ['waiterCalls', restaurantId] });
         queryClient.refetchQueries({ queryKey: ['tableStatuses', restaurantId] });
       })
@@ -169,6 +176,12 @@ function WaiterTerminalContent() {
     : gridTablesAll;
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
+  useEffect(() => {
+    if (!callNotification) return;
+    const t = setTimeout(() => setCallNotification(null), 4000);
+    return () => clearTimeout(t);
+  }, [callNotification]);
 
   // Sincroniza selectedTable com dados atualizados em tempo real
   useEffect(() => {
@@ -335,6 +348,29 @@ function WaiterTerminalContent() {
         }}
         isMobile={isMobile}
       />
+
+      {/* Notificação central quando cliente chama o garçom */}
+      {callNotification && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none"
+          role="alert"
+          aria-live="assertive"
+        >
+          <div className="absolute inset-0 bg-black/40" aria-hidden />
+          <div
+            className="relative flex flex-col items-center gap-4 rounded-2xl bg-amber-500 px-8 py-6 shadow-2xl animate-in zoom-in-95 duration-300"
+            style={{ boxShadow: '0 0 0 4px rgba(245, 158, 11, 0.4)' }}
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-400">
+              <Bell className="h-8 w-8 text-amber-900 animate-pulse" />
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-amber-950">Mesa {callNotification.tableNumber || '?'}</p>
+              <p className="text-amber-900 font-semibold">Chamando o garçom!</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

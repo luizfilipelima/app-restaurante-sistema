@@ -24,35 +24,41 @@ export function primeWaiterAudio(): void {
 }
 
 /**
- * Toca um bip curto (padrão restaurante/PDV).
+ * Toca um bip mais chamativo (padrão restaurante/PDV).
+ * Sequência de 3 bips curtos para alertar o garçom.
  * Chamar primeWaiterAudio() no primeiro clique/toque da tela para desbloquear áudio no Chrome.
  */
 export function playWaiterBeep(): void {
   const ctx = getAudioContext();
   if (!ctx) return;
 
-  // Chrome exige que o contexto seja "resumed" após interação do usuário
   if (ctx.state === 'suspended') {
     ctx.resume().catch(() => {});
   }
 
+  const playBip = (offset: number) => {
+    try {
+      const oscillator = ctx!.createOscillator();
+      const gain = ctx!.createGain();
+      oscillator.connect(gain);
+      gain.connect(ctx!.destination);
+      oscillator.type = 'square';
+      oscillator.frequency.setValueAtTime(880, ctx!.currentTime + offset);
+      gain.gain.setValueAtTime(0, ctx!.currentTime + offset);
+      gain.gain.linearRampToValueAtTime(0.4, ctx!.currentTime + offset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx!.currentTime + offset + 0.15);
+      oscillator.start(ctx!.currentTime + offset);
+      oscillator.stop(ctx!.currentTime + offset + 0.15);
+    } catch {
+      /* fallback silencioso */
+    }
+  };
+
   try {
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    oscillator.connect(gain);
-    gain.connect(ctx.destination);
-
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(900, ctx.currentTime); // Frequência típica de bip
-    oscillator.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.05);
-
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
-
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.12);
+    playBip(0);
+    playBip(0.2);
+    playBip(0.4);
   } catch {
-    // Fallback silencioso se Web Audio falhar
+    /* fallback */
   }
 }

@@ -1245,25 +1245,31 @@ function CashierContent() {
   };
 
   const handleExcludeTableOrder = async () => {
-    if (!selected || excludingOrder) return;
-    const orderIds: string[] = isTableGroup(selected)
-      ? selected.items.map((i) => i.orderId)
-      : selected.type === 'table'
-        ? [selected.orderId]
-        : [];
-    if (orderIds.length === 0) return;
+    if (!selected || excludingOrder || !restaurantId) return;
+    const tableIds: string[] = [];
+    if (isTableGroup(selected)) {
+      const ids = new Set(selected.items.map((i) => (i.order as { table_id?: string })?.table_id).filter(Boolean));
+      tableIds.push(...ids);
+    } else if (selected.type === 'table') {
+      const tid = (selected.order as { table_id?: string })?.table_id;
+      if (tid) tableIds.push(tid);
+    }
+    if (tableIds.length === 0) return;
     setExcludingOrder(true);
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-        .in('id', orderIds);
-      if (error) throw error;
+      for (const tableId of tableIds) {
+        const { error } = await supabase.rpc('reset_table', {
+          p_restaurant_id: restaurantId,
+          p_table_id: tableId,
+        });
+        if (error) throw error;
+      }
       setShowExcludeOrderConfirm(false);
       handleClearSelection();
       loadQueue();
       queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
       queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['reservations', restaurantId] });
       toast({ title: t('cashier.excludeOrderSuccess') });
     } catch (err: any) {
       toast({ title: t('cashier.errorExcludeOrder'), description: err?.message, variant: 'destructive' });

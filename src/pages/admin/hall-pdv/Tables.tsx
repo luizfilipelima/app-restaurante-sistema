@@ -1249,6 +1249,7 @@ export function TableOperationSheet({
   const [localHallZoneId, setLocalHallZoneId] = useState<string | null | undefined>(undefined);
   const [deletingTable, setDeletingTable] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showCloseAccountDialog, setShowCloseAccountDialog] = useState(false);
   const [closeAccountPaymentMethod, setCloseAccountPaymentMethod] = useState<CloseTablePaymentMethod>('cash');
   const baseCurrency: CurrencyCode = (restaurant?.currency as CurrencyCode) || 'BRL';
@@ -1262,6 +1263,7 @@ export function TableOperationSheet({
   const comandaInputRef = useRef<HTMLInputElement>(null);
 
   const closeTableAccount = useCloseTableAccount(restaurantId);
+  const resetTableMutation = useResetTable(restaurantId);
 
   // Sincroniza estado local com a mesa (para corrigir bug de zona não atualizar no dropdown)
   useEffect(() => {
@@ -1414,6 +1416,19 @@ export function TableOperationSheet({
       toast({ title: t('tablesCentral.accountClosed') });
     } catch (e: any) {
       toast({ title: e?.message ?? t('common.error'), variant: 'destructive' });
+    }
+  };
+
+  const handleResetTable = async () => {
+    if (!table || !restaurantId || resetTableMutation.isPending) return;
+    try {
+      await resetTableMutation.mutateAsync(table.id);
+      setShowResetConfirm(false);
+      onClose();
+      onTableOrZoneUpdated();
+      toast({ title: 'Mesa resetada!', description: 'A mesa voltou ao status Livre.' });
+    } catch {
+      toast({ title: t('common.error'), variant: 'destructive' });
     }
   };
 
@@ -1793,6 +1808,22 @@ export function TableOperationSheet({
                 </p>
               )}
 
+              {/* Resetar mesa — cancela pedidos, remove reservas, limpa comandas e dados */}
+              <Button
+                size="lg"
+                variant="outline"
+                className="min-h-[48px] touch-manipulation border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/40"
+                onClick={() => setShowResetConfirm(true)}
+                disabled={resetTableMutation.isPending}
+              >
+                {resetTableMutation.isPending ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-5 w-5 mr-2" />
+                )}
+                {t('tablesCentral.resetTable')}
+              </Button>
+
               {/* Excluir mesa definitivamente — apenas Central de Mesas (modo gestão) */}
               {isManagement && onTableDeleted && (
                 <Button
@@ -1907,6 +1938,32 @@ export function TableOperationSheet({
             <Button onClick={handleCloseAccount} disabled={closeTableAccount.isPending}>
               {closeTableAccount.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {t('tablesCentral.closeAccount')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal confirmação: Resetar mesa */}
+      <Dialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('tablesCentral.resetTable')}</DialogTitle>
+            <DialogDescription>
+              {t('tablesCentral.resetTableConfirm')}
+            </DialogDescription>
+          </DialogHeader>
+          {table && (
+            <p className="text-sm text-muted-foreground">
+              {t('tablesCentral.table')} {table.number} — {table.orderIds?.length ?? 0} {t('tablesCentral.items')} • {formatPrice(totalAmount, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
+            </p>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowResetConfirm(false)} disabled={resetTableMutation.isPending}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="destructive" onClick={handleResetTable} disabled={resetTableMutation.isPending}>
+              {resetTableMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+              {resetTableMutation.isPending ? t('tablesCentral.resetting') : t('tablesCentral.yesReset')}
             </Button>
           </DialogFooter>
         </DialogContent>
