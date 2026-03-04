@@ -2295,7 +2295,7 @@ export function TableOperationSheet({
               if (!byZone.has(zId)) byZone.set(zId, []);
               byZone.get(zId)!.push(tbl);
             }
-            const zoneOrder = hallZones.map((z) => z.id).concat([null]);
+            const zoneOrder: (string | null)[] = [...hallZones.map((z) => z.id), null];
             return (
               <div className="space-y-3">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
