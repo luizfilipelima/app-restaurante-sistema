@@ -5,7 +5,7 @@
  * Mostra posição na fila quando houver.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Barcode from 'react-barcode';
@@ -22,6 +22,8 @@ import {
 import {
   Loader2,
   CheckCircle2,
+  Calendar,
+  Clock,
   CalendarClock,
   AlertCircle,
   CalendarPlus,
@@ -116,6 +118,8 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
 
   const [zones, setZones] = useState<ZoneOption[]>([]);
   const [result, setResult] = useState<{ short_code: string; table_number: string; scheduled_at: string } | null>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const timeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (restaurant?.phone_country && ['BR', 'PY', 'AR'].includes(restaurant.phone_country)) {
@@ -650,31 +654,61 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>{t('reservation.date')}</Label>
-              <Input
-                type="date"
-                value={scheduledDate}
-                onChange={(e) => setScheduledDate(e.target.value)}
-                min={today}
-                required
-                aria-label={t('reservation.date')}
-                placeholder={t('reservation.selectDatePlaceholder')}
-                className="mt-1 min-h-[44px] [color-scheme:light] dark:[color-scheme:dark]"
-              />
+              <Label htmlFor="reservation-date">{t('reservation.date')}</Label>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.focus()}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.focus(); } }}
+                className="relative mt-1 min-h-[48px] w-full flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2.5 text-sm text-left ring-offset-background transition-colors hover:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 cursor-pointer touch-manipulation"
+              >
+                <Calendar className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                <span className={scheduledDate ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                  {scheduledDate
+                    ? format(new Date(scheduledDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: dateLocale })
+                    : t('reservation.selectDatePlaceholder')}
+                </span>
+                <input
+                  id="reservation-date"
+                  ref={dateInputRef}
+                  type="date"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  min={today}
+                  required
+                  aria-label={t('reservation.date')}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-base"
+                  style={{ fontSize: '16px' }}
+                />
+              </div>
             </div>
             <div>
-              <Label>{t('reservation.time')}</Label>
-              <Input
-                type="time"
-                value={scheduledTime}
-                onChange={(e) => { setScheduledTime(e.target.value); setError(''); }}
-                min={restaurant?.reservation_start_time?.trim() || undefined}
-                max={restaurant?.reservation_end_time?.trim() || undefined}
-                required
-                aria-label={t('reservation.time')}
-                placeholder={t('reservation.selectTimePlaceholder')}
-                className="mt-1 min-h-[44px] [color-scheme:light] dark:[color-scheme:dark]"
-              />
+              <Label htmlFor="reservation-time">{t('reservation.time')}</Label>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => timeInputRef.current?.showPicker?.() ?? timeInputRef.current?.focus()}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); timeInputRef.current?.showPicker?.() ?? timeInputRef.current?.focus(); } }}
+                className="relative mt-1 min-h-[48px] w-full flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2.5 text-sm text-left ring-offset-background transition-colors hover:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 cursor-pointer touch-manipulation"
+              >
+                <Clock className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                <span className={scheduledTime ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                  {scheduledTime || t('reservation.selectTimePlaceholder')}
+                </span>
+                <input
+                  id="reservation-time"
+                  ref={timeInputRef}
+                  type="time"
+                  value={scheduledTime}
+                  onChange={(e) => { setScheduledTime(e.target.value); setError(''); }}
+                  min={restaurant?.reservation_start_time?.trim() || undefined}
+                  max={restaurant?.reservation_end_time?.trim() || undefined}
+                  required
+                  aria-label={t('reservation.time')}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-base"
+                  style={{ fontSize: '16px' }}
+                />
+              </div>
             </div>
           </div>
           {scheduledDate && scheduledTime && (
