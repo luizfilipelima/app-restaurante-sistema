@@ -73,6 +73,7 @@ import {
   CheckCircle2,
   Clock,
   Settings,
+  Pencil,
   Link2,
   Unlink,
   ExternalLink,
@@ -160,45 +161,79 @@ function HallZonesConfig({ restaurantId, hallZones, t }: { restaurantId: string 
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h3 className="font-semibold mb-2">{t('tablesCentral.zones')}</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          {t('tablesCentral.zonesDesc')}
-        </p>
-        <Button type="button" onClick={() => setShowAddModal(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Adicionar zona
-        </Button>
+        <h3 className="text-sm font-medium text-foreground">{t('tablesCentral.zones')}</h3>
+        <p className="text-xs text-muted-foreground mt-1">{t('tablesCentral.zonesDesc')}</p>
       </div>
 
-      {/* Grid de zonas (padrão cardápio: imagem + nome) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[320px] overflow-y-auto">
+      {/* Grid de zonas + card "Nova zona" */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[340px] overflow-y-auto pr-1 -mr-1">
+        {/* Card "Adicionar zona" — sempre visível, primeiro na lista */}
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          className="group flex flex-col items-center justify-center min-h-[120px] rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200"
+        >
+          <div className="w-10 h-10 rounded-full bg-muted/80 group-hover:bg-primary/10 flex items-center justify-center mb-2 transition-colors">
+            <Plus className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+          </div>
+          <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">Nova zona</span>
+        </button>
+
         {hallZones.length === 0 ? (
-          <p className="col-span-full text-sm text-muted-foreground py-4">{t('tablesCentral.noZones')}</p>
+          <div className="col-span-1 flex flex-col items-center justify-center min-h-[120px] rounded-xl border border-dashed border-border/60 bg-muted/20">
+            <span className="text-xs text-muted-foreground/80">{t('tablesCentral.noZones')}</span>
+          </div>
         ) : (
           hallZones.map((z) => (
             <div
               key={z.id}
-              className="rounded-xl border border-border overflow-hidden bg-card hover:border-primary/40 transition-colors"
+              className="group relative rounded-xl border border-border/80 overflow-hidden bg-card hover:border-border hover:shadow-sm transition-all duration-200"
             >
-              <div className="aspect-[4/3] bg-muted/50 relative">
-                {z.image_url ? (
-                  <img src={z.image_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                    <ImageIcon className="h-10 w-10 opacity-50" />
-                  </div>
-                )}
-              </div>
-              <div className="p-2.5 flex items-center justify-between gap-2 min-w-0">
-                <span className="font-medium text-sm truncate">{z.name}</span>
-                <div className="flex gap-0.5 flex-shrink-0">
-                  <Button size="sm" variant="ghost" className="h-7 px-1.5" onClick={() => openEdit(z)}>Editar</Button>
-                  <Button size="sm" variant="ghost" className="h-7 px-1.5 text-destructive hover:text-destructive" onClick={() => handleDelete(z.id, z.name)} disabled={deleteZone.isPending}>
-                    {t('tablesCentral.deleteZone')}
-                  </Button>
+              {/* Área clicável para editar */}
+              <button
+                type="button"
+                onClick={() => openEdit(z)}
+                className="w-full text-left block"
+              >
+                <div className="aspect-[4/3] bg-muted/40 relative overflow-hidden">
+                  {z.image_url ? (
+                    <img src={z.image_url} alt={z.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-lg bg-muted/60 flex items-center justify-center">
+                        <ImageIcon className="h-6 w-6 text-muted-foreground/60" />
+                      </div>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
+                <div className="px-3 py-2.5">
+                  <span className="font-medium text-sm text-foreground block truncate">{z.name}</span>
+                </div>
+              </button>
+              {/* Ações no canto — sempre visíveis, destaque no hover */}
+              <div className="absolute top-2 right-2 flex gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  className="h-7 w-7 rounded-md bg-background/90 backdrop-blur shadow-sm hover:bg-background"
+                  onClick={(e) => { e.stopPropagation(); openEdit(z); }}
+                  title="Editar"
+                >
+                  <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  className="h-7 w-7 rounded-md bg-background/90 backdrop-blur shadow-sm hover:bg-destructive/10 hover:text-destructive"
+                  onClick={(e) => { e.stopPropagation(); handleDelete(z.id, z.name); }}
+                  disabled={deleteZone.isPending}
+                  title={t('tablesCentral.deleteZone')}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
           ))
@@ -207,24 +242,24 @@ function HallZonesConfig({ restaurantId, hallZones, t }: { restaurantId: string 
 
       {/* Modal Adicionar zona */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nova zona</DialogTitle>
-            <DialogDescription>Adicione o nome e, opcionalmente, uma imagem para identificar a zona.</DialogDescription>
+        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <DialogTitle className="text-base">Nova zona</DialogTitle>
+            <DialogDescription className="text-sm">{t('tablesCentral.zonesDesc')}</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div>
-              <Label htmlFor="zone-name-add">Nome da zona</Label>
+          <form onSubmit={handleCreate} className="px-6 pb-6 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="zone-name-add" className="text-xs font-medium text-muted-foreground">Nome</Label>
               <Input
                 id="zone-name-add"
                 placeholder={t('tablesCentral.zonePlaceholder')}
                 value={zoneFormName}
                 onChange={(e) => setZoneFormName(e.target.value)}
-                className="mt-1.5"
+                className="h-10"
               />
             </div>
-            <div>
-              <Label>Imagem da zona</Label>
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground">Imagem (opcional)</Label>
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
@@ -246,35 +281,37 @@ function HallZonesConfig({ restaurantId, hallZones, t }: { restaurantId: string 
                   }
                 }}
               />
-              <label
-                htmlFor="zone-image-add"
-                className={cn(
-                  'flex flex-col items-center justify-center w-full h-20 rounded-xl border-2 cursor-pointer transition-colors mt-1.5',
-                  zoneFormImageUrl ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40 hover:bg-muted/60'
+              <div className="flex gap-2">
+                <label
+                  htmlFor="zone-image-add"
+                  className={cn(
+                    'flex flex-1 items-center justify-center gap-2 min-h-[64px] rounded-lg border cursor-pointer transition-colors',
+                    zoneFormImageUrl ? 'border-border' : 'border-dashed border-border/80 hover:border-border hover:bg-muted/30'
+                  )}
+                >
+                  {zoneImageUploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : zoneFormImageUrl ? (
+                    <img src={zoneFormImageUrl} alt="" className="h-12 w-auto max-w-full object-cover rounded" />
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 text-muted-foreground/70" />
+                      <span className="text-xs text-muted-foreground">Arraste ou clique</span>
+                    </>
+                  )}
+                </label>
+                {zoneFormImageUrl && (
+                  <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={() => setZoneFormImageUrl('')}>
+                    Remover
+                  </Button>
                 )}
-              >
-                {zoneImageUploading ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                ) : zoneFormImageUrl ? (
-                  <img src={zoneFormImageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
-                ) : (
-                  <>
-                    <Upload className="h-5 w-5 text-muted-foreground mb-1" />
-                    <span className="text-xs text-muted-foreground">Clique para enviar</span>
-                  </>
-                )}
-              </label>
-              {zoneFormImageUrl && (
-                <button type="button" onClick={() => setZoneFormImageUrl('')} className="mt-1 text-xs text-muted-foreground hover:text-destructive">
-                  Remover imagem
-                </button>
-              )}
+              </div>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>Cancelar</Button>
-              <Button type="submit" disabled={!zoneFormName.trim() || createZone.isPending}>
-                {createZone.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Adicionar
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowAddModal(false)}>Cancelar</Button>
+              <Button type="submit" size="sm" disabled={!zoneFormName.trim() || createZone.isPending}>
+                {createZone.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                Criar zona
               </Button>
             </DialogFooter>
           </form>
@@ -283,25 +320,25 @@ function HallZonesConfig({ restaurantId, hallZones, t }: { restaurantId: string 
 
       {/* Modal Editar zona */}
       <Dialog open={!!editingZone} onOpenChange={(o) => !o && setEditingZone(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Editar zona</DialogTitle>
-            <DialogDescription>Altere o nome ou a imagem da zona.</DialogDescription>
+        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <DialogTitle className="text-base">Editar zona</DialogTitle>
+            <DialogDescription className="text-sm">Altere o nome ou a imagem.</DialogDescription>
           </DialogHeader>
           {editingZone && (
-            <form onSubmit={handleUpdate} className="space-y-4">
-              <div>
-                <Label htmlFor="zone-name-edit">Nome da zona</Label>
+            <form onSubmit={handleUpdate} className="px-6 pb-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="zone-name-edit" className="text-xs font-medium text-muted-foreground">Nome</Label>
                 <Input
                   id="zone-name-edit"
                   placeholder={t('tablesCentral.zonePlaceholder')}
                   value={editFormName}
                   onChange={(e) => setEditFormName(e.target.value)}
-                  className="mt-1.5"
+                  className="h-10"
                 />
               </div>
-              <div>
-                <Label>Imagem da zona</Label>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">Imagem</Label>
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
@@ -323,34 +360,36 @@ function HallZonesConfig({ restaurantId, hallZones, t }: { restaurantId: string 
                     }
                   }}
                 />
-                <label
-                  htmlFor="zone-image-edit"
-                  className={cn(
-                    'flex flex-col items-center justify-center w-full h-20 rounded-xl border-2 cursor-pointer transition-colors mt-1.5',
-                    editFormImageUrl ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40 hover:bg-muted/60'
+                <div className="flex gap-2">
+                  <label
+                    htmlFor="zone-image-edit"
+                    className={cn(
+                      'flex flex-1 items-center justify-center gap-2 min-h-[64px] rounded-lg border cursor-pointer transition-colors',
+                      editFormImageUrl ? 'border-border' : 'border-dashed border-border/80 hover:border-border hover:bg-muted/30'
+                    )}
+                  >
+                    {editImageUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    ) : editFormImageUrl ? (
+                      <img src={editFormImageUrl} alt="" className="h-12 w-auto max-w-full object-cover rounded" />
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 text-muted-foreground/70" />
+                        <span className="text-xs text-muted-foreground">Arraste ou clique</span>
+                      </>
+                    )}
+                  </label>
+                  {editFormImageUrl && (
+                    <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={() => setEditFormImageUrl('')}>
+                      Remover
+                    </Button>
                   )}
-                >
-                  {editImageUploading ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  ) : editFormImageUrl ? (
-                    <img src={editFormImageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
-                  ) : (
-                    <>
-                      <Upload className="h-5 w-5 text-muted-foreground mb-1" />
-                      <span className="text-xs text-muted-foreground">Clique para enviar</span>
-                    </>
-                  )}
-                </label>
-                {editFormImageUrl && (
-                  <button type="button" onClick={() => setEditFormImageUrl('')} className="mt-1 text-xs text-muted-foreground hover:text-destructive">
-                    Remover imagem
-                  </button>
-                )}
+                </div>
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditingZone(null)}>Cancelar</Button>
-                <Button type="submit" disabled={!editFormName.trim() || updateZone.isPending}>
-                  {updateZone.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setEditingZone(null)}>Cancelar</Button>
+                <Button type="submit" size="sm" disabled={!editFormName.trim() || updateZone.isPending}>
+                  {updateZone.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
                   Salvar
                 </Button>
               </DialogFooter>
