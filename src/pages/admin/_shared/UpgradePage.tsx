@@ -76,6 +76,7 @@ const FEATURE_GROUPS: FeatureGroup[] = [
       { label: 'Personalização de marca (logo/cores)', core: false, standard: true,  enterprise: true  },
       { label: 'Múltiplos idiomas / moedas',          core: false, standard: true,  enterprise: true  },
       { label: 'Impressão (configuração 58/80mm)',     core: false, standard: true,  enterprise: true  },
+      { label: 'Domínio personalizado',               core: false, standard: false, enterprise: true, highlight: true },
     ],
   },
   {
@@ -207,6 +208,7 @@ const FEATURE_INFO: Record<string, { label: string; planRequired: string; descri
   feature_churn_recovery:      { label: 'Recuperação de Churn',        planRequired: 'enterprise', description: 'Identifique clientes em risco e contacte-os via WhatsApp.' },
   feature_retention_analytics: { label: 'Análise de Retenção',         planRequired: 'enterprise', description: 'Veja a taxa de clientes recorrentes e tendência de fidelização.' },
   feature_inventory_cost:      { label: 'Inventário com CMV',          planRequired: 'enterprise', description: 'Controle custo de insumos, CMV e margem de lucro por produto.' },
+  feature_custom_domain:       { label: 'Domínio Personalizado',       planRequired: 'enterprise', description: 'Use seu próprio domínio para o cardápio (ex: cardapio.seudominio.com.br).' },
 };
 
 // ─── Componente principal ─────────────────────────────────────────────────────

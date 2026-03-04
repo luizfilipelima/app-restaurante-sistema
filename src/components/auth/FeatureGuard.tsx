@@ -19,6 +19,7 @@ const FEATURE_META: Record<string, {
   feature_churn_recovery:      { label: 'Recuperação de Churn',        planRequired: 'Enterprise', description: 'Identifique clientes em risco e contacte-os via WhatsApp.' },
   feature_retention_analytics: { label: 'Análise de Retenção',         planRequired: 'Enterprise', description: 'Veja a taxa de clientes recorrentes e tendência de fidelização.' },
   feature_inventory_cost:      { label: 'Inventário com CMV',          planRequired: 'Enterprise', description: 'Controle custo de insumos, CMV e margem de lucro por produto.' },
+  feature_custom_domain:       { label: 'Domínio Personalizado',       planRequired: 'Enterprise', description: 'Use seu próprio domínio para o cardápio (ex: cardapio.seudominio.com.br).' },
 };
 
 interface FeatureGuardProps {

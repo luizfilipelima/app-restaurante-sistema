@@ -7,7 +7,7 @@ import { RoleProtectedRoute } from './components/auth/RoleProtectedRoute';
 import { ErrorBoundary } from './components/_routing/ErrorBoundary';
 import { Toaster } from './components/ui/toaster';
 import { UserRole } from './types';
-import { getSubdomain } from './lib/core/subdomain';
+import { getTenantFromHostname } from './lib/core/subdomain';
 import { lazyWithRetry } from './lib/core/lazyWithRetry';
 
 // ─── Componentes estruturais — carregam imediatamente (sem lazy) ─────────────
@@ -273,23 +273,23 @@ const KDS_ROLES = [UserRole.KITCHEN, UserRole.RESTAURANT_ADMIN, UserRole.SUPER_A
 
 function App() {
   const initialize = useAuthStore((state) => state.initialize);
-  const [subdomain, setSubdomain] = useState<string | null | undefined>(undefined);
+  const [tenantSlug, setTenantSlug] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     initialize();
-    setSubdomain(getSubdomain());
+    getTenantFromHostname().then(setTenantSlug);
   }, [initialize]);
 
-  // Aguarda definir o hostname (evita flash no primeiro paint)
-  if (subdomain === undefined) {
+  // Aguarda definir o tenant (evita flash no primeiro paint)
+  if (tenantSlug === undefined) {
     return <LoadingScreen />;
   }
 
-  const isAdminSubdomain = subdomain !== null && ADMIN_SUBDOMAINS.includes(subdomain);
+  const isAdminSubdomain = tenantSlug !== null && ADMIN_SUBDOMAINS.includes(tenantSlug);
 
   // 1) Subdomínio kds (kds.quiero.food) → Display de Cozinha por slug
   //    kds.quiero.food/pizzaria-da-vitoria  →  KitchenDisplay com slug = "pizzaria-da-vitoria"
-  if (subdomain === 'kds') {
+  if (tenantSlug === 'kds') {
     return (
       <BrowserRouter>
         <ErrorBoundary>
@@ -322,11 +322,11 @@ function App() {
     );
   }
 
-  // 2) Subdomínio de loja (ex.: pizzaria.quiero.food) -> StoreLayout (cardápio)
-  if (subdomain !== null && !isAdminSubdomain) {
+  // 2) Subdomínio de loja ou domínio personalizado (ex.: pizzaria.quiero.food, cardapio.cliente.com) -> StoreLayout (cardápio)
+  if (tenantSlug !== null && !isAdminSubdomain) {
     return (
       <ErrorBoundary>
-        <StoreLayout tenantSlug={subdomain} />
+        <StoreLayout tenantSlug={tenantSlug} />
         <Toaster />
       </ErrorBoundary>
     );

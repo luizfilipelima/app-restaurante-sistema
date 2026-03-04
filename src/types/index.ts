@@ -168,6 +168,8 @@ export interface Restaurant {
   menu_theme?: string | null;
   /** Cor dos detalhes nos temas minimalistas (orange, blue, emerald, etc). NULL = orange. */
   menu_theme_accent?: string | null;
+  /** Domínio personalizado (Enterprise). Ex: cardapio.minhapizzaria.com.br. */
+  custom_domain?: string | null;
   created_at: string;
   updated_at: string;
 }

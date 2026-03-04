@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/core/supabase';
-import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { useAdminLanguageStore } from '@/store/adminLanguageStore';
@@ -27,13 +27,14 @@ import {
   Phone, Globe, ImageIcon, AlarmClock, X, Wifi, Store,
   Users, ExternalLink, Link2, FileText,
   MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode, Settings as SettingsIcon,
-  Pencil, Trash2, Plus, ChevronUp, ChevronDown,
+  Pencil, Trash2, Plus, ChevronUp, ChevronDown, Lock,
 } from 'lucide-react';
 import { useRestaurant } from '@/hooks/queries';
 import { useLinkBioButtons, useLinkBioButtonsMutations, type CreateLinkBioButtonPayload } from '@/hooks/queries/useLinkBioButtons';
 import { useCanAccess } from '@/hooks/auth/useUserRole';
 import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import RestaurantUsersPanel from '@/components/admin/_shared/RestaurantUsersPanel';
+import { FeatureGuard } from '@/components/auth/FeatureGuard';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -287,6 +288,7 @@ export default function AdminSettings() {
   const restaurantId = useAdminRestaurantId();
   const { t }        = useAdminTranslation();
   const canAccessUsers = useCanAccess([...ROLES_USERS_MANAGEMENT]);
+  const basePath = useAdminBasePath();
   const { data: restaurant } = useRestaurant(restaurantId);
   const { data: linkBioButtons = [], isLoading: linkBioLoading } = useLinkBioButtons(restaurantId);
   const linkBioMutations = useLinkBioButtonsMutations(restaurantId, restaurant?.slug ?? null);
@@ -320,6 +322,7 @@ export default function AdminSettings() {
     pix_key_type:            'random' as 'cpf' | 'email' | 'random',
     bank_account:            { pyg: {}, ars: {} } as BankAccountByCountry,
     description:             '',
+    custom_domain:           '',
   });
 
   const [bankCountry, setBankCountry] = useState<'pyg' | 'ars'>('pyg');
@@ -409,6 +412,7 @@ export default function AdminSettings() {
         pix_key_type:            (['cpf', 'email', 'random'].includes(data.pix_key_type) ? data.pix_key_type : 'random') as 'cpf' | 'email' | 'random',
         bank_account:            parseBankAccount(data.bank_account),
         description:             data.description ?? '',
+        custom_domain:           data.custom_domain ?? '',
       });
     } catch (err) {
       console.error('Erro ao carregar restaurante:', err);
@@ -445,6 +449,11 @@ export default function AdminSettings() {
           const hasArs = !!(ars?.bank_name || ars?.agency || ars?.account || ars?.holder);
           if (!hasPyg && !hasArs) return null;
           return { pyg: hasPyg ? pyg : undefined, ars: hasArs ? ars : undefined };
+        })(),
+        custom_domain:           (() => {
+          const v = formData.custom_domain?.trim().toLowerCase();
+          if (!v) return null;
+          return v;
         })(),
         updated_at:              new Date().toISOString(),
       };
@@ -687,6 +696,60 @@ export default function AdminSettings() {
                   </a>
                 )}
               </FieldGroup>
+
+              {/* Domínio Personalizado (Enterprise) */}
+              <FeatureGuard
+                feature="feature_custom_domain"
+                fallback={
+                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Lock className="h-4 w-4" />
+                      <span className="text-sm font-medium">Domínio Personalizado</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Disponível no plano Enterprise. Use seu próprio domínio (ex: cardapio.seudominio.com.br) para o cardápio.
+                    </p>
+                    <Link
+                      to={`${basePath}/upgrade`}
+                      className="text-xs text-[#F87116] hover:underline font-medium"
+                    >
+                      Fazer upgrade para Enterprise →
+                    </Link>
+                  </div>
+                }
+              >
+                <FieldGroup>
+                  <SectionLabel>Domínio personalizado</SectionLabel>
+                  <Input
+                    type="text"
+                    value={formData.custom_domain}
+                    onChange={(e) => {
+                      const v = e.target.value
+                        .toLowerCase()
+                        .replace(/^https?:\/\//, '')
+                        .replace(/\/.*$/, '')
+                        .trim();
+                      set('custom_domain', v);
+                    }}
+                    placeholder="cardapio.minhapizzaria.com.br"
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Configure um CNAME no seu provedor de DNS apontando para o domínio da plataforma (informe-se no suporte). Não inclua https://.
+                  </p>
+                  {formData.custom_domain && (
+                    <a
+                      href={`https://${formData.custom_domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[11px] text-[#F87116] hover:underline font-medium"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      {formData.custom_domain}
+                    </a>
+                  )}
+                </FieldGroup>
+              </FeatureGuard>
             </div>
           </div>
 
