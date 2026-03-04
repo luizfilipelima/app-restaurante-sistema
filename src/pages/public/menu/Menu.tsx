@@ -116,6 +116,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
     return m;
   }, [activeOffers]);
 
+  const isTableOrder = !!(tableId && tableNumber);
+
   const { restaurant, products, categories, categoriesFromDb, subcategories, productComboItemsMap, productAddonsMap } = useMemo(() => {
     if (!menuData) {
       return {
@@ -128,8 +130,15 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         productAddonsMap: {} as Record<string, Array<{ id: string; name: string; items: Array<{ id: string; name: string; price: number }> }>>,
       };
     }
-    const p = menuData.products.length > 0 ? menuData.products : MOCK_PRODUCTS;
-    const c = menuData.products.length > 0 ? menuData.categories : sortCategories(['Pizza', 'Bebidas', 'Sobremesas']);
+    let p = menuData.products.length > 0 ? menuData.products : MOCK_PRODUCTS;
+    let c = menuData.products.length > 0 ? menuData.categories : sortCategories(['Pizza', 'Bebidas', 'Sobremesas']);
+
+    // No modo delivery (sem mesa), ocultar produtos com available_for_delivery = false
+    if (!isTableOrder) {
+      p = p.filter((prod) => prod.available_for_delivery !== false);
+      c = c.filter((cat) => p.some((prod) => prod.category === cat));
+    }
+
     return {
       restaurant: menuData.restaurant,
       products: p,
@@ -139,7 +148,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       productComboItemsMap: menuData.productComboItemsMap ?? {},
       productAddonsMap: menuData.productAddonsMap ?? {},
     };
-  }, [menuData]);
+  }, [menuData, isTableOrder]);
 
   // IMPORTANTE: useMenuCurrency deve ser chamado incondicionalmente (Rules of Hooks)
   const {
@@ -152,7 +161,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   } = useMenuCurrency(restaurant);
 
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
-  const isTableOrder = !!(tableId && tableNumber);
   const { tableCustomerName, setTableCustomerName } = useTableOrderStore();
   const updateTableCustomerName = useUpdateTableCustomerName();
   const [welcomeNameInput, setWelcomeNameInput] = useState('');

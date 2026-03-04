@@ -35,6 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/shared/use-toast';
 import { getCardapioPublicUrl } from '@/lib/core/utils';
+import { uploadProductImage } from '@/lib/imageUpload';
 import { formatPrice, convertBetweenCurrencies, type CurrencyCode, type ExchangeRates } from '@/lib/priceHelper';
 import {
   Dialog,
@@ -86,6 +87,8 @@ import {
   Phone,
   RefreshCw,
   X,
+  Upload,
+  ImageIcon,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import type { Locale } from 'date-fns';
@@ -100,31 +103,46 @@ const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 // ─── HallZonesConfig (CRUD Zonas) ────────────────────────────────────────────
 
 function HallZonesConfig({ restaurantId, hallZones, t }: { restaurantId: string | null; hallZones: import('@/types').HallZone[]; t: (k: string) => string }) {
-  const [newZoneName, setNewZoneName] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [zoneFormName, setZoneFormName] = useState('');
+  const [zoneFormImageUrl, setZoneFormImageUrl] = useState('');
+  const [zoneImageUploading, setZoneImageUploading] = useState(false);
+
+  const [editingZone, setEditingZone] = useState<import('@/types').HallZone | null>(null);
+  const [editFormName, setEditFormName] = useState('');
+  const [editFormImageUrl, setEditFormImageUrl] = useState('');
+  const [editImageUploading, setEditImageUploading] = useState(false);
+
   const createZone = useCreateHallZone(restaurantId);
   const updateZone = useUpdateHallZone(restaurantId);
   const deleteZone = useDeleteHallZone(restaurantId);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newZoneName.trim()) return;
+    if (!zoneFormName.trim()) return;
     try {
-      await createZone.mutateAsync(newZoneName.trim());
-      setNewZoneName('');
+      await createZone.mutateAsync({ name: zoneFormName.trim(), image_url: zoneFormImageUrl.trim() || null });
+      setZoneFormName('');
+      setZoneFormImageUrl('');
+      setShowAddModal(false);
       toast({ title: 'Zona criada!' });
     } catch {
       toast({ title: 'Erro ao criar zona', variant: 'destructive' });
     }
   };
 
-  const handleUpdate = async (id: string) => {
-    if (!editName.trim()) return;
+  const openEdit = (z: import('@/types').HallZone) => {
+    setEditingZone(z);
+    setEditFormName(z.name);
+    setEditFormImageUrl(z.image_url || '');
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingZone || !editFormName.trim()) return;
     try {
-      await updateZone.mutateAsync({ id, name: editName.trim() });
-      setEditingId(null);
-      setEditName('');
+      await updateZone.mutateAsync({ id: editingZone.id, name: editFormName.trim(), image_url: editFormImageUrl.trim() || null });
+      setEditingZone(null);
       toast({ title: 'Zona atualizada!' });
     } catch {
       toast({ title: 'Erro ao atualizar', variant: 'destructive' });
@@ -148,52 +166,198 @@ function HallZonesConfig({ restaurantId, hallZones, t }: { restaurantId: string 
         <p className="text-sm text-muted-foreground mb-4">
           {t('tablesCentral.zonesDesc')}
         </p>
-        <form onSubmit={handleCreate} className="flex gap-2">
-          <Input
-            placeholder={t('tablesCentral.zonePlaceholder')}
-            value={newZoneName}
-            onChange={(e) => setNewZoneName(e.target.value)}
-            className="min-h-[44px]"
-          />
-          <Button type="submit" disabled={!newZoneName.trim() || createZone.isPending}>
-            {createZone.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          </Button>
-        </form>
+        <Button type="button" onClick={() => setShowAddModal(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Adicionar zona
+        </Button>
       </div>
-      <ul className="space-y-2 max-h-[200px] overflow-y-auto">
+
+      {/* Grid de zonas (padrão cardápio: imagem + nome) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[320px] overflow-y-auto">
         {hallZones.length === 0 ? (
-          <li className="text-sm text-muted-foreground py-2">{t('tablesCentral.noZones')}</li>
+          <p className="col-span-full text-sm text-muted-foreground py-4">{t('tablesCentral.noZones')}</p>
         ) : (
           hallZones.map((z) => (
-            <li key={z.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
-              {editingId === z.id ? (
-                <div className="flex flex-1 gap-2">
-                  <Input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="min-h-[40px]"
-                    autoFocus
-                  />
-                  <Button size="sm" onClick={() => handleUpdate(z.id)} disabled={updateZone.isPending}>
-                    OK
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setEditingId(null); setEditName(''); }}>Cancelar</Button>
-                </div>
-              ) : (
-                <>
-                  <span className="font-medium">{z.name}</span>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => { setEditingId(z.id); setEditName(z.name); }}>Editar</Button>
-                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(z.id, z.name)} disabled={deleteZone.isPending}>
-                      {t('tablesCentral.deleteZone')}
-                    </Button>
+            <div
+              key={z.id}
+              className="rounded-xl border border-border overflow-hidden bg-card hover:border-primary/40 transition-colors"
+            >
+              <div className="aspect-[4/3] bg-muted/50 relative">
+                {z.image_url ? (
+                  <img src={z.image_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                    <ImageIcon className="h-10 w-10 opacity-50" />
                   </div>
-                </>
-              )}
-            </li>
+                )}
+              </div>
+              <div className="p-2.5 flex items-center justify-between gap-2 min-w-0">
+                <span className="font-medium text-sm truncate">{z.name}</span>
+                <div className="flex gap-0.5 flex-shrink-0">
+                  <Button size="sm" variant="ghost" className="h-7 px-1.5" onClick={() => openEdit(z)}>Editar</Button>
+                  <Button size="sm" variant="ghost" className="h-7 px-1.5 text-destructive hover:text-destructive" onClick={() => handleDelete(z.id, z.name)} disabled={deleteZone.isPending}>
+                    {t('tablesCentral.deleteZone')}
+                  </Button>
+                </div>
+              </div>
+            </div>
           ))
         )}
-      </ul>
+      </div>
+
+      {/* Modal Adicionar zona */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nova zona</DialogTitle>
+            <DialogDescription>Adicione o nome e, opcionalmente, uma imagem para identificar a zona.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div>
+              <Label htmlFor="zone-name-add">Nome da zona</Label>
+              <Input
+                id="zone-name-add"
+                placeholder={t('tablesCentral.zonePlaceholder')}
+                value={zoneFormName}
+                onChange={(e) => setZoneFormName(e.target.value)}
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <Label>Imagem da zona</Label>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                className="hidden"
+                id="zone-image-add"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file || !restaurantId) return;
+                  setZoneImageUploading(true);
+                  try {
+                    const url = await uploadProductImage(restaurantId, file);
+                    setZoneFormImageUrl(url);
+                    toast({ title: 'Imagem enviada!' });
+                  } catch (err) {
+                    toast({ title: 'Erro ao enviar imagem', description: err instanceof Error ? err.message : 'Tente outro arquivo.', variant: 'destructive' });
+                  } finally {
+                    setZoneImageUploading(false);
+                    e.target.value = '';
+                  }
+                }}
+              />
+              <label
+                htmlFor="zone-image-add"
+                className={cn(
+                  'flex flex-col items-center justify-center w-full h-20 rounded-xl border-2 cursor-pointer transition-colors mt-1.5',
+                  zoneFormImageUrl ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40 hover:bg-muted/60'
+                )}
+              >
+                {zoneImageUploading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                ) : zoneFormImageUrl ? (
+                  <img src={zoneFormImageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
+                ) : (
+                  <>
+                    <Upload className="h-5 w-5 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground">Clique para enviar</span>
+                  </>
+                )}
+              </label>
+              {zoneFormImageUrl && (
+                <button type="button" onClick={() => setZoneFormImageUrl('')} className="mt-1 text-xs text-muted-foreground hover:text-destructive">
+                  Remover imagem
+                </button>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>Cancelar</Button>
+              <Button type="submit" disabled={!zoneFormName.trim() || createZone.isPending}>
+                {createZone.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Adicionar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Editar zona */}
+      <Dialog open={!!editingZone} onOpenChange={(o) => !o && setEditingZone(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar zona</DialogTitle>
+            <DialogDescription>Altere o nome ou a imagem da zona.</DialogDescription>
+          </DialogHeader>
+          {editingZone && (
+            <form onSubmit={handleUpdate} className="space-y-4">
+              <div>
+                <Label htmlFor="zone-name-edit">Nome da zona</Label>
+                <Input
+                  id="zone-name-edit"
+                  placeholder={t('tablesCentral.zonePlaceholder')}
+                  value={editFormName}
+                  onChange={(e) => setEditFormName(e.target.value)}
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label>Imagem da zona</Label>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                  className="hidden"
+                  id="zone-image-edit"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !restaurantId) return;
+                    setEditImageUploading(true);
+                    try {
+                      const url = await uploadProductImage(restaurantId, file);
+                      setEditFormImageUrl(url);
+                      toast({ title: 'Imagem enviada!' });
+                    } catch (err) {
+                      toast({ title: 'Erro ao enviar imagem', variant: 'destructive' });
+                    } finally {
+                      setEditImageUploading(false);
+                      e.target.value = '';
+                    }
+                  }}
+                />
+                <label
+                  htmlFor="zone-image-edit"
+                  className={cn(
+                    'flex flex-col items-center justify-center w-full h-20 rounded-xl border-2 cursor-pointer transition-colors mt-1.5',
+                    editFormImageUrl ? 'border-border hover:border-primary/40' : 'border-dashed border-border bg-muted/40 hover:bg-muted/60'
+                  )}
+                >
+                  {editImageUploading ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  ) : editFormImageUrl ? (
+                    <img src={editFormImageUrl} alt="" className="w-full h-full object-cover rounded-lg" />
+                  ) : (
+                    <>
+                      <Upload className="h-5 w-5 text-muted-foreground mb-1" />
+                      <span className="text-xs text-muted-foreground">Clique para enviar</span>
+                    </>
+                  )}
+                </label>
+                {editFormImageUrl && (
+                  <button type="button" onClick={() => setEditFormImageUrl('')} className="mt-1 text-xs text-muted-foreground hover:text-destructive">
+                    Remover imagem
+                  </button>
+                )}
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditingZone(null)}>Cancelar</Button>
+                <Button type="submit" disabled={!editFormName.trim() || updateZone.isPending}>
+                  {updateZone.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Salvar
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

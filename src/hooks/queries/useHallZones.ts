@@ -30,7 +30,7 @@ export function useHallZones(restaurantId: string | null) {
 export function useCreateHallZone(restaurantId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async (payload: { name: string; image_url?: string | null }) => {
       if (!restaurantId) throw new Error('Restaurant required');
       const { data: list } = await supabase
         .from('hall_zones')
@@ -41,7 +41,7 @@ export function useCreateHallZone(restaurantId: string | null) {
       const nextOrder = (list?.[0]?.order_index ?? -1) + 1;
       const { data, error } = await supabase
         .from('hall_zones')
-        .insert({ restaurant_id: restaurantId, name: name.trim(), order_index: nextOrder })
+        .insert({ restaurant_id: restaurantId, name: payload.name.trim(), image_url: payload.image_url || null, order_index: nextOrder })
         .select()
         .single();
       if (error) throw error;
@@ -58,10 +58,10 @@ export function useCreateHallZone(restaurantId: string | null) {
 export function useUpdateHallZone(restaurantId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+    mutationFn: async ({ id, name, image_url }: { id: string; name: string; image_url?: string | null }) => {
       const { data, error } = await supabase
         .from('hall_zones')
-        .update({ name: name.trim(), updated_at: new Date().toISOString() })
+        .update({ name: name.trim(), image_url: image_url ?? null, updated_at: new Date().toISOString() })
         .eq('id', id)
         .select()
         .single();

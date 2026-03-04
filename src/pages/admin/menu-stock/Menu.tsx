@@ -357,6 +357,7 @@ function CentralProductRow({ product, currency, exchangeRates, showInventory, on
             checked={product.available_for_delivery ?? true}
             onCheckedChange={() => onToggleDeliveryAvailable(product.id, product.available_for_delivery ?? true)}
             title={product.available_for_delivery ?? true ? 'Disponível para delivery — clique para desativar' : 'Indisponível para delivery — clique para ativar'}
+            className="data-[state=checked]:bg-slate-600 data-[state=checked]:hover:bg-slate-600 dark:data-[state=checked]:bg-slate-500 dark:data-[state=checked]:hover:bg-slate-500"
           />
         </TableCell>
       )}

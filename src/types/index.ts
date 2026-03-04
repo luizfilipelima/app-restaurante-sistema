@@ -464,6 +464,8 @@ export interface HallZone {
   restaurant_id: string;
   name: string;
   order_index: number;
+  /** URL da imagem da zona (exibida na configuração do salão). */
+  image_url?: string | null;
   created_at: string;
   updated_at: string;
 }
