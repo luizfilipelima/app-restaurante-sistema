@@ -154,6 +154,10 @@ export interface Restaurant {
   restaurant_lng?: number | null;
   /** Quando false, esconde a seção de cupom no checkout. Quando true, cupons disponíveis. */
   discount_coupons_enabled?: boolean | null;
+  /** Se true, exige valor mínimo para pedidos delivery (delivery_min_order_value) */
+  delivery_min_order_enabled?: boolean | null;
+  /** Valor mínimo do pedido para delivery em moeda base (centavos BRL, guaranís PYG). Usado quando delivery_min_order_enabled = true */
+  delivery_min_order_value?: number | null;
   /** Templates personalizáveis de mensagens WhatsApp */
   whatsapp_templates?: WhatsAppTemplates | null;
   /** Override manual da receita mensal em BRL (Super Admin). Se definido, usado no Dashboard BI em vez do preço do plano. */
@@ -237,6 +241,8 @@ export interface Product {
   allergens?: string[] | null;
   /** Etiquetas: vegetarian, vegan, spicy, gluten_free, organic */
   labels?: string[] | null;
+  /** Se true, o item aparece no cardápio para pedidos delivery */
+  available_for_delivery?: boolean;
   created_at: string;
   updated_at: string;
 }

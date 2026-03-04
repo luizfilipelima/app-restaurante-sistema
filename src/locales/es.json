@@ -120,6 +120,7 @@
     "errorRestaurantClosed": "Restaurante cerrado",
     "errorRestaurantClosedDesc": "En este momento estamos fuera del horario de atención. Intenta más tarde.",
     "errorDeliveryClosed": "Horario de delivery cerrado",
+    "errorMinOrderDelivery": "El pedido mínimo para delivery es {{min}}. Agregá más ítems para continuar.",
     "tableOrderSuccess": "¡Pedido concluido!",
     "successOrderTitle": "¡Pedido realizado!",
     "successOrderDesc": "Redirigiendo a WhatsApp...",

@@ -22,12 +22,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff, QrCode, Landmark, Store, BookOpen, ClipboardList } from 'lucide-react';
+import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff, QrCode, Landmark, Store, BookOpen, ClipboardList, Settings2 } from 'lucide-react';
 import { WhatsAppTemplatesModal } from '@/components/admin/marketing-sales/WhatsAppTemplatesModal';
 import { processTemplate, getTemplate } from '@/lib/whatsapp/whatsappTemplates';
 import type { WhatsAppTemplates } from '@/types';
 import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { RoleGuard } from '@/components/auth/RoleGuard';
+import { useCanAccess } from '@/hooks/auth/useUserRole';
 import { ROLES_CANCEL_ORDER } from '@/hooks/auth/useUserRole';
 import { useCouriers, useOrders, usePrintSettings, useProductPrintDestinations, creditLoyaltyPoint, getOrderSector } from '@/hooks/queries';
 import { isUUID } from '@/hooks/admin/useResolveRestaurantId';
@@ -36,6 +37,7 @@ import type { DualReceiptSlot } from '@/hooks/printer/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
 import type { PrintDestination } from '@/types';
 import { CompletedOrdersView } from '@/components/orders/CompletedOrdersView';
+import { DeliverySettingsModal } from '@/components/admin/delivery-logistics/DeliverySettingsModal';
 import {
   Select,
   SelectContent,
@@ -157,6 +159,8 @@ export default function AdminOrders() {
   const [dispatchOrder, setDispatchOrder] = useState<DatabaseOrder | null>(null);
   const [selectedCourierForDispatch, setSelectedCourierForDispatch] = useState<string>('');
   const [showWaTemplatesModal, setShowWaTemplatesModal] = useState(false);
+  const [showDeliverySettingsModal, setShowDeliverySettingsModal] = useState(false);
+  const canManageDeliverySettings = useCanAccess(['super_admin', 'owner', 'manager', 'restaurant_admin']);
   const [localWaTemplates, setLocalWaTemplates] = useState<WhatsAppTemplates | null | undefined>(undefined);
   const { couriers } = useCouriers(restaurantId);
   const { printOrder, receiptData, secondReceiptData } = usePrinter();
@@ -507,6 +511,13 @@ export default function AdminOrders() {
         currentTemplates={localWaTemplates}
         onSaved={(saved) => setLocalWaTemplates(saved)}
       />
+      <DeliverySettingsModal
+        open={showDeliverySettingsModal}
+        onClose={() => setShowDeliverySettingsModal(false)}
+        restaurantId={restaurantId}
+        restaurant={restaurant ?? null}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] })}
+      />
       <AdminPageLayout>
         <AdminPageHeader
           title="Gestão de Delivery e Retiradas"
@@ -549,6 +560,15 @@ export default function AdminOrders() {
                   Concluídos
                 </button>
               </div>
+              {canManageDeliverySettings && (
+                <button
+                  onClick={() => setShowDeliverySettingsModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-background hover:bg-muted/50 text-sm font-medium transition-all"
+                >
+                  <Settings2 className="h-4 w-4" />
+                  Configurações do delivery
+                </button>
+              )}
             </>
           }
         />

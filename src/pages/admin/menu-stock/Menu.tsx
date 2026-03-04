@@ -92,17 +92,16 @@ import {
   Wine,
   Tag,
   ShoppingCart,
-  Smartphone,
   Palette,
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/menu-stock/MenuQRCodeCard';
-import MenuMobilePreview from '@/components/admin/menu-stock/MenuMobilePreview';
 import MenuThemeSelector from '@/components/admin/menu-stock/MenuThemeSelector';
 import CategoryIconPicker from '@/components/admin/menu-stock/CategoryIconPicker';
 import { getCategoryIconComponent } from '@/lib/menu/categoryIcons';
 import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/menu-stock/ProductAddonsSection';
 import ProductAllergensLabelsSection from '@/components/admin/menu-stock/ProductAllergensLabelsSection';
 import { useProductUpsells, useSaveProductUpsells, useProductComboItems, useProductAddons, useSaveProductAddons } from '@/hooks/queries';
+import { useCanAccess } from '@/hooks/auth/useUserRole';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -154,6 +153,8 @@ const formDefaults = {
   // Alérgenos e etiquetas
   allergens: [] as string[],
   labels: [] as string[],
+  // Disponível para delivery
+  available_for_delivery: true,
 };
 
 // ─── SortableCategoryItem ──────────────────────────────────────────────────────
@@ -258,10 +259,12 @@ interface CentralProductRowProps {
   onDuplicate: (p: Product) => void;
   onDelete: (id: string) => void;
   onToggleActive: (id: string, isActive: boolean) => void;
+  onToggleDeliveryAvailable?: (id: string, available: boolean) => void;
+  canManageDelivery?: boolean;
   offersBasePath?: string;
 }
 
-function CentralProductRow({ product, currency, exchangeRates, showInventory, onEdit, onDuplicate, onDelete, onToggleActive, offersBasePath }: CentralProductRowProps) {
+function CentralProductRow({ product, currency, exchangeRates, showInventory, onEdit, onDuplicate, onDelete, onToggleActive, onToggleDeliveryAvailable, canManageDelivery, offersBasePath }: CentralProductRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
 
@@ -348,6 +351,16 @@ function CentralProductRow({ product, currency, exchangeRates, showInventory, on
         />
       </TableCell>
 
+      {canManageDelivery && onToggleDeliveryAvailable && (
+        <TableCell className="w-12 p-2">
+          <Switch
+            checked={product.available_for_delivery ?? true}
+            onCheckedChange={() => onToggleDeliveryAvailable(product.id, product.available_for_delivery ?? true)}
+            title={product.available_for_delivery ?? true ? 'Disponível para delivery — clique para desativar' : 'Indisponível para delivery — clique para ativar'}
+          />
+        </TableCell>
+      )}
+
       <TableCell className="w-[140px] p-1.5">
         <div className="flex items-center gap-0.5">
           {offersBasePath && (
@@ -380,6 +393,7 @@ export default function AdminMenu() {
   const basePath = useAdminBasePath();
   const { restaurant: ctxRestaurant } = useAdminRestaurant();
   const currency = useAdminCurrency();
+  const canManageDelivery = useCanAccess(['super_admin', 'owner', 'manager', 'restaurant_admin']);
   const exchangeRates = ctxRestaurant?.exchange_rates ?? { pyg_per_brl: 3600, ars_per_brl: 1150 };
 
   // Core data
@@ -437,7 +451,6 @@ export default function AdminMenu() {
 
   // QR / Online modal
   const [showOnlineModal, setShowOnlineModal] = useState(false);
-  const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [showMenuConfigModal, setShowMenuConfigModal] = useState(false);
   const [slug, setSlug] = useState('');
   const [slugSaving, setSlugSaving] = useState(false);
@@ -733,6 +746,7 @@ export default function AdminMenu() {
       cardLayout: (product.card_layout === 'beverage' ? 'beverage' : 'grid') as 'grid' | 'beverage',
       allergens: Array.isArray(product.allergens) ? product.allergens : [],
       labels: Array.isArray(product.labels) ? product.labels : [],
+      available_for_delivery: product.available_for_delivery ?? true,
       hasInventory,
       invQuantity,
       invMinQuantity,
@@ -816,6 +830,7 @@ export default function AdminMenu() {
         card_layout: form.cardLayout,
         allergens: form.allergens?.length ? form.allergens : null,
         labels: form.labels?.length ? form.labels : null,
+        available_for_delivery: form.available_for_delivery ?? true,
       };
       let savedProductId = editingProduct?.id ?? '';
 
@@ -939,6 +954,18 @@ export default function AdminMenu() {
     }
   };
 
+  const toggleDeliveryAvailable = async (productId: string, available: boolean) => {
+    try {
+      const { error } = await supabase.from('products').update({ available_for_delivery: !available }).eq('id', productId);
+      if (error) throw error;
+      setProducts((prev) => prev.map((p) => (p.id === productId ? { ...p, available_for_delivery: !available } : p)));
+      invalidatePublicMenuCache(queryClient, slug || restaurant?.slug || ctxRestaurant?.slug);
+      toast({ title: 'Disponibilidade para delivery atualizada!' });
+    } catch (e) {
+      toast({ title: 'Erro ao atualizar', variant: 'destructive' });
+    }
+  };
+
   const toggleProductStatus = async (productId: string, isActive: boolean) => {
     try {
       const { error } = await supabase.from('products').update({ is_active: !isActive }).eq('id', productId);
@@ -971,6 +998,7 @@ export default function AdminMenu() {
           is_pizza: product.is_pizza, is_marmita: product.is_marmita ?? false, is_active: product.is_active, order_index: nextOrder ?? 0,
           print_destination: product.print_destination ?? null,
           card_layout: product.card_layout ?? 'grid',
+          available_for_delivery: product.available_for_delivery ?? true,
         })
         .select('*').single();
       if (error) throw error;
@@ -1207,10 +1235,6 @@ export default function AdminMenu() {
               <Palette className="h-4 w-4" />
               <span className="hidden md:inline">Tema</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowMobilePreview(true)} className="h-10 gap-2" disabled={!slug && !restaurant?.slug} title="Ver como o cliente vê no celular">
-              <Smartphone className="h-4 w-4" />
-              <span className="hidden md:inline">Visualizar</span>
-            </Button>
             <Button variant="outline" size="sm" onClick={() => setShowOnlineModal(true)} className="h-10 gap-2">
               <QrCode className="h-4 w-4" />
               <span className="hidden md:inline">Online</span>
@@ -1417,6 +1441,9 @@ export default function AdminMenu() {
                                   </>
                                 )}
                                 <TableHead className="w-12 text-center">Ativo</TableHead>
+                                {canManageDelivery && (
+                                  <TableHead className="w-12 text-center" title="Disponível para delivery">Delivery</TableHead>
+                                )}
                                 <TableHead className="w-[120px] text-right">Ações</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -1433,6 +1460,8 @@ export default function AdminMenu() {
                                     onDuplicate={duplicateProduct}
                                     onDelete={deleteProduct}
                                     onToggleActive={toggleProductStatus}
+                                    onToggleDeliveryAvailable={canManageDelivery ? toggleDeliveryAvailable : undefined}
+                                    canManageDelivery={canManageDelivery}
                                     offersBasePath={basePath ? `${basePath}/offers` : undefined}
                                   />
                                 ))}
@@ -1632,6 +1661,20 @@ export default function AdminMenu() {
                 </button>
               </div>
             </div>
+
+            {/* Disponível para delivery */}
+            {canManageDelivery && (
+              <div className="flex items-center justify-between gap-4 p-3 rounded-xl border border-border bg-muted/30">
+                <div>
+                  <Label className="text-sm font-medium">Disponível para delivery</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Se ativado, o item aparecerá no cardápio para pedidos delivery</p>
+                </div>
+                <Switch
+                  checked={form.available_for_delivery ?? true}
+                  onCheckedChange={(checked) => setForm((f) => ({ ...f, available_for_delivery: checked }))}
+                />
+              </div>
+            )}
 
             {/* Alérgenos e Etiquetas */}
             <ProductAllergensLabelsSection
@@ -2383,15 +2426,6 @@ export default function AdminMenu() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* ── Pré-visualização Mobile (iPhone 17 Pro Max) ─────────────────────── */}
-      <MenuMobilePreview
-        open={showMobilePreview}
-        onOpenChange={setShowMobilePreview}
-        slug={slug || restaurant?.slug || ''}
-        interactiveDefault={true}
-        restaurantName={restaurant?.name ?? ''}
-      />
 
       {/* ── Cardápio Online Modal ───────────────────────────────────────────── */}
       <Dialog open={showOnlineModal} onOpenChange={setShowOnlineModal}>

@@ -454,6 +454,13 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         setFormError(t('checkout.errorDeliveryClosed'));
         return;
       }
+      // Valor mínimo para delivery (só quando ativado)
+      const minOrderEnabled = (currentRestaurant as { delivery_min_order_enabled?: boolean | null })?.delivery_min_order_enabled === true;
+      const minOrderValue = (currentRestaurant as { delivery_min_order_value?: number | null })?.delivery_min_order_value ?? 0;
+      if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && minOrderEnabled && minOrderValue > 0 && subtotal < minOrderValue) {
+        setFormError(t('checkout.errorMinOrderDelivery', { min: formatPrice(minOrderValue, baseCurrency) }));
+        return;
+      }
     }
 
     // Constrói o link do WhatsApp ANTES do await para poder abrir a aba de forma síncrona.
