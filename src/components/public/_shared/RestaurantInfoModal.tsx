@@ -4,7 +4,7 @@
  */
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { RestaurantAboutContent } from '@/components/public/_shared/RestaurantAboutContent';
 import type { Restaurant } from '@/types';
@@ -18,9 +18,15 @@ interface RestaurantInfoModalProps {
 function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoModalProps) {
   const { i18n } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const lang = (i18n.language === 'es' ? 'es' : 'pt') as 'pt' | 'es';
   const slug = restaurant?.slug ?? '';
   const basePath = slug && location.pathname.startsWith(`/${slug}`) ? `/${slug}` : '';
+
+  const handleReservaClick = () => {
+    onOpenChange(false);
+    navigate(basePath ? `${basePath}/reservar` : '/reservar');
+  };
 
   if (!restaurant) return null;
 
@@ -34,7 +40,7 @@ function RestaurantInfoModal({ open, onOpenChange, restaurant }: RestaurantInfoM
           restaurant={restaurant}
           lang={lang}
           basePath={basePath}
-          onReservaClick={() => onOpenChange(false)}
+          onReservaClick={handleReservaClick}
         />
       </DialogContent>
     </Dialog>

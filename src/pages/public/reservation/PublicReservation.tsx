@@ -5,7 +5,7 @@
  * Mostra posição na fila quando houver.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Barcode from 'react-barcode';
@@ -116,9 +116,6 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
 
   const [zones, setZones] = useState<ZoneOption[]>([]);
   const [result, setResult] = useState<{ short_code: string; table_number: string; scheduled_at: string } | null>(null);
-
-  const dateInputRef = useRef<HTMLInputElement>(null);
-  const timeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (restaurant?.phone_country && ['BR', 'PY', 'AR'].includes(restaurant.phone_country)) {
@@ -640,58 +637,30 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>{t('reservation.date')}</Label>
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => dateInputRef.current?.click()}
-                onKeyDown={(e) => e.key === 'Enter' && dateInputRef.current?.click()}
-                className="relative mt-1 flex min-h-[44px] cursor-pointer items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2.5 text-sm ring-offset-background transition-colors hover:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
-              >
-                <input
-                  ref={dateInputRef}
-                  type="date"
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  min={today}
-                  required
-                  aria-label={t('reservation.date')}
-                  className="absolute w-px h-px -left-[9999px] opacity-0 overflow-hidden"
-                />
-                <span className={`flex-1 ${scheduledDate ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                  {scheduledDate
-                    ? format(new Date(scheduledDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: dateLocale })
-                    : t('reservation.selectDatePlaceholder')}
-                </span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-50" />
-              </div>
+              <Input
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                min={today}
+                required
+                aria-label={t('reservation.date')}
+                placeholder={t('reservation.selectDatePlaceholder')}
+                className="mt-1 min-h-[44px] [color-scheme:light] dark:[color-scheme:dark]"
+              />
             </div>
             <div>
               <Label>{t('reservation.time')}</Label>
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => timeInputRef.current?.click()}
-                onKeyDown={(e) => e.key === 'Enter' && timeInputRef.current?.click()}
-                className="relative mt-1 flex min-h-[44px] cursor-pointer items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2.5 text-sm ring-offset-background transition-colors hover:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
-              >
-                <input
-                  ref={timeInputRef}
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(e) => { setScheduledTime(e.target.value); setError(''); }}
-                  min={restaurant?.reservation_start_time?.trim() || undefined}
-                  max={restaurant?.reservation_end_time?.trim() || undefined}
-                  required
-                  aria-label={t('reservation.time')}
-                  className="absolute w-px h-px -left-[9999px] opacity-0 overflow-hidden"
-                />
-                <span className={`flex-1 ${scheduledTime ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                  {scheduledTime
-                    ? scheduledTime.slice(0, 5)
-                    : t('reservation.selectTimePlaceholder')}
-                </span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-50" />
-              </div>
+              <Input
+                type="time"
+                value={scheduledTime}
+                onChange={(e) => { setScheduledTime(e.target.value); setError(''); }}
+                min={restaurant?.reservation_start_time?.trim() || undefined}
+                max={restaurant?.reservation_end_time?.trim() || undefined}
+                required
+                aria-label={t('reservation.time')}
+                placeholder={t('reservation.selectTimePlaceholder')}
+                className="mt-1 min-h-[44px] [color-scheme:light] dark:[color-scheme:dark]"
+              />
             </div>
           </div>
           {scheduledDate && scheduledTime && (

@@ -2116,21 +2116,23 @@ export function TableOperationSheet({
                 </p>
               )}
 
-              {/* Resetar mesa — cancela pedidos, remove reservas, limpa comandas e dados */}
-              <Button
-                size="lg"
-                variant="outline"
-                className="min-h-[48px] touch-manipulation border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/40"
-                onClick={() => setShowResetConfirm(true)}
-                disabled={resetTableMutation.isPending}
-              >
-                {resetTableMutation.isPending ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <RotateCcw className="h-5 w-5 mr-2" />
-                )}
-                {t('tablesCentral.resetTable')}
-              </Button>
+              {/* Resetar mesa — apenas Central de Mesas (modo gestão), não no terminal do garçom */}
+              {isManagement && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="min-h-[48px] touch-manipulation border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/40"
+                  onClick={() => setShowResetConfirm(true)}
+                  disabled={resetTableMutation.isPending}
+                >
+                  {resetTableMutation.isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <RotateCcw className="h-5 w-5 mr-2" />
+                  )}
+                  {t('tablesCentral.resetTable')}
+                </Button>
+              )}
 
               {/* Excluir mesa definitivamente — apenas Central de Mesas (modo gestão) */}
               {isManagement && onTableDeleted && (
@@ -2280,39 +2282,64 @@ export function TableOperationSheet({
       {/* Modal transferir mesa */}
       <Dialog open={showTransferDialog} onOpenChange={(open) => { if (!open) setTransferTargetTableId(null); setShowTransferDialog(open); }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+          <DialogHeader className="space-y-1.5">
             <DialogTitle>{t('tablesCentral.transferTable')}</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-[13px] leading-relaxed">
               {t('tablesCentral.transferTableConfirm')}
             </DialogDescription>
           </DialogHeader>
-          {table && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {t('tablesCentral.table')} {table.number} → {t('tablesCentral.selectTargetTable')}
-              </p>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
-                {transferTargetTables.map((tbl: TableWithStatus) => {
-                  const zoneName = hallZones.find((z) => z.id === tbl.hall_zone_id)?.name;
-                  return (
-                    <Button
-                      key={tbl.id}
-                      variant={transferTargetTableId === tbl.id ? 'default' : 'outline'}
-                      size="sm"
-                      className="min-h-[44px] flex flex-col items-center gap-0.5"
-                      onClick={() => setTransferTargetTableId(tbl.id)}
-                    >
-                      <span className="font-semibold">Mesa {tbl.number}</span>
-                      {zoneName && (
-                        <span className="text-xs opacity-80 font-normal">{zoneName}</span>
-                      )}
-                    </Button>
-                  );
-                })}
+          {table && (() => {
+            const byZone = new Map<string | null, TableWithStatus[]>();
+            for (const tbl of transferTargetTables) {
+              const zId = tbl.hall_zone_id ?? null;
+              if (!byZone.has(zId)) byZone.set(zId, []);
+              byZone.get(zId)!.push(tbl);
+            }
+            const zoneOrder = hallZones.map((z) => z.id).concat([null]);
+            return (
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {t('tablesCentral.table')} {table.number} → {t('tablesCentral.selectTargetTable')}
+                </p>
+                <div className="max-h-[220px] overflow-y-auto rounded-lg border border-border/60 bg-muted/30 p-2 space-y-3">
+                  {zoneOrder.filter((zId) => byZone.has(zId)).map((zId) => {
+                    const zoneName = zId ? hallZones.find((z) => z.id === zId)?.name ?? null : null;
+                    const tablesInZone = byZone.get(zId)!;
+                    return (
+                      <div key={zId ?? '__sem_zona__'} className="space-y-1.5">
+                        {zoneName && (
+                          <p className="text-[11px] font-medium text-muted-foreground/90 px-1.5 truncate">
+                            {zoneName}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-1.5">
+                          {tablesInZone.map((tbl: TableWithStatus) => {
+                            const selected = transferTargetTableId === tbl.id;
+                            return (
+                              <button
+                                key={tbl.id}
+                                type="button"
+                                onClick={() => setTransferTargetTableId(tbl.id)}
+                                className={cn(
+                                  'inline-flex items-center justify-center min-w-[72px] px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                                  selected
+                                    ? 'bg-primary text-primary-foreground shadow-sm'
+                                    : 'bg-background border border-border hover:bg-muted/60 hover:border-primary/40'
+                                )}
+                              >
+                                Mesa {tbl.number}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
-          <DialogFooter className="gap-2 sm:gap-0">
+            );
+          })()}
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
             <Button variant="outline" onClick={() => setShowTransferDialog(false)} disabled={transferTableMutation.isPending}>
               {t('tablesCentral.cancel')}
             </Button>

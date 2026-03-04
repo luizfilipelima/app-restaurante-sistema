@@ -94,14 +94,13 @@ function buildMenuUrl(slug: string): string {
   return `https://${slug}.quiero.food`;
 }
 
-function buildWhatsAppUrl(restaurant: BioRestaurant, lang: Lang): string {
+function buildWhatsAppUrl(restaurant: BioRestaurant): string {
   const raw = (restaurant.whatsapp || restaurant.phone || '').replace(/\D/g, '');
   if (!raw) return '#';
   const country = restaurant.phone_country || 'BR';
   const prefix = country === 'PY' ? '595' : country === 'AR' ? '54' : '55';
   const number = raw.startsWith(prefix) ? raw : prefix + raw;
-  const msg = encodeURIComponent(TEXTS[lang].whatsappMsg);
-  return `https://wa.me/${number}?text=${msg}`;
+  return `https://wa.me/${number}`;
 }
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
@@ -233,7 +232,7 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
   const baseUrl = buildMenuUrl(restaurant.slug);
   const menuUrl = baseUrl + querySuffix;
   const reservarUrl = baseUrl + '/reservar' + querySuffix;
-  const whatsAppUrl = buildWhatsAppUrl(restaurant, lang);
+  const whatsAppUrl = buildWhatsAppUrl(restaurant);
   const hasWhatsApp = !!(restaurant.whatsapp || restaurant.phone);
 
   const basePath = tenantSlugProp ? '' : (restaurantSlug ? `/${restaurantSlug}` : '');
