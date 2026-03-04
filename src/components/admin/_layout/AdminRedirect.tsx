@@ -5,6 +5,7 @@
  * para a URL canônica adequada ao seu cargo:
  *   • restaurant_admin → /{slug}/painel
  *   • kitchen          → /{slug}/kds
+ *   • waiter           → /{slug}/terminal-garcom (apenas tela do garçom, sem painel)
  *
  * Usado como destino pós-login (PublicRoute) e na rota legada /admin.
  */
@@ -34,20 +35,32 @@ export default function AdminRedirect() {
       return;
     }
 
-    supabase
-      .from('restaurants')
-      .select('slug')
-      .eq('id', user.restaurant_id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.slug) {
-          const subpath = user.role === 'kitchen' ? 'kds' : 'painel';
-          navigate(`/${data.slug}/${subpath}`, { replace: true });
-        } else {
-          // Fallback: slug não configurado
-          navigate('/login', { replace: true });
-        }
-      });
+    Promise.all([
+      supabase.from('restaurants').select('slug').eq('id', user.restaurant_id).maybeSingle(),
+      supabase
+        .from('restaurant_user_roles')
+        .select('role')
+        .eq('restaurant_id', user.restaurant_id)
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle(),
+    ]).then(([restaurantRes, rurRes]) => {
+      const slug = restaurantRes.data?.slug;
+      const effectiveRole = rurRes.data?.role ?? user.role;
+      const subpath =
+        effectiveRole === 'kitchen'
+          ? 'kds'
+          : effectiveRole === 'waiter'
+            ? 'terminal-garcom'
+            : 'painel';
+      if (slug) {
+        navigate(`/${slug}/${subpath}`, { replace: true });
+      } else if (effectiveRole === 'waiter') {
+        navigate(`/terminal-garcom?restaurant_id=${user.restaurant_id}`, { replace: true });
+      } else {
+        navigate('/login', { replace: true });
+      }
+    });
   }, [user, navigate, tried]);
 
   return (

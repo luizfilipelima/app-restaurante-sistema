@@ -20,6 +20,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
+import { getBioPublicUrl } from '@/lib/core/utils';
 import { toast } from '@/hooks/shared/use-toast';
 import {
   Save, Upload, Loader2, Printer,
@@ -1402,6 +1403,44 @@ export default function AdminSettings() {
             ABA — Links e Bio (botões da página pública /bio)
         ══════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="links-bio" className="mt-0 space-y-5">
+          {/* Relação direta com a página pública /bio do restaurante */}
+          {restaurant?.slug && (
+            <div className="admin-card-border bg-card p-4 rounded-xl border-primary/20 bg-primary/5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">
+                    Esta aba configura a página pública <strong>Link da Bio</strong> do seu restaurante.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 truncate" title={getBioPublicUrl(restaurant.slug)}>
+                    {getBioPublicUrl(restaurant.slug)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => window.open(getBioPublicUrl(restaurant.slug), '_blank')}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Ver página
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(getBioPublicUrl(restaurant.slug));
+                      toast({ title: 'Link copiado!' });
+                    }}
+                  >
+                    Copiar link
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="admin-card-border bg-card p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-3">

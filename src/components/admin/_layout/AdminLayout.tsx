@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/shared/use-toast';
 import { useSessionManager } from '@/hooks/auth/useSessionManager';
-import { getCardapioPublicUrl } from '@/lib/core/utils';
+import { getCardapioPublicUrl, getBioPublicUrl } from '@/lib/core/utils';
 import { prefetchRoute } from '@/lib/routePrefetch';
 import { supabase } from '@/lib/core/supabase';
 import {
@@ -528,11 +528,7 @@ export default function AdminLayout({
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const cardapioUrl = restaurant?.slug ? getCardapioPublicUrl(restaurant.slug) : '';
   const cardapioViewOnlyUrl = cardapioUrl ? cardapioUrl.replace(/\/$/, '') + '/menu' : '';
-  const bioUrl = restaurant?.slug
-    ? (typeof window !== 'undefined' && window.location.hostname.includes('localhost')
-        ? `http://localhost:5173/${restaurant.slug}/bio`
-        : `https://${restaurant.slug}.quiero.food/bio`)
-    : '';
+  const bioUrl = restaurant?.slug ? getBioPublicUrl(restaurant.slug) : '';
   const kdsUrl = restaurant?.slug
     ? `${origin}/${restaurant.slug}/kds`
     : restaurantId

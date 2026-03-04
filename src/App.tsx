@@ -570,6 +570,23 @@ function App() {
             </ProtectedRoute>
           }
         />
+        {/* Terminal do Garçom — garçom acessa só esta tela (sem painel) */}
+        <Route
+          path="/:slug/terminal-garcom"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.WAITER, UserRole.CASHIER, UserRole.MANAGER, UserRole.OWNER, UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN]}>
+              <WaiterTerminal />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/terminal-garcom"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.WAITER, UserRole.CASHIER, UserRole.MANAGER, UserRole.OWNER, UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN]}>
+              <WaiterTerminal />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Rotas legadas */}
         <Route path="/admin" element={<ProtectedRoute allowedRoles={[UserRole.RESTAURANT_ADMIN]}><AdminRedirect /></ProtectedRoute>} />

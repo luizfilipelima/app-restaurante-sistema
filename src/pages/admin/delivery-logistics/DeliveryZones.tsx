@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense, lazy, useCallback } from 'react';
+import { useState, useEffect, Suspense, lazy, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/core/supabase';
 import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { convertPriceToStorage, convertPriceFromStorage, convertBetweenCurrencies, getCurrencySymbol, formatPrice, formatPriceInputPyG } from '@/lib/priceHelper';
+import { reverseGeocode, formatAddressForDisplay } from '@/lib/geo/geocoding';
 import type { CurrencyCode } from '@/lib/priceHelper';
 import type { DeliveryZone, DeliveryDistanceTier } from '@/types';
 import { Plus, Edit, Trash2, MapPin, Truck, Loader2, Gauge, MapPinned, Package } from 'lucide-react';
@@ -133,6 +134,9 @@ export default function AdminDeliveryZones() {
   const [tierForm, setTierForm] = useState({ kmMin: '0', kmMax: '', feeInput: '0' });
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [restaurantAddress, setRestaurantAddress] = useState<string | null>(null);
+  const [restaurantAddressLoading, setRestaurantAddressLoading] = useState(false);
+  const reverseGeocodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (restaurantWithMode?.restaurant_lat != null && restaurantWithMode?.restaurant_lng != null) {
@@ -144,6 +148,35 @@ export default function AdminDeliveryZones() {
       setRestaurantLng(lng);
     }
   }, [restaurantWithMode?.restaurant_lat, restaurantWithMode?.restaurant_lng, baseCurrency]);
+
+  // Reverse geocoding: exibir endereço do ponto selecionado no mapa (debounce 600ms)
+  useEffect(() => {
+    if (reverseGeocodeTimerRef.current) {
+      clearTimeout(reverseGeocodeTimerRef.current);
+      reverseGeocodeTimerRef.current = null;
+    }
+    const lat = restaurantLat;
+    const lng = restaurantLng;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setRestaurantAddress(null);
+      return;
+    }
+    setRestaurantAddressLoading(true);
+    reverseGeocodeTimerRef.current = setTimeout(() => {
+      reverseGeocodeTimerRef.current = null;
+      reverseGeocode(lat, lng)
+        .then((result) => {
+          setRestaurantAddress(result ? formatAddressForDisplay(result) || result.displayName : null);
+        })
+        .catch(() => setRestaurantAddress(null))
+        .finally(() => setRestaurantAddressLoading(false));
+    }, 600);
+    return () => {
+      if (reverseGeocodeTimerRef.current) {
+        clearTimeout(reverseGeocodeTimerRef.current);
+      }
+    };
+  }, [restaurantLat, restaurantLng]);
 
   const resetZoneForm = useCallback(() => {
     setEditingZone(null);
@@ -283,23 +316,36 @@ export default function AdminDeliveryZones() {
 
   const saveRestaurantLocation = async () => {
     if (!restaurantId) return;
+    const lat = Number(restaurantLat);
+    const lng = Number(restaurantLng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      toast({ title: 'Coordenadas inválidas', variant: 'destructive' });
+      return;
+    }
     setSavingRestaurantLocation(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('restaurants')
         .update({
-          restaurant_lat: restaurantLat,
-          restaurant_lng: restaurantLng,
+          restaurant_lat: lat,
+          restaurant_lng: lng,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', restaurantId);
+        .eq('id', restaurantId)
+        .select('restaurant_lat, restaurant_lng')
+        .single();
       if (error) throw error;
+      if (data) {
+        setRestaurantLat(Number(data.restaurant_lat));
+        setRestaurantLng(Number(data.restaurant_lng));
+      }
       await queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
-      invalidatePublicMenuCache(queryClient, restaurant?.slug);
+      if (restaurant?.slug) invalidatePublicMenuCache(queryClient, restaurant.slug);
       toast({ title: 'Localização do restaurante salva' });
-    } catch (err) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao salvar localização';
       console.error('Erro ao salvar localização:', err);
-      toast({ title: 'Erro ao salvar localização', variant: 'destructive' });
+      toast({ title: 'Erro ao salvar localização', description: message, variant: 'destructive' });
     } finally {
       setSavingRestaurantLocation(false);
     }
@@ -562,6 +608,24 @@ export default function AdminDeliveryZones() {
                     height="240px"
                   />
                 </Suspense>
+                {/* Endereço do ponto selecionado no mapa (reverse geocoding) */}
+                <div className="min-h-[2.5rem] rounded-lg border border-border bg-muted/30 px-3 py-2">
+                  {restaurantAddressLoading ? (
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                      Buscando endereço…
+                    </p>
+                  ) : restaurantAddress ? (
+                    <p className="text-sm text-foreground flex items-start gap-2">
+                      <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
+                      <span>{restaurantAddress}</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Clique no mapa para definir o ponto; o endereço aparecerá aqui.
+                    </p>
+                  )}
+                </div>
                 <Button
                   onClick={saveRestaurantLocation}
                   disabled={savingRestaurantLocation}

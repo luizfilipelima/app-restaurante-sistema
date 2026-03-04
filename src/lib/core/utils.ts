@@ -73,6 +73,13 @@ export function getComandaPublicUrl(slug: string): string {
   return base ? `${base.replace(/\/$/, '')}/comanda` : '';
 }
 
+/** URL pública da página Links e Bio (ex.: slug.quiero.food/bio ou origin/slug/bio). Mesma página configurada na aba Links e Bio em /settings. */
+export function getBioPublicUrl(slug: string): string {
+  if (!slug) return '';
+  const base = getCardapioPublicUrl(slug);
+  return base ? `${base.replace(/\/$/, '')}/bio` : '';
+}
+
 /** Gera link do WhatsApp. O número deve vir com código do país (ex: 5511999999999 ou 595981123456). */
 export function generateWhatsAppLink(phone: string, message: string): string {
   const cleanPhone = phone.replace(/\D/g, '');

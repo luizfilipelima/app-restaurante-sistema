@@ -29,6 +29,9 @@ export function PublicRoute({ children }: PublicRouteProps) {
       case UserRole.KITCHEN:
         // AdminRedirect vai para /{slug}/kds (usa restaurant_id do usuário)
         return <AdminRedirect />;
+      case UserRole.WAITER:
+        // Garçom vai direto para o Terminal do Garçom, sem ver o painel
+        return <AdminRedirect />;
       default:
         return <Navigate to="/" replace />;
     }
