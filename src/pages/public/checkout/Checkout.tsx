@@ -250,9 +250,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     } catch { /* ignore */ }
   }, [restaurantId]);
 
-  // Cartão e QR Code só na entrega — ao mudar para retirada, trocar para PIX
+  // Cartão e QR Code só na retirada — ao mudar para delivery, trocar para PIX
   useEffect(() => {
-    if (deliveryType === DeliveryType.PICKUP && (paymentMethod === PaymentMethod.CARD || paymentMethod === PaymentMethod.QRCODE)) {
+    if (deliveryType === DeliveryType.DELIVERY && (paymentMethod === PaymentMethod.CARD || paymentMethod === PaymentMethod.QRCODE)) {
       setPaymentMethod(PaymentMethod.PIX);
     }
   }, [deliveryType]);
@@ -1210,14 +1210,14 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
             <div className="p-3 space-y-2">
               {(() => {
                 const baseOptions = [
-                  { value: PaymentMethod.PIX, icon: Smartphone, label: 'PIX', desc: 'Envie o comprovante após confirmar', deliveryOnly: false },
-                  { value: PaymentMethod.BANK_TRANSFER, icon: Landmark, label: 'Transferência Bancária', desc: displayCurrency === 'PYG' ? 'Banco, titular, alias' : displayCurrency === 'ARS' ? 'Banco, agência, conta' : 'Disponível em Guaraní ou Peso', deliveryOnly: false },
-                  { value: PaymentMethod.CASH, icon: Banknote, label: t('checkout.cash'), desc: 'Pague na entrega / retirada', deliveryOnly: false },
-                  { value: PaymentMethod.CARD, icon: CreditCard, label: t('checkout.cardOnDelivery'), desc: 'Débito ou crédito na entrega', deliveryOnly: true },
-                  { value: PaymentMethod.QRCODE, icon: QrCode, label: 'QR Code', desc: 'Na entrega', deliveryOnly: true },
+                  { value: PaymentMethod.PIX, icon: Smartphone, label: 'PIX', desc: 'Envie o comprovante após confirmar', pickupOnly: false },
+                  { value: PaymentMethod.BANK_TRANSFER, icon: Landmark, label: 'Transferência Bancária', desc: displayCurrency === 'PYG' ? 'Banco, titular, alias' : displayCurrency === 'ARS' ? 'Banco, agência, conta' : 'Disponível em Guaraní ou Peso', pickupOnly: false },
+                  { value: PaymentMethod.CASH, icon: Banknote, label: t('checkout.cash'), desc: 'Pague na entrega / retirada', pickupOnly: false },
+                  { value: PaymentMethod.CARD, icon: CreditCard, label: t('checkout.cardOnDelivery'), desc: 'Débito ou crédito na retirada', pickupOnly: true },
+                  { value: PaymentMethod.QRCODE, icon: QrCode, label: 'QR Code', desc: 'Na retirada', pickupOnly: true },
                 ];
                 return baseOptions
-                  .filter((o) => !o.deliveryOnly || deliveryType === DeliveryType.DELIVERY)
+                  .filter((o) => !o.pickupOnly || deliveryType === DeliveryType.PICKUP)
                   .map(({ value, icon: Icon, label, desc }) => (
                     <div key={value}>
                       <button
@@ -1331,7 +1331,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                         <div className="mt-2 px-1">
                           <div className="flex items-start gap-2 p-2.5 rounded-xl bg-warning/10 border border-warning/20">
                             <Info className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
-                            <p className="text-xs text-foreground">Pague via QR Code no momento da entrega.</p>
+                            <p className="text-xs text-foreground">Pague via QR Code no momento da retirada.</p>
                           </div>
                         </div>
                       )}
