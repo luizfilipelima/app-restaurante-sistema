@@ -505,11 +505,12 @@ export default function AdminSettings() {
             border-b border-border rounded-none gap-0
           ">
             {[
-              { value: 'perfil',       icon: Store,   label: 'Perfil e Contato' },
-              { value: 'pagamentos',   icon: CreditCard, label: 'PIX e Transferência'     },
-              { value: 'impressao',    icon: Printer, label: 'Impressão'                  },
-              { value: 'cambio',       icon: Repeat,  label: 'Câmbio'                     },
-              { value: 'links-bio',    icon: Link2,   label: 'Links e Bio'                },
+              { value: 'perfil',       icon: Store,      label: 'Perfil e Contato' },
+              { value: 'dominios',     icon: Globe,      label: 'Domínios' },
+              { value: 'pagamentos',   icon: CreditCard, label: 'PIX e Transferência' },
+              { value: 'impressao',    icon: Printer,    label: 'Impressão' },
+              { value: 'cambio',       icon: Repeat,     label: 'Câmbio' },
+              { value: 'links-bio',    icon: Link2,      label: 'Links e Bio' },
               ...(canAccessUsers ? [{ value: 'usuarios', icon: Users, label: t('settings.tabs.users') }] : []),
             ].map(({ value, icon: Icon, label }) => (
               <TabsTrigger
@@ -696,60 +697,6 @@ export default function AdminSettings() {
                   </a>
                 )}
               </FieldGroup>
-
-              {/* Domínio Personalizado (Enterprise) */}
-              <FeatureGuard
-                feature="feature_custom_domain"
-                fallback={
-                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 flex flex-col gap-2">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Lock className="h-4 w-4" />
-                      <span className="text-sm font-medium">Domínio Personalizado</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Disponível no plano Enterprise. Use seu próprio domínio (ex: cardapio.seudominio.com.br) para o cardápio.
-                    </p>
-                    <Link
-                      to={`${basePath}/upgrade`}
-                      className="text-xs text-[#F87116] hover:underline font-medium"
-                    >
-                      Fazer upgrade para Enterprise →
-                    </Link>
-                  </div>
-                }
-              >
-                <FieldGroup>
-                  <SectionLabel>Domínio personalizado</SectionLabel>
-                  <Input
-                    type="text"
-                    value={formData.custom_domain}
-                    onChange={(e) => {
-                      const v = e.target.value
-                        .toLowerCase()
-                        .replace(/^https?:\/\//, '')
-                        .replace(/\/.*$/, '')
-                        .trim();
-                      set('custom_domain', v);
-                    }}
-                    placeholder="cardapio.minhapizzaria.com.br"
-                    className="font-mono text-sm"
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    Configure um CNAME no seu provedor de DNS apontando para o domínio da plataforma (informe-se no suporte). Não inclua https://.
-                  </p>
-                  {formData.custom_domain && (
-                    <a
-                      href={`https://${formData.custom_domain}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-[11px] text-[#F87116] hover:underline font-medium"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      {formData.custom_domain}
-                    </a>
-                  )}
-                </FieldGroup>
-              </FeatureGuard>
             </div>
           </div>
 
@@ -980,7 +927,158 @@ export default function AdminSettings() {
         </TabsContent>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            ABA 3b — PIX e Transferência (dados para o cliente enviar o pagamento)
+            ABA — Domínios (domínio personalizado — Enterprise)
+        ══════════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="dominios" className="mt-0 space-y-5">
+          <FeatureGuard
+            feature="feature_custom_domain"
+            fallback={
+              <div className="admin-card-border bg-card p-6 rounded-xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center">
+                    <Lock className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Domínio Personalizado</h2>
+                    <p className="text-xs text-muted-foreground">Disponível no plano Enterprise</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Use seu próprio domínio (ex: cardapio.seudominio.com.br) para o cardápio e ganhe mais profissionalismo.
+                </p>
+                <Link
+                  to={`${basePath}/upgrade`}
+                  className="inline-flex items-center gap-2 text-sm font-medium text-[#F87116] hover:underline"
+                >
+                  Fazer upgrade para Enterprise
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            }
+          >
+            <div className="admin-card-border bg-card overflow-hidden">
+              <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
+                <div className="h-9 w-9 rounded-xl bg-[#F87116]/10 flex items-center justify-center flex-shrink-0">
+                  <Globe className="h-[18px] w-[18px] text-[#F87116]" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground">Domínio personalizado</h2>
+                  <p className="text-[11px] text-muted-foreground">
+                    Seu cardápio acessível pelo seu próprio domínio (ex: cardapio.minhapizzaria.com.br)
+                  </p>
+                </div>
+              </div>
+              <div className="p-5 space-y-6">
+                <FieldGroup>
+                  <SectionLabel>Domínio</SectionLabel>
+                  <Input
+                    type="text"
+                    value={formData.custom_domain}
+                    onChange={(e) => {
+                      const v = e.target.value
+                        .toLowerCase()
+                        .replace(/^https?:\/\//, '')
+                        .replace(/\/.*$/, '')
+                        .trim();
+                      set('custom_domain', v);
+                    }}
+                    placeholder="cardapio.minhapizzaria.com.br"
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Digite apenas o domínio, sem https:// ou barras no final.
+                  </p>
+                  {formData.custom_domain && (
+                    <a
+                      href={`https://${formData.custom_domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[11px] text-[#F87116] hover:underline font-medium"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Acessar {formData.custom_domain}
+                    </a>
+                  )}
+                </FieldGroup>
+
+                <div className="rounded-lg border border-border bg-muted/30 p-5 space-y-5">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F87116]/20 text-[#F87116] text-xs font-bold">1</span>
+                    Passo a passo para configurar
+                  </h3>
+
+                  <ol className="space-y-4 list-none">
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">1</span>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Escolha o subdomínio</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Use algo como <code className="px-1 py-0.5 rounded bg-muted font-mono text-[11px]">cardapio</code>, <code className="px-1 py-0.5 rounded bg-muted font-mono text-[11px]">pedidos</code> ou <code className="px-1 py-0.5 rounded bg-muted font-mono text-[11px]">menu</code> + seu domínio. Exemplo: cardapio.minhapizzaria.com.br
+                        </p>
+                      </div>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">2</span>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Cadastre aqui no painel</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Preencha o campo acima com o domínio escolhido e clique em &quot;Salvar alterações&quot;.
+                        </p>
+                      </div>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">3</span>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Acesse o painel do seu provedor de DNS</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Entre no site onde você gerencia o domínio (Registro.br, GoDaddy, Hostinger, Cloudflare, etc.).
+                        </p>
+                      </div>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">4</span>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Crie um registro CNAME</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Adicione um novo registro com: <strong>Nome/Host</strong> = o subdomínio (ex: cardapio) e <strong>Destino/Valor</strong> = informe ao suporte para receber o valor correto.
+                        </p>
+                      </div>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">5</span>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Aguarde a propagação</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          A alteração no DNS pode levar de alguns minutos até 48 horas para propagar.
+                        </p>
+                      </div>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">6</span>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Teste o acesso</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Acesse <strong>https://{formData.custom_domain || 'seu-dominio.com.br'}</strong> no navegador. Se tudo estiver certo, seu cardápio aparecerá.
+                        </p>
+                      </div>
+                    </li>
+                  </ol>
+
+                  <p className="text-[11px] text-muted-foreground pt-2 border-t border-border/60">
+                    Precisa do valor exato do CNAME? Entre em contato com o suporte.
+                  </p>
+                </div>
+
+                <div className="flex justify-end">
+                  <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
+                </div>
+              </div>
+            </div>
+          </FeatureGuard>
+        </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            ABA — PIX e Transferência (dados para o cliente enviar o pagamento)
         ══════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="pagamentos" className="mt-0 space-y-5">
           <div className="admin-card-border bg-card overflow-hidden">
