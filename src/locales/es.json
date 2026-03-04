@@ -271,6 +271,7 @@
     "notesPlaceholder": "Ej: Cumpleaños, sin gluten...",
     "errorFillData": "Completá nombre, fecha, horario y sector.",
     "errorTimeOutsideRange": "El horario elegido está fuera del intervalo de reservas del restaurante.",
+    "errorPastDate": "No se puede reservar para una fecha pasada.",
     "errorCreate": "Error al crear reserva.",
     "errorFetch": "Error al buscar tus reservas.",
     "errorPhoneRequired": "Ingresá el WhatsApp para buscar tus reservas.",

@@ -5,7 +5,7 @@
  * Mostra posição na fila quando houver.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Barcode from 'react-barcode';
@@ -39,6 +39,32 @@ import { ptBR, es } from 'date-fns/locale';
 import { normalizePhoneWithCountryCode, generateWhatsAppLink, ensurePhoneForWhatsApp } from '@/lib/core/utils';
 import { toast } from '@/hooks/shared/use-toast';
 import { PhoneCountryInput } from '@/components/ui/PhoneCountryInput';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+/** Gera slots de horário (ex: 18:00, 18:30...) entre start e end. Intervalo em minutos. */
+function generateReservationTimeSlots(
+  start: string,
+  end: string,
+  intervalMinutes = 30
+): string[] {
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  const startMins = (sh ?? 0) * 60 + (sm ?? 0);
+  const endMins = (eh ?? 0) * 60 + (em ?? 0);
+  const slots: string[] = [];
+  for (let m = startMins; m <= endMins; m += intervalMinutes) {
+    const h = Math.floor(m / 60);
+    const min = m % 60;
+    slots.push(`${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`);
+  }
+  return slots;
+}
 
 interface Restaurant {
   id: string;
@@ -204,10 +230,28 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
   // Data mínima em horário local para permitir reserva no dia atual
   const today = format(new Date(), 'yyyy-MM-dd');
 
+  // Horários fixos de reserva (independente de sempre aberto). Se definidos, limitamos as opções.
+  const reservationTimeSlots = useMemo(() => {
+    const start = restaurant?.reservation_start_time?.trim();
+    const end = restaurant?.reservation_end_time?.trim();
+    if (!start || !end) return null;
+    return generateReservationTimeSlots(start, end, 30);
+  }, [restaurant?.reservation_start_time, restaurant?.reservation_end_time]);
+
+  useEffect(() => {
+    if (reservationTimeSlots && scheduledTime && !reservationTimeSlots.includes(scheduledTime)) {
+      setScheduledTime('');
+    }
+  }, [reservationTimeSlots, scheduledTime]);
+
   const handleSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantSlug || !selectedZone || !customerName.trim() || !scheduledDate || !scheduledTime) {
       setError(t('reservation.errorFillData'));
+      return;
+    }
+    if (scheduledDate < today) {
+      setError(t('reservation.errorPastDate'));
       return;
     }
     const availableIds = selectedZone.available_table_ids ?? [];
@@ -673,7 +717,11 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
                   ref={dateInputRef}
                   type="date"
                   value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val && val < today) return;
+                    setScheduledDate(val);
+                  }}
                   min={today}
                   required
                   aria-label={t('reservation.date')}
@@ -684,31 +732,51 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
             </div>
             <div>
               <Label htmlFor="reservation-time">{t('reservation.time')}</Label>
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => timeInputRef.current?.showPicker?.() ?? timeInputRef.current?.focus()}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); timeInputRef.current?.showPicker?.() ?? timeInputRef.current?.focus(); } }}
-                className="relative mt-1 min-h-[48px] w-full flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2.5 text-sm text-left ring-offset-background transition-colors hover:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 cursor-pointer touch-manipulation"
-              >
-                <Clock className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
-                <span className={scheduledTime ? 'text-foreground font-medium' : 'text-muted-foreground'}>
-                  {scheduledTime || t('reservation.selectTimePlaceholder')}
-                </span>
-                <input
-                  id="reservation-time"
-                  ref={timeInputRef}
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(e) => { setScheduledTime(e.target.value); setError(''); }}
-                  min={restaurant?.reservation_start_time?.trim() || undefined}
-                  max={restaurant?.reservation_end_time?.trim() || undefined}
-                  required
-                  aria-label={t('reservation.time')}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-base"
-                  style={{ fontSize: '16px' }}
-                />
-              </div>
+              {reservationTimeSlots ? (
+                <Select
+                  value={scheduledTime || undefined}
+                  onValueChange={(v) => { setScheduledTime(v); setError(''); }}
+                >
+                  <SelectTrigger
+                    id="reservation-time"
+                    className="mt-1 min-h-[48px] flex items-center gap-2 [&>span]:flex [&>span]:items-center [&>span]:gap-2"
+                  >
+                    <Clock className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                    <SelectValue placeholder={t('reservation.selectTimePlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {reservationTimeSlots.map((slot) => (
+                      <SelectItem key={slot} value={slot}>
+                        {slot}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => timeInputRef.current?.showPicker?.() ?? timeInputRef.current?.focus()}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); timeInputRef.current?.showPicker?.() ?? timeInputRef.current?.focus(); } }}
+                  className="relative mt-1 min-h-[48px] w-full flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2.5 text-sm text-left ring-offset-background transition-colors hover:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 cursor-pointer touch-manipulation"
+                >
+                  <Clock className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                  <span className={scheduledTime ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                    {scheduledTime || t('reservation.selectTimePlaceholder')}
+                  </span>
+                  <input
+                    id="reservation-time"
+                    ref={timeInputRef}
+                    type="time"
+                    value={scheduledTime}
+                    onChange={(e) => { setScheduledTime(e.target.value); setError(''); }}
+                    required
+                    aria-label={t('reservation.time')}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-base"
+                    style={{ fontSize: '16px' }}
+                  />
+                </div>
+              )}
             </div>
           </div>
           {scheduledDate && scheduledTime && (
@@ -741,7 +809,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
             )}
 
             <Dialog open={zoneModalOpen} onOpenChange={setZoneModalOpen}>
-              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogContent className="w-[calc(100%-2rem)] max-w-md max-h-[85vh] overflow-y-auto rounded-2xl shadow-xl">
                 <DialogHeader>
                   <DialogTitle>{t('reservation.selectSectorModalTitle')}</DialogTitle>
                   <p className="text-sm text-muted-foreground">{t('reservation.selectSectorModalSub')}</p>
