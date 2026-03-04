@@ -1655,7 +1655,7 @@ function CashierContent() {
                       <p className="text-xs font-semibold text-muted-foreground mb-1.5">
                         {group.label} — {formatPrice(group.subtotal, currency)}
                       </p>
-                      {group.items.map((it, i) => (
+                      {group.items.map((it) => (
                         <div key={it.id} className="flex justify-between items-center gap-2 text-sm py-0.5 group/item">
                           <span className="truncate flex-1">{Number(it.qty) % 1 === 0 ? `${it.qty}×` : it.qty} {it.name}</span>
                           <span className="font-medium tabular-nums shrink-0">{formatPrice(Number(it.price), currency)}</span>
