@@ -170,6 +170,21 @@ export interface WhatsAppTemplates {
   courier_dispatch?: string;
 }
 
+/** Tipo do botão na página Links e Bio */
+export type LinkBioButtonType = 'url' | 'menu' | 'whatsapp' | 'reserve' | 'about';
+
+export interface LinkBioButton {
+  id: string;
+  restaurant_id: string;
+  sort_order: number;
+  label: string;
+  url: string | null;
+  icon: string;
+  button_type: LinkBioButtonType;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface User {
   id: string;
   email: string;

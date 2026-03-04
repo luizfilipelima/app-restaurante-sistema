@@ -76,6 +76,7 @@ const PublicReservation     = lazyWithRetry(() => import('./pages/public/reserva
 const PublicWaitingQueue    = lazyWithRetry(() => import('./pages/public/reservation/PublicWaitingQueue'));
 const OrderConfirmation     = lazyWithRetry(() => import('./pages/public/checkout/OrderConfirmation'));
 const LinkBio               = lazyWithRetry(() => import('./pages/public/link-bio/LinkBio'));
+const LinkBioAbout          = lazyWithRetry(() => import('./pages/public/link-bio/LinkBioAbout'));
 
 // ─── Fallback de carregamento ─────────────────────────────────────────────────
 
@@ -354,6 +355,7 @@ function App() {
             <Route path="track/:orderId" element={<OrderTracking />} />
             {/* Link da Bio */}
             <Route path="bio" element={<LinkBio />} />
+            <Route path="bio/sobre" element={<LinkBioAbout />} />
           </Route>
           {/*
            * ── Super Admin Shell ───────────────────────────────────────────
@@ -537,6 +539,7 @@ function App() {
           <Route path="track/:orderId" element={<OrderTracking />} />
           {/* Link da Bio para Instagram */}
           <Route path="bio" element={<LinkBio />} />
+          <Route path="bio/sobre" element={<LinkBioAbout />} />
         </Route>
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
 

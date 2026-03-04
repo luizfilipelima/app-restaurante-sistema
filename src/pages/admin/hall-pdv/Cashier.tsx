@@ -73,6 +73,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { CashierCompletedView } from '@/components/cashier/CashierCompletedView';
 import { useTables, useCancelVirtualComanda } from '@/hooks/queries';
+import { RoleGuard } from '@/components/auth/RoleGuard';
+import { ROLES_CANCEL_ORDER } from '@/hooks/auth/useUserRole';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
@@ -440,6 +442,7 @@ function CashierContent() {
   const [showRemoveComandaConfirm, setShowRemoveComandaConfirm] = useState(false);
   const [showExcludeOrderConfirm, setShowExcludeOrderConfirm] = useState(false);
   const [excludingOrder, setExcludingOrder] = useState(false);
+  const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   const [mainView, setMainView] = useState<'cashier' | 'completed'>('cashier');
   const [completedList, setCompletedList] = useState<CompletedItem[]>([]);
 
@@ -1291,21 +1294,40 @@ function CashierContent() {
     return [];
   })();
 
-  // Para mesa: agrupa por customer_name (João, Maria, Mesa Geral)
+  // Para mesa: agrupa por customer_name (João, Maria, Mesa Geral). Inclui id e orderId para remover item.
+  type TableGroupItem = { id: string; orderId: string; name: string; qty: number; price: number };
   const tableItemsGrouped = (() => {
     if (!selected) return null;
-    let orderItems: Array<{ product_name: string; quantity: number; total_price: number; customer_name?: string | null }> = [];
+    type OrderItemRow = { id: string; order_id: string; product_name: string; quantity: number; total_price: number; customer_name?: string | null };
+    let orderItems: OrderItemRow[] = [];
     if (isTableGroup(selected)) {
-      orderItems = selected.items.flatMap((o) => (o.order.order_items ?? []) as typeof orderItems);
+      orderItems = selected.items.flatMap((o) =>
+        (o.order.order_items ?? []).map((oi: any) => ({
+          id: oi.id,
+          order_id: o.order.id,
+          product_name: oi.product_name,
+          quantity: oi.quantity,
+          total_price: oi.total_price,
+          customer_name: oi.customer_name,
+        }))
+      );
     } else if (selected.type === 'table') {
-      orderItems = (selected.order.order_items ?? []) as typeof orderItems;
+      const o = selected.order as { id: string; order_items?: any[] };
+      orderItems = (o.order_items ?? []).map((oi: any) => ({
+        id: oi.id,
+        order_id: o.id,
+        product_name: oi.product_name,
+        quantity: oi.quantity,
+        total_price: oi.total_price,
+        customer_name: oi.customer_name,
+      }));
     }
     if (orderItems.length === 0) return null;
-    const map = new Map<string, { label: string; items: { name: string; qty: number; price: number }[]; subtotal: number }>();
+    const map = new Map<string, { label: string; items: TableGroupItem[]; subtotal: number }>();
     for (const i of orderItems) {
       const key = (i.customer_name ?? '').trim() || '__mesa_geral__';
       const label = key === '__mesa_geral__' ? t('cashier.tableGeneral') : key;
-      const row = { name: i.product_name, qty: i.quantity, price: Number(i.total_price) };
+      const row: TableGroupItem = { id: i.id, orderId: i.order_id, name: i.product_name, qty: i.quantity, price: Number(i.total_price) };
       const existing = map.get(key);
       if (existing) {
         existing.items.push(row);
@@ -1316,6 +1338,56 @@ function CashierContent() {
     }
     return Array.from(map.values()).sort((a, b) => (a.label === t('cashier.tableGeneral') ? 1 : 0) - (b.label === t('cashier.tableGeneral') ? 1 : 0) || a.label.localeCompare(b.label));
   })();
+
+  const handleRemoveOrderItem = async (orderId: string, orderItemId: string) => {
+    if (!restaurantId || removingItemId) return;
+    setRemovingItemId(orderItemId);
+    try {
+      const { error } = await supabase.rpc('cashier_remove_order_item', {
+        p_order_id: orderId,
+        p_order_item_id: orderItemId,
+      });
+      if (error) throw error;
+      loadQueue();
+      queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+      toast({ title: t('cashier.itemRemoved') });
+      if (selected && (selected.type === 'table' || isTableGroup(selected))) {
+        const nextSelected = refreshSelectedAfterItemRemoval(selected, orderId, orderItemId);
+        if (nextSelected) setSelected(nextSelected);
+        else handleClearSelection();
+      }
+    } catch (err: any) {
+      toast({ title: t('cashier.errorRemoveItem'), description: err?.message, variant: 'destructive' });
+    } finally {
+      setRemovingItemId(null);
+    }
+  };
+
+  function refreshSelectedAfterItemRemoval(
+    current: CashierDisplayItem,
+    orderId: string,
+    orderItemId: string
+  ): CashierDisplayItem | null {
+    if (current.type === 'table') {
+      const order = current.order as { id: string; order_items?: any[] };
+      if (order.id !== orderId) return current;
+      const nextItems = (order.order_items ?? []).filter((oi: any) => oi.id !== orderItemId);
+      if (nextItems.length === 0) return null;
+      return { ...current, order: { ...order, order_items: nextItems } } as CashierDisplayItem;
+    }
+    if (isTableGroup(current)) {
+      const nextItems = current.items.map((q) => {
+        if (q.order.id !== orderId) return q;
+        const nextOi = (q.order.order_items ?? []).filter((oi: any) => oi.id !== orderItemId);
+        return { ...q, order: { ...q.order, order_items: nextOi } };
+      }).filter((q) => (q.order.order_items ?? []).length > 0);
+      if (nextItems.length === 0) return null;
+      const totalAmount = nextItems.reduce((s, q) => s + Number(q.order.total ?? 0), 0);
+      return { ...current, items: nextItems, totalAmount } as CashierDisplayItem;
+    }
+    return current;
+  }
 
   return (
     <AdminPageLayout className="h-full flex flex-col">
@@ -1584,9 +1656,22 @@ function CashierContent() {
                         {group.label} — {formatPrice(group.subtotal, currency)}
                       </p>
                       {group.items.map((it, i) => (
-                        <div key={i} className="flex justify-between items-center text-sm py-0.5">
+                        <div key={it.id} className="flex justify-between items-center gap-2 text-sm py-0.5 group/item">
                           <span className="truncate flex-1">{Number(it.qty) % 1 === 0 ? `${it.qty}×` : it.qty} {it.name}</span>
-                          <span className="font-medium tabular-nums">{formatPrice(Number(it.price), currency)}</span>
+                          <span className="font-medium tabular-nums shrink-0">{formatPrice(Number(it.price), currency)}</span>
+                          <RoleGuard allowedRoles={[...ROLES_CANCEL_ORDER]}>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 shrink-0 opacity-0 group-hover/item:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => { e.stopPropagation(); handleRemoveOrderItem(it.orderId, it.id); }}
+                              disabled={!!removingItemId}
+                              title={t('cashier.removeItem')}
+                            >
+                              {removingItemId === it.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                            </Button>
+                          </RoleGuard>
                         </div>
                       ))}
                     </div>
@@ -1727,34 +1812,38 @@ function CashierContent() {
                   {t('cashier.finalize')}
                 </Button>
                 {selected.type === 'comanda_digital' && (
-                  <Button
-                    variant="ghost"
-                    className="w-full mt-3 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => setShowRemoveComandaConfirm(true)}
-                    disabled={cancelComanda.isPending || closing}
-                  >
-                    {cancelComanda.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Trash2 className="h-4 w-4 mr-2" />
-                    )}
-                    {t('cashier.removeComanda')}
-                  </Button>
+                  <RoleGuard allowedRoles={[...ROLES_CANCEL_ORDER]}>
+                    <Button
+                      variant="ghost"
+                      className="w-full mt-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setShowRemoveComandaConfirm(true)}
+                      disabled={cancelComanda.isPending || closing}
+                    >
+                      {cancelComanda.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      {t('cashier.removeComanda')}
+                    </Button>
+                  </RoleGuard>
                 )}
                 {(selected.type === 'table' || isTableGroup(selected)) && (
-                  <Button
-                    variant="ghost"
-                    className="w-full mt-3 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => setShowExcludeOrderConfirm(true)}
-                    disabled={excludingOrder || closing}
-                  >
-                    {excludingOrder ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Trash2 className="h-4 w-4 mr-2" />
-                    )}
-                    {t('cashier.excludeOrder')}
-                  </Button>
+                  <RoleGuard allowedRoles={[...ROLES_CANCEL_ORDER]}>
+                    <Button
+                      variant="ghost"
+                      className="w-full mt-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setShowExcludeOrderConfirm(true)}
+                      disabled={excludingOrder || closing}
+                    >
+                      {excludingOrder ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      {t('cashier.excludeOrder')}
+                    </Button>
+                  </RoleGuard>
                 )}
               </div>
                 </>

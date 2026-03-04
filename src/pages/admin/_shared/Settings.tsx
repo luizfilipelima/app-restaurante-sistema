@@ -6,7 +6,7 @@ import { useAdminRestaurantId } from '@/contexts/AdminRestaurantContext';
 import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { useAdminLanguageStore } from '@/store/adminLanguageStore';
-import { PrintPaperWidth, type BankAccountByCountry, type PrintSettingsBySector, type SectorPrintSettings } from '@/types';
+import { PrintPaperWidth, type BankAccountByCountry, type PrintSettingsBySector, type SectorPrintSettings, type LinkBioButton, type LinkBioButtonType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
 import { toast } from '@/hooks/shared/use-toast';
 import {
@@ -25,8 +26,10 @@ import {
   Phone, Globe, ImageIcon, AlarmClock, X, Wifi, Store,
   Users, ExternalLink, Link2, FileText,
   MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode, Settings as SettingsIcon,
+  Pencil, Trash2, Plus, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import { useRestaurant } from '@/hooks/queries';
+import { useLinkBioButtons, useLinkBioButtonsMutations, type CreateLinkBioButtonPayload } from '@/hooks/queries/useLinkBioButtons';
 import { useCanAccess } from '@/hooks/auth/useUserRole';
 import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import RestaurantUsersPanel from '@/components/admin/_shared/RestaurantUsersPanel';
@@ -64,6 +67,16 @@ const PANEL_LANGS: { value: PanelLanguage; label: string }[] = [
 ];
 
 const SECTOR_KEYS = ['delivery', 'table', 'pickup', 'buffet'] as const;
+
+const LINK_BIO_BUTTON_TYPE_LABELS: Record<LinkBioButtonType, string> = {
+  url: 'Link externo',
+  menu: 'Cardápio',
+  whatsapp: 'WhatsApp',
+  reserve: 'Reservar',
+  about: 'Página Sobre',
+};
+
+const LINK_BIO_ICONS = ['🔗', '🍽️', '📅', '📱', 'ℹ️', '📍', '🌐', '📞', '✉️', '🎉', '📷', '🏠', '⭐', '❤️'];
 type SectorKey = typeof SECTOR_KEYS[number];
 
 function defaultSectorSettings(): PrintSettingsBySector {
@@ -260,6 +273,8 @@ export default function AdminSettings() {
   const { t }        = useAdminTranslation();
   const canAccessUsers = useCanAccess([...ROLES_USERS_MANAGEMENT]);
   const { data: restaurant } = useRestaurant(restaurantId);
+  const { data: linkBioButtons = [], isLoading: linkBioLoading } = useLinkBioButtons(restaurantId);
+  const linkBioMutations = useLinkBioButtonsMutations(restaurantId, restaurant?.slug ?? null);
   const [usersPanelOpen, setUsersPanelOpen] = useState(false);
   const { lang: panelLanguage, setLang: setStoreLang } = useAdminLanguageStore();
   const [loading,       setLoading]       = useState(true);
@@ -293,6 +308,10 @@ export default function AdminSettings() {
   });
 
   const [bankCountry, setBankCountry] = useState<'pyg' | 'ars'>('pyg');
+
+  const [linksBioModalOpen, setLinksBioModalOpen] = useState(false);
+  const [linksBioEditing, setLinksBioEditing] = useState<LinkBioButton | null>(null);
+  const [linksBioForm, setLinksBioForm] = useState({ label: '', url: '', icon: '🔗', button_type: 'url' as LinkBioButtonType });
 
   const set = <K extends keyof typeof formData>(k: K, v: (typeof formData)[K]) =>
     setFormData(f => ({ ...f, [k]: v }));
@@ -447,6 +466,7 @@ export default function AdminSettings() {
               { value: 'pagamentos',   icon: CreditCard, label: 'PIX e Transferência'     },
               { value: 'impressao',    icon: Printer, label: 'Impressão'                  },
               { value: 'cambio',       icon: Repeat,  label: 'Câmbio'                     },
+              { value: 'links-bio',    icon: Link2,   label: 'Links e Bio'                },
               ...(canAccessUsers ? [{ value: 'usuarios', icon: Users, label: t('settings.tabs.users') }] : []),
             ].map(({ value, icon: Icon, label }) => (
               <TabsTrigger
@@ -1379,6 +1399,127 @@ export default function AdminSettings() {
         </TabsContent>
 
         {/* ══════════════════════════════════════════════════════════════════════
+            ABA — Links e Bio (botões da página pública /bio)
+        ══════════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="links-bio" className="mt-0 space-y-5">
+          <div className="admin-card-border bg-card p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-[#F87116]/10 flex items-center justify-center flex-shrink-0">
+                  <Link2 className="h-5 w-5 text-[#F87116]" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">Links e Bio</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Botões exibidos na sua página de Links e Bio (Instagram, etc.). Se não configurar nenhum, serão exibidos Cardápio, Reservar e WhatsApp por padrão.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={() => {
+                  setLinksBioEditing(null);
+                  setLinksBioForm({ label: '', url: '', icon: '🔗', button_type: 'url' });
+                  setLinksBioModalOpen(true);
+                }}
+                className="gap-2 bg-[#F87116] hover:bg-[#F87116]/90"
+              >
+                <Plus className="h-4 w-4" />
+                Adicionar botão
+              </Button>
+            </div>
+
+            {linkBioLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : linkBioButtons.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-muted/30 py-10 text-center">
+                <p className="text-sm text-muted-foreground">Nenhum botão configurado. Use o padrão ou adicione botões acima.</p>
+              </div>
+            ) : (
+              <ul className="mt-4 space-y-2">
+                {linkBioButtons.map((btn, index) => (
+                  <li
+                    key={btn.id}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-border bg-background/60 hover:bg-muted/30 transition-colors"
+                  >
+                    <span className="text-xl flex-shrink-0" aria-hidden>{btn.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{btn.label}</p>
+                      <p className="text-xs text-muted-foreground">{LINK_BIO_BUTTON_TYPE_LABELS[btn.button_type]}</p>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={index === 0}
+                        onClick={() => {
+                          const ordered = [...linkBioButtons];
+                          const prev = ordered[index - 1];
+                          ordered[index - 1] = ordered[index];
+                          ordered[index] = prev;
+                          linkBioMutations.reorder.mutate(ordered.map((b) => b.id));
+                        }}
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={index === linkBioButtons.length - 1}
+                        onClick={() => {
+                          const ordered = [...linkBioButtons];
+                          const next = ordered[index + 1];
+                          ordered[index + 1] = ordered[index];
+                          ordered[index] = next;
+                          linkBioMutations.reorder.mutate(ordered.map((b) => b.id));
+                        }}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setLinksBioEditing(btn);
+                          setLinksBioForm({
+                            label: btn.label,
+                            url: btn.url ?? '',
+                            icon: btn.icon,
+                            button_type: btn.button_type,
+                          });
+                          setLinksBioModalOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          if (confirm('Remover este botão?')) linkBioMutations.remove.mutate(btn.id);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════════════
             ABA — Gestão de Usuários (visível apenas para super-admin e proprietário)
         ══════════════════════════════════════════════════════════════════════ */}
         {canAccessUsers && (
@@ -1408,6 +1549,139 @@ export default function AdminSettings() {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Modal Adicionar/Editar botão Links e Bio */}
+      <Dialog
+        open={linksBioModalOpen}
+        onOpenChange={(open) => {
+          setLinksBioModalOpen(open);
+          if (!open) setLinksBioEditing(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{linksBioEditing ? 'Editar botão' : 'Adicionar botão'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="link-bio-label">Texto do botão</Label>
+              <Input
+                id="link-bio-label"
+                value={linksBioForm.label}
+                onChange={(e) => setLinksBioForm((f) => ({ ...f, label: e.target.value }))}
+                placeholder="Ex: Ver cardápio"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select
+                value={linksBioForm.button_type}
+                onValueChange={(v) => setLinksBioForm((f) => ({ ...f, button_type: v as LinkBioButtonType }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(LINK_BIO_BUTTON_TYPE_LABELS) as [LinkBioButtonType, string][]).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {linksBioForm.button_type === 'url' && (
+              <div className="space-y-2">
+                <Label htmlFor="link-bio-url">URL</Label>
+                <Input
+                  id="link-bio-url"
+                  type="url"
+                  value={linksBioForm.url}
+                  onChange={(e) => setLinksBioForm((f) => ({ ...f, url: e.target.value }))}
+                  placeholder="https://..."
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Ícone</Label>
+              <div className="flex flex-wrap gap-2">
+                {LINK_BIO_ICONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setLinksBioForm((f) => ({ ...f, icon: emoji }))}
+                    className={`w-10 h-10 rounded-xl border-2 text-xl flex items-center justify-center transition-colors ${
+                      linksBioForm.icon === emoji
+                        ? 'border-[#F87116] bg-[#F87116]/10'
+                        : 'border-border hover:border-muted-foreground/50'
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setLinksBioModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              className="bg-[#F87116] hover:bg-[#F87116]/90"
+              disabled={
+                !linksBioForm.label.trim() ||
+                (linksBioForm.button_type === 'url' && !linksBioForm.url.trim()) ||
+                linkBioMutations.create.isPending ||
+                linkBioMutations.update.isPending
+              }
+              onClick={() => {
+                if (linksBioEditing) {
+                  linkBioMutations.update.mutate(
+                    {
+                      id: linksBioEditing.id,
+                      label: linksBioForm.label.trim(),
+                      button_type: linksBioForm.button_type,
+                      url: linksBioForm.button_type === 'url' ? linksBioForm.url.trim() || null : null,
+                      icon: linksBioForm.icon,
+                    },
+                    {
+                      onSuccess: () => {
+                        toast({ title: 'Botão atualizado' });
+                        setLinksBioModalOpen(false);
+                        setLinksBioEditing(null);
+                      },
+                      onError: (err) => toast({ title: 'Erro ao atualizar', description: err.message, variant: 'destructive' }),
+                    }
+                  );
+                } else if (restaurantId) {
+                  const payload: CreateLinkBioButtonPayload = {
+                    restaurant_id: restaurantId,
+                    sort_order: linkBioButtons.length,
+                    label: linksBioForm.label.trim(),
+                    url: linksBioForm.button_type === 'url' ? linksBioForm.url.trim() || null : null,
+                    icon: linksBioForm.icon,
+                    button_type: linksBioForm.button_type,
+                  };
+                  linkBioMutations.create.mutate(payload, {
+                    onSuccess: () => {
+                      toast({ title: 'Botão adicionado' });
+                      setLinksBioModalOpen(false);
+                      setLinksBioForm({ label: '', url: '', icon: '🔗', button_type: 'url' });
+                    },
+                    onError: (err) => toast({ title: 'Erro ao adicionar', description: err.message, variant: 'destructive' }),
+                  });
+                }
+              }}
+            >
+              {(linkBioMutations.create.isPending || linkBioMutations.update.isPending) ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : linksBioEditing ? (
+                'Salvar'
+              ) : (
+                'Adicionar'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Painel de Gestão de Usuários (mesmo componente usado pelo super-admin) */}
       {canAccessUsers && restaurantId && (

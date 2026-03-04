@@ -21,6 +21,7 @@ const PublicWaitingQueue = lazyWithRetry(() => import('@/pages/public/reservatio
 const OrderTracking = lazyWithRetry(() => import('@/pages/public/orders/OrderTracking'));
 const OrderConfirmation = lazyWithRetry(() => import('@/pages/public/checkout/OrderConfirmation'));
 const LinkBio = lazyWithRetry(() => import('@/pages/public/link-bio/LinkBio'));
+const LinkBioAbout = lazyWithRetry(() => import('@/pages/public/link-bio/LinkBioAbout'));
 
 interface StoreLayoutProps {
   /** Slug do tenant (subdomínio), usado para buscar restaurante no Supabase */
@@ -137,6 +138,7 @@ export default function StoreLayout({ tenantSlug }: StoreLayoutProps) {
         <Route path="/fila" element={<PublicWaitingQueue tenantSlug={tenantSlug} />} />
         <Route path="/track/:orderId" element={<OrderTracking tenantSlug={tenantSlug} />} />
           <Route path="/bio" element={<LinkBio tenantSlug={tenantSlug} />} />
+          <Route path="/bio/sobre" element={<LinkBioAbout tenantSlug={tenantSlug} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

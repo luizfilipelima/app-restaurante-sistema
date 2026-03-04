@@ -114,12 +114,14 @@ async function fetchCashierCompleted({
   comandasData.forEach((c: any) => { if (c.closed_by_user_id) userIds.add(c.closed_by_user_id); });
 
   const emailByUserId = new Map<string, string>();
-  if (userIds.size > 0) {
-    const { data: usersData } = await supabase
-      .from('users')
-      .select('id, email')
-      .in('id', Array.from(userIds));
-    (usersData ?? []).forEach((u: { id: string; email: string }) => emailByUserId.set(u.id, u.email ?? ''));
+  if (userIds.size > 0 && restaurantId) {
+    const { data: emailsData } = await supabase.rpc('get_emails_for_restaurant_staff', {
+      p_restaurant_id: restaurantId,
+      p_user_ids: Array.from(userIds),
+    });
+    (emailsData ?? []).forEach((row: { id: string; email: string | null }) =>
+      emailByUserId.set(row.id, row.email ?? '')
+    );
   }
 
   for (const [, orders] of byTable) {

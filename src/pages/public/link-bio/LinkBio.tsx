@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/core/supabase';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
+import { useLinkBioButtons } from '@/hooks/queries/useLinkBioButtons';
 import { getSubdomain } from '@/lib/core/subdomain';
 import { isWithinOpeningHours } from '@/lib/core/utils';
 
@@ -176,6 +177,7 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
   });
 
   const { data: hasReservations } = useFeatureAccess('feature_reservations', restaurant?.id ?? null);
+  const { data: linkBioButtons = [] } = useLinkBioButtons(restaurant?.id ?? null);
 
   useEffect(() => {
     if (restaurant) {
@@ -233,6 +235,22 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
   const reservarUrl = baseUrl + '/reservar' + querySuffix;
   const whatsAppUrl = buildWhatsAppUrl(restaurant, lang);
   const hasWhatsApp = !!(restaurant.whatsapp || restaurant.phone);
+
+  const basePath = tenantSlugProp ? '' : (restaurantSlug ? `/${restaurantSlug}` : '');
+  const aboutHref = basePath ? `${basePath}/bio/sobre` : '/bio/sobre';
+
+  const getButtonHref = (btn: { button_type: string; url: string | null }) => {
+    switch (btn.button_type) {
+      case 'url': return btn.url || '#';
+      case 'menu': return menuUrl;
+      case 'whatsapp': return whatsAppUrl;
+      case 'reserve': return reservarUrl;
+      case 'about': return aboutHref;
+      default: return '#';
+    }
+  };
+
+  const useCustomButtons = linkBioButtons.length > 0;
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -330,114 +348,165 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
           </div>
         </div>
 
-        {/* ── Botões de ação ── */}
+        {/* ── Botões de ação (customizados ou padrão) ── */}
         <div className="flex flex-col gap-3 w-full py-8 sm:py-10">
-
-          {/* Delivery */}
-          <a
-            href={menuUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`group relative flex items-center gap-4 w-full bg-card rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 delay-150 ease-out ${
-              mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-            }`}
-            style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05)' }}
-          >
-            {/* Borda de destaque no hover */}
-            <div className="absolute inset-0 rounded-2xl border border-border group-hover:border-primary/50 transition-colors duration-200" />
-            {/* Fundo hover suave */}
-            <div className="absolute inset-0 rounded-2xl bg-primary/0 group-hover:bg-primary/5 transition-all duration-200" />
-
-            {/* Ícone */}
-            <div
-              className="relative z-10 w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/90 flex items-center justify-center flex-shrink-0 text-[22px] group-hover:scale-105 transition-transform duration-200"
-              style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-            >
-              🍽️
-            </div>
-
-            {/* Texto */}
-            <div className="relative z-10 flex-1 min-w-0 text-left">
-              <p className="text-[15px] font-bold text-foreground leading-tight">
-                {t.deliveryMenu}
-              </p>
-              <p className="text-[12px] text-muted-foreground mt-0.5 truncate font-medium">
-                {restaurant.slug}.quiero.food
-              </p>
-            </div>
-
-            {/* Seta — anima no hover */}
-            <div className="relative z-10 flex-shrink-0">
-              <ArrowIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
-            </div>
-          </a>
-
-          {/* Reservar — condicional a feature_reservations */}
-          {hasReservations && (
-            <a
-              href={reservarUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`group relative flex items-center gap-4 w-full bg-card rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 delay-[175ms] ease-out ${
-                mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-              }`}
-              style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05)' }}
-            >
-              <div className="absolute inset-0 rounded-2xl border border-border group-hover:border-primary/50 transition-colors duration-200" />
-              <div className="absolute inset-0 rounded-2xl bg-primary/0 group-hover:bg-primary/5 transition-all duration-200" />
-              <div
-                className="relative z-10 w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-[22px] group-hover:scale-105 transition-transform duration-200"
-              >
-                📅
-              </div>
-              <div className="relative z-10 flex-1 min-w-0 text-left">
-                <p className="text-[15px] font-bold text-foreground leading-tight">{t.reserve}</p>
-                <p className="text-[12px] text-muted-foreground mt-0.5 truncate font-medium">{t.reserveSub}</p>
-              </div>
-              <div className="relative z-10 flex-shrink-0">
-                <ArrowIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
-              </div>
-            </a>
-          )}
-
-          {/* WhatsApp */}
-          {hasWhatsApp && (
-            <a
-              href={whatsAppUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`group relative flex items-center gap-4 w-full rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 ${
-                'delay-200'
-              } ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}
-              style={{
-                background: 'linear-gradient(135deg, #25D366 0%, #1fba57 100%)',
-                boxShadow: '0 4px 20px rgba(37,211,102,0.35), 0 1px 4px rgba(0,0,0,0.08)',
-              }}
-            >
-              {/* Overlay brilho no hover */}
-              <div className="absolute inset-0 rounded-2xl bg-white/0 group-hover:bg-white/[0.08] transition-all duration-200" />
-
-              {/* Ícone */}
-              <div className="relative z-10 w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-                <WhatsAppIcon className="w-6 h-6 text-white" />
-              </div>
-
-              {/* Texto */}
-              <div className="relative z-10 flex-1 min-w-0 text-left">
-                <p className="text-[15px] font-bold text-white leading-tight">
-                  {t.whatsapp}
-                </p>
-                <p className="text-[12px] text-white/65 mt-0.5 font-medium">
-                  {t.whatsappSub}
-                </p>
-              </div>
-
-              {/* Seta — anima no hover */}
-              <div className="relative z-10 flex-shrink-0">
-                <ArrowIcon className="w-4 h-4 text-white/50 group-hover:translate-x-1 transition-transform duration-200" />
-              </div>
-            </a>
-          )}
+          {useCustomButtons
+            ? linkBioButtons.map((btn, idx) => {
+                const href = getButtonHref(btn);
+                const isWhatsApp = btn.button_type === 'whatsapp';
+                const isExternal = btn.button_type !== 'about';
+                const delay = 150 + idx * 25;
+                const cardClass = `group relative flex items-center gap-4 w-full rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 ease-out ${
+                  mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+                }`;
+                const content = (
+                  <>
+                    {!isWhatsApp && (
+                      <>
+                        <div className="absolute inset-0 rounded-2xl border border-border group-hover:border-primary/50 transition-colors duration-200" />
+                        <div className="absolute inset-0 rounded-2xl bg-primary/0 group-hover:bg-primary/5 transition-all duration-200" />
+                      </>
+                    )}
+                    {isWhatsApp && (
+                      <div className="absolute inset-0 rounded-2xl bg-white/0 group-hover:bg-white/[0.08] transition-all duration-200" />
+                    )}
+                    <div
+                      className={`relative z-10 w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-[22px] group-hover:scale-105 transition-transform duration-200 ${
+                        isWhatsApp ? 'bg-white/20' : 'bg-gradient-to-br from-primary to-primary/90'
+                      }`}
+                      style={!isWhatsApp ? { boxShadow: '0 4px 12px rgba(0,0,0,0.15)' } : undefined}
+                    >
+                      {isWhatsApp ? <WhatsAppIcon className="w-6 h-6 text-white" /> : btn.icon}
+                    </div>
+                    <div className="relative z-10 flex-1 min-w-0 text-left">
+                      <p className={`text-[15px] font-bold leading-tight ${isWhatsApp ? 'text-white' : 'text-foreground'}`}>
+                        {btn.label}
+                      </p>
+                      {!isWhatsApp && (
+                        <p className="text-[12px] text-muted-foreground mt-0.5 truncate font-medium">
+                          {btn.button_type === 'menu' ? `${restaurant.slug}.quiero.food` : ''}
+                        </p>
+                      )}
+                      {isWhatsApp && (
+                        <p className="text-[12px] text-white/65 mt-0.5 font-medium">{t.whatsappSub}</p>
+                      )}
+                    </div>
+                    <div className="relative z-10 flex-shrink-0">
+                      <ArrowIcon
+                        className={`w-4 h-4 transition-all duration-200 group-hover:translate-x-1 ${
+                          isWhatsApp ? 'text-white/50' : 'text-muted-foreground group-hover:text-primary'
+                        }`}
+                      />
+                    </div>
+                  </>
+                );
+                const style = isWhatsApp
+                  ? { background: 'linear-gradient(135deg, #25D366 0%, #1fba57 100%)', boxShadow: '0 4px 20px rgba(37,211,102,0.35), 0 1px 4px rgba(0,0,0,0.08)' }
+                  : { boxShadow: '0 2px 16px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05)' };
+                if (isExternal) {
+                  return (
+                    <a
+                      key={btn.id}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cardClass}
+                      style={{ ...style, transitionDelay: `${delay}ms` }}
+                    >
+                      {content}
+                    </a>
+                  );
+                }
+                return (
+                  <a
+                    key={btn.id}
+                    href={href}
+                    className={`${cardClass} bg-card`}
+                    style={{ ...style, transitionDelay: `${delay}ms` }}
+                  >
+                    {content}
+                  </a>
+                );
+              })
+            : (
+              <>
+                <a
+                  href={menuUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`group relative flex items-center gap-4 w-full bg-card rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 delay-150 ease-out ${
+                    mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+                  }`}
+                  style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05)' }}
+                >
+                  <div className="absolute inset-0 rounded-2xl border border-border group-hover:border-primary/50 transition-colors duration-200" />
+                  <div className="absolute inset-0 rounded-2xl bg-primary/0 group-hover:bg-primary/5 transition-all duration-200" />
+                  <div
+                    className="relative z-10 w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/90 flex items-center justify-center flex-shrink-0 text-[22px] group-hover:scale-105 transition-transform duration-200"
+                    style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                  >
+                    🍽️
+                  </div>
+                  <div className="relative z-10 flex-1 min-w-0 text-left">
+                    <p className="text-[15px] font-bold text-foreground leading-tight">{t.deliveryMenu}</p>
+                    <p className="text-[12px] text-muted-foreground mt-0.5 truncate font-medium">{restaurant.slug}.quiero.food</p>
+                  </div>
+                  <div className="relative z-10 flex-shrink-0">
+                    <ArrowIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
+                  </div>
+                </a>
+                {hasReservations && (
+                  <a
+                    href={reservarUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`group relative flex items-center gap-4 w-full bg-card rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 delay-[175ms] ease-out ${
+                      mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+                    }`}
+                    style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05)' }}
+                  >
+                    <div className="absolute inset-0 rounded-2xl border border-border group-hover:border-primary/50 transition-colors duration-200" />
+                    <div className="absolute inset-0 rounded-2xl bg-primary/0 group-hover:bg-primary/5 transition-all duration-200" />
+                    <div className="relative z-10 w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-[22px] group-hover:scale-105 transition-transform duration-200">
+                      📅
+                    </div>
+                    <div className="relative z-10 flex-1 min-w-0 text-left">
+                      <p className="text-[15px] font-bold text-foreground leading-tight">{t.reserve}</p>
+                      <p className="text-[12px] text-muted-foreground mt-0.5 truncate font-medium">{t.reserveSub}</p>
+                    </div>
+                    <div className="relative z-10 flex-shrink-0">
+                      <ArrowIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
+                    </div>
+                  </a>
+                )}
+                {hasWhatsApp && (
+                  <a
+                    href={whatsAppUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`group relative flex items-center gap-4 w-full rounded-2xl px-4 py-4 overflow-hidden active:scale-[0.975] transition-all duration-500 delay-200 ease-out ${
+                      mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+                    }`}
+                    style={{
+                      background: 'linear-gradient(135deg, #25D366 0%, #1fba57 100%)',
+                      boxShadow: '0 4px 20px rgba(37,211,102,0.35), 0 1px 4px rgba(0,0,0,0.08)',
+                    }}
+                  >
+                    <div className="absolute inset-0 rounded-2xl bg-white/0 group-hover:bg-white/[0.08] transition-all duration-200" />
+                    <div className="relative z-10 w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
+                      <WhatsAppIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="relative z-10 flex-1 min-w-0 text-left">
+                      <p className="text-[15px] font-bold text-white leading-tight">{t.whatsapp}</p>
+                      <p className="text-[12px] text-white/65 mt-0.5 font-medium">{t.whatsappSub}</p>
+                    </div>
+                    <div className="relative z-10 flex-shrink-0">
+                      <ArrowIcon className="w-4 h-4 text-white/50 group-hover:translate-x-1 transition-transform duration-200" />
+                    </div>
+                  </a>
+                )}
+              </>
+            )}
         </div>
 
         {/* ── Footer ── */}
