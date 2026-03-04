@@ -76,9 +76,8 @@ function ReservationsContent() {
 
   const { data: hasReservations } = useFeatureAccess('feature_reservations', restaurantId);
   const { data: hasTables } = useFeatureAccess('feature_tables', restaurantId);
-  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
-  const dateFilter = format(selectedDate, 'yyyy-MM-dd');
-  const { data: reservations = [], isLoading } = useReservations(restaurantId, { date: dateFilter });
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
+  const { data: reservations = [], isLoading } = useReservations(restaurantId, { date: dateFilter ?? undefined });
   const { data: tables = [] } = useTables(restaurantId);
   const { data: hallZones = [] } = useHallZones(restaurantId);
   const createReservation = useCreateReservation(restaurantId);
@@ -244,20 +243,28 @@ function ReservationsContent() {
           <CalendarClock className="h-4 w-4" />
           {t('reservations.filterByDate')}
         </Label>
-        <Input
-          type="date"
-          value={format(selectedDate, 'yyyy-MM-dd')}
-          onChange={(e) => setSelectedDate(e.target.value ? new Date(e.target.value + 'T12:00:00') : new Date())}
-          className="w-[160px]"
-        />
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setSelectedDate(startOfDay(new Date()))}
-          className={format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') ? 'ring-2 ring-primary' : ''}
+          onClick={() => setDateFilter(null)}
+          className={!dateFilter ? 'ring-2 ring-primary' : ''}
+        >
+          {t('reservations.filterAll')}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setDateFilter(format(startOfDay(new Date()), 'yyyy-MM-dd'))}
+          className={dateFilter === format(new Date(), 'yyyy-MM-dd') ? 'ring-2 ring-primary' : ''}
         >
           {t('reservations.today')}
         </Button>
+        <Input
+          type="date"
+          value={dateFilter ?? ''}
+          onChange={(e) => setDateFilter(e.target.value || null)}
+          className="w-[160px]"
+        />
       </div>
 
       {isLoading ? (
@@ -267,7 +274,9 @@ function ReservationsContent() {
       ) : reservations.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-muted bg-muted/20 p-12 text-center">
           <CalendarClock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="font-medium text-muted-foreground">{t('reservations.noReservationsForDate')}</p>
+          <p className="font-medium text-muted-foreground">
+            {dateFilter ? t('reservations.noReservationsForDate') : t('reservations.noReservations')}
+          </p>
           <p className="text-sm text-muted-foreground mt-1">{t('reservations.noReservationsHint')}</p>
         </div>
       ) : (

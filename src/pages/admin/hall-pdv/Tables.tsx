@@ -2292,17 +2292,23 @@ export function TableOperationSheet({
                 {t('tablesCentral.table')} {table.number} → {t('tablesCentral.selectTargetTable')}
               </p>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
-                {transferTargetTables.map((tbl: TableWithStatus) => (
-                  <Button
-                    key={tbl.id}
-                    variant={transferTargetTableId === tbl.id ? 'default' : 'outline'}
-                    size="sm"
-                    className="min-h-[44px]"
-                    onClick={() => setTransferTargetTableId(tbl.id)}
-                  >
-                    {tbl.number}
-                  </Button>
-                ))}
+                {transferTargetTables.map((tbl: TableWithStatus) => {
+                  const zoneName = hallZones.find((z) => z.id === tbl.hall_zone_id)?.name;
+                  return (
+                    <Button
+                      key={tbl.id}
+                      variant={transferTargetTableId === tbl.id ? 'default' : 'outline'}
+                      size="sm"
+                      className="min-h-[44px] flex flex-col items-center gap-0.5"
+                      onClick={() => setTransferTargetTableId(tbl.id)}
+                    >
+                      <span className="font-semibold">Mesa {tbl.number}</span>
+                      {zoneName && (
+                        <span className="text-xs opacity-80 font-normal">{zoneName}</span>
+                      )}
+                    </Button>
+                  );
+                })}
               </div>
             </div>
           )}

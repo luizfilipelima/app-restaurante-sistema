@@ -380,7 +380,7 @@ export default function AdminHorarios() {
             <div>
               <h2 className="text-sm font-semibold text-slate-900">Horário das reservas</h2>
               <p className="text-xs text-slate-500">
-                Defina em que horário começa e termina a possibilidade de reserva. Na tela de reservas do cliente, só aparecerão opções dentro desse intervalo.
+                Defina o intervalo de horários em que o cliente pode escolher para estar no local (ex.: 18h às 20h30). O cliente sempre poderá acessar a tela de reservas e ver datas disponíveis; este ajuste limita apenas quais horários aparecem no seletor.
               </p>
             </div>
           </div>
@@ -417,7 +417,7 @@ export default function AdminHorarios() {
         </div>
         <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/40">
           <p className="text-xs text-slate-500">
-            O cliente só poderá escolher horários dentro desse intervalo na tela de reservas. Deixe em branco para não limitar.
+            Na tela de reservas, o cliente vê as datas e escolhe um horário de chegada. Este intervalo define quais horários aparecem no seletor. Deixe em branco para permitir qualquer horário.
           </p>
         </div>
       </motion.div>
