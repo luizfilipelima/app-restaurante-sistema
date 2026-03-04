@@ -8,4 +8,3 @@ export { default as ProductAllergensLabelsSection } from './ProductAllergensLabe
 export { default as MenuThemeSelector } from './MenuThemeSelector';
 export { default as ThemeColorPicker } from './ThemeColorPicker';
 export { default as MenuQRCodeCard } from './MenuQRCodeCard';
-export { default as MenuMobilePreview } from './MenuMobilePreview';

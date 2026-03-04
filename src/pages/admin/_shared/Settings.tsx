@@ -986,7 +986,7 @@ export default function AdminSettings() {
                     className="font-mono text-sm"
                   />
                   <p className="text-[10px] text-muted-foreground">
-                    Digite apenas o domínio, sem https:// ou barras no final.
+                    Digite apenas o domínio, sem https:// ou barras no final. Use um subdomínio como cardapio, pedidos ou menu.
                   </p>
                   {formData.custom_domain && (
                     <a
@@ -1001,72 +1001,84 @@ export default function AdminSettings() {
                   )}
                 </FieldGroup>
 
-                <div className="rounded-lg border border-border bg-muted/30 p-5 space-y-5">
+                {/* Configuração exata do DNS */}
+                <div className="rounded-xl border-2 border-[#F87116]/30 bg-[#F87116]/5 p-5 space-y-4">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F87116]/20 text-[#F87116] text-xs font-bold">1</span>
-                    Passo a passo para configurar
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F87116]/20 text-[#F87116] text-xs font-bold">✓</span>
+                    Configuração exata do DNS
                   </h3>
+                  <p className="text-xs text-foreground font-medium">
+                    Você precisa criar <strong>apenas 1 registro</strong>. Não são necessários registros A, AAAA, TXT ou outros.
+                  </p>
+                  <div className="rounded-lg border border-border bg-background overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-muted/50 border-b border-border">
+                          <th className="text-left py-2.5 px-3 font-semibold text-foreground">Campo</th>
+                          <th className="text-left py-2.5 px-3 font-semibold text-foreground">Valor</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-border/60">
+                          <td className="py-2.5 px-3 text-muted-foreground">Tipo</td>
+                          <td className="py-2.5 px-3 font-mono font-medium">CNAME</td>
+                        </tr>
+                        <tr className="border-b border-border/60">
+                          <td className="py-2.5 px-3 text-muted-foreground">Nome / Host / Apontar</td>
+                          <td className="py-2.5 px-3 font-mono">
+                            {formData.custom_domain
+                              ? formData.custom_domain.split('.')[0]
+                              : 'cardapio'}
+                            <span className="text-[10px] text-muted-foreground ml-1">
+                              (a parte antes do primeiro ponto)
+                            </span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-2.5 px-3 text-muted-foreground">Destino / Valor / Conteúdo</td>
+                          <td className="py-2.5 px-3 font-mono font-medium text-[#F87116]">cname.vercel-dns.com</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Em provedores como Registro.br, Hostinger ou Cloudflare, os nomes dos campos podem variar (Host, Apontar, Conteúdo). Use os valores da tabela acima.
+                  </p>
+                </div>
 
-                  <ol className="space-y-4 list-none">
+                {/* Passo a passo */}
+                <div className="rounded-lg border border-border bg-muted/20 p-5 space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground">Passo a passo</h3>
+                  <ol className="space-y-3 list-none">
                     <li className="flex gap-3">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">1</span>
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F87116]/20 text-[#F87116] text-xs font-bold">1</span>
                       <div>
-                        <p className="text-sm font-medium text-foreground">Escolha o subdomínio</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Use algo como <code className="px-1 py-0.5 rounded bg-muted font-mono text-[11px]">cardapio</code>, <code className="px-1 py-0.5 rounded bg-muted font-mono text-[11px]">pedidos</code> ou <code className="px-1 py-0.5 rounded bg-muted font-mono text-[11px]">menu</code> + seu domínio. Exemplo: cardapio.minhapizzaria.com.br
-                        </p>
+                        <p className="text-sm font-medium text-foreground">Cadastre o domínio acima e salve</p>
+                        <p className="text-[11px] text-muted-foreground">Preencha o campo de domínio e clique em &quot;Salvar alterações&quot;.</p>
                       </div>
                     </li>
                     <li className="flex gap-3">
                       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">2</span>
                       <div>
-                        <p className="text-sm font-medium text-foreground">Cadastre aqui no painel</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Preencha o campo acima com o domínio escolhido e clique em &quot;Salvar alterações&quot;.
-                        </p>
+                        <p className="text-sm font-medium text-foreground">Acesse o painel do seu provedor de DNS</p>
+                        <p className="text-[11px] text-muted-foreground">Registro.br, GoDaddy, Hostinger, Cloudflare ou onde seu domínio está registrado.</p>
                       </div>
                     </li>
                     <li className="flex gap-3">
                       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">3</span>
                       <div>
-                        <p className="text-sm font-medium text-foreground">Acesse o painel do seu provedor de DNS</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Entre no site onde você gerencia o domínio (Registro.br, GoDaddy, Hostinger, Cloudflare, etc.).
-                        </p>
+                        <p className="text-sm font-medium text-foreground">Crie o registro CNAME com os valores exatos da tabela acima</p>
+                        <p className="text-[11px] text-muted-foreground">Adicione um novo registro do tipo CNAME. Copie os valores da tabela &quot;Configuração exata do DNS&quot;.</p>
                       </div>
                     </li>
                     <li className="flex gap-3">
                       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">4</span>
                       <div>
-                        <p className="text-sm font-medium text-foreground">Crie um registro CNAME</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Adicione um novo registro com: <strong>Nome/Host</strong> = o subdomínio (ex: cardapio) e <strong>Destino/Valor</strong> = informe ao suporte para receber o valor correto.
-                        </p>
-                      </div>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">5</span>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">Aguarde a propagação</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          A alteração no DNS pode levar de alguns minutos até 48 horas para propagar.
-                        </p>
-                      </div>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">6</span>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">Teste o acesso</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Acesse <strong>https://{formData.custom_domain || 'seu-dominio.com.br'}</strong> no navegador. Se tudo estiver certo, seu cardápio aparecerá.
-                        </p>
+                        <p className="text-sm font-medium text-foreground">Aguarde a propagação (até 48h)</p>
+                        <p className="text-[11px] text-muted-foreground">Depois, acesse https://{formData.custom_domain || 'seu-dominio.com.br'} no navegador. Seu cardápio deve aparecer.</p>
                       </div>
                     </li>
                   </ol>
-
-                  <p className="text-[11px] text-muted-foreground pt-2 border-t border-border/60">
-                    Precisa do valor exato do CNAME? Entre em contato com o suporte.
-                  </p>
                 </div>
 
                 <div className="flex justify-end">

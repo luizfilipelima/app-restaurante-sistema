@@ -24,6 +24,7 @@ import {
   useLinkComandaToTable,
   useUnlinkComandaFromTable,
   useResetTable,
+  useTransferTable,
   useCloseTableAccount,
 } from '@/hooks/queries';
 import type { CloseTablePaymentMethod } from '@/hooks/queries';
@@ -90,6 +91,7 @@ import {
   X,
   Upload,
   ImageIcon,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import type { Locale } from 'date-fns';
@@ -719,6 +721,7 @@ export default function AdminTables() {
           refetchTables();
           queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
         }}
+        availableTables={gridTablesAll}
         isMobile={isMobile}
       />
 
@@ -1484,6 +1487,8 @@ export function TableOperationSheet({
   onTableOrZoneUpdated: () => void;
   /** Chamado quando a mesa é excluída (apenas modo management). */
   onTableDeleted?: () => void;
+  /** Lista de mesas disponíveis para transferência (exclui a mesa atual). */
+  availableTables?: TableWithStatus[];
   isMobile: boolean;
 }) {
   const isManagement = mode === 'management';
@@ -1518,6 +1523,14 @@ export function TableOperationSheet({
 
   const closeTableAccount = useCloseTableAccount(restaurantId);
   const resetTableMutation = useResetTable(restaurantId);
+  const transferTableMutation = useTransferTable(restaurantId);
+
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [transferTargetTableId, setTransferTargetTableId] = useState<string | null>(null);
+
+  const transferTargetTables = (availableTables ?? [])
+    .filter((t) => t.is_active && t.id !== table?.id)
+    .sort((a, b) => (a.number ?? 0) - (b.number ?? 0));
 
   // Sincroniza estado local com a mesa (para corrigir bug de zona não atualizar no dropdown)
   useEffect(() => {
@@ -1683,6 +1696,28 @@ export function TableOperationSheet({
       toast({ title: 'Mesa resetada!', description: 'A mesa voltou ao status Livre.' });
     } catch {
       toast({ title: t('common.error'), variant: 'destructive' });
+    }
+  };
+
+  const handleTransferTable = async () => {
+    if (!table || !restaurantId || !transferTargetTableId || transferTableMutation.isPending) return;
+    try {
+      const result = await transferTableMutation.mutateAsync({
+        sourceTableId: table.id,
+        targetTableId: transferTargetTableId,
+      });
+      setShowTransferDialog(false);
+      setTransferTargetTableId(null);
+      onClose();
+      onTableOrZoneUpdated();
+      toast({
+        title: t('tablesCentral.transferTableSuccess', {
+          source: String(result.source_number),
+          target: String(result.target_number),
+        }),
+      });
+    } catch (e: any) {
+      toast({ title: e?.message ?? t('common.error'), variant: 'destructive' });
     }
   };
 
@@ -2006,6 +2041,24 @@ export function TableOperationSheet({
                 Exibir QR Code da Mesa
               </Button>
 
+              {/* Transferir para outra mesa — quando há pedidos, reserva ou comandas vinculadas */}
+              {(table.orderIds.length > 0 || linkedComandas.length > 0 || table.hasReservation) && transferTargetTables.length > 0 && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="min-h-[48px] touch-manipulation"
+                  onClick={() => { setTransferTargetTableId(null); setShowTransferDialog(true); }}
+                  disabled={transferTableMutation.isPending}
+                >
+                  {transferTableMutation.isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  ) : (
+                    <ArrowRightLeft className="h-5 w-5 mr-2" />
+                  )}
+                  {t('tablesCentral.transferTable')}
+                </Button>
+              )}
+
               {/* Abrir cardápio da mesa */}
               {baseUrl && (
                 <Button
@@ -2218,6 +2271,50 @@ export function TableOperationSheet({
             <Button variant="destructive" onClick={handleResetTable} disabled={resetTableMutation.isPending}>
               {resetTableMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
               {resetTableMutation.isPending ? t('tablesCentral.resetting') : t('tablesCentral.yesReset')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal transferir mesa */}
+      <Dialog open={showTransferDialog} onOpenChange={(open) => { if (!open) setTransferTargetTableId(null); setShowTransferDialog(open); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('tablesCentral.transferTable')}</DialogTitle>
+            <DialogDescription>
+              {t('tablesCentral.transferTableConfirm')}
+            </DialogDescription>
+          </DialogHeader>
+          {table && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {t('tablesCentral.table')} {table.number} → {t('tablesCentral.selectTargetTable')}
+              </p>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
+                {transferTargetTables.map((tbl) => (
+                  <Button
+                    key={tbl.id}
+                    variant={transferTargetTableId === tbl.id ? 'default' : 'outline'}
+                    size="sm"
+                    className="min-h-[44px]"
+                    onClick={() => setTransferTargetTableId(tbl.id)}
+                  >
+                    {tbl.number}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowTransferDialog(false)} disabled={transferTableMutation.isPending}>
+              {t('tablesCentral.cancel')}
+            </Button>
+            <Button
+              onClick={handleTransferTable}
+              disabled={!transferTargetTableId || transferTableMutation.isPending}
+            >
+              {transferTableMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRightLeft className="h-4 w-4 mr-2" />}
+              {transferTableMutation.isPending ? t('tablesCentral.transferring') : t('tablesCentral.transferTable')}
             </Button>
           </DialogFooter>
         </DialogContent>

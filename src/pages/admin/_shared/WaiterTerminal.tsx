@@ -514,6 +514,7 @@ function WaiterTerminalContent() {
           refetchTables();
           queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
         }}
+        availableTables={gridTablesAll}
         isMobile={isMobile}
       />
 

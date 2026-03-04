@@ -14,12 +14,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Loader2,
   CheckCircle2,
@@ -30,10 +29,13 @@ import {
   ArrowLeft,
   Users,
   ChevronDown,
+  MessageCircle,
+  XCircle,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR, es } from 'date-fns/locale';
-import { normalizePhoneWithCountryCode } from '@/lib/core/utils';
+import { normalizePhoneWithCountryCode, generateWhatsAppLink, ensurePhoneForWhatsApp } from '@/lib/core/utils';
+import { toast } from '@/hooks/shared/use-toast';
 import { PhoneCountryInput } from '@/components/ui/PhoneCountryInput';
 
 interface Restaurant {
@@ -41,14 +43,16 @@ interface Restaurant {
   name: string;
   logo: string | null;
   phone_country?: 'BR' | 'PY' | 'AR' | null;
+  whatsapp?: string | null;
   reservation_start_time?: string | null;
   reservation_end_time?: string | null;
 }
 
-interface TableOption {
-  table_id: string;
-  table_number: number;
+interface ZoneOption {
+  hall_zone_id: string;
   zone_name: string;
+  image_url: string | null;
+  available_table_ids: string[];
 }
 
 interface MyReservation {
@@ -96,8 +100,9 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
   const [customerPhoneCountry, setCustomerPhoneCountry] = useState<'BR' | 'PY' | 'AR'>('BR');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
-  const [tableId, setTableId] = useState('');
+  const [selectedZone, setSelectedZone] = useState<ZoneOption | null>(null);
   const [notes, setNotes] = useState('');
+  const [zoneModalOpen, setZoneModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Minhas reservas
@@ -107,8 +112,9 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
   const [myReservations, setMyReservations] = useState<MyReservation[]>([]);
   const [myWaitingPosition, setMyWaitingPosition] = useState<MyWaitingPosition | null>(null);
   const [fetchingMy, setFetchingMy] = useState(false);
+  const [cancellingReservationId, setCancellingReservationId] = useState<string | null>(null);
 
-  const [tables, setTables] = useState<TableOption[]>([]);
+  const [zones, setZones] = useState<ZoneOption[]>([]);
   const [result, setResult] = useState<{ short_code: string; table_number: string; scheduled_at: string } | null>(null);
 
   useEffect(() => {
@@ -126,7 +132,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
       try {
         const { data: rest, error: restErr } = await supabase
           .from('restaurants')
-          .select('id, name, logo, phone_country, reservation_start_time, reservation_end_time')
+          .select('id, name, logo, phone_country, whatsapp, reservation_start_time, reservation_end_time')
           .eq('slug', restaurantSlug)
           .eq('is_active', true)
           .single();
@@ -145,27 +151,34 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
 
   useEffect(() => {
     if (!restaurantSlug || !scheduledDate || !scheduledTime || mainView !== 'new') {
-      setTables([]);
-      if (!scheduledDate || !scheduledTime) setTableId('');
+      setZones([]);
+      if (!scheduledDate || !scheduledTime) setSelectedZone(null);
       return;
     }
     const dt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
     supabase
-      .rpc('get_available_tables_for_reservation', {
+      .rpc('get_available_hall_zones_for_reservation', {
         p_restaurant_slug: restaurantSlug,
         p_scheduled_at: dt,
       })
-      .then(({ data, error: tblErr }) => {
-        if (tblErr) {
-          setTables([]);
-          setTableId('');
+      .then(({ data, error: zonesErr }) => {
+        if (zonesErr) {
+          setZones([]);
+          setSelectedZone(null);
           return;
         }
-        const list = (data ?? []) as TableOption[];
-        setTables(list);
-        setTableId((prev) => {
-          const exists = list.some((t) => t.table_id === prev);
-          return list.length > 0 && !exists ? list[0]!.table_id : prev;
+        const list = (data ?? []) as ZoneOption[];
+        setZones(list);
+        setSelectedZone((prev) => {
+          if (!prev) return null;
+          const stillValid = list.some(
+            (z) => z.hall_zone_id === prev.hall_zone_id && (prev.available_table_ids?.length ?? 0) > 0
+          );
+          if (stillValid) {
+            const updated = list.find((z) => z.hall_zone_id === prev.hall_zone_id);
+            return updated && (updated.available_table_ids?.length ?? 0) > 0 ? updated : null;
+          }
+          return null;
         });
       });
   }, [restaurantSlug, scheduledDate, scheduledTime, mainView]);
@@ -175,10 +188,16 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
 
   const handleSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!restaurantSlug || !tableId || !customerName.trim() || !scheduledDate || !scheduledTime) {
+    if (!restaurantSlug || !selectedZone || !customerName.trim() || !scheduledDate || !scheduledTime) {
       setError(t('reservation.errorFillData'));
       return;
     }
+    const availableIds = selectedZone.available_table_ids ?? [];
+    if (availableIds.length === 0) {
+      setError(t('reservation.noZonesAvailable'));
+      return;
+    }
+    const tableId = availableIds[Math.floor(Math.random() * availableIds.length)]!;
     const start = restaurant?.reservation_start_time?.trim();
     const end = restaurant?.reservation_end_time?.trim();
     if (start && end && scheduledTime) {
@@ -263,6 +282,29 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
     setMyStep('form');
     setMyReservations([]);
     setMyWaitingPosition(null);
+  };
+
+  const canCancel = (r: MyReservation) => r.status === 'pending' || r.status === 'confirmed';
+
+  const handleCancelReservation = async (r: MyReservation) => {
+    if (!restaurantSlug || !canCancel(r)) return;
+    setCancellingReservationId(r.id);
+    try {
+      const phoneNormalized = normalizePhoneWithCountryCode(myPhone.trim(), myPhoneCountry);
+      const { data, error: rpcErr } = await supabase.rpc('cancel_my_reservation_by_slug', {
+        p_restaurant_slug: restaurantSlug,
+        p_reservation_id: r.id,
+        p_customer_phone: phoneNormalized,
+      });
+      if (rpcErr) throw rpcErr;
+      setMyReservations((prev) => prev.map((x) => (x.id === r.id ? { ...x, status: 'cancelled' as const } : x)));
+      toast({ title: t('reservation.cancelSuccess') });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({ title: t('reservation.cancelError'), description: msg, variant: 'destructive' });
+    } finally {
+      setCancellingReservationId(null);
+    }
   };
 
   if (loading) {
@@ -495,12 +537,44 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
                   <div className="mt-3 flex justify-center bg-background rounded-lg p-2">
                     <Barcode value={r.short_code} height={36} margin={0} displayValue={false} />
                   </div>
+                  {canCancel(r) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-3 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      disabled={cancellingReservationId === r.id}
+                      onClick={() => handleCancelReservation(r)}
+                    >
+                      {cancellingReservationId === r.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <XCircle className="h-4 w-4 mr-2" />
+                      )}
+                      {t('reservation.cancelReservation')}
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
           ) : !myWaitingPosition ? (
             <p className="text-center text-muted-foreground py-8">{t('reservation.noReservationsFound')}</p>
           ) : null}
+
+          {restaurant?.whatsapp && (
+            <a
+              href={generateWhatsAppLink(
+                ensurePhoneForWhatsApp(restaurant.whatsapp, restaurant.phone_country ?? 'BR'),
+                t('reservation.whatsappMessage')
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 w-full rounded-lg border-2 border-[#25D366] bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366]/20 px-4 py-3 font-medium transition-colors"
+            >
+              <MessageCircle className="h-5 w-5" />
+              {t('reservation.contactWhatsApp')}
+            </a>
+          )}
 
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1" onClick={() => setMyStep('form')}>
@@ -610,39 +684,86 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
             </p>
           )}
           <div>
-            <Label>{t('reservation.table')}</Label>
-            <Select
-              value={tableId}
-              onValueChange={setTableId}
-              required
+            <Label>{t('reservation.sector')}</Label>
+            <button
+              type="button"
+              onClick={() => (scheduledDate && scheduledTime ? setZoneModalOpen(true) : null)}
               disabled={!scheduledDate || !scheduledTime}
+              className="mt-1 w-full min-h-[44px] flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2.5 text-sm text-left ring-offset-background transition-colors hover:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 disabled:opacity-60 disabled:pointer-events-none"
             >
-              <SelectTrigger className="mt-1 transition-colors hover:border-primary/40 hover:bg-muted/80 data-[state=open]:border-primary disabled:opacity-60">
-                <SelectValue
-                  placeholder={
-                    !scheduledDate || !scheduledTime
-                      ? t('reservation.selectDateAndTimeFirst')
-                      : t('reservation.selectTable')
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {tables.map((tbl) => (
-                  <SelectItem key={tbl.table_id} value={tbl.table_id}>
-                    Mesa {tbl.table_number}
-                    {tbl.zone_name ? ` — ${tbl.zone_name}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <span className={selectedZone ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                {selectedZone
+                  ? selectedZone.zone_name
+                  : !scheduledDate || !scheduledTime
+                    ? t('reservation.selectDateAndTimeFirst')
+                    : t('reservation.selectSectorPlaceholder')}
+              </span>
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-50" />
+            </button>
             {(!scheduledDate || !scheduledTime) && (
               <p className="text-xs text-muted-foreground mt-1.5">
                 {t('reservation.selectDateAndTimeFirst')}
               </p>
             )}
-            {tables.length === 0 && scheduledDate && scheduledTime && (
-              <p className="text-xs text-amber-600 mt-1">{t('reservation.noTablesAvailable')}</p>
+            {zones.length === 0 && scheduledDate && scheduledTime && (
+              <p className="text-xs text-amber-600 mt-1">{t('reservation.noZonesAvailable')}</p>
             )}
+
+            <Dialog open={zoneModalOpen} onOpenChange={setZoneModalOpen}>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{t('reservation.selectSectorModalTitle')}</DialogTitle>
+                  <p className="text-sm text-muted-foreground">{t('reservation.selectSectorModalSub')}</p>
+                </DialogHeader>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                  {zones.map((zone) => {
+                    const isFull = !zone.available_table_ids || zone.available_table_ids.length === 0;
+                    return (
+                      <button
+                        key={zone.hall_zone_id}
+                        type="button"
+                        disabled={isFull}
+                        onClick={() => {
+                          if (!isFull) {
+                            setSelectedZone(zone);
+                            setZoneModalOpen(false);
+                          }
+                        }}
+                        className={`relative rounded-2xl overflow-hidden border-2 text-left transition-all ${
+                          isFull
+                            ? 'opacity-60 cursor-not-allowed border-muted bg-muted/30'
+                            : 'border-border hover:border-primary/50 hover:bg-accent/50 active:scale-[0.98]'
+                        }`}
+                      >
+                        <div className="p-2 pt-2">
+                          <div className="aspect-video w-full bg-muted rounded-2xl overflow-hidden">
+                            {zone.image_url ? (
+                              <img
+                                src={zone.image_url}
+                                alt={zone.zone_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                                <Users className="h-10 w-10 text-primary/50" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="px-3 pb-3 pt-0">
+                          <p className="font-semibold text-foreground">{zone.zone_name}</p>
+                          {isFull && (
+                            <span className="inline-block mt-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-destructive/20 text-destructive">
+                              {t('reservation.lotado')}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
           <div>
             <Label>{t('reservation.notes')}</Label>
@@ -661,7 +782,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
           <Button
             type="submit"
             className="w-full hover:brightness-105 active:scale-[0.99] transition-all"
-            disabled={submitting || tables.length === 0}
+            disabled={submitting || !selectedZone || (selectedZone.available_table_ids?.length ?? 0) === 0}
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             {t('reservation.confirmReservation')}

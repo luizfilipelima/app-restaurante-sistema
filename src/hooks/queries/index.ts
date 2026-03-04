@@ -22,6 +22,8 @@ export { useTables } from './useTables';
 export { useTableStatuses } from './useTableStatuses';
 export { useUpdateTableCustomerName, updateTableCustomerNameFn } from './useUpdateTableCustomerName';
 export { useResetTable, resetTable } from './useResetTable';
+export { useTransferTable, transferTableToTable } from './useTransferTable';
+export type { TransferTableResult } from './useTransferTable';
 export { useCloseTableAccount } from './useCloseTableAccount';
 export type { CloseTablePaymentMethod } from './useCloseTableAccount';
 export { useCancelVirtualComanda } from './useCancelVirtualComanda';
