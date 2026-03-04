@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/shared/use-toast';
-import { Clock, AlertTriangle, ChefHat, ArrowRight, UtensilsCrossed, Bike, Scale } from 'lucide-react';
+import { Clock, AlertTriangle, ChefHat, ArrowRight, UtensilsCrossed, Bike, Scale, LayoutDashboard } from 'lucide-react';
 
 export default function KitchenDisplay() {
   const { user } = useAuthStore();

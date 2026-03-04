@@ -41,6 +41,8 @@ interface Restaurant {
   name: string;
   logo: string | null;
   phone_country?: 'BR' | 'PY' | 'AR' | null;
+  reservation_start_time?: string | null;
+  reservation_end_time?: string | null;
 }
 
 interface TableOption {

@@ -1040,11 +1040,11 @@ function CashierContent() {
 
   const totalToReceive = useMemo(() => {
     const ps = (restaurant as { print_settings_by_sector?: import('@/types').PrintSettingsBySector })?.print_settings_by_sector;
-    const sector: WaiterTipSector = (q: CashierQueueItem) => q.type === 'comanda_buffet' ? 'buffet' : 'table';
+    const getSector = (q: CashierQueueItem): WaiterTipSector => q.type === 'comanda_buffet' ? 'buffet' : 'table';
     return queue.reduce((sum, q) => sum + getDisplayTotalWithWaiterTip(
       q.totalAmount,
       q.type === 'comanda_digital' ? q.items : q.type === 'comanda_buffet' ? q.items : undefined,
-      sector(q),
+      getSector(q),
       ps
     ), 0);
   }, [queue, restaurant]);
