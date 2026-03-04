@@ -20,7 +20,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
-import { getBioPublicUrl } from '@/lib/core/utils';
+import { getBioPublicUrl, getCardapioPublicUrl, generateWhatsAppLink } from '@/lib/core/utils';
 import { toast } from '@/hooks/shared/use-toast';
 import {
   Save, Upload, Loader2, Printer,
@@ -75,6 +75,20 @@ const LINK_BIO_BUTTON_TYPE_LABELS: Record<LinkBioButtonType, string> = {
   whatsapp: 'WhatsApp',
   reserve: 'Reservar',
   about: 'Página Sobre',
+};
+
+/** Botões padrão exibidos na /bio quando não há botões customizados. PT e ES. */
+const DEFAULT_LINK_BIO_BUTTONS: Record<'pt' | 'es', { button_type: LinkBioButtonType; label: string; description: string; icon: string }[]> = {
+  pt: [
+    { button_type: 'menu', label: 'Ver Cardápio de Delivery', description: 'Peça online agora', icon: '🍽️' },
+    { button_type: 'reserve', label: 'Reservar', description: 'Garanta sua mesa', icon: '📅' },
+    { button_type: 'whatsapp', label: 'Fazer Pedido pelo WhatsApp', description: 'Fale diretamente conosco', icon: '📱' },
+  ],
+  es: [
+    { button_type: 'menu', label: 'Ver Menú de Delivery', description: 'Pide online ahora', icon: '🍽️' },
+    { button_type: 'reserve', label: 'Reservar', description: 'Asegurá tu mesa', icon: '📅' },
+    { button_type: 'whatsapp', label: 'Hacer Pedido por WhatsApp', description: 'Hablá directamente con nosotros', icon: '📱' },
+  ],
 };
 
 const LINK_BIO_ICONS = ['🔗', '🍽️', '📅', '📱', 'ℹ️', '📍', '🌐', '📞', '✉️', '🎉', '📷', '🏠', '⭐', '❤️'];
@@ -312,7 +326,26 @@ export default function AdminSettings() {
 
   const [linksBioModalOpen, setLinksBioModalOpen] = useState(false);
   const [linksBioEditing, setLinksBioEditing] = useState<LinkBioButton | null>(null);
-  const [linksBioForm, setLinksBioForm] = useState({ label: '', url: '', icon: '🔗', button_type: 'url' as LinkBioButtonType });
+  /** Quando não há botões customizados, editar um botão padrão (menu/reserve/whatsapp) cria o primeiro botão customizado */
+  const [linksBioEditingDefault, setLinksBioEditingDefault] = useState<LinkBioButtonType | null>(null);
+  const [linksBioForm, setLinksBioForm] = useState({ label: '', description: '', url: '', icon: '🔗', button_type: 'url' as LinkBioButtonType });
+
+  /** Retorna o link exibido para um botão (para mostrar na lista em Settings). */
+  const getLinkBioButtonDisplayLink = (btn: { button_type: LinkBioButtonType; url?: string | null }) => {
+    if (btn.button_type === 'url' && btn.url) return btn.url;
+    const slug = restaurant?.slug;
+    if (!slug) return '';
+    const base = getCardapioPublicUrl(slug);
+    if (btn.button_type === 'menu') return base;
+    if (btn.button_type === 'reserve') return `${base.replace(/\/$/, '')}/reservar`;
+    if (btn.button_type === 'about') return `${getBioPublicUrl(slug)}/sobre`;
+    if (btn.button_type === 'whatsapp') {
+      const phone = (restaurant as { whatsapp?: string; phone?: string })?.whatsapp || (restaurant as { phone?: string })?.phone;
+      if (phone) return generateWhatsAppLink(phone, 'Olá! Quero fazer um pedido 🍽️');
+      return 'WhatsApp';
+    }
+    return '';
+  };
 
   const set = <K extends keyof typeof formData>(k: K, v: (typeof formData)[K]) =>
     setFormData(f => ({ ...f, [k]: v }));
@@ -1458,7 +1491,8 @@ export default function AdminSettings() {
                 type="button"
                 onClick={() => {
                   setLinksBioEditing(null);
-                  setLinksBioForm({ label: '', url: '', icon: '🔗', button_type: 'url' });
+                  setLinksBioEditingDefault(null);
+                  setLinksBioForm({ label: '', description: '', url: '', icon: '🔗', button_type: 'url' });
                   setLinksBioModalOpen(true);
                 }}
                 className="gap-2 bg-[#F87116] hover:bg-[#F87116]/90"
@@ -1472,13 +1506,9 @@ export default function AdminSettings() {
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            ) : linkBioButtons.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border bg-muted/30 py-10 text-center">
-                <p className="text-sm text-muted-foreground">Nenhum botão configurado. Use o padrão ou adicione botões acima.</p>
-              </div>
             ) : (
               <ul className="mt-4 space-y-2">
-                {linkBioButtons.map((btn, index) => (
+                {(linkBioButtons.length > 0 ? linkBioButtons : []).map((btn, index) => (
                   <li
                     key={btn.id}
                     className="flex items-center gap-3 p-3 rounded-xl border border-border bg-background/60 hover:bg-muted/30 transition-colors"
@@ -1486,7 +1516,12 @@ export default function AdminSettings() {
                     <span className="text-xl flex-shrink-0" aria-hidden>{btn.icon}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{btn.label}</p>
-                      <p className="text-xs text-muted-foreground">{LINK_BIO_BUTTON_TYPE_LABELS[btn.button_type]}</p>
+                      {(btn.description ?? '').trim() && (
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{btn.description}</p>
+                      )}
+                      <p className="text-[11px] text-muted-foreground/80 truncate mt-0.5" title={getLinkBioButtonDisplayLink(btn)}>
+                        {getLinkBioButtonDisplayLink(btn)}
+                      </p>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <Button
@@ -1528,8 +1563,10 @@ export default function AdminSettings() {
                         className="h-8 w-8 text-muted-foreground hover:text-foreground"
                         onClick={() => {
                           setLinksBioEditing(btn);
+                          setLinksBioEditingDefault(null);
                           setLinksBioForm({
                             label: btn.label,
+                            description: btn.description ?? '',
                             url: btn.url ?? '',
                             icon: btn.icon,
                             button_type: btn.button_type,
@@ -1553,6 +1590,45 @@ export default function AdminSettings() {
                     </div>
                   </li>
                 ))}
+                {linkBioButtons.length === 0 && restaurant?.slug && (
+                  <>
+                    {(DEFAULT_LINK_BIO_BUTTONS[(restaurant as { language?: string })?.language === 'es' ? 'es' : 'pt'] ?? DEFAULT_LINK_BIO_BUTTONS.pt).map((def) => (
+                      <li
+                        key={`default-${def.button_type}`}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-border bg-muted/20 hover:bg-muted/30 transition-colors"
+                      >
+                        <span className="text-xl flex-shrink-0" aria-hidden>{def.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{def.label}</p>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">{def.description}</p>
+                          <p className="text-[11px] text-muted-foreground/80 truncate mt-0.5" title={getLinkBioButtonDisplayLink(def)}>
+                            {getLinkBioButtonDisplayLink(def)}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setLinksBioEditing(null);
+                            setLinksBioEditingDefault(def.button_type);
+                            setLinksBioForm({
+                              label: def.label,
+                              description: def.description,
+                              url: '',
+                              icon: def.icon,
+                              button_type: def.button_type,
+                            });
+                            setLinksBioModalOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </>
+                )}
               </ul>
             )}
           </div>
@@ -1594,21 +1670,30 @@ export default function AdminSettings() {
         open={linksBioModalOpen}
         onOpenChange={(open) => {
           setLinksBioModalOpen(open);
-          if (!open) setLinksBioEditing(null);
+          if (!open) { setLinksBioEditing(null); setLinksBioEditingDefault(null); }
         }}
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{linksBioEditing ? 'Editar botão' : 'Adicionar botão'}</DialogTitle>
+            <DialogTitle>{linksBioEditing ? 'Editar botão' : linksBioEditingDefault ? 'Personalizar botão padrão' : 'Adicionar botão'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
-              <Label htmlFor="link-bio-label">Texto do botão</Label>
+              <Label htmlFor="link-bio-label">Título</Label>
               <Input
                 id="link-bio-label"
                 value={linksBioForm.label}
                 onChange={(e) => setLinksBioForm((f) => ({ ...f, label: e.target.value }))}
                 placeholder="Ex: Ver cardápio"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="link-bio-description">Descrição (subtítulo)</Label>
+              <Input
+                id="link-bio-description"
+                value={linksBioForm.description}
+                onChange={(e) => setLinksBioForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="Ex: Peça online agora"
               />
             </div>
             <div className="space-y-2">
@@ -1677,6 +1762,7 @@ export default function AdminSettings() {
                     {
                       id: linksBioEditing.id,
                       label: linksBioForm.label.trim(),
+                      description: linksBioForm.description.trim() || null,
                       button_type: linksBioForm.button_type,
                       url: linksBioForm.button_type === 'url' ? linksBioForm.url.trim() || null : null,
                       icon: linksBioForm.icon,
@@ -1695,15 +1781,17 @@ export default function AdminSettings() {
                     restaurant_id: restaurantId,
                     sort_order: linkBioButtons.length,
                     label: linksBioForm.label.trim(),
+                    description: linksBioForm.description.trim() || null,
                     url: linksBioForm.button_type === 'url' ? linksBioForm.url.trim() || null : null,
                     icon: linksBioForm.icon,
                     button_type: linksBioForm.button_type,
                   };
                   linkBioMutations.create.mutate(payload, {
                     onSuccess: () => {
-                      toast({ title: 'Botão adicionado' });
+                      toast({ title: linksBioEditingDefault ? 'Botão personalizado' : 'Botão adicionado' });
                       setLinksBioModalOpen(false);
-                      setLinksBioForm({ label: '', url: '', icon: '🔗', button_type: 'url' });
+                      setLinksBioEditingDefault(null);
+                      setLinksBioForm({ label: '', description: '', url: '', icon: '🔗', button_type: 'url' });
                     },
                     onError: (err) => toast({ title: 'Erro ao adicionar', description: err.message, variant: 'destructive' }),
                   });

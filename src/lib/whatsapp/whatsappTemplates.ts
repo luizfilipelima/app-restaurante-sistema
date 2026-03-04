@@ -30,7 +30,8 @@ export const TEMPLATE_VARS = {
     { key: 'troco',              label: 'Troco para',           example: 'R$ 50,00',          description: 'Valor do troco (dinheiro)' },
     { key: 'subtotal',           label: 'Subtotal',             example: 'R$ 38,90',          description: 'Subtotal do pedido' },
     { key: 'taxa_entrega',       label: 'Taxa de entrega',      example: 'Taxa entrega: R$ 5,00', description: 'Linha com a taxa de entrega' },
-    { key: 'total',              label: 'Total',                example: 'R$ 43,90',          description: 'Total final do pedido' },
+    { key: 'taxa_garcom',       label: 'Taxa de garçom',     example: 'Taxa garçom (10%): R$ 3,89', description: 'Linha com a taxa de garçom (quando ativa)' },
+    { key: 'total',             label: 'Total',               example: 'R$ 43,90',          description: 'Total final do pedido' },
     { key: 'itens',              label: 'Itens do pedido',      example: '  • 2x Pizza Margherita — R$ 38,90', description: 'Lista formatada dos itens' },
     { key: 'observacoes',        label: 'Observações',          example: 'Sem cebola',        description: 'Obs gerais do pedido' },
   ] as TemplateVariable[],
@@ -75,6 +76,7 @@ export const DEFAULT_TEMPLATES = {
 📋 *Resumo:*
   Subtotal: {{subtotal}}
   {{taxa_entrega}}
+  {{taxa_garcom}}
   *Total: {{total}}*
 
 🍽️ *Itens:*

@@ -18,7 +18,7 @@ import { toast } from '@/hooks/shared/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
 import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
-import { Clock, Sun, XCircle, Loader2, Save, CheckCircle2 } from 'lucide-react';
+import { Clock, Sun, XCircle, Loader2, Save, CheckCircle2, Truck, CalendarClock } from 'lucide-react';
 
 const DAYS: { key: DayKey; label: string; short: string }[] = [
   { key: 'mon', label: 'Segunda-feira', short: 'Seg' },
@@ -44,6 +44,9 @@ export default function AdminHorarios() {
   const [openingHours, setOpeningHours] = useState<OpeningHours>(() =>
     DAYS.reduce((acc, d) => ({ ...acc, [d.key]: null }), {} as OpeningHours)
   );
+  const [deliveryUntilTime, setDeliveryUntilTime] = useState<string>('');
+  const [reservationStartTime, setReservationStartTime] = useState<string>('');
+  const [reservationEndTime, setReservationEndTime] = useState<string>('');
 
   useEffect(() => {
     if (restaurant) {
@@ -56,9 +59,12 @@ export default function AdminHorarios() {
           {} as OpeningHours
         )
       );
+      setDeliveryUntilTime(restaurant.delivery_until_time?.trim() || '');
+      setReservationStartTime(restaurant.reservation_start_time?.trim() || '');
+      setReservationEndTime(restaurant.reservation_end_time?.trim() || '');
     }
     setLoading(false);
-  }, [restaurant?.id, restaurant?.always_open, restaurant?.is_manually_closed, restaurant?.opening_hours]);
+  }, [restaurant]);
 
   const handleSave = async () => {
     if (!restaurantId) return;
@@ -70,6 +76,9 @@ export default function AdminHorarios() {
           always_open: alwaysOpen,
           is_manually_closed: isManuallyClosed,
           opening_hours: openingHours,
+          delivery_until_time: deliveryUntilTime.trim() || null,
+          reservation_start_time: reservationStartTime.trim() || null,
+          reservation_end_time: reservationEndTime.trim() || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', restaurantId);
@@ -306,6 +315,110 @@ export default function AdminHorarios() {
               </>
             )}
           </Button>
+        </div>
+      </motion.div>
+
+      {/* ── Horário do delivery ─────────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+      >
+        <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/60">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-orange-100 flex items-center justify-center">
+              <Truck className="h-[18px] w-[18px] text-orange-600" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Horário do delivery</h2>
+              <p className="text-xs text-slate-500">
+                Até que horas aceitar pedidos de delivery. Após esse horário, o cliente não poderá finalizar pedidos de entrega (a menos que &quot;Sempre aberto&quot; esteja ativo). Deixe em branco para não limitar pelo horário.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="p-5 flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-700">Aceitar delivery até</span>
+            <Input
+              type="time"
+              value={deliveryUntilTime}
+              onChange={(e) => setDeliveryUntilTime(e.target.value)}
+              className="h-9 w-28 text-sm font-medium"
+            />
+          </label>
+          {deliveryUntilTime && (
+            <button
+              type="button"
+              onClick={() => setDeliveryUntilTime('')}
+              className="text-xs text-slate-500 hover:text-slate-700 underline"
+            >
+              Remover limite
+            </button>
+          )}
+        </div>
+        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/40">
+          <p className="text-xs text-slate-500">
+            Esta informação aparece no modal de informações do cardápio do delivery. Salve os horários para aplicar.
+          </p>
+        </div>
+      </motion.div>
+
+      {/* ── Horário das reservas ─────────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+      >
+        <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/60">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-violet-100 flex items-center justify-center">
+              <CalendarClock className="h-[18px] w-[18px] text-violet-600" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Horário das reservas</h2>
+              <p className="text-xs text-slate-500">
+                Defina em que horário começa e termina a possibilidade de reserva. Na tela de reservas do cliente, só aparecerão opções dentro desse intervalo.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="p-5 flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-700">Reservas a partir de</span>
+            <Input
+              type="time"
+              value={reservationStartTime}
+              onChange={(e) => setReservationStartTime(e.target.value)}
+              className="h-9 w-28 text-sm font-medium"
+            />
+          </label>
+          <span className="text-slate-400 font-medium hidden sm:inline">até</span>
+          <label className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-700">Reservas até</span>
+            <Input
+              type="time"
+              value={reservationEndTime}
+              onChange={(e) => setReservationEndTime(e.target.value)}
+              className="h-9 w-28 text-sm font-medium"
+            />
+          </label>
+          {(reservationStartTime || reservationEndTime) && (
+            <button
+              type="button"
+              onClick={() => { setReservationStartTime(''); setReservationEndTime(''); }}
+              className="text-xs text-slate-500 hover:text-slate-700 underline"
+            >
+              Remover limite
+            </button>
+          )}
+        </div>
+        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/40">
+          <p className="text-xs text-slate-500">
+            O cliente só poderá escolher horários dentro desse intervalo na tela de reservas. Deixe em branco para não limitar.
+          </p>
         </div>
       </motion.div>
     </AdminPageLayout>

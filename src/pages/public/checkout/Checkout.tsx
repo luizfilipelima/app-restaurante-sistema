@@ -26,7 +26,7 @@ import {
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { useTableOrderStore } from '@/store/tableOrderStore';
 import { useSharingMeta } from '@/hooks/shared/useSharingMeta';
-import { generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours, getBankAccountForCurrency, hasBankAccountData, formatBankAccountLines } from '@/lib/core/utils';
+import { generateWhatsAppLink, normalizePhoneWithCountryCode, isWithinOpeningHours, isWithinDeliveryHours, getBankAccountForCurrency, hasBankAccountData, formatBankAccountLines, getWaiterTipForSector, type WaiterTipSector } from '@/lib/core/utils';
 import { convertBetweenCurrencies, formatPrice, type CurrencyCode } from '@/lib/priceHelper';
 import { processTemplate, getTemplate } from '@/lib/whatsapp/whatsappTemplates';
 import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
@@ -343,10 +343,13 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     : 0;
   const isOutsideDeliveryArea = isKilometersMode && kmDeliveryResult === null && restaurantLat != null && restaurantLng != null && tiers.length > 0;
   const subtotal = getSubtotal();
+  const sector: WaiterTipSector = isTableOrder ? 'table' : (deliveryType === DeliveryType.DELIVERY ? 'delivery' : 'pickup');
+  const printSettings = (currentRestaurant as { print_settings_by_sector?: import('@/types').PrintSettingsBySector })?.print_settings_by_sector;
+  const { amount: waiterTipAmount, pct: waiterTipPct } = getWaiterTipForSector(subtotal, sector, printSettings);
   const couponsEnabled = (currentRestaurant as { discount_coupons_enabled?: boolean | null })?.discount_coupons_enabled !== false;
   const showCouponCard = couponsEnabled && hasActiveCoupons;
   const discountAmount = showCouponCard ? (appliedCoupon?.discountAmount ?? 0) : 0;
-  const total = Math.max(0, subtotal + deliveryFee - discountAmount);
+  const total = Math.max(0, subtotal + deliveryFee + waiterTipAmount - discountAmount);
   const totalItemCount = items.reduce((acc, i) => acc + i.quantity, 0);
 
   const hasLoyaltyItemInCart = items.some((i) => i.isLoyaltyReward === true);
@@ -447,6 +450,10 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         setFormError(t('checkout.errorRestaurantClosed'));
         return;
       }
+      if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && !isWithinDeliveryHours(currentRestaurant)) {
+        setFormError(t('checkout.errorDeliveryClosed'));
+        return;
+      }
     }
 
     // Constrói o link do WhatsApp ANTES do await para poder abrir a aba de forma síncrona.
@@ -455,7 +462,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     const finalDeliveryType = isTableOrder ? DeliveryType.PICKUP : deliveryType;
     const finalDeliveryFee = isTableOrder ? 0 : deliveryFee;
     const finalDiscount = showCouponCard ? (appliedCoupon?.discountAmount ?? 0) : 0;
-    const finalTotal = Math.max(0, subtotal + finalDeliveryFee - finalDiscount);
+    const finalTotal = Math.max(0, subtotal + finalDeliveryFee + waiterTipAmount - finalDiscount);
 
     let whatsappWin: Window | null = null;
     if (!isTableOrder && currentRestaurant) {
@@ -493,6 +500,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         pagamentoDetalhes = formatBankAccountLines(bankAccountSnapshot).join(' | ');
       }
       const taxaLine = deliveryFee > 0 ? `Taxa entrega: ${formatPrice(deliveryFee, baseCurrency)}` : '';
+      const waiterTipLine = waiterTipAmount > 0 ? `Taxa garçom (${waiterTipPct}%): ${formatPrice(waiterTipAmount, baseCurrency)}` : '';
       const contaRest = bankAccountSnapshot && hasBankAccountData(bankAccountSnapshot)
         ? formatBankAccountLines(bankAccountSnapshot).join(' | ')
         : '';
@@ -514,6 +522,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         troco:             trocoFormatted,
         subtotal:          formatPrice(subtotal, baseCurrency),
         taxa_entrega:      taxaLine,
+        taxa_garcom:       waiterTipLine,
         total:             formatPrice(total, baseCurrency),
         itens:             itemsText,
         observacoes:       notes?.trim() ?? '',
@@ -1507,6 +1516,15 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       {formatPrice(convertForDisplay(deliveryFee), displayCurrency)}
                     </span>
                   )}
+                </div>
+              )}
+
+              {waiterTipAmount > 0 && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">{t('checkout.waiterTip')}</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {formatPrice(convertForDisplay(waiterTipAmount), displayCurrency)} ({waiterTipPct}%)
+                  </span>
                 </div>
               )}
 

@@ -59,6 +59,7 @@ import {
   SheetClose,
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Plus,
@@ -81,6 +82,7 @@ import {
   LayoutGrid,
   Banknote,
   User,
+  UserCircle2,
   Phone,
   RefreshCw,
   X,
@@ -278,7 +280,13 @@ export default function AdminTables() {
   const [reactivatingId, setReactivatingId] = useState<string | null>(null);
   const [inactiveDeleteTarget, setInactiveDeleteTarget] = useState<{ id: string; number: number } | null>(null);
   const [deletingInactive, setDeletingInactive] = useState(false);
+  const [waiterCanClosePayment, setWaiterCanClosePayment] = useState(true);
+  const [savingWaiterSetting, setSavingWaiterSetting] = useState(false);
   const pendingCalls = (waiterCallsData ?? []).filter((c) => c.status === 'pending');
+
+  useEffect(() => {
+    if (restaurant) setWaiterCanClosePayment(restaurant.waiter_can_close_payment !== false);
+  }, [restaurant]);
 
   // Merge tableStatuses with tables for grid (tableStatuses is source of truth for status)
   const gridTablesAll: TableWithStatus[] = tables.map((t) => {
@@ -525,12 +533,54 @@ export default function AdminTables() {
             <DialogTitle>{t('tablesCentral.configureHall')}</DialogTitle>
           </DialogHeader>
           <Tabs defaultValue="zonas">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="zonas">{t('tablesCentral.zonas')}</TabsTrigger>
               <TabsTrigger value="mesas">{t('tablesCentral.mesas')}</TabsTrigger>
+              <TabsTrigger value="garcom">{t('tablesCentral.garcom')}</TabsTrigger>
             </TabsList>
             <TabsContent value="zonas">
               <HallZonesConfig restaurantId={restaurantId} hallZones={hallZones} t={t} />
+            </TabsContent>
+            <TabsContent value="garcom" className="space-y-4 mt-4">
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <UserCircle2 className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{t('tablesCentral.waiterClosePayment')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('tablesCentral.waiterClosePaymentDesc')}</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border bg-background px-4 py-3">
+                  <Label htmlFor="waiter-close-payment" className="text-sm font-medium cursor-pointer flex-1">
+                    {t('tablesCentral.waiterCanClosePaymentLabel')}
+                  </Label>
+                  <Switch
+                    id="waiter-close-payment"
+                    checked={waiterCanClosePayment}
+                    disabled={savingWaiterSetting}
+                    onCheckedChange={async (checked) => {
+                      if (!restaurantId) return;
+                      setSavingWaiterSetting(true);
+                      try {
+                        const { error } = await supabase
+                          .from('restaurants')
+                          .update({ waiter_can_close_payment: checked, updated_at: new Date().toISOString() })
+                          .eq('id', restaurantId);
+                        if (error) throw error;
+                        setWaiterCanClosePayment(checked);
+                        queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
+                        toast({ title: t('tablesCentral.waiterSettingSaved') });
+                      } catch {
+                        toast({ title: t('tablesCentral.errorSaving'), variant: 'destructive' });
+                      } finally {
+                        setSavingWaiterSetting(false);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
             </TabsContent>
             <TabsContent value="mesas" className="space-y-6 mt-4">
               {/* Mesas Ocupadas — Limpar mesa (apenas admin/gerente) */}
@@ -1215,6 +1265,7 @@ export function TableOperationSheet({
     currency?: string;
     exchange_rates?: ExchangeRates | null;
     payment_currencies?: string[] | null;
+    waiter_can_close_payment?: boolean | null;
   } | null;
   hallZones: import('@/types').HallZone[];
   hasBuffet: boolean;
@@ -1785,8 +1836,8 @@ export function TableOperationSheet({
                 </Button>
               )}
 
-              {/* Fechar conta — Mesas e Garçom: marca pedidos como pagos, remove da fila do Caixa */}
-              {table.orderIds.length > 0 && (
+              {/* Fechar conta — Mesas e Garçom: marca pedidos como pagos, remove da fila do Caixa. No modo garçom, só aparece se waiter_can_close_payment estiver habilitado. */}
+              {table.orderIds.length > 0 && (isManagement || (restaurant?.waiter_can_close_payment ?? true)) && (
                 <Button
                   size="lg"
                   className="min-h-[48px] touch-manipulation bg-emerald-600 hover:bg-emerald-700 text-white"

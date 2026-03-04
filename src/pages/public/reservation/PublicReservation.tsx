@@ -124,7 +124,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
       try {
         const { data: rest, error: restErr } = await supabase
           .from('restaurants')
-          .select('id, name, logo, phone_country')
+          .select('id, name, logo, phone_country, reservation_start_time, reservation_end_time')
           .eq('slug', restaurantSlug)
           .eq('is_active', true)
           .single();
@@ -176,6 +176,20 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
     if (!restaurantSlug || !tableId || !customerName.trim() || !scheduledDate || !scheduledTime) {
       setError(t('reservation.errorFillData'));
       return;
+    }
+    const start = restaurant?.reservation_start_time?.trim();
+    const end = restaurant?.reservation_end_time?.trim();
+    if (start && end && scheduledTime) {
+      const [sh, sm] = scheduledTime.split(':').map(Number);
+      const [startH, startM] = start.split(':').map(Number);
+      const [endH, endM] = end.split(':').map(Number);
+      const scheduledMins = (sh ?? 0) * 60 + (sm ?? 0);
+      const startMins = (startH ?? 0) * 60 + (startM ?? 0);
+      const endMins = (endH ?? 0) * 60 + (endM ?? 0);
+      if (scheduledMins < startMins || scheduledMins > endMins) {
+        setError(t('reservation.errorTimeOutsideRange'));
+        return;
+      }
     }
     setSubmitting(true);
     setError(null);
@@ -571,7 +585,9 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
                 <input
                   type="time"
                   value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
+                  onChange={(e) => { setScheduledTime(e.target.value); setError(''); }}
+                  min={restaurant?.reservation_start_time?.trim() || undefined}
+                  max={restaurant?.reservation_end_time?.trim() || undefined}
                   required
                   className="absolute inset-0 cursor-pointer opacity-0"
                   aria-label={t('reservation.time')}

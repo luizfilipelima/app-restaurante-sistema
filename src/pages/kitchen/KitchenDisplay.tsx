@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/shared/use-toast';
-import { Clock, AlertTriangle, ChefHat, ArrowRight, LayoutDashboard, UtensilsCrossed, Bike, Scale } from 'lucide-react';
+import { Clock, AlertTriangle, ChefHat, ArrowRight, UtensilsCrossed, Bike, Scale } from 'lucide-react';
 
 export default function KitchenDisplay() {
   const { user } = useAuthStore();
@@ -27,6 +27,7 @@ export default function KitchenDisplay() {
   const slug = slugFromPath || slugFromQuery;
 
   const [resolvedId, setResolvedId] = useState<string | null>(null);
+  const [restaurantName, setRestaurantName] = useState<string>('');
   const [resolving, setResolving]   = useState(!!slug);
 
   useEffect(() => {
@@ -38,12 +39,13 @@ export default function KitchenDisplay() {
 
     supabase
       .from('restaurants')
-      .select('id')
+      .select('id, name')
       .eq('slug', slug)
       .single()
       .then(({ data, error }) => {
         if (!error && data?.id) {
           setResolvedId(data.id);
+          setRestaurantName((data as { name?: string }).name?.trim() ?? '');
         } else {
           setResolvedId(user?.restaurant_id || restaurantIdFromUrl || null);
         }
@@ -51,7 +53,26 @@ export default function KitchenDisplay() {
       });
   }, [slug, restaurantIdFromUrl, user?.restaurant_id]);
 
+  useEffect(() => {
+    if (!resolvedId || restaurantName) return;
+    supabase
+      .from('restaurants')
+      .select('name')
+      .eq('id', resolvedId)
+      .single()
+      .then(({ data, error }) => {
+        if (!error && (data as { name?: string })?.name) {
+          setRestaurantName(((data as { name?: string }).name ?? '').trim());
+        }
+      });
+  }, [resolvedId, restaurantName]);
+
   const effectiveRestaurantId = resolvedId;
+
+  useEffect(() => {
+    document.title = restaurantName ? `KDS - ${restaurantName}` : 'KDS';
+    return () => { document.title = ''; };
+  }, [restaurantName]);
 
   const [orders, setOrders] = useState<DatabaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -324,7 +345,9 @@ export default function KitchenDisplay() {
                 <ChefHat className="h-7 w-7 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-white">COZINHA</h1>
+                <h1 className="text-2xl font-black tracking-tight text-white">
+                  COZINHA{restaurantName ? ` — ${restaurantName}` : ''}
+                </h1>
                 <div className="flex items-center gap-4 text-sm text-slate-400 font-medium">
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500"></span> {pendingOrders.length} Pendentes</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> {preparingOrders.length} Em Preparo</span>
@@ -332,22 +355,6 @@ export default function KitchenDisplay() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              {user?.role === 'restaurant_admin' && (
-                <Button asChild variant="ghost" size="sm" className="gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
-                  <Link to={slug ? `/${slug}/painel/orders` : '/admin/orders'}>
-                    <LayoutDashboard className="h-4 w-4" />
-                    Voltar ao painel
-                  </Link>
-                </Button>
-              )}
-              {user?.role === 'super_admin' && (
-                <Button asChild variant="ghost" size="sm" className="gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
-                  <Link to={effectiveRestaurantId ? `/super-admin/restaurants/${effectiveRestaurantId}/orders` : '/super-admin/restaurants'}>
-                    <LayoutDashboard className="h-4 w-4" />
-                    Voltar ao painel
-                  </Link>
-                </Button>
-              )}
               <p className="text-3xl font-black font-mono tabular-nums">
                 {now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </p>

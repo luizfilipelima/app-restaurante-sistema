@@ -17,7 +17,9 @@ import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { supabase } from '@/lib/core/supabase';
 import {
   getComandaPublicUrl,
+  getWaiterTipForSector,
   type CurrencyCode,
+  type WaiterTipSector,
 } from '@/lib/core/utils';
 import {
   convertBetweenCurrencies,
@@ -195,6 +197,17 @@ function getDisplayTotal(
 ): number {
   if (totalAmount != null && totalAmount > 0) return totalAmount;
   return (items ?? []).reduce((s, i) => s + Number(i.total_price), 0);
+}
+
+function getDisplayTotalWithWaiterTip(
+  totalAmount: number,
+  items: { total_price: number }[] | undefined,
+  sector: WaiterTipSector,
+  printSettings: import('@/types').PrintSettingsBySector | null | undefined
+): number {
+  const base = getDisplayTotal(totalAmount, items);
+  const { amount } = getWaiterTipForSector(base, sector, printSettings);
+  return base + amount;
 }
 
 // ─── Modal QR Code ────────────────────────────────────────────────────────────
@@ -997,10 +1010,18 @@ function CashierContent() {
     }
   };
 
+  const printSettings = (restaurant as { print_settings_by_sector?: import('@/types').PrintSettingsBySector })?.print_settings_by_sector;
+  const getSector = (item: CashierDisplayItem): WaiterTipSector =>
+    item.type === 'comanda_buffet' ? 'buffet' : 'table';
   const totalToPay = selected
     ? isTableGroup(selected)
-      ? getDisplayTotal(selected.totalAmount, undefined)
-      : getDisplayTotal(selected.totalAmount, selected.type === 'comanda_digital' ? selected.items : selected.type === 'comanda_buffet' ? selected.items : undefined)
+      ? getDisplayTotalWithWaiterTip(selected.totalAmount, undefined, 'table', printSettings)
+      : getDisplayTotalWithWaiterTip(
+          selected.totalAmount,
+          selected.type === 'comanda_digital' ? selected.items : selected.type === 'comanda_buffet' ? selected.items : undefined,
+          getSector(selected),
+          printSettings
+        )
     : 0;
 
   const totalReceivedBRL = useMemo(() => {
@@ -1018,8 +1039,15 @@ function CashierContent() {
   const changeAmount = remaining < 0 ? -remaining : 0;
 
   const totalToReceive = useMemo(() => {
-    return queue.reduce((sum, q) => sum + getDisplayTotal(q.totalAmount, q.type === 'comanda_digital' ? q.items : q.type === 'comanda_buffet' ? q.items : undefined), 0);
-  }, [queue]);
+    const ps = (restaurant as { print_settings_by_sector?: import('@/types').PrintSettingsBySector })?.print_settings_by_sector;
+    const sector: WaiterTipSector = (q: CashierQueueItem) => q.type === 'comanda_buffet' ? 'buffet' : 'table';
+    return queue.reduce((sum, q) => sum + getDisplayTotalWithWaiterTip(
+      q.totalAmount,
+      q.type === 'comanda_digital' ? q.items : q.type === 'comanda_buffet' ? q.items : undefined,
+      sector(q),
+      ps
+    ), 0);
+  }, [queue, restaurant]);
 
   const totalReceivedToday = useMemo(() => {
     return completedList.reduce((sum, c) => sum + c.totalAmount, 0);

@@ -209,6 +209,12 @@ const pt = {
     itemsTotal:              'Itens da conta',
     noItems:                 'Nenhum item consumido.',
     total:                   'Total',
+    garcom:                  'Garçom',
+    waiterClosePayment:      'Fechamento de pagamento pelo garçom',
+    waiterClosePaymentDesc:  'Permita ou não que o garçom feche o pagamento diretamente na mesa (botão Fechar conta no Terminal). Se desativado, apenas Caixa/Admin fecham.',
+    waiterCanClosePaymentLabel: 'Garçom pode fechar pagamento na mesa',
+    waiterSettingSaved:      'Configuração salva.',
+    errorSaving:             'Erro ao salvar.',
   },
 
   reservations: {
@@ -673,6 +679,12 @@ const es: typeof pt = {
     itemsTotal:              'Ítems de la cuenta',
     noItems:                 'Ningún ítem consumido.',
     total:                   'Total',
+    garcom:                  'Camarero',
+    waiterClosePayment:      'Cierre de pago por el camarero',
+    waiterClosePaymentDesc:  'Permita o no que el camarero cierre el pago directamente en la mesa (botón Cerrar cuenta en el Terminal). Si está desactivado, solo Caja/Admin cierran.',
+    waiterCanClosePaymentLabel: 'Camarero puede cerrar pago en la mesa',
+    waiterSettingSaved:      'Configuración guardada.',
+    errorSaving:             'Error al guardar.',
   },
 
   reservations: {
@@ -1137,6 +1149,12 @@ const en: typeof pt = {
     itemsTotal:              'Bill items',
     noItems:                 'No items.',
     total:                   'Total',
+    garcom:                  'Waiter',
+    waiterClosePayment:      'Waiter closing payment',
+    waiterClosePaymentDesc:  'Allow or not the waiter to close payment directly at the table (Close bill button in Terminal). If disabled, only Cashier/Admin can close.',
+    waiterCanClosePaymentLabel: 'Waiter can close payment at table',
+    waiterSettingSaved:      'Setting saved.',
+    errorSaving:             'Error saving.',
   },
 
   reservations: {

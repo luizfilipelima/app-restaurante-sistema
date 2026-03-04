@@ -382,13 +382,21 @@ export default function LinkBio({ tenantSlug: tenantSlugProp }: LinkBioProps = {
                       <p className={`text-[15px] font-bold leading-tight ${isWhatsApp ? 'text-white' : 'text-foreground'}`}>
                         {btn.label}
                       </p>
-                      {!isWhatsApp && (
-                        <p className="text-[12px] text-muted-foreground mt-0.5 truncate font-medium">
-                          {btn.button_type === 'menu' ? `${restaurant.slug}.quiero.food` : ''}
+                      {btn.description?.trim() ? (
+                        <p className={`text-[12px] mt-0.5 truncate font-medium ${isWhatsApp ? 'text-white/65' : 'text-muted-foreground'}`}>
+                          {btn.description}
                         </p>
-                      )}
-                      {isWhatsApp && (
-                        <p className="text-[12px] text-white/65 mt-0.5 font-medium">{t.whatsappSub}</p>
+                      ) : (
+                        <>
+                          {!isWhatsApp && btn.button_type === 'menu' && (
+                            <p className="text-[12px] text-muted-foreground mt-0.5 truncate font-medium">
+                              {restaurant.slug}.quiero.food
+                            </p>
+                          )}
+                          {isWhatsApp && (
+                            <p className="text-[12px] text-white/65 mt-0.5 font-medium">{t.whatsappSub}</p>
+                          )}
+                        </>
                       )}
                     </div>
                     <div className="relative z-10 flex-shrink-0">

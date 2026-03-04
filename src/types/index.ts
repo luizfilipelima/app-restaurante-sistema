@@ -114,6 +114,12 @@ export interface Restaurant {
   is_manually_closed?: boolean;
   /** Se true, considerado aberto 24h (ignora horários por dia) */
   always_open?: boolean;
+  /** Horário limite para aceitar pedidos de delivery (HH:mm). Ignorado se always_open. */
+  delivery_until_time?: string | null;
+  /** Horário mínimo para reservas (HH:mm). Na tela de reservas, só aparecem opções a partir deste horário. */
+  reservation_start_time?: string | null;
+  /** Horário máximo para reservas (HH:mm). Na tela de reservas, só aparecem opções até este horário. */
+  reservation_end_time?: string | null;
   /** Impressão automática ao receber novo pedido */
   print_auto_on_new_order?: boolean;
   /** Largura do papel: 58mm ou 80mm */
@@ -138,6 +144,8 @@ export interface Restaurant {
   description?: string | null;
   /** Quando false, desativa todas as zonas no checkout (mostra card WhatsApp). Quando true, respeita is_active de cada zona. */
   delivery_zones_enabled?: boolean | null;
+  /** Se true, o garçom pode fechar o pagamento na mesa (Terminal do Garçom). Se false, apenas Caixa/Admin. */
+  waiter_can_close_payment?: boolean | null;
   /** Modo de zonas: disabled | zones | kilometers. Prioridade sobre delivery_zones_enabled. */
   delivery_zones_mode?: 'disabled' | 'zones' | 'kilometers' | null;
   /** Latitude do restaurante (modo quilometragem). Usada como origem do cálculo de distância. */
@@ -178,6 +186,8 @@ export interface LinkBioButton {
   restaurant_id: string;
   sort_order: number;
   label: string;
+  /** Subtítulo exibido abaixo do título na página /bio */
+  description?: string | null;
   url: string | null;
   icon: string;
   button_type: LinkBioButtonType;

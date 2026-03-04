@@ -3,7 +3,7 @@
  * Usado no modal do cardápio (RestaurantInfoModal) e na página pública Link Bio Sobre.
  */
 import { Link } from 'react-router-dom';
-import { Phone, Clock, FileText, Instagram, CalendarClock } from 'lucide-react';
+import { Phone, Clock, FileText, Instagram, CalendarClock, Truck } from 'lucide-react';
 import { generateWhatsAppLink } from '@/lib/core/utils';
 import type { Restaurant } from '@/types';
 import type { DayKey } from '@/types';
@@ -37,6 +37,13 @@ function formatTimeHHMM(hhmm: string): string {
   const min = parseInt(m, 10);
   if (min === 0) return `${hour}h`;
   return `${hour}h${min.toString().padStart(2, '0')}`;
+}
+
+/** Formata horário limite do delivery para exibição (ex: "22h" ou "22h30"). */
+function formatDeliveryUntil(until: string | null | undefined, lang: 'pt' | 'es'): string {
+  if (!until || until.length < 5) return '';
+  const formatted = formatTimeHHMM(until);
+  return lang === 'pt' ? `Delivery até ${formatted}` : `Delivery hasta ${formatted}`;
 }
 
 export function formatOpeningHours(
@@ -179,6 +186,22 @@ export function RestaurantAboutContent({
             <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">{hoursText}</p>
           </div>
         </div>
+
+        {restaurant.delivery_until_time?.trim() && (
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Truck className="h-5 w-5 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">
+                {lang === 'pt' ? 'Horário do delivery' : 'Horario de delivery'}
+              </p>
+              <p className="text-sm text-foreground leading-relaxed">
+                {formatDeliveryUntil(restaurant.delivery_until_time, lang)}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col gap-2">
           {onReservaClick ? (

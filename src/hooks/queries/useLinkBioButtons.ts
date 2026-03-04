@@ -30,6 +30,7 @@ export type CreateLinkBioButtonPayload = {
   restaurant_id: string;
   sort_order: number;
   label: string;
+  description?: string | null;
   url?: string | null;
   icon: string;
   button_type: LinkBioButton['button_type'];
@@ -57,6 +58,7 @@ export function useLinkBioButtonsMutations(restaurantId: string | null, restaura
           restaurant_id: payload.restaurant_id,
           sort_order: payload.sort_order,
           label: payload.label.trim(),
+          description: payload.description?.trim() || null,
           url: payload.button_type === 'url' ? (payload.url?.trim() || null) : null,
           icon: payload.icon || '🔗',
           button_type: payload.button_type,
@@ -73,6 +75,7 @@ export function useLinkBioButtonsMutations(restaurantId: string | null, restaura
     mutationFn: async ({ id, ...patch }: { id: string } & UpdateLinkBioButtonPayload) => {
       const payload: Record<string, unknown> = { ...patch };
       if (payload.label !== undefined) payload.label = (payload.label as string).trim();
+      if (payload.description !== undefined) payload.description = (payload.description as string)?.trim() || null;
       if (payload.button_type !== 'url') payload.url = null;
       else if (payload.url !== undefined) payload.url = (payload.url as string)?.trim() || null;
       const { data, error } = await supabase

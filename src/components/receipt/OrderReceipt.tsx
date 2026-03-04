@@ -57,7 +57,12 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
   const waiterTipAmount = waiterTipEnabled
     ? Math.round(subtotal * (waiterTipPct / 100))
     : 0;
-  if (waiterTipAmount > 0) total += waiterTipAmount;
+  const discountAmount = Number((order as { discount_amount?: number }).discount_amount ?? 0);
+  // Para pedidos novos, order.total já inclui a taxa. Para antigos, usamos o valor calculado.
+  if (waiterTipAmount > 0) {
+    const expectedWithTip = subtotal + deliveryFee + waiterTipAmount - discountAmount;
+    if (total < expectedWithTip) total = expectedWithTip;
+  }
   const zoneName = order.delivery_zone?.location_name;
   const paymentLabel =
     order.payment_method === 'table' || order.order_source === 'table' || order.table_id

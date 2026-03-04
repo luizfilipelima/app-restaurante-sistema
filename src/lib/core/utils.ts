@@ -1,7 +1,25 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { formatPrice } from '../priceHelper';
-import type { BankAccountByCountry, PaymentBankAccountSnapshot } from '@/types';
+import type { BankAccountByCountry, PaymentBankAccountSnapshot, PrintSettingsBySector } from '@/types';
+
+export type WaiterTipSector = 'delivery' | 'table' | 'pickup' | 'buffet';
+
+/**
+ * Retorna o valor e dados da taxa de garçom para um setor, conforme config em print_settings_by_sector.
+ * Quando enabled, aplica pct sobre o subtotal (antes de delivery/desconto).
+ */
+export function getWaiterTipForSector(
+  subtotal: number,
+  sector: WaiterTipSector,
+  printSettings?: PrintSettingsBySector | null
+): { amount: number; pct: number; enabled: boolean } {
+  const cfg = printSettings?.[sector];
+  const enabled = !!cfg?.waiter_tip_enabled;
+  const pct = enabled ? Math.max(0, Math.min(100, Number(cfg?.waiter_tip_pct) || 10)) : 0;
+  const amount = enabled ? Math.round(subtotal * (pct / 100)) : 0;
+  return { amount, pct, enabled };
+}
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -154,6 +172,36 @@ export function isWithinOpeningHours(openingHours?: Record<string, { open: strin
   if (closeMinutes <= openMinutes) closeMinutes += 24 * 60;
   if (currentMinutes < openMinutes) currentMinutes += 24 * 60;
   return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+}
+
+/** Restaurante com campos usados para verificação de horário de delivery */
+type RestaurantDeliveryHours = {
+  always_open?: boolean;
+  is_manually_closed?: boolean;
+  opening_hours?: Record<string, { open: string; close: string } | null>;
+  delivery_until_time?: string | null;
+};
+
+/**
+ * Verifica se o restaurante aceita pedidos de delivery no momento.
+ * Considera: always_open, is_manually_closed, opening_hours e delivery_until_time.
+ * Se always_open estiver ativo, retorna true. Caso contrário, verifica horário
+ * de funcionamento e, se delivery_until_time estiver definido, se o horário
+ * atual não passou desse limite.
+ */
+export function isWithinDeliveryHours(restaurant: RestaurantDeliveryHours | null | undefined): boolean {
+  if (!restaurant) return false;
+  if (restaurant.is_manually_closed) return false;
+  if (restaurant.always_open) return true;
+  const hasHours = restaurant.opening_hours && Object.keys(restaurant.opening_hours).length > 0;
+  if (hasHours && !isWithinOpeningHours(restaurant.opening_hours)) return false;
+  const until = restaurant.delivery_until_time?.trim();
+  if (!until || until.length < 5) return true;
+  const now = new Date();
+  const [untilH, untilM] = until.split(':').map(Number);
+  const untilMinutes = (untilH ?? 0) * 60 + (untilM ?? 0);
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  return currentMinutes < untilMinutes;
 }
 
 /** Extrai dados bancários conforme moeda: PYG → pyg (Banco, Titular, Alias), ARS → ars (Banco, Agência, Conta, Titular). */
