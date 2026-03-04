@@ -149,10 +149,24 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
     })();
   }, [restaurantSlug]);
 
+  // Lista setores ao entrar no formulário (sem depender de data/hora)
   useEffect(() => {
-    if (!restaurantSlug || !scheduledDate || !scheduledTime || mainView !== 'new') {
+    if (!restaurantSlug || mainView !== 'new') {
       setZones([]);
-      if (!scheduledDate || !scheduledTime) setSelectedZone(null);
+      return;
+    }
+    if (!scheduledDate || !scheduledTime) {
+      supabase
+        .rpc('list_hall_zones_for_reservation_by_slug', {
+          p_restaurant_slug: restaurantSlug,
+        })
+        .then(({ data, error: listErr }) => {
+          if (listErr) {
+            setZones([]);
+            return;
+          }
+          setZones((data ?? []) as ZoneOption[]);
+        });
       return;
     }
     const dt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
@@ -673,25 +687,22 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
             <Label>{t('reservation.sector')}</Label>
             <button
               type="button"
-              onClick={() => (scheduledDate && scheduledTime ? setZoneModalOpen(true) : null)}
-              disabled={!scheduledDate || !scheduledTime}
-              className="mt-1 w-full min-h-[44px] flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2.5 text-sm text-left ring-offset-background transition-colors hover:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 disabled:opacity-60 disabled:pointer-events-none"
+              onClick={() => setZoneModalOpen(true)}
+              className="mt-1 w-full min-h-[44px] flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2.5 text-sm text-left ring-offset-background transition-colors hover:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
             >
               <span className={selectedZone ? 'text-foreground font-medium' : 'text-muted-foreground'}>
                 {selectedZone
                   ? selectedZone.zone_name
-                  : !scheduledDate || !scheduledTime
-                    ? t('reservation.selectDateAndTimeFirst')
-                    : t('reservation.selectSectorPlaceholder')}
+                  : t('reservation.selectSectorPlaceholder')}
               </span>
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-50" />
             </button>
-            {(!scheduledDate || !scheduledTime) && (
+            {!scheduledDate || !scheduledTime ? (
               <p className="text-xs text-muted-foreground mt-1.5">
-                {t('reservation.selectDateAndTimeFirst')}
+                {t('reservation.sectorAvailabilityAfterDateTime')}
               </p>
-            )}
-            {zones.length === 0 && scheduledDate && scheduledTime && (
+            ) : null}
+            {zones.length === 0 && (
               <p className="text-xs text-amber-600 mt-1">{t('reservation.noZonesAvailable')}</p>
             )}
 
@@ -703,7 +714,8 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
                 </DialogHeader>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                   {zones.map((zone) => {
-                    const isFull = !zone.available_table_ids || zone.available_table_ids.length === 0;
+                    const hasAvailabilityInfo = Boolean(scheduledDate && scheduledTime);
+                    const isFull = hasAvailabilityInfo && (!zone.available_table_ids || zone.available_table_ids.length === 0);
                     return (
                       <button
                         key={zone.hall_zone_id}

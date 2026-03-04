@@ -262,6 +262,7 @@
     "selectSectorModalSub": "Você será alocado a uma mesa disponível neste setor.",
     "lotado": "Lotado",
     "selectDateAndTimeFirst": "Primeiro escolha a data e o horário",
+    "sectorAvailabilityAfterDateTime": "A disponibilidade do setor é confirmada após escolher data e horário.",
     "noTablesAvailable": "Nenhuma mesa disponível nesta data. Tente outro horário.",
     "noZonesAvailable": "Nenhum setor com mesas disponíveis. Tente outro horário.",
     "notes": "Observações",

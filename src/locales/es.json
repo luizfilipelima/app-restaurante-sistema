@@ -264,6 +264,7 @@
     "selectSectorModalSub": "Serás asignado a una mesa disponible en este sector.",
     "lotado": "Lleno",
     "selectDateAndTimeFirst": "Primero elegí la fecha y el horario",
+    "sectorAvailabilityAfterDateTime": "La disponibilidad del sector se confirma al elegir fecha y horario.",
     "noTablesAvailable": "Ninguna mesa disponible en esta fecha. Probá otro horario.",
     "noZonesAvailable": "Ningún sector con mesas disponibles. Probá otro horario.",
     "notes": "Observaciones",
