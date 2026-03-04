@@ -644,15 +644,16 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
                   onChange={(e) => setScheduledDate(e.target.value)}
                   min={today}
                   required
-                  className="absolute inset-0 cursor-pointer opacity-0"
+                  className="absolute inset-0 w-full cursor-pointer opacity-0"
                   aria-label={t('reservation.date')}
+                  style={{ zIndex: 1 }}
                 />
-                <span className={scheduledDate ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                <span className={`pointer-events-none flex-1 ${scheduledDate ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                   {scheduledDate
                     ? format(new Date(scheduledDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: dateLocale })
                     : t('reservation.selectDatePlaceholder')}
                 </span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-50" />
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-50 pointer-events-none" />
               </label>
             </div>
             <div>
@@ -665,15 +666,16 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
                   min={restaurant?.reservation_start_time?.trim() || undefined}
                   max={restaurant?.reservation_end_time?.trim() || undefined}
                   required
-                  className="absolute inset-0 cursor-pointer opacity-0"
+                  className="absolute inset-0 w-full cursor-pointer opacity-0"
                   aria-label={t('reservation.time')}
+                  style={{ zIndex: 1 }}
                 />
-                <span className={scheduledTime ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                <span className={`pointer-events-none flex-1 ${scheduledTime ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                   {scheduledTime
                     ? scheduledTime.slice(0, 5)
                     : t('reservation.selectTimePlaceholder')}
                 </span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-50" />
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-50 pointer-events-none" />
               </label>
             </div>
           </div>
