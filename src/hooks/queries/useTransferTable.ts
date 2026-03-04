@@ -44,7 +44,7 @@ export function useTransferTable(restaurantId: string | null) {
       if (!restaurantId) throw new Error('Restaurant ID required');
       return transferTableToTable(restaurantId, sourceTableId, targetTableId);
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
       qc.invalidateQueries({ queryKey: ['tableOrders'] });
       qc.invalidateQueries({ queryKey: ['tableComandaLinks'] });

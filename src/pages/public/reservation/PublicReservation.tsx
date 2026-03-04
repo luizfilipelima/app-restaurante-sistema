@@ -291,7 +291,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
     setCancellingReservationId(r.id);
     try {
       const phoneNormalized = normalizePhoneWithCountryCode(myPhone.trim(), myPhoneCountry);
-      const { data, error: rpcErr } = await supabase.rpc('cancel_my_reservation_by_slug', {
+      const { error: rpcErr } = await supabase.rpc('cancel_my_reservation_by_slug', {
         p_restaurant_slug: restaurantSlug,
         p_reservation_id: r.id,
         p_customer_phone: phoneNormalized,

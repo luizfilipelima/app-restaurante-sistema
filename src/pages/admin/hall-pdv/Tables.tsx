@@ -1460,6 +1460,7 @@ export function TableOperationSheet({
   onRefresh,
   onTableOrZoneUpdated,
   onTableDeleted,
+  availableTables,
   isMobile,
 }: {
   mode: 'management' | 'operation';
@@ -1529,8 +1530,8 @@ export function TableOperationSheet({
   const [transferTargetTableId, setTransferTargetTableId] = useState<string | null>(null);
 
   const transferTargetTables = (availableTables ?? [])
-    .filter((t) => t.is_active && t.id !== table?.id)
-    .sort((a, b) => (a.number ?? 0) - (b.number ?? 0));
+    .filter((t: TableWithStatus) => t.is_active && t.id !== table?.id)
+    .sort((a: TableWithStatus, b: TableWithStatus) => (a.number ?? 0) - (b.number ?? 0));
 
   // Sincroniza estado local com a mesa (para corrigir bug de zona não atualizar no dropdown)
   useEffect(() => {
@@ -2291,7 +2292,7 @@ export function TableOperationSheet({
                 {t('tablesCentral.table')} {table.number} → {t('tablesCentral.selectTargetTable')}
               </p>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
-                {transferTargetTables.map((tbl) => (
+                {transferTargetTables.map((tbl: TableWithStatus) => (
                   <Button
                     key={tbl.id}
                     variant={transferTargetTableId === tbl.id ? 'default' : 'outline'}
