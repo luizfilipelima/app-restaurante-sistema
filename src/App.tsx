@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { useAuthStore } from './store/authStore';
 import { ProtectedRoute } from './components/_routing/ProtectedRoute';
 import { PublicRoute } from './components/_routing/PublicRoute';
@@ -318,6 +319,7 @@ function App() {
         </Suspense>
         </ErrorBoundary>
         <Toaster />
+        <Analytics />
       </BrowserRouter>
     );
   }
@@ -328,6 +330,7 @@ function App() {
       <ErrorBoundary>
         <StoreLayout tenantSlug={tenantSlug} />
         <Toaster />
+        <Analytics />
       </ErrorBoundary>
     );
   }
@@ -511,6 +514,7 @@ function App() {
         </Suspense>
         </ErrorBoundary>
         <Toaster />
+        <Analytics />
       </BrowserRouter>
     );
   }
@@ -620,6 +624,7 @@ function App() {
       </Suspense>
       </ErrorBoundary>
       <Toaster />
+      <Analytics />
     </BrowserRouter>
   );
 }
