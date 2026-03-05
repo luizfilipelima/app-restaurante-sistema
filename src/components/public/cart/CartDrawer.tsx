@@ -300,9 +300,14 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                             )}
                             {item.addons && item.addons.length > 0 && (
                               <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                                {item.addons.map((a, i) => (
-                                  <p key={i}>+ {a.name} {a.price > 0 ? `(+${fmt(a.price)})` : ''}</p>
-                                ))}
+                                {item.addons.map((a, i) => {
+                                  const qty = a.quantity ?? 1;
+                                  const addonTotal = (a.price ?? 0) * qty;
+                                  const label = qty > 1 ? `${a.name} (${qty}x)` : a.name;
+                                  return (
+                                    <p key={i}>+ {label} {addonTotal > 0 ? `(+${fmt(addonTotal)})` : ''}</p>
+                                  );
+                                })}
                               </div>
                             )}
                             {item.observations && (

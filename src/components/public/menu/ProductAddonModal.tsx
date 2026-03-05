@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Minus, Plus, ArrowLeft, Check } from 'lucide-react';
+import { Minus, Plus, ArrowLeft } from 'lucide-react';
 import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
 
 interface AddonItem {
@@ -36,7 +36,7 @@ interface ProductAddonModalProps {
   onAddToCart: (params: {
     quantity: number;
     unitPrice: number;
-    addons: Array<{ addonItemId: string; name: string; price: number }>;
+    addons: Array<{ addonItemId: string; name: string; price: number; quantity?: number }>;
     observations?: string;
   }) => void;
 }
@@ -54,7 +54,7 @@ export default function ProductAddonModal({
   const { t } = useTranslation();
   const [quantity, setQuantity] = useState(1);
   const [selectedAddons, setSelectedAddons] = useState<
-    Array<{ addonItemId: string; name: string; price: number }>
+    Array<{ addonItemId: string; name: string; price: number; quantity: number }>
   >([]);
   const [observations, setObservations] = useState('');
 
@@ -64,15 +64,26 @@ export default function ProductAddonModal({
     }
   }, [open]);
 
-  const toggleAddon = (item: AddonItem) => {
+  const getAddonQty = (addonItemId: string) =>
+    selectedAddons.find((a) => a.addonItemId === addonItemId)?.quantity ?? 0;
+
+  const changeAddonQty = (item: AddonItem, delta: number) => {
     setSelectedAddons((prev) => {
-      const exists = prev.find((a) => a.addonItemId === item.id);
-      if (exists) return prev.filter((a) => a.addonItemId !== item.id);
-      return [...prev, { addonItemId: item.id, name: item.name, price: item.price }];
+      const existing = prev.find((a) => a.addonItemId === item.id);
+      const currentQty = existing?.quantity ?? 0;
+      const nextQty = Math.max(0, currentQty + delta);
+      if (nextQty === 0) {
+        return prev.filter((a) => a.addonItemId !== item.id);
+      }
+      const entry = { addonItemId: item.id, name: item.name, price: item.price, quantity: nextQty };
+      if (existing) {
+        return prev.map((a) => (a.addonItemId === item.id ? entry : a));
+      }
+      return [...prev, entry];
     });
   };
 
-  const addonsTotal = selectedAddons.reduce((s, a) => s + a.price, 0);
+  const addonsTotal = selectedAddons.reduce((s, a) => s + a.price * (a.quantity ?? 1), 0);
   const unitPrice = basePrice + addonsTotal;
   const total = unitPrice * quantity;
   const fmt = (v: number) => formatPrice(convertForDisplay ? convertForDisplay(v) : v, currency);
@@ -81,7 +92,12 @@ export default function ProductAddonModal({
     onAddToCart({
       quantity,
       unitPrice,
-      addons: selectedAddons,
+      addons: selectedAddons.map((a) => ({
+        addonItemId: a.addonItemId,
+        name: a.name,
+        price: a.price,
+        ...(a.quantity !== 1 && { quantity: a.quantity }),
+      })),
       observations: observations.trim() || undefined,
     });
     setSelectedAddons([]);
@@ -172,34 +188,51 @@ export default function ProductAddonModal({
               </div>
             </div>
 
-            {/* Addons */}
+            {/* Addons — com seletor de quantidade por item */}
             {addonGroups.map((group) => (
               <div key={group.id} className="space-y-2">
                 <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {group.name}
                 </h4>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col gap-2">
                   {group.items.map((item) => {
-                    const isSelected = selectedAddons.some((a) => a.addonItemId === item.id);
+                    const qty = getAddonQty(item.id);
                     return (
-                      <button
+                      <div
                         key={item.id}
-                        type="button"
-                        onClick={() => toggleAddon(item)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all touch-manipulation ${
-                          isSelected
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border bg-card text-muted-foreground hover:border-border hover:bg-muted/50 active:scale-[0.98]'
-                        }`}
+                        className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border bg-card"
                       >
-                        {isSelected && <Check className="h-3.5 w-3.5 flex-shrink-0" />}
-                        <span>{item.name}</span>
-                        {item.price > 0 && (
-                          <span className="text-xs opacity-80">
-                            +{fmt(item.price)}
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium text-foreground">{item.name}</span>
+                          {item.price > 0 && (
+                            <span className="text-xs text-muted-foreground ml-1">
+                              +{fmt(item.price)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 rounded-lg bg-muted overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => changeAddonQty(item, -1)}
+                            disabled={qty <= 0}
+                            className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted-foreground/15 disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation transition-colors"
+                            aria-label="Diminuir quantidade"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="w-8 text-center text-sm font-semibold text-foreground tabular-nums">
+                            {qty}
                           </span>
-                        )}
-                      </button>
+                          <button
+                            type="button"
+                            onClick={() => changeAddonQty(item, 1)}
+                            className="h-9 w-9 flex items-center justify-center text-primary hover:bg-primary/10 touch-manipulation transition-colors"
+                            aria-label="Aumentar quantidade"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>

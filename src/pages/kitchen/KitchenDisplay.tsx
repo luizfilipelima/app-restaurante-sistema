@@ -505,9 +505,14 @@ function OrderCard({
                 {/* Addons */}
                 {item.addons && Array.isArray(item.addons) && item.addons.length > 0 && (
                   <div className="mt-1 text-sm text-amber-300 pl-2 border-l-2 border-amber-500/50">
-                    {item.addons.map((a: { name: string; price?: number }, i: number) => (
-                      <p key={i}>+ {a.name}{a.price ? ` (+R$ ${Number(a.price).toFixed(2)})` : ''}</p>
-                    ))}
+                    {item.addons.map((a: { name: string; price?: number; quantity?: number }, i: number) => {
+                      const qty = a.quantity ?? 1;
+                      const label = qty > 1 ? `${a.name} (${qty}x)` : a.name;
+                      const total = (a.price ?? 0) * qty;
+                      return (
+                        <p key={i}>+ {label}{total ? ` (+R$ ${total.toFixed(2)})` : ''}</p>
+                      );
+                    })}
                   </div>
                 )}
                 {/* Item Observation */}

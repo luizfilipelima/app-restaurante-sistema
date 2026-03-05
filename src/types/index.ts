@@ -525,8 +525,8 @@ export interface OrderItem {
   pizza_flavors?: string[]; // Array de nomes dos sabores
   pizza_dough?: string;
   pizza_edge?: string;
-  /** Adicionais do produto (ex: Borda Catupiry +R$5) */
-  addons?: Array<{ addonItemId?: string; name: string; price?: number }>;
+  /** Adicionais do produto (ex: Borda Catupiry +R$5). quantity padrão 1 */
+  addons?: Array<{ addonItemId?: string; name: string; price?: number; quantity?: number }>;
   created_at: string;
 }
 
@@ -558,8 +558,8 @@ export interface CartItem {
   marmitaWeight?: number;
   marmitaProteins?: string[];
   marmitaSides?: string[];
-  /** Adicionais do produto (ex: Borda Catupiry +R$5) */
-  addons?: Array<{ addonItemId: string; name: string; price: number }>;
+  /** Adicionais do produto (ex: Borda Catupiry +R$5). quantity padrão 1 */
+  addons?: Array<{ addonItemId: string; name: string; price: number; quantity?: number }>;
 }
 
 export interface CheckoutData {

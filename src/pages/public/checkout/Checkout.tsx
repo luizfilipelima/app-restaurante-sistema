@@ -494,7 +494,12 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           (i.pizzaEdgePrice ?? 0) * i.quantity +
           (i.pizzaDoughPrice ?? 0) * i.quantity;
         const addonsStr = i.addons && i.addons.length > 0
-          ? ' + ' + i.addons.map((a) => a.name + (a.price > 0 ? ` (+${formatPrice(a.price, baseCurrency)})` : '')).join(', ')
+          ? ' + ' + i.addons.map((a) => {
+              const qty = a.quantity ?? 1;
+              const addonTotal = (a.price ?? 0) * qty;
+              const label = qty > 1 ? `${a.name} (${qty}x)` : a.name;
+              return label + (addonTotal > 0 ? ` (+${formatPrice(addonTotal, baseCurrency)})` : '');
+            }).join(', ')
           : '';
         return `  • ${i.quantity}x ${i.productName}${i.pizzaSize ? ` (${i.pizzaSize})` : ''}${addonsStr} — ${formatPrice(itemTotal, baseCurrency)}`;
       }).join('\n');
@@ -796,7 +801,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                     )}
                     {item.addons && item.addons.length > 0 && (
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                        + {item.addons.map((a) => a.name).join(', ')}
+                        + {item.addons.map((a) => ((a.quantity ?? 1) > 1 ? `${a.name} (${a.quantity}x)` : a.name)).join(', ')}
                       </p>
                     )}
                     {item.observations && (

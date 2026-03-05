@@ -175,8 +175,8 @@ function ExpoCard({
               )}
               {item.addons && Array.isArray(item.addons) && item.addons.length > 0 && (
                 <div className="mt-0.5 text-xs text-amber-700 pl-2 border-l border-amber-400/60 space-y-0.5">
-                  {item.addons.map((a, i) => (
-                    <p key={i}>+ {a.name}</p>
+                  {item.addons.map((a: { name: string; quantity?: number }, i: number) => (
+                    <p key={i}>+ {(a.quantity ?? 1) > 1 ? `${a.name} (${a.quantity}x)` : a.name}</p>
                   ))}
                 </div>
               )}

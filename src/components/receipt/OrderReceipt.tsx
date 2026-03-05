@@ -130,9 +130,9 @@ export function OrderReceipt({ data, className = 'receipt-print-area' }: OrderRe
             <span>Total</span>
           </div>
           {items.map((item) => {
-            const addons = (item as { addons?: Array<{ name: string; price?: number }> }).addons;
+            const addons = (item as { addons?: Array<{ name: string; price?: number; quantity?: number }> }).addons;
             const addonsStr = addons && Array.isArray(addons) && addons.length > 0
-              ? ' + ' + addons.map((a) => a.name).join(', ')
+              ? ' + ' + addons.map((a) => ((a.quantity ?? 1) > 1 ? `${a.name} (${a.quantity}x)` : a.name)).join(', ')
               : '';
             return (
               <div key={item.id} className="receipt-row receipt-row-item">
