@@ -29,7 +29,7 @@ import {
   Users, ExternalLink, Link2, FileText,
   MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode, Settings as SettingsIcon,
   Pencil, Trash2, Plus, ChevronUp, ChevronDown, Lock,
-  Bike,
+  Bike, Bluetooth, Cable, Wifi,
 } from 'lucide-react';
 import { useRestaurant } from '@/hooks/queries';
 import { useLinkBioButtons, useLinkBioButtonsMutations, type CreateLinkBioButtonPayload } from '@/hooks/queries/useLinkBioButtons';
@@ -348,6 +348,8 @@ export default function AdminSettings() {
     logo:                    '',
     print_auto_on_new_order: false,
     print_paper_width:       '80mm' as PrintPaperWidth,
+    print_printer_type:      'usb' as 'bluetooth' | 'usb' | 'network',
+    print_printer_name:      null as string | null,
     print_settings_by_sector: defaultSectorSettings(),
     exchange_rates:          { pyg_per_brl: 3600, ars_per_brl: 1150, usd_per_brl: 0.18 },
     payment_currencies:      ['BRL', 'PYG'] as string[],
@@ -438,6 +440,8 @@ export default function AdminSettings() {
         logo:                    data.logo             || '',
         print_auto_on_new_order: !!data.print_auto_on_new_order,
         print_paper_width:       data.print_paper_width === '58mm' ? '58mm' : '80mm',
+        print_printer_type:      (['bluetooth', 'usb', 'network'].includes(data.print_printer_type) ? data.print_printer_type : 'usb') as 'bluetooth' | 'usb' | 'network',
+        print_printer_name:      data.print_printer_name ?? null,
         print_settings_by_sector: parseSectorSettings(data.print_settings_by_sector),
         exchange_rates:          parseExchangeRates(data.exchange_rates),
         payment_currencies:      Array.isArray(data.payment_currencies) && data.payment_currencies.length > 0
@@ -475,6 +479,8 @@ export default function AdminSettings() {
         logo:                    formData.logo,
         print_auto_on_new_order: formData.print_auto_on_new_order,
         print_paper_width:       formData.print_paper_width,
+        print_printer_type:      formData.print_printer_type,
+        print_printer_name:      formData.print_printer_name?.trim() || null,
         print_settings_by_sector: formData.print_settings_by_sector,
         exchange_rates:          formData.exchange_rates,
         payment_currencies:      formData.payment_currencies,
@@ -1445,6 +1451,48 @@ export default function AdminSettings() {
                     </button>
                   ))}
                 </div>
+              </FieldGroup>
+
+              <FieldGroup>
+                <SectionLabel>{t('settings.operation.printerType')}</SectionLabel>
+                <p className="text-[11px] text-muted-foreground mb-2">{t('settings.operation.printerTypeDesc')}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {([
+                    { value: 'bluetooth' as const, icon: Bluetooth, label: t('settings.operation.printerBluetooth') },
+                    { value: 'usb' as const, icon: Cable, label: t('settings.operation.printerUsb') },
+                    { value: 'network' as const, icon: Wifi, label: t('settings.operation.printerNetwork') },
+                  ]).map(({ value, icon: Icon, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => set('print_printer_type', value)}
+                      className={`flex items-center gap-3 py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${
+                        formData.print_printer_type === value
+                          ? 'border-[#F87116] bg-orange-50 dark:bg-orange-950/30 text-[#F87116]'
+                          : 'border-border bg-background text-muted-foreground hover:border-muted-foreground/30'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 flex-shrink-0" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {formData.print_printer_type === 'bluetooth' && (
+                  <div className="mt-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30 p-3">
+                    <p className="text-xs text-amber-800 dark:text-amber-200 font-medium">{t('settings.operation.printerBluetoothTip')}</p>
+                  </div>
+                )}
+              </FieldGroup>
+
+              <FieldGroup>
+                <SectionLabel>{t('settings.operation.printerName')}</SectionLabel>
+                <Input
+                  placeholder={t('settings.operation.printerNamePlaceholder')}
+                  value={formData.print_printer_name ?? ''}
+                  onChange={(e) => set('print_printer_name', e.target.value || null)}
+                  className="max-w-xs"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">{t('settings.operation.printerNameDesc')}</p>
               </FieldGroup>
             </div>
           </div>

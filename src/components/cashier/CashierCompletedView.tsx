@@ -121,6 +121,7 @@ interface CashierCompletedRowProps {
   item: CashierCompletedItem;
   currency: CurrencyCode;
   onPrint: (item: CashierCompletedItem) => void;
+  isPrintDisabled?: boolean;
   t: (k: string) => string;
   dateLocale?: Locale;
 }
@@ -129,6 +130,7 @@ function CashierCompletedRow({
   item,
   currency,
   onPrint,
+  isPrintDisabled,
   t,
   dateLocale,
 }: CashierCompletedRowProps) {
@@ -215,6 +217,7 @@ function CashierCompletedRow({
                 className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted"
                 onClick={() => onPrint(item)}
                 title={t('cashier.reprint')}
+                disabled={isPrintDisabled}
               >
                 <Printer className="h-3.5 w-3.5" />
               </Button>
@@ -331,6 +334,7 @@ export interface CashierCompletedViewProps {
   hasTables?: boolean;
   hasBuffet?: boolean;
   onPrintOrder: (item: CashierCompletedItem) => void;
+  isPrintDisabled?: boolean;
   t: (k: string) => string;
   dateLocale?: Locale;
 }
@@ -342,6 +346,7 @@ export function CashierCompletedView({
   hasTables = true,
   hasBuffet = false,
   onPrintOrder,
+  isPrintDisabled = false,
   t,
   dateLocale,
 }: CashierCompletedViewProps) {
@@ -512,6 +517,7 @@ export function CashierCompletedView({
                     item={item}
                     currency={currency}
                     onPrint={onPrintOrder}
+                    isPrintDisabled={isPrintDisabled}
                     t={t}
                     dateLocale={dateLocale}
                   />

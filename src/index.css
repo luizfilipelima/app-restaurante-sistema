@@ -379,11 +379,11 @@
 }
 .receipt-width-58 { width: 58mm; }
 .receipt-width-80 { width: 80mm; }
-.receipt-inner { padding: 2mm; }
+.receipt-inner { padding: 2mm; line-height: 1.25; max-width: 100%; }
 .receipt-header { text-align: center; margin-bottom: 4px; }
 .receipt-title { font-size: 14px; font-weight: bold; margin: 0; }
 .receipt-line { margin: 4px 0; white-space: pre; }
-.receipt-section { margin: 6px 0; }
+.receipt-section { margin: 6px 0; page-break-inside: avoid; }
 .receipt-row { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .receipt-row-header { font-weight: bold; margin-bottom: 2px; }
 .receipt-row-item .receipt-item-name { flex: 1; text-align: left; min-width: 0; }
@@ -422,6 +422,7 @@
     size: 80mm auto;
     margin: 0;
   }
+  /* Papel 58mm: conteúdo em 58mm; configure no driver: Papel=58mm, Margens=0, Sem cabeçalho/rodapé */
   body.print-receipt.receipt-paper-58 .receipt-print-area {
     width: 58mm !important;
     max-width: 58mm !important;

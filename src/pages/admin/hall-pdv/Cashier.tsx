@@ -438,7 +438,7 @@ function CashierContent() {
   const dateLocale = DATE_LOCALES[lang] ?? ptBR;
   const scannerRef = useRef<HTMLInputElement>(null);
   const { data: restaurant } = useRestaurant(restaurantId);
-  const { printOrder, receiptData, secondReceiptData } = usePrinter();
+  const { printOrder, receiptData, secondReceiptData, isPrinting } = usePrinter();
   const comandaUrl = restaurant?.slug ? getComandaPublicUrl(restaurant.slug) : null;
 
   const [showQRModal, setShowQRModal] = useState(false);
@@ -1491,6 +1491,7 @@ function CashierContent() {
           currency={baseCurrency}
           hasTables={!!hasTables}
           hasBuffet={!!hasBuffet}
+          isPrintDisabled={isPrinting}
           onPrintOrder={(item) => {
             if (item.order) {
               printOrder(
@@ -1883,7 +1884,7 @@ function CashierContent() {
       )}
 
       <OrderReceipt data={receiptData} />
-      <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />
+      {secondReceiptData && <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />}
 
       {/* Modal confirmação: Remover comanda da fila */}
       <Dialog open={showRemoveComandaConfirm} onOpenChange={setShowRemoveComandaConfirm}>

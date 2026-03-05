@@ -124,6 +124,10 @@ export interface Restaurant {
   print_auto_on_new_order?: boolean;
   /** Largura do papel: 58mm ou 80mm */
   print_paper_width?: PrintPaperWidth;
+  /** Tipo de conexão: bluetooth, usb ou network */
+  print_printer_type?: 'bluetooth' | 'usb' | 'network';
+  /** Nome da impressora para referência (ex: Impressora Cozinha 58mm) */
+  print_printer_name?: string | null;
   /** Config de impressão por setor: { delivery, table, pickup, buffet } */
   print_settings_by_sector?: PrintSettingsBySector;
   /** Moeda de exibição dos valores no cardápio */

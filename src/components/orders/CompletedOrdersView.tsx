@@ -125,9 +125,10 @@ interface OrderRowProps {
   order: DatabaseOrder;
   currency: CurrencyCode;
   onPrint: (order: DatabaseOrder) => void;
+  isPrintDisabled?: boolean;
 }
 
-function OrderRow({ order, currency, onPrint }: OrderRowProps) {
+function OrderRow({ order, currency, onPrint, isPrintDisabled }: OrderRowProps) {
   const [expanded, setExpanded] = useState(false);
   const orderType = getOrderType(order);
   const isTable = order.order_source === 'table' || !!order.table_id;
@@ -222,6 +223,7 @@ function OrderRow({ order, currency, onPrint }: OrderRowProps) {
               className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted"
               onClick={() => onPrint(order)}
               title="Imprimir cupom"
+              disabled={isPrintDisabled}
             >
               <Printer className="h-3.5 w-3.5" />
             </Button>
@@ -350,6 +352,7 @@ interface CompletedOrdersViewProps {
   restaurantName: string;
   currency: CurrencyCode;
   onPrintOrder: (order: DatabaseOrder) => void;
+  isPrintDisabled?: boolean;
 }
 
 export function CompletedOrdersView({
@@ -357,6 +360,7 @@ export function CompletedOrdersView({
   restaurantName,
   currency,
   onPrintOrder,
+  isPrintDisabled = false,
 }: CompletedOrdersViewProps) {
   const [dateRange, setDateRange] = useState<CompletedOrdersDateRange>('today');
   const completedQuery = useCompletedOrders({ restaurantId, dateRange });
@@ -516,6 +520,7 @@ export function CompletedOrdersView({
                     order={order}
                     currency={currency}
                     onPrint={onPrintOrder}
+                    isPrintDisabled={isPrintDisabled}
                   />
                 ))}
               </tbody>

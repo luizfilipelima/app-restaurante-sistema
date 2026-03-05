@@ -14,11 +14,13 @@ export interface DualReceiptSlot {
 export function usePrinter() {
   const [receiptData, setReceiptData] = useState<OrderReceiptData | null>(null);
   const [secondReceiptData, setSecondReceiptData] = useState<OrderReceiptData | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   const cleanupPrint = useCallback(() => {
     document.body.classList.remove(BODY_PRINT_CLASS, BODY_PAPER_58_CLASS);
     setReceiptData(null);
     setSecondReceiptData(null);
+    setIsPrinting(false);
   }, []);
 
   useEffect(() => {
@@ -56,6 +58,7 @@ export function usePrinter() {
         setSecondReceiptData(null);
       }
 
+      setIsPrinting(true);
       document.body.classList.add(BODY_PRINT_CLASS);
       if (paperWidth === '58mm') document.body.classList.add(BODY_PAPER_58_CLASS);
       requestAnimationFrame(() => {
@@ -67,5 +70,5 @@ export function usePrinter() {
     []
   );
 
-  return { printOrder, receiptData, secondReceiptData };
+  return { printOrder, receiptData, secondReceiptData, isPrinting };
 }

@@ -163,7 +163,7 @@ export default function AdminOrders() {
   const canManageDeliverySettings = useCanAccess(['super_admin', 'owner', 'manager', 'restaurant_admin']);
   const [localWaTemplates, setLocalWaTemplates] = useState<WhatsAppTemplates | null | undefined>(undefined);
   const { couriers } = useCouriers(restaurantId);
-  const { printOrder, receiptData, secondReceiptData } = usePrinter();
+  const { printOrder, receiptData, secondReceiptData, isPrinting } = usePrinter();
   const { data: productDestMap } = useProductPrintDestinations(restaurantId);
 
   /**
@@ -502,7 +502,7 @@ export default function AdminOrders() {
   return (
     <>
       <OrderReceipt data={receiptData} />
-      <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />
+      {secondReceiptData && <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />}
       {/* Modal de edição de templates WhatsApp */}
       <WhatsAppTemplatesModal
         open={showWaTemplatesModal}
@@ -580,6 +580,7 @@ export default function AdminOrders() {
             restaurantName={restaurant?.name ?? printSettings?.name ?? 'Restaurante'}
             currency={currency}
             onPrintOrder={handlePrintOrder}
+            isPrintDisabled={isPrinting}
           />
         )}
 
@@ -713,6 +714,7 @@ export default function AdminOrders() {
                                   type="button" variant="ghost" size="icon"
                                   className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
                                   onClick={() => handlePrintOrder(order)} title="Imprimir cupom"
+                                  disabled={isPrinting}
                                 >
                                   <Printer className="h-3.5 w-3.5" />
                                 </Button>
