@@ -1767,6 +1767,7 @@ export default function AdminMenu() {
             <ProductAddonsSection
               ref={addonSectionRef}
               addons={addons}
+              productId={editingProduct?.id ?? null}
               currency={currency}
               costCurrency={form.costCurrency}
               ingredients={ingredients}

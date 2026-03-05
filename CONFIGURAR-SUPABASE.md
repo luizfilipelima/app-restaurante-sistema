@@ -266,4 +266,7 @@ Se todos os itens estiverem feitos e as variáveis de ambiente corretas, **adici
 - **Super admin não vê outros restaurantes**  
   Rodar **`supabase/db/scripts/rls/supabase-rls-completo.sql`** (ele inclui a política para super_admin ler todos os restaurantes).
 
+- **"Erro de configuração da conta" ou "Database error querying schema" ao fazer login (usuários de novo restaurante)**  
+  Usuários criados via SQL/RPC com INSERT em `auth.users` podem ficar com colunas de token NULL. **Solução:** No Supabase Dashboard → **SQL Editor** → New Query, cole o conteúdo de **`supabase/db/fix_database_error_querying_schema.sql`** e execute. Isso corrige usuários existentes. Para evitar o problema em novos usuários, execute também a migration **`supabase/db/migrations/20260314_auth_users_insert_token_columns.sql`**.
+
 Se depois disso ainda aparecer algum erro, envie a **mensagem exata** do Supabase (ou do console do navegador) para ajustar a política específica.

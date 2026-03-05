@@ -1,4 +1,4 @@
-import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,6 +41,8 @@ export interface ProductAddonsSectionRef {
 
 interface ProductAddonsSectionProps {
   addons: ProductAddonGroupWithItems[];
+  /** ID do produto em edição. Quando null, está criando novo — não sobrescreve grupos locais quando addons vazio */
+  productId?: string | null;
   currency: CostCurrencyCode;
   costCurrency: CostCurrencyCode;
   ingredients: Array<{ id: string; name: string; unit: string }>;
@@ -69,6 +71,7 @@ function toEditGroups(addons: ProductAddonGroupWithItems[], currency: CostCurren
 
 const ProductAddonsSectionInner = ({
   addons,
+  productId,
   currency,
   costCurrency,
   ingredients,
@@ -77,11 +80,23 @@ const ProductAddonsSectionInner = ({
   const [groups, setGroups] = useState<AddonGroupEdit[]>(
     addons.length > 0 ? toEditGroups(addons, currency) : []
   );
+  const prevProductIdRef = useRef<string | null | undefined>(productId);
 
   useEffect(() => {
-    const next = addons.length > 0 ? toEditGroups(addons, currency) : [];
-    setGroups(next);
-  }, [addons, currency]);
+    const prevId = prevProductIdRef.current;
+    prevProductIdRef.current = productId;
+
+    if (productId) {
+      // Editando produto existente: sincroniza com addons do servidor
+      const next = addons.length > 0 ? toEditGroups(addons, currency) : [];
+      setGroups(next);
+    } else if (prevId != null) {
+      // Troca de edição para criação: limpa os grupos
+      setGroups([]);
+    }
+    // Criando produto novo (productId null, sempre foi null): não sobrescreve groups,
+    // preservando os grupos/itens que o usuário adicionou localmente
+  }, [productId, addons, currency]);
 
   useImperativeHandle(ref, () => ({
     getGroups: () => groups,

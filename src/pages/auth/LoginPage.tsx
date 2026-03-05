@@ -20,10 +20,15 @@ export default function LoginPage() {
       await signIn(loginOrEmail, password);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao fazer login. Verifique suas credenciais.';
-      const isSchemaError = /database error querying schema|querying schema/i.test(String(msg));
+      const errStatus = err && typeof err === 'object' && 'status' in err ? (err as { status?: number }).status : undefined;
+      const isSchemaError =
+        /database error querying schema|querying schema|converting NULL to string|sql: Scan error/i.test(String(msg)) ||
+        errStatus === 500;
+      const fixInstruction =
+        'Abra o Supabase Dashboard → SQL Editor → New Query, cole o conteúdo de supabase/db/fix_database_error_querying_schema.sql e execute.';
       setError(
         isSchemaError
-          ? 'Erro de configuração da conta. O administrador deve executar a migration 20260313 no Supabase (SQL Editor) para corrigir.'
+          ? `Erro de configuração da conta: ${fixInstruction}`
           : msg
       );
     }

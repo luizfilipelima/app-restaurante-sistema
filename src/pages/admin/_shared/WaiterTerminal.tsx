@@ -157,7 +157,11 @@ function WaiterTerminalContent() {
   const [isLive, setIsLive] = useState(false);
   const [callNotification, setCallNotification] = useState<{ tableNumber: number } | null>(null);
   const audioPrimedRef = useRef(false);
-  const tablesAndZoneRef = useRef<{ tableIdToZone: Map<string, string | null>; waiterZone: string | null }>({ tableIdToZone: new Map(), waiterZone: null });
+  const tablesAndZoneRef = useRef<{
+    tableIdToZone: Map<string, string | null>;
+    waiterZone: string | null;
+    seesAllCalls: boolean;
+  }>({ tableIdToZone: new Map(), waiterZone: null, seesAllCalls: true });
 
   // Permite áudio no primeiro toque/clique (Chrome exige interação antes de tocar som)
   useEffect(() => {
@@ -181,10 +185,10 @@ function WaiterTerminalContent() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'waiter_calls', filter: `restaurant_id=eq.${restaurantId}` }, (payload: { eventType?: string; new?: { table_id?: string; table_number?: number }; data?: { type?: string } }) => {
         const isNewCall = (payload?.eventType ?? payload?.data?.type ?? '') === 'INSERT';
         if (isNewCall) {
-          const { tableIdToZone, waiterZone } = tablesAndZoneRef.current;
+          const { tableIdToZone, waiterZone, seesAllCalls } = tablesAndZoneRef.current;
           const tableId = payload?.new?.table_id;
           const tableZone = tableId ? tableIdToZone.get(tableId) : null;
-          const isInMyZone = !waiterZone || tableZone === waiterZone;
+          const isInMyZone = seesAllCalls || !waiterZone || tableZone === waiterZone;
           if (isInMyZone) {
             playWaiterBeep();
             if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -230,6 +234,12 @@ function WaiterTerminalContent() {
   }, [restaurantId, queryClient, refetchTables]);
 
   const tables = tablesData ?? [];
+  // super_admin, owner, manager e restaurant_admin veem todos os chamados (não filtram por zona)
+  const seesAllCalls =
+    effectiveRole === 'super_admin' ||
+    effectiveRole === 'owner' ||
+    effectiveRole === 'manager' ||
+    effectiveRole === 'restaurant_admin';
   const effectiveZoneId = waiterHallZoneId ?? selectedZoneId;
 
   const gridTablesAll: TableWithStatus[] = tables.map((t) => {
@@ -246,22 +256,28 @@ function WaiterTerminalContent() {
     ? new Set(tables.filter((t) => t.hall_zone_id === effectiveZoneId).map((t) => t.id))
     : null;
 
+  // Quando seesAllCalls, exibe todos os chamados pendentes (super_admin e cargos gestores)
   const pendingCalls = (waiterCallsData ?? []).filter((c) => {
     if (c.status !== 'pending') return false;
-    if (!zoneTableIds || !c.table_id) return true;
+    if (seesAllCalls || !zoneTableIds || !c.table_id) return true;
     return zoneTableIds.has(c.table_id);
   });
 
-  const readyOrders = waiterHallZoneId
-    ? readyOrdersRaw.filter((o) => {
-        if (!o.table_id) return false;
-        const tbl = o.tables as { hall_zone_id?: string | null } | undefined;
-        return tbl?.hall_zone_id === waiterHallZoneId;
-      })
-    : readyOrdersRaw;
+  const readyOrders =
+    !seesAllCalls && waiterHallZoneId
+      ? readyOrdersRaw.filter((o) => {
+          if (!o.table_id) return false;
+          const tbl = o.tables as { hall_zone_id?: string | null } | undefined;
+          return tbl?.hall_zone_id === waiterHallZoneId;
+        })
+      : readyOrdersRaw;
   const readyCount = readyOrders.length;
 
-  tablesAndZoneRef.current = { tableIdToZone, waiterZone: waiterHallZoneId ?? null };
+  tablesAndZoneRef.current = {
+    tableIdToZone,
+    waiterZone: seesAllCalls ? null : (waiterHallZoneId ?? null),
+    seesAllCalls,
+  };
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
