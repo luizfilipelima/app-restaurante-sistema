@@ -134,6 +134,10 @@ export interface Restaurant {
   payment_currencies?: string[] | null;
   /** Chave PIX do restaurante — onde o cliente envia o pagamento */
   pix_key?: string | null;
+  /** Formas de pagamento ativas no checkout Delivery. NULL = todas */
+  payment_methods_enabled_delivery?: string[] | null;
+  /** Formas de pagamento ativas no checkout Local/Retirada. NULL = todas */
+  payment_methods_enabled_local?: string[] | null;
   /** Dados bancários para transferência: pyg = Paraguay (Banco, Titular, Alias), ars = Argentina (Banco, Agência, Conta, Titular) */
   bank_account?: BankAccountByCountry | null;
   /** Idioma da interface do cardápio público */

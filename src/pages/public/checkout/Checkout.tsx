@@ -257,6 +257,21 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     }
   }, [deliveryType]);
 
+  // Se o método atual foi desativado pelo restaurante, seleciona o primeiro disponível
+  useEffect(() => {
+    if (isTableOrder) return;
+    const enabledList = deliveryType === DeliveryType.DELIVERY
+      ? ((currentRestaurant as { payment_methods_enabled_delivery?: string[] | null })?.payment_methods_enabled_delivery ?? null)
+      : ((currentRestaurant as { payment_methods_enabled_local?: string[] | null })?.payment_methods_enabled_local ?? null);
+    const isAllowed = (m: PaymentMethod) => !enabledList || enabledList.includes(m);
+    const pickupOnly = (m: PaymentMethod) => m === PaymentMethod.CARD || m === PaymentMethod.QRCODE;
+    const candidates: PaymentMethod[] = [PaymentMethod.PIX, PaymentMethod.BANK_TRANSFER, PaymentMethod.CASH, PaymentMethod.CARD, PaymentMethod.QRCODE];
+    const valid = candidates.filter((m) => isAllowed(m) && (deliveryType === DeliveryType.PICKUP || !pickupOnly(m)));
+    if (valid.length > 0 && !valid.includes(paymentMethod)) {
+      setPaymentMethod(valid[0]);
+    }
+  }, [deliveryType, paymentMethod, isTableOrder, currentRestaurant]);
+
   useEffect(() => {
     const phone = customerPhone.replace(/\D/g, '');
     if (!restaurantId || phone.length < 8) { setLoyaltyStatus(null); return; }
@@ -1216,8 +1231,16 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                   { value: PaymentMethod.CARD, icon: CreditCard, label: t('checkout.cardOnDelivery'), desc: 'Débito ou crédito na retirada', pickupOnly: true },
                   { value: PaymentMethod.QRCODE, icon: QrCode, label: 'QR Code', desc: 'Na retirada', pickupOnly: true },
                 ];
+                const enabledByMode = deliveryType === DeliveryType.DELIVERY
+                  ? (currentRestaurant as { payment_methods_enabled_delivery?: string[] | null } | undefined)?.payment_methods_enabled_delivery ?? null
+                  : (currentRestaurant as { payment_methods_enabled_local?: string[] | null } | undefined)?.payment_methods_enabled_local ?? null;
+                const isMethodEnabled = (value: PaymentMethod) => {
+                  if (!enabledByMode) return true;
+                  return enabledByMode.includes(value);
+                };
                 return baseOptions
                   .filter((o) => !o.pickupOnly || deliveryType === DeliveryType.PICKUP)
+                  .filter((o) => isMethodEnabled(o.value))
                   .map(({ value, icon: Icon, label, desc }) => (
                     <div key={value}>
                       <button

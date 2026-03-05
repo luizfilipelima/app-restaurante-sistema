@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
@@ -28,6 +29,7 @@ import {
   Users, ExternalLink, Link2, FileText,
   MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode, Settings as SettingsIcon,
   Pencil, Trash2, Plus, ChevronUp, ChevronDown, Lock,
+  Bike, Banknote,
 } from 'lucide-react';
 import { useRestaurant } from '@/hooks/queries';
 import { useLinkBioButtons, useLinkBioButtonsMutations, type CreateLinkBioButtonPayload } from '@/hooks/queries/useLinkBioButtons';
@@ -69,6 +71,37 @@ const PANEL_LANGS: { value: PanelLanguage; label: string }[] = [
 ];
 
 const SECTOR_KEYS = ['delivery', 'table', 'pickup', 'buffet'] as const;
+
+/** Formas de pagamento selecionáveis no checkout (exceto 'table' que é automático para mesa) */
+const CHECKOUT_PAYMENT_METHODS = [
+  { id: 'pix', label: 'PIX', icon: 'PIX' },
+  { id: 'bank_transfer', label: 'Transferência bancária', icon: 'Landmark' },
+  { id: 'cash', label: 'Dinheiro', icon: 'Banknote' },
+  { id: 'card', label: 'Cartão (na retirada)', icon: 'CreditCard' },
+  { id: 'qrcode', label: 'QR Code (na retirada)', icon: 'QrCode' },
+] as const;
+
+function isPaymentMethodEnabled(method: string, enabledList: string[] | null): boolean {
+  if (!enabledList) return true;
+  return enabledList.includes(method);
+}
+
+function togglePaymentMethod(
+  method: string,
+  mode: 'delivery' | 'local',
+  current: { delivery: string[] | null; local: string[] | null }
+): { delivery: string[] | null; local: string[] | null } {
+  const all = CHECKOUT_PAYMENT_METHODS.map((m) => m.id);
+  const list = mode === 'delivery' ? current.delivery : current.local;
+  const base = list ?? all;
+  const enabled = base.includes(method)
+    ? base.filter((m) => m !== method)
+    : [...base, method];
+  const next = enabled.length === all.length ? null : enabled;
+  return mode === 'delivery'
+    ? { ...current, delivery: next }
+    : { ...current, local: next };
+}
 
 const LINK_BIO_BUTTON_TYPE_LABELS: Record<LinkBioButtonType, string> = {
   url: 'Link externo',
@@ -320,6 +353,8 @@ export default function AdminSettings() {
     payment_currencies:      ['BRL', 'PYG'] as string[],
     pix_key:                 '',
     pix_key_type:            'random' as 'cpf' | 'email' | 'random',
+    payment_methods_enabled_delivery: null as string[] | null,
+    payment_methods_enabled_local:    null as string[] | null,
     bank_account:            { pyg: {}, ars: {} } as BankAccountByCountry,
     description:             '',
     custom_domain:           '',
@@ -410,6 +445,8 @@ export default function AdminSettings() {
           : ['BRL', 'PYG'],
         pix_key:                 data.pix_key ?? '',
         pix_key_type:            (['cpf', 'email', 'random'].includes(data.pix_key_type) ? data.pix_key_type : 'random') as 'cpf' | 'email' | 'random',
+        payment_methods_enabled_delivery: Array.isArray(data.payment_methods_enabled_delivery) ? data.payment_methods_enabled_delivery : null,
+        payment_methods_enabled_local:    Array.isArray(data.payment_methods_enabled_local) ? data.payment_methods_enabled_local : null,
         bank_account:            parseBankAccount(data.bank_account),
         description:             data.description ?? '',
         custom_domain:           data.custom_domain ?? '',
@@ -442,6 +479,8 @@ export default function AdminSettings() {
         exchange_rates:          formData.exchange_rates,
         payment_currencies:      formData.payment_currencies,
         pix_key:                 formData.pix_key?.trim() || null,
+        payment_methods_enabled_delivery: formData.payment_methods_enabled_delivery,
+        payment_methods_enabled_local:    formData.payment_methods_enabled_local,
         description:             formData.description?.trim() || null,
         bank_account:            (() => {
           const { pyg, ars } = formData.bank_account;
@@ -507,7 +546,7 @@ export default function AdminSettings() {
             {[
               { value: 'perfil',       icon: Store,      label: 'Perfil e Contato' },
               { value: 'dominios',     icon: Globe,      label: 'Domínios' },
-              { value: 'pagamentos',   icon: CreditCard, label: 'PIX e Transferência' },
+              { value: 'pagamentos',   icon: CreditCard, label: 'Formas de Pagamento' },
               { value: 'impressao',    icon: Printer,    label: 'Impressão' },
               { value: 'cambio',       icon: Repeat,     label: 'Câmbio' },
               { value: 'links-bio',    icon: Link2,      label: 'Links e Bio' },
@@ -1090,9 +1129,74 @@ export default function AdminSettings() {
         </TabsContent>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            ABA — PIX e Transferência (dados para o cliente enviar o pagamento)
+            ABA — Formas de Pagamento (PIX, transferência e ativação por modo)
         ══════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="pagamentos" className="mt-0 space-y-5">
+          {/* Ativar/Desativar formas de pagamento por modo */}
+          <div className="admin-card-border bg-card overflow-hidden">
+            <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <CreditCard className="h-[18px] w-[18px] text-primary" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Formas de pagamento no checkout</h2>
+                <p className="text-[11px] text-muted-foreground">
+                  Ative ou desative cada forma de pagamento para Delivery (entrega) e Local (retirada). Desativadas não aparecem no checkout do cliente.
+                </p>
+              </div>
+            </div>
+            <div className="p-5 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 font-medium text-muted-foreground">Forma de pagamento</th>
+                    <th className="text-center py-3 font-medium text-muted-foreground w-32">
+                      <span className="flex items-center justify-center gap-1.5">
+                        <Bike className="h-3.5 w-3.5" /> Delivery
+                      </span>
+                    </th>
+                    <th className="text-center py-3 font-medium text-muted-foreground w-32">
+                      <span className="flex items-center justify-center gap-1.5">
+                        <Store className="h-3.5 w-3.5" /> Local
+                      </span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {CHECKOUT_PAYMENT_METHODS.map(({ id, label }) => (
+                    <tr key={id} className="border-b border-border/60 last:border-0">
+                      <td className="py-3 font-medium">{label}</td>
+                      <td className="py-3 text-center">
+                        <Switch
+                          checked={isPaymentMethodEnabled(id, formData.payment_methods_enabled_delivery)}
+                          onCheckedChange={() => {
+                            const next = togglePaymentMethod(id, 'delivery', {
+                              delivery: formData.payment_methods_enabled_delivery,
+                              local: formData.payment_methods_enabled_local,
+                            });
+                            setFormData((f) => ({ ...f, payment_methods_enabled_delivery: next.delivery }));
+                          }}
+                        />
+                      </td>
+                      <td className="py-3 text-center">
+                        <Switch
+                          checked={isPaymentMethodEnabled(id, formData.payment_methods_enabled_local)}
+                          onCheckedChange={() => {
+                            const next = togglePaymentMethod(id, 'local', {
+                              delivery: formData.payment_methods_enabled_delivery,
+                              local: formData.payment_methods_enabled_local,
+                            });
+                            setFormData((f) => ({ ...f, payment_methods_enabled_local: next.local }));
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <div className="admin-card-border bg-card overflow-hidden">
             <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border/60">
               <div className="h-9 w-9 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
