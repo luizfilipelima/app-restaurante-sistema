@@ -23,9 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff, QrCode, Landmark, Store, BookOpen, ClipboardList, Settings2 } from 'lucide-react';
-import { WhatsAppTemplatesModal } from '@/components/admin/marketing-sales/WhatsAppTemplatesModal';
 import { processTemplate, getTemplate } from '@/lib/whatsapp/whatsappTemplates';
-import type { WhatsAppTemplates } from '@/types';
 import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { useCanAccess } from '@/hooks/auth/useUserRole';
@@ -158,10 +156,8 @@ export default function AdminOrders() {
   const [isLive, setIsLive] = useState(false);
   const [dispatchOrder, setDispatchOrder] = useState<DatabaseOrder | null>(null);
   const [selectedCourierForDispatch, setSelectedCourierForDispatch] = useState<string>('');
-  const [showWaTemplatesModal, setShowWaTemplatesModal] = useState(false);
   const [showDeliverySettingsModal, setShowDeliverySettingsModal] = useState(false);
   const canManageDeliverySettings = useCanAccess(['super_admin', 'owner', 'manager', 'restaurant_admin']);
-  const [localWaTemplates, setLocalWaTemplates] = useState<WhatsAppTemplates | null | undefined>(undefined);
   const { couriers } = useCouriers(restaurantId);
   const { printOrder, receiptData, secondReceiptData, isPrinting } = usePrinter();
   const { data: productDestMap } = useProductPrintDestinations(restaurantId);
@@ -199,13 +195,6 @@ export default function AdminOrders() {
     },
     [productDestMap, t]
   );
-
-  // Sync templates from restaurant data
-  useEffect(() => {
-    if (restaurant && localWaTemplates === undefined) {
-      setLocalWaTemplates(restaurant.whatsapp_templates ?? null);
-    }
-  }, [restaurant, localWaTemplates]);
 
   const handleRealtimeOrder = useCallback(async (payload: any) => {
     queryClient.invalidateQueries({ queryKey: ['orders', restaurantId] });
@@ -336,7 +325,7 @@ export default function AdminOrders() {
         ? '+' + ensurePhoneForWhatsApp(dispatchOrder.customer_phone, customerCountry)
         : '';
       const dispatchMessage = processTemplate(
-        getTemplate('courier_dispatch', localWaTemplates, orderLang),
+        getTemplate('courier_dispatch', restaurant?.whatsapp_templates ?? null, orderLang),
         {
           codigo_pedido:     `#${dispatchOrder.id.slice(0, 8).toUpperCase()}`,
           cliente_nome:      dispatchOrder.customer_name,
@@ -503,14 +492,6 @@ export default function AdminOrders() {
     <>
       <OrderReceipt data={receiptData} />
       {secondReceiptData && <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />}
-      {/* Modal de edição de templates WhatsApp */}
-      <WhatsAppTemplatesModal
-        open={showWaTemplatesModal}
-        onClose={() => setShowWaTemplatesModal(false)}
-        restaurantId={restaurantId}
-        currentTemplates={localWaTemplates}
-        onSaved={(saved) => setLocalWaTemplates(saved)}
-      />
       <DeliverySettingsModal
         open={showDeliverySettingsModal}
         onClose={() => setShowDeliverySettingsModal(false)}
@@ -520,22 +501,10 @@ export default function AdminOrders() {
       />
       <AdminPageLayout>
         <AdminPageHeader
-          title="Gestão de Delivery e Retiradas"
-          description={
-            view === 'kanban'
-              ? 'Quartel-general do Delivery e Retirada — acompanhe em tempo real'
-              : 'Histórico de pedidos concluídos (Delivery e Retirada) com exportação CSV'
-          }
+          title="Delivery"
           icon={ClipboardList}
           actions={
             <>
-              <button
-                onClick={() => setShowWaTemplatesModal(true)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#25D366]/30 bg-[#25D366]/5 hover:bg-[#25D366]/10 text-[#1a9e52] dark:text-[#25D366] text-xs font-semibold transition-all hover:border-[#25D366]/60"
-              >
-                <MessageCircle className="h-3.5 w-3.5" />
-                {t('waTemplates.btnLabel')}
-              </button>
               <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
                 isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-muted border-border text-muted-foreground'
               }`}>
@@ -652,7 +621,7 @@ export default function AdminOrders() {
                         const firstName = order.customer_name.split(' ')[0];
                         const orderLang = ((order as { customer_language?: string })?.customer_language === 'es' || (restaurant as { language?: string })?.language === 'es') ? 'es' as const : 'pt' as const;
                         const msg = processTemplate(
-                          getTemplate('delivery_notification', localWaTemplates, orderLang),
+                          getTemplate('delivery_notification', restaurant?.whatsapp_templates ?? null, orderLang),
                           {
                             cliente_nome:     firstName,
                             restaurante_nome: restaurant?.name ?? '',

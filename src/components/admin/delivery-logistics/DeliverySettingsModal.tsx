@@ -19,9 +19,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/shared/use-toast';
-import { Loader2, Settings2 } from 'lucide-react';
-import type { Restaurant } from '@/types';
+import { Loader2, Settings2, MessageCircle, Package } from 'lucide-react';
+import type { Restaurant, WhatsAppTemplates } from '@/types';
+import { DEFAULT_TEMPLATES } from '@/lib/whatsapp/whatsappTemplates';
+import { WhatsAppTemplatesEditor } from './WhatsAppTemplatesEditor';
 
 interface DeliverySettingsModalProps {
   open: boolean;
@@ -43,6 +46,7 @@ export function DeliverySettingsModal({
 
   const [enabled, setEnabled] = useState(false);
   const [valueInput, setValueInput] = useState('');
+  const [whatsappTemplates, setWhatsappTemplates] = useState<WhatsAppTemplates>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -51,6 +55,7 @@ export function DeliverySettingsModal({
       const val = restaurant.delivery_min_order_value ?? 0;
       setEnabled(enabledVal);
       setValueInput(val > 0 ? convertPriceFromStorage(val, currency) : '');
+      setWhatsappTemplates(restaurant.whatsapp_templates ?? {});
     }
   }, [open, restaurant, currency]);
 
@@ -62,12 +67,19 @@ export function DeliverySettingsModal({
         ? convertPriceToStorage(valueInput, currency)
         : 0;
 
+      const payload = {
+        delivery_min_order_enabled: enabled,
+        delivery_min_order_value: Math.max(0, valueStorage),
+        whatsapp_templates: {
+          new_order: whatsappTemplates.new_order ?? DEFAULT_TEMPLATES.new_order,
+          delivery_notification: whatsappTemplates.delivery_notification ?? DEFAULT_TEMPLATES.delivery_notification,
+          courier_dispatch: whatsappTemplates.courier_dispatch ?? DEFAULT_TEMPLATES.courier_dispatch,
+        },
+      };
+
       const { error } = await supabase
         .from('restaurants')
-        .update({
-          delivery_min_order_enabled: enabled,
-          delivery_min_order_value: Math.max(0, valueStorage),
-        })
+        .update(payload)
         .eq('id', restaurantId);
 
       if (error) throw error;
@@ -87,49 +99,77 @@ export function DeliverySettingsModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings2 className="h-5 w-5" />
             Configurações do delivery
           </DialogTitle>
           <DialogDescription>
-            Define o valor mínimo para pedidos de delivery. Ao ativar, o cliente não poderá finalizar um pedido com valor menor no checkout.
+            Valor mínimo de pedido, mensagens WhatsApp e outras opções relacionadas ao delivery.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-border p-4 bg-muted/30">
-            <div>
-              <Label className="text-sm font-medium">Exigir valor mínimo</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Quando ativo, pedidos abaixo do valor definido não poderão ser enviados.
-              </p>
-            </div>
-            <Switch checked={enabled} onCheckedChange={setEnabled} />
-          </div>
+        <Tabs defaultValue="min_order" className="flex flex-col flex-1 overflow-hidden min-h-0">
+          <TabsList className="grid grid-cols-2 w-full max-w-md h-10 bg-muted/60 flex-shrink-0">
+            <TabsTrigger value="min_order" className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Pedido mínimo
+            </TabsTrigger>
+            <TabsTrigger value="whatsapp" className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4 text-[#25D366]" />
+              Mensagens WhatsApp
+            </TabsTrigger>
+          </TabsList>
 
-          {enabled && (
-            <div className="space-y-2">
-              <Label htmlFor="min-value">Valor mínimo ({currency === 'PYG' ? 'guaranís' : currency === 'ARS' ? 'pesos' : 'reais'})</Label>
-              <Input
-                id="min-value"
-                type="text"
-                placeholder={currency === 'PYG' ? 'Ex: 40.000' : 'Ex: 25,00'}
-                value={valueInput}
-                onChange={(e) => setValueInput(e.target.value)}
-                className="font-mono"
-              />
-              {valueInput.trim() && (
-                <p className="text-xs text-muted-foreground">
-                  Valor exibido ao cliente: {formatPrice(convertPriceToStorage(valueInput, currency), currency)}
-                </p>
+          <div className="flex-1 overflow-y-auto py-4 min-h-0">
+            <TabsContent value="min_order" className="mt-0 space-y-6 focus-visible:ring-0">
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-border p-4 bg-muted/30">
+                <div>
+                  <Label className="text-sm font-medium">Exigir valor mínimo</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Quando ativo, pedidos abaixo do valor definido não poderão ser enviados.
+                  </p>
+                </div>
+                <Switch checked={enabled} onCheckedChange={setEnabled} />
+              </div>
+
+              {enabled && (
+                <div className="space-y-2">
+                  <Label htmlFor="min-value">Valor mínimo ({currency === 'PYG' ? 'guaranís' : currency === 'ARS' ? 'pesos' : 'reais'})</Label>
+                  <Input
+                    id="min-value"
+                    type="text"
+                    placeholder={currency === 'PYG' ? 'Ex: 40.000' : 'Ex: 25,00'}
+                    value={valueInput}
+                    onChange={(e) => setValueInput(e.target.value)}
+                    className="font-mono"
+                  />
+                  {valueInput.trim() && (
+                    <p className="text-xs text-muted-foreground">
+                      Valor exibido ao cliente: {formatPrice(convertPriceToStorage(valueInput, currency), currency)}
+                    </p>
+                  )}
+                </div>
               )}
-            </div>
-          )}
-        </div>
+            </TabsContent>
 
-        <DialogFooter>
+            <TabsContent value="whatsapp" className="mt-0 focus-visible:ring-0">
+              <div className="rounded-xl border border-border bg-muted/20 p-4">
+                <p className="text-xs text-muted-foreground mb-4">
+                  Personalize os textos enviados via WhatsApp. Use as variáveis disponíveis — linhas com variáveis vazias são removidas automaticamente.
+                </p>
+                <WhatsAppTemplatesEditor
+                  value={whatsappTemplates}
+                  onChange={setWhatsappTemplates}
+                  compact
+                />
+              </div>
+            </TabsContent>
+          </div>
+        </Tabs>
+
+        <DialogFooter className="flex-shrink-0">
           <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
