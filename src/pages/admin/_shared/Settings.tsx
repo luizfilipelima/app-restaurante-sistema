@@ -29,7 +29,7 @@ import {
   Users, ExternalLink, Link2, FileText,
   MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode, Settings as SettingsIcon,
   Pencil, Trash2, Plus, ChevronUp, ChevronDown, Lock,
-  Bike, Bluetooth, Cable, Wifi,
+  Bike, Bluetooth, Cable,
 } from 'lucide-react';
 import { useRestaurant } from '@/hooks/queries';
 import { useLinkBioButtons, useLinkBioButtonsMutations, type CreateLinkBioButtonPayload } from '@/hooks/queries/useLinkBioButtons';
