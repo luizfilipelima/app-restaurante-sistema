@@ -20,7 +20,7 @@ interface CategoryIconPickerProps {
   compact?: boolean;
 }
 
-const GROUPS_ORDER = ['Geral', 'Bebidas', 'Pratos', 'Comida árabe', 'Doces'];
+const GROUPS_ORDER = ['Geral', 'Bebidas', 'Pratos', 'Lanches', 'Comida árabe', 'Doces'];
 
 function IconPickerGrid({ value, onChange }: { value: string; onChange: (id: string) => void }) {
   const byGroup = GROUPS_ORDER.reduce<Record<string, typeof CATEGORY_ICON_OPTIONS>>((acc, g) => {

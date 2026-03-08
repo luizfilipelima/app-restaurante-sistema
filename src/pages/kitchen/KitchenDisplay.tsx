@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/shared/use-toast';
-import { Clock, AlertTriangle, ChefHat, ArrowRight, UtensilsCrossed, Bike, Scale, LayoutDashboard } from 'lucide-react';
+import { Clock, AlertTriangle, ChefHat, ArrowRight, UtensilsCrossed, Bike, Scale, LayoutDashboard, Wine } from 'lucide-react';
 
 export default function KitchenDisplay() {
   const { user } = useAuthStore();
@@ -98,7 +98,7 @@ export default function KitchenDisplay() {
         .select(`
           *,
           tables(number),
-          order_items(*)
+          order_items(*, product:products(print_destination))
         `)
         .eq('restaurant_id', effectiveRestaurantId)
         .in('status', ['pending', 'preparing'])
@@ -484,13 +484,25 @@ function OrderCard({
       <CardContent className="pt-4 space-y-4">
         {/* Items List */}
         <div className="space-y-3">
-          {order.order_items?.map((item: any, idx: number) => (
+          {order.order_items?.map((item: any, idx: number) => {
+            const dest = item.product?.print_destination ?? 'kitchen';
+            const sectorTag = dest === 'bar' ? 'BAR' : 'COZINHA';
+            const sectorClass = dest === 'bar'
+              ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
+              : 'bg-orange-500/20 text-orange-400 border-orange-500/50';
+            return (
             <div key={idx} className="flex items-start gap-3 bg-slate-900/30 p-2 rounded-lg">
               <div className="bg-slate-700 text-white font-bold text-xl min-w-[2.5rem] h-10 flex items-center justify-center rounded">
                 {item.quantity}
               </div>
               <div className="flex-1">
-                <p className="text-lg font-bold text-slate-100 leading-tight">{item.product_name}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-lg font-bold text-slate-100 leading-tight">{item.product_name}</p>
+                  <Badge variant="outline" className={`shrink-0 border text-xs font-bold ${sectorClass}`}>
+                    {dest === 'bar' ? <Wine className="h-3 w-3 mr-1" /> : <ChefHat className="h-3 w-3 mr-1" />}
+                    {sectorTag}
+                  </Badge>
+                </div>
                 {/* Pizza Details */}
                 {(item.pizza_size || item.pizza_flavors) && (
                   <div className="mt-1 text-sm text-slate-400 pl-2 border-l-2 border-slate-600">
@@ -502,15 +514,14 @@ function OrderCard({
                     )}
                   </div>
                 )}
-                {/* Addons */}
+                {/* Addons - sem preços */}
                 {item.addons && Array.isArray(item.addons) && item.addons.length > 0 && (
                   <div className="mt-1 text-sm text-amber-300 pl-2 border-l-2 border-amber-500/50">
-                    {item.addons.map((a: { name: string; price?: number; quantity?: number }, i: number) => {
+                    {item.addons.map((a: { name: string; quantity?: number }, i: number) => {
                       const qty = a.quantity ?? 1;
                       const label = qty > 1 ? `${a.name} (${qty}x)` : a.name;
-                      const total = (a.price ?? 0) * qty;
                       return (
-                        <p key={i}>+ {label}{total ? ` (+R$ ${total.toFixed(2)})` : ''}</p>
+                        <p key={i}>+ {label}</p>
                       );
                     })}
                   </div>
@@ -523,7 +534,8 @@ function OrderCard({
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Order Notes */}

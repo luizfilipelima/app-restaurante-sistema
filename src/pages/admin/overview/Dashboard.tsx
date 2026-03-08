@@ -6,7 +6,7 @@ import { supabase } from '@/lib/core/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
-import { useDashboardStats, useDashboardAnalytics, useRestaurant, useLoyaltyMetrics, useLoyaltyProgram } from '@/hooks/queries';
+import { useDashboardStats, useDashboardAnalytics, useRestaurant, useLoyaltyMetrics, useLoyaltyProgram, useFeatureAccess } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,7 +33,7 @@ import {
   DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2,
   MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon, Flame, Bike, HelpCircle,
   Users, LayoutGrid, Download, FileSpreadsheet, FileText, ChevronDown, Printer,
-  Gift, Star, LayoutDashboard, Store,
+  Gift, Star, LayoutDashboard, Store, Banknote,
 } from 'lucide-react';
 import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import DashboardPrintReport from '@/components/admin/overview/DashboardPrintReport';
@@ -53,6 +53,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChurnRecoveryList } from '@/components/admin/overview/ChurnRecoveryList';
 import { MenuMatrixBCG } from '@/components/admin/overview/MenuMatrixBCG';
+import { CashierDailyTab } from '@/components/admin/overview/CashierDailyTab';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
 type PeriodValue = '24h' | '7' | '30' | '365' | 'max' | 'custom';
 
@@ -97,6 +98,7 @@ export default function AdminDashboard() {
   const { user } = useAuthStore();
   const { toast } = useToast();
   const { data: restaurant } = useRestaurant(restaurantId);
+  const [mainTab, setMainTab] = useState<'overview' | 'cashier'>('overview');
   const [period, setPeriod] = useState<PeriodValue>('30');
   const [customStartStr, setCustomStartStr] = useState('');
   const [customEndStr, setCustomEndStr] = useState('');
@@ -180,6 +182,8 @@ export default function AdminDashboard() {
 
   const { data: loyaltyProgram } = useLoyaltyProgram(restaurantId);
   const { data: loyaltyMetrics } = useLoyaltyMetrics(restaurantId, loyaltyProgram?.orders_required ?? 10);
+  const { data: hasTables } = useFeatureAccess('feature_tables', restaurantId);
+  const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
 
   // Loading: aguarda analytics (stats ou fallback) — evita flickering nos cards
   const loading = !analytics && (loadingStats || loadingFallback);
@@ -638,6 +642,31 @@ export default function AdminDashboard() {
           }
         />
 
+        {/* Abas principais: Visão Geral | Caixa Diário */}
+        <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'overview' | 'cashier')}>
+          <TabsList className="mb-6 h-10 bg-slate-100 border border-slate-200 p-1 w-fit">
+            <TabsTrigger value="overview" className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <LayoutDashboard className="h-4 w-4" />
+              {t('dashboard.sections.executiveSummary')}
+            </TabsTrigger>
+            <TabsTrigger value="cashier" className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <Banknote className="h-4 w-4" />
+              {t('cashierDaily.title')}
+            </TabsTrigger>
+          </TabsList>
+
+          {mainTab === 'cashier' && (
+            <CashierDailyTab
+              restaurantId={restaurantId}
+              currency={currency}
+              hasTables={!!hasTables}
+              hasBuffet={!!hasBuffet}
+              t={t}
+            />
+          )}
+
+          {mainTab === 'overview' && (
+        <>
         {/* ══ Seção: Resumo Executivo ══ */}
         <div className="space-y-1">
           <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-2">
@@ -1489,6 +1518,10 @@ export default function AdminDashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        </>
+          )}
+        </Tabs>
 
         {/* ── Print Report: renderizado em portal no body para evitar páginas em branco ── */}
         {typeof document !== 'undefined' &&

@@ -86,6 +86,15 @@ export type { UseDashboardStatsParams } from './useDashboardStats';
 export { useCompletedOrders } from './useCompletedOrders';
 export type { UseCompletedOrdersParams, CompletedOrdersDateRange } from './useCompletedOrders';
 export { useFeatureAccess } from './useFeatureAccess';
+export {
+  useCashierSession,
+  useOpenCashier,
+  useCloseCashier,
+  cashierSessionsKey,
+} from './useCashierSessions';
+export type { CashierSession } from './useCashierSessions';
+export { useCashierDailyOrders, getCashierDailyDateRange } from './useCashierDailyOrders';
+export type { CashierDailyOrderItem, CashierDailyPeriod, CashierDailyOrdersResult } from './useCashierDailyOrders';
 export type { UseFeatureAccessResult } from './useFeatureAccess';
 export {
   useSubscriptionPlans,
