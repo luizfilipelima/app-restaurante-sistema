@@ -269,6 +269,8 @@
     "notesPlaceholder": "Ex: Aniversariante, sem glúten...",
     "errorFillData": "Preencha nome, data, horário e setor.",
     "errorTimeOutsideRange": "O horário escolhido está fora do intervalo de reservas do restaurante.",
+    "reservationHoursInfo": "O restaurante aceita reservas das {{start}} às {{end}}.",
+    "outsideReservationHoursToday": "Estamos fora do horário de reservas de hoje. Por favor, escolha outra data.",
     "errorPastDate": "Não é possível reservar para uma data passada.",
     "errorCreate": "Erro ao criar reserva.",
     "errorFetch": "Erro ao buscar suas reservas.",

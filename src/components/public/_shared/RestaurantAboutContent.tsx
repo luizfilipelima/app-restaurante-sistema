@@ -30,16 +30,16 @@ const DAY_LABELS_ES: Record<DayKey, string> = {
   sun: 'Domingo',
 };
 
+/** Formata horário para exibição no padrão HH:mm (ex: 00:00, 15:30). */
 function formatTimeHHMM(hhmm: string): string {
   if (!hhmm || hhmm.length < 5) return hhmm;
   const [h, m] = hhmm.split(':');
   const hour = parseInt(h, 10);
   const min = parseInt(m, 10);
-  if (min === 0) return `${hour}h`;
-  return `${hour}h${min.toString().padStart(2, '0')}`;
+  return `${String(hour).padStart(2, '0')}:${String(isNaN(min) ? 0 : min).padStart(2, '0')}`;
 }
 
-/** Formata horário limite do delivery para exibição (ex: "22h" ou "22h30"). */
+/** Formata horário limite do delivery para exibição (ex: "até 22:00" ou "hasta 00:00"). */
 function formatDeliveryUntil(until: string | null | undefined, lang: 'pt' | 'es'): string {
   if (!until || until.length < 5) return '';
   const formatted = formatTimeHHMM(until);

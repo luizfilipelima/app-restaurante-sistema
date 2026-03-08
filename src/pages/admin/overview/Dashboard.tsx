@@ -658,6 +658,7 @@ export default function AdminDashboard() {
           {mainTab === 'cashier' && (
             <CashierDailyTab
               restaurantId={restaurantId}
+              restaurantName={restaurant?.name}
               currency={currency}
               hasTables={!!hasTables}
               hasBuffet={!!hasBuffet}

@@ -11,6 +11,7 @@ import { ptBR } from 'date-fns/locale';
 import {
   Banknote,
   Clock,
+  FileDown,
   Loader2,
   Receipt,
   Store,
@@ -35,13 +36,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/shared/use-toast';
-import { formatPrice, convertPriceToStorage } from '@/lib/priceHelper';
+import { formatPrice, convertPriceToStorage, formatPriceInput, getCurrencySymbol } from '@/lib/priceHelper';
 import type { CurrencyCode } from '@/lib/priceHelper';
 import {
   useCashierSession,
   useOpenCashier,
   useCloseCashier,
 } from '@/hooks/queries/useCashierSessions';
+import { exportCashierDailyPDF } from '@/lib/cashier/cashier-daily-pdf';
 import {
   useCashierDailyOrders,
   type CashierDailyPeriod,
@@ -59,6 +61,7 @@ const TAG_CONFIG: Record<string, { label: string; icon: typeof Store; className:
 
 export interface CashierDailyTabProps {
   restaurantId: string | null;
+  restaurantName?: string;
   currency: CurrencyCode;
   hasTables?: boolean;
   hasBuffet?: boolean;
@@ -67,6 +70,7 @@ export interface CashierDailyTabProps {
 
 export function CashierDailyTab({
   restaurantId,
+  restaurantName = '',
   currency,
   hasTables = true,
   hasBuffet = true,
@@ -104,6 +108,7 @@ export function CashierDailyTab({
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [openingAmountInput, setOpeningAmountInput] = useState('');
   const [closingAmountInput, setClosingAmountInput] = useState('');
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const expectedClosing =
     session && ordersData
@@ -130,6 +135,60 @@ export function CashierDailyTab({
         description: err?.message ?? 'Erro ao abrir caixa',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleExportPdf = () => {
+    setExportingPdf(true);
+    try {
+      const tagLabels: Record<string, string> = {
+        delivery: t('cashierDaily.tagDelivery'),
+        pickup: t('cashierDaily.tagPickup'),
+        table: t('cashierDaily.tagTable'),
+        buffet: t('cashierDaily.tagBuffet'),
+        comanda: t('cashierDaily.tagComanda'),
+      };
+      exportCashierDailyPDF({
+        restaurantName: restaurantName || 'Restaurante',
+        periodLabel,
+        currency,
+        orders: ordersData?.orders ?? [],
+        totalRevenue: ordersData?.totalRevenue ?? 0,
+        totalOrders: ordersData?.totalOrders ?? 0,
+        session: period === 'today' ? session ?? undefined : undefined,
+        tagLabels,
+        t: {
+          title: t('cashierDaily.pdfTitle'),
+          period: t('cashierDaily.period'),
+          generatedAt: t('cashierDaily.pdfGeneratedAt'),
+          summary: t('cashierDaily.pdfSummary'),
+          totalOrders: t('cashierDaily.totalOrdersLabel'),
+          totalSales: t('cashierDaily.totalSales'),
+          openingAmount: t('cashierDaily.openingAmount'),
+          expectedClosing: t('cashierDaily.expectedClosing'),
+          ordersDetail: t('cashierDaily.pdfOrdersDetail'),
+          date: t('cashierDaily.pdfDate'),
+          tag: t('cashierDaily.pdfTag'),
+          customer: t('cashierDaily.pdfCustomer'),
+          items: t('cashierDaily.pdfItems'),
+          qty: t('cashierDaily.pdfQty'),
+          unitPrice: t('cashierDaily.pdfUnitPrice'),
+          total: t('cashierDaily.totalLabel'),
+          prepTime: t('cashierDaily.prepTime'),
+          prepTimeMin: t('cashierDaily.prepTimeMin'),
+          paymentMethod: t('cashierDaily.pdfPaymentMethod'),
+          noOrders: t('cashierDaily.noOrders'),
+        },
+      });
+      toast({ title: t('cashierDaily.pdfExportSuccess') });
+    } catch (err: any) {
+      toast({
+        title: t('common.error'),
+        description: err?.message ?? 'Erro ao exportar PDF',
+        variant: 'destructive',
+      });
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -292,11 +351,24 @@ export function CashierDailyTab({
 
       {/* Lista de pedidos */}
       <div className="admin-card overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-100">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-2">
           <h3 className="text-base font-semibold text-slate-800 flex items-center gap-2">
             <Receipt className="h-4 w-4 text-slate-500" />
             Pedidos concluídos · {periodLabel}
           </h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPdf}
+            disabled={loadingOrders || exportingPdf}
+          >
+            {exportingPdf ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="h-4 w-4" />
+            )}
+            <span className="ml-2">{t('cashierDaily.exportPdf')}</span>
+          </Button>
         </div>
         <div className="overflow-x-auto">
           {loadingOrders ? (
@@ -344,14 +416,20 @@ export function CashierDailyTab({
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="opening-amount">{t('cashierDaily.openingAmount')}</Label>
-              <Input
-                id="opening-amount"
-                type="text"
-                inputMode="decimal"
-                placeholder={currency === 'BRL' ? '0,00' : '0'}
-                value={openingAmountInput}
-                onChange={(e) => setOpeningAmountInput(e.target.value)}
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
+                  {getCurrencySymbol(currency)}
+                </span>
+                <Input
+                  id="opening-amount"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder={currency === 'BRL' ? '0,00' : currency === 'PYG' ? '0' : '0,00'}
+                  className="pl-10"
+                  value={openingAmountInput}
+                  onChange={(e) => setOpeningAmountInput(formatPriceInput(e.target.value, currency))}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -386,14 +464,20 @@ export function CashierDailyTab({
             </div>
             <div className="space-y-2">
               <Label htmlFor="closing-amount">{t('cashierDaily.closingAmount')}</Label>
-              <Input
-                id="closing-amount"
-                type="text"
-                inputMode="decimal"
-                placeholder={formatPrice(expectedClosing, currency)}
-                value={closingAmountInput}
-                onChange={(e) => setClosingAmountInput(e.target.value)}
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
+                  {getCurrencySymbol(currency)}
+                </span>
+                <Input
+                  id="closing-amount"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder={formatPrice(expectedClosing, currency)}
+                  className="pl-10"
+                  value={closingAmountInput}
+                  onChange={(e) => setClosingAmountInput(formatPriceInput(e.target.value, currency))}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>

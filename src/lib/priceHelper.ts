@@ -72,11 +72,13 @@ export function convertPriceToStorage(inputValue: string | number, currency: Cur
     const numValue = parseFloat(normalized) || 0;
     return Math.round(numValue);
   }
-  // BRL, ARS, USD: centavos
-  const numValue =
-    typeof inputValue === 'string'
-      ? parseFloat(inputValue.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0
-      : inputValue;
+  // BRL, ARS, USD: ponto = milhares, vírgula = decimal; armazena em centavos
+  if (typeof inputValue === 'number') return Math.round(inputValue * 100);
+  const normalized = String(inputValue)
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\./g, '') // remove separador de milhares
+    .replace(',', '.'); // vírgula decimal → ponto
+  const numValue = parseFloat(normalized) || 0;
   return Math.round(numValue * 100);
 }
 
@@ -101,6 +103,23 @@ export function convertPriceFromStorage(storageValue: number, currency: Currency
 }
 
 /**
+ * Formata o valor do campo de preço em BRL enquanto o usuário digita:
+ * ponto para milhares, vírgula para decimais. Ex.: "123456" → "1.234,56"
+ *
+ * @param displayValue - Valor atual do input (pode já conter pontos e vírgula)
+ * @returns Valor formatado para exibição no input
+ */
+export function formatPriceInputBrl(displayValue: string): string {
+  const onlyDigitsAndComma = displayValue.replace(/[^\d,]/g, '');
+  const firstComma = onlyDigitsAndComma.indexOf(',');
+  const hasComma = firstComma !== -1;
+  const intPart = hasComma ? onlyDigitsAndComma.slice(0, firstComma) : onlyDigitsAndComma;
+  const decPart = hasComma ? onlyDigitsAndComma.slice(firstComma + 1).replace(/\D/g, '').slice(0, 2) : '';
+  const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return decPart ? `${intFormatted},${decPart}` : intFormatted;
+}
+
+/**
  * Formata o valor do campo de preço em Guaraní enquanto o usuário digita:
  * apenas dígitos e uma vírgula (decimal); insere ponto como separador de milhar.
  * Ex.: "25000" → "25.000", "25000,50" → "25.000,50"
@@ -116,6 +135,15 @@ export function formatPriceInputPyG(displayValue: string): string {
   const decPart = hasComma ? onlyDigitsAndComma.slice(firstComma + 1).replace(/\D/g, '') : '';
   const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return decPart ? `${intFormatted},${decPart}` : intFormatted;
+}
+
+/**
+ * Formata o valor do input conforme a moeda (pontos e vírgulas).
+ */
+export function formatPriceInput(displayValue: string, currency: CurrencyCode): string {
+  if (currency === 'PYG') return formatPriceInputPyG(displayValue);
+  if (currency === 'BRL' || currency === 'ARS' || currency === 'USD') return formatPriceInputBrl(displayValue);
+  return formatPriceInputBrl(displayValue);
 }
 
 /** Cotações por 1 BRL (ex: pyg_per_brl: 3600, ars_per_brl: 1150, usd_per_brl: 0.18) */

@@ -238,11 +238,40 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
     return generateReservationTimeSlots(start, end, 30);
   }, [restaurant?.reservation_start_time, restaurant?.reservation_end_time]);
 
+  /** Slots disponíveis considerando: janela do restaurante + filtrar horários passados quando data é hoje */
+  const availableTimeSlots = useMemo(() => {
+    if (!reservationTimeSlots) return null;
+    if (scheduledDate !== today) return reservationTimeSlots;
+    const now = new Date();
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    return reservationTimeSlots.filter((slot) => {
+      const [h, m] = slot.split(':').map(Number);
+      return (h ?? 0) * 60 + (m ?? 0) > nowMins;
+    });
+  }, [reservationTimeSlots, scheduledDate, today]);
+
+  /** Se hoje está fora da janela de reservas (já passou o horário máximo) */
+  const isOutsideReservationHoursToday = useMemo(() => {
+    const start = restaurant?.reservation_start_time?.trim();
+    const end = restaurant?.reservation_end_time?.trim();
+    if (!start || !end || scheduledDate !== today) return false;
+    const now = new Date();
+    const [eh, em] = end.split(':').map(Number);
+    const endMins = (eh ?? 0) * 60 + (em ?? 0);
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    return nowMins >= endMins;
+  }, [restaurant?.reservation_start_time, restaurant?.reservation_end_time, scheduledDate, today]);
+
+  const hasReservationHours = Boolean(
+    restaurant?.reservation_start_time?.trim() && restaurant?.reservation_end_time?.trim()
+  );
+
   useEffect(() => {
-    if (reservationTimeSlots && scheduledTime && !reservationTimeSlots.includes(scheduledTime)) {
+    const slots = availableTimeSlots ?? reservationTimeSlots;
+    if (slots && scheduledTime && !slots.includes(scheduledTime)) {
       setScheduledTime('');
     }
-  }, [reservationTimeSlots, scheduledTime]);
+  }, [availableTimeSlots, reservationTimeSlots, scheduledTime]);
 
   const handleSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,6 +281,10 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
     }
     if (scheduledDate < today) {
       setError(t('reservation.errorPastDate'));
+      return;
+    }
+    if (isOutsideReservationHoursToday) {
+      setError(t('reservation.outsideReservationHoursToday'));
       return;
     }
     const availableIds = selectedZone.available_table_ids ?? [];
@@ -672,6 +705,28 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
       </header>
 
       <main className="max-w-md mx-auto px-4 py-6">
+        {hasReservationHours && (
+          <div className="mb-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <p className="text-sm font-medium text-foreground flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary shrink-0" />
+              {t('reservation.reservationHoursInfo', {
+                start: restaurant?.reservation_start_time?.trim(),
+                end: restaurant?.reservation_end_time?.trim(),
+              })}
+            </p>
+          </div>
+        )}
+        {isOutsideReservationHoursToday && (
+          <div className="mb-6 rounded-xl border-2 border-destructive/30 bg-destructive/10 p-4">
+            <p className="text-sm font-medium text-destructive flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              {t('reservation.outsideReservationHoursToday')}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {t('reservation.selectDatePlaceholder')}
+            </p>
+          </div>
+        )}
         <form onSubmit={handleSubmitNew} className="space-y-4">
           <div>
             <Label>{t('reservation.name')} *</Label>
@@ -732,10 +787,11 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
             </div>
             <div>
               <Label htmlFor="reservation-time">{t('reservation.time')}</Label>
-              {reservationTimeSlots ? (
+              {(availableTimeSlots ?? reservationTimeSlots) ? (
                 <Select
                   value={scheduledTime || undefined}
                   onValueChange={(v) => { setScheduledTime(v); setError(''); }}
+                  disabled={isOutsideReservationHoursToday}
                 >
                   <SelectTrigger
                     id="reservation-time"
@@ -745,7 +801,7 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
                     <SelectValue placeholder={t('reservation.selectTimePlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {reservationTimeSlots.map((slot) => (
+                    {(availableTimeSlots ?? reservationTimeSlots)?.map((slot) => (
                       <SelectItem key={slot} value={slot}>
                         {slot}
                       </SelectItem>
@@ -882,7 +938,13 @@ export default function PublicReservation({ tenantSlug: slugFromLayout }: Public
           <Button
             type="submit"
             className="w-full hover:brightness-105 active:scale-[0.99] transition-all"
-            disabled={submitting || !selectedZone || (selectedZone.available_table_ids?.length ?? 0) === 0}
+            disabled={
+              submitting ||
+              isOutsideReservationHoursToday ||
+              !selectedZone ||
+              (selectedZone.available_table_ids?.length ?? 0) === 0 ||
+              (hasReservationHours && scheduledDate === today && (availableTimeSlots?.length ?? 0) === 0)
+            }
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             {t('reservation.confirmReservation')}
