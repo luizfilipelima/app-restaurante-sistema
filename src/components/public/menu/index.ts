@@ -1,5 +1,6 @@
 export { default as ProductCard } from './ProductCard';
 export { default as ProductCardBeverage } from './ProductCardBeverage';
+export { default as ProductCardGrid } from './ProductCardGrid';
 export { default as ProductCardViewOnly } from './ProductCardViewOnly';
 export { default as SimpleProductModal } from './SimpleProductModal';
 export { default as PizzaModal } from './PizzaModal';

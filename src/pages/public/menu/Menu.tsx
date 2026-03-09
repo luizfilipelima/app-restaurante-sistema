@@ -25,9 +25,40 @@ import RestaurantInfoModal from '@/components/public/_shared/RestaurantInfoModal
 import { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import ProductCard from '@/components/public/menu/ProductCard';
+import ProductCardGrid from '@/components/public/menu/ProductCardGrid';
 import InitialSplashScreen from '@/components/public/_shared/InitialSplashScreen';
 import LoyaltySignIn from '@/components/public/loyalty/LoyaltySignIn';
 import LoyaltyCard from '@/components/public/loyalty/LoyaltyCard';
+
+/** Escolhe o card conforme card_layout: beverage = horizontal compacto, grid = vertical com foto em destaque */
+function ProductCardByLayout({
+  product,
+  onClick,
+  currency,
+  convertForDisplay,
+  comboItems,
+  offer,
+}: {
+  product: Product;
+  onClick: () => void;
+  currency: string;
+  convertForDisplay?: (v: number) => number;
+  comboItems?: Array<{ product: { name: string }; quantity: number }>;
+  offer?: { price: number; originalPrice: number; label?: string | null };
+}) {
+  const isBeverage = product.card_layout === 'beverage';
+  const Card = isBeverage ? ProductCard : ProductCardGrid;
+  return (
+    <Card
+      product={product}
+      onClick={onClick}
+      currency={currency as any}
+      convertForDisplay={convertForDisplay}
+      comboItems={comboItems}
+      offer={offer}
+    />
+  );
+}
 
 // Lazy: CartDrawer importa framer-motion — só carrega quando o carrinho for aberto
 const CartDrawer = lazy(() => import('@/components/public/cart/CartDrawer'));
@@ -670,7 +701,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             </h2>
             <div className="flex flex-col gap-3 sm:gap-4">
               {offersToShow.map((offer) => (
-                  <ProductCard
+                  <ProductCardByLayout
                     key={offer.id}
                     product={offer.product}
                     onClick={() => handleOfferProductClick(offer)}
@@ -706,7 +737,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                             {subProducts.map((product) => {
                               const offer = productIdToOffer.get(product.id);
                               return (
-                                <ProductCard
+                                <ProductCardByLayout
                                   key={product.id}
                                   product={product}
                                   onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
@@ -726,7 +757,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                           {productsWithoutSub.map((product) => {
                             const offer = productIdToOffer.get(product.id);
                             return (
-                              <ProductCard
+                              <ProductCardByLayout
                                 key={product.id}
                                 product={product}
                                 onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
@@ -745,7 +776,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       {categoryProducts.map((product) => {
                         const offer = productIdToOffer.get(product.id);
                         return (
-                          <ProductCard
+                          <ProductCardByLayout
                             key={product.id}
                             product={product}
                             onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}
@@ -770,7 +801,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 {filteredProducts.map((product) => {
                   const offer = productIdToOffer.get(product.id);
                   return (
-                    <ProductCard
+                    <ProductCardByLayout
                       key={product.id}
                       product={product}
                       onClick={() => (offer ? handleOfferProductClick(offer) : handleProductClick(product))}

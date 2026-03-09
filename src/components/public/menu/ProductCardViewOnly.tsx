@@ -20,13 +20,14 @@ interface ProductCardViewOnlyProps {
   product: Product;
   currency: CurrencyCode;
   comboItems?: Array<{ product: { name: string }; quantity: number }>;
-  /** Ignorado: todos os cards usam layout horizontal */
+  /** grid = vertical (foto em destaque), beverage = horizontal compacto. Usa product.card_layout se não informado. */
   layout?: 'grid' | 'beverage';
 }
 
-export default function ProductCardViewOnly({ product, currency, comboItems }: ProductCardViewOnlyProps) {
+export default function ProductCardViewOnly({ product, currency, comboItems, layout }: ProductCardViewOnlyProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const isVertical = (layout ?? product.card_layout) !== 'beverage';
   const subtitle =
     product.description ??
     (comboItems?.length
@@ -38,9 +39,15 @@ export default function ProductCardViewOnly({ product, currency, comboItems }: P
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group w-full text-left flex items-stretch gap-3 sm:gap-4 rounded-2xl overflow-hidden bg-card/90 border border-border backdrop-blur-sm transition-all duration-200 active:scale-[0.995] hover:shadow-md hover:border-border touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2"
+        className={`group w-full text-left rounded-2xl overflow-hidden bg-card/90 border border-border backdrop-blur-sm transition-all duration-200 active:scale-[0.995] hover:shadow-md hover:border-border touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 ${
+          isVertical ? 'flex flex-col' : 'flex items-stretch gap-3 sm:gap-4'
+        }`}
       >
-        <div className="relative w-[120px] sm:w-[140px] min-w-[120px] sm:min-w-[140px] min-h-[120px] sm:min-h-[140px] flex-shrink-0 self-stretch overflow-hidden rounded-2xl bg-muted ring-1 ring-border">
+        <div className={`relative overflow-hidden bg-muted ring-1 ring-border ${
+          isVertical
+            ? 'w-full aspect-[4/3] rounded-t-2xl'
+            : 'w-[120px] sm:w-[140px] min-w-[120px] sm:min-w-[140px] min-h-[120px] sm:min-h-[140px] flex-shrink-0 self-stretch rounded-2xl'
+        }`}>
           {product.image_url ? (
             <img
               src={product.image_url}
@@ -50,11 +57,11 @@ export default function ProductCardViewOnly({ product, currency, comboItems }: P
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <span className="text-3xl opacity-20">🍽</span>
+              <span className={isVertical ? 'text-5xl opacity-20' : 'text-3xl opacity-20'}>🍽</span>
             </div>
           )}
         </div>
-        <div className="flex-1 min-w-0 flex flex-col justify-center py-3.5 pr-3 sm:py-4 sm:pr-4 pl-0">
+        <div className={`flex-1 min-w-0 flex flex-col ${isVertical ? 'justify-center p-3 sm:p-4' : 'justify-center py-3.5 pr-3 sm:py-4 sm:pr-4 pl-0'}`}>
           <h3 className="font-medium text-foreground text-[15px] sm:text-base leading-snug line-clamp-2">
             {product.name}
           </h3>
