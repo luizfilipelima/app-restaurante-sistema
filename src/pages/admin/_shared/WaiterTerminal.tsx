@@ -182,19 +182,26 @@ function WaiterTerminalContent() {
     if (!restaurantId) return;
     const ch = supabase
       .channel('waiter-terminal-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'waiter_calls', filter: `restaurant_id=eq.${restaurantId}` }, (payload: { eventType?: string; new?: { table_id?: string; table_number?: number }; data?: { type?: string } }) => {
-        const isNewCall = (payload?.eventType ?? payload?.data?.type ?? '') === 'INSERT';
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'waiter_calls', filter: `restaurant_id=eq.${restaurantId}` }, (payload: { eventType?: string; event?: string; new?: { table_id?: string; table_number?: number }; old?: unknown; payload?: { eventType?: string }; data?: { type?: string } }) => {
+        const ev = payload?.eventType ?? payload?.event ?? payload?.payload?.eventType ?? payload?.data?.type ?? '';
+        const isNewCall = ev === 'INSERT' || (!!payload?.new && !payload?.old);
         if (isNewCall) {
           const { tableIdToZone, waiterZone, seesAllCalls } = tablesAndZoneRef.current;
           const tableId = payload?.new?.table_id;
-          const tableZone = tableId ? tableIdToZone.get(tableId) : null;
-          const isInMyZone = seesAllCalls || !waiterZone || tableZone === waiterZone;
+          const tableZone = tableId ? tableIdToZone.get(tableId) : undefined;
+          const zoneUnknown = tableId != null && !tableIdToZone.has(tableId);
+          const isInMyZone =
+            seesAllCalls ||
+            !waiterZone ||
+            tableZone === waiterZone ||
+            (zoneUnknown && tableId != null);
           if (isInMyZone) {
             playWaiterBeep();
             if (typeof navigator !== 'undefined' && navigator.vibrate) {
               navigator.vibrate(1000);
             }
-            setCallNotification({ tableNumber: payload?.new?.table_number ?? 0 });
+            const tableNumber = payload?.new?.table_number;
+            setCallNotification({ tableNumber: typeof tableNumber === 'number' ? tableNumber : Number(tableNumber) || 0 });
           }
         }
         queryClient.refetchQueries({ queryKey: ['waiterCalls', restaurantId] });

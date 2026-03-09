@@ -32,45 +32,22 @@ import {
   Info,
   Puzzle,
 } from 'lucide-react';
+import { PLAN_DISPLAY, type PlanName } from '@/lib/planDisplay';
+import { formatPrice } from '@/lib/priceHelper';
 
-// ─── Visual por plano ─────────────────────────────────────────────────────────
+// ─── Visual por plano (usa PLAN_DISPLAY de planDisplay.ts) ────────────────────
 
-const PLAN_STYLE: Record<string, {
-  border:  string;
-  header:  string;
-  badge:   string;
-  accent:  string;
-  ring:    string;
-}> = {
-  core: {
-    border: 'border-slate-200',
-    header: 'bg-slate-50 border-b border-slate-200',
-    badge:  'bg-slate-100 text-slate-600',
-    accent: 'text-slate-600',
-    ring:   'focus-visible:ring-slate-400',
-  },
-  standard: {
-    border: 'border-orange-200',
-    header: 'bg-orange-50 border-b border-orange-200',
-    badge:  'bg-orange-100 text-orange-700',
-    accent: 'text-orange-700',
-    ring:   'focus-visible:ring-orange-400',
-  },
-  enterprise: {
-    border: 'border-violet-200',
-    header: 'bg-violet-50 border-b border-violet-200',
-    badge:  'bg-violet-100 text-violet-700',
-    accent: 'text-violet-700',
-    ring:   'focus-visible:ring-violet-400',
-  },
-};
+function getPlanStyle(name: string) {
+  return PLAN_DISPLAY[name] ?? PLAN_DISPLAY.core;
+}
 
 // ─── Estado de edição local por plano ─────────────────────────────────────────
 
 interface PlanDraft {
-  label:       string;
+  label:     string;
   description: string;
-  price_brl:   string;  // string para controlar o input; converte em number no save
+  price_brl: string;
+  price_pyg: string;
 }
 
 function toDraft(p: SubscriptionPlan): PlanDraft {
@@ -78,6 +55,7 @@ function toDraft(p: SubscriptionPlan): PlanDraft {
     label:       p.label,
     description: p.description ?? '',
     price_brl:   p.price_brl.toString(),
+    price_pyg:   (p.price_pyg ?? 0).toString(),
   };
 }
 
@@ -89,7 +67,8 @@ interface PlanCardProps {
 }
 
 function PlanCard({ plan, onSaved }: PlanCardProps) {
-  const style = PLAN_STYLE[plan.name] ?? PLAN_STYLE.core;
+  const style = getPlanStyle(plan.name);
+  const displayLabel = style.label;
   const [draft, setDraft] = useState<PlanDraft>(() => toDraft(plan));
   const [saving, setSaving] = useState(false);
 
@@ -101,12 +80,21 @@ function PlanCard({ plan, onSaved }: PlanCardProps) {
     setDraft((d) => ({ ...d, [field]: value }));
 
   const handleSave = async () => {
-    const priceBrl = parseFloat(draft.price_brl.replace(',', '.'));
+    const priceBrl = parseFloat(String(draft.price_brl).replace(',', '.'));
+    const pricePyg = parseInt(draft.price_pyg.replace(/\D/g, ''), 10);
 
     if (isNaN(priceBrl) || priceBrl < 0) {
       toast({
-        title: 'Preço inválido',
-        description: 'Digite um valor numérico positivo para o preço em BRL.',
+        title: 'Preço BRL inválido',
+        description: 'Digite um valor numérico positivo para o preço em R$.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (isNaN(pricePyg) || pricePyg < 0) {
+      toast({
+        title: 'Preço PYG inválido',
+        description: 'Digite um valor numérico positivo para o preço em Guaraníes.',
         variant: 'destructive',
       });
       return;
@@ -117,9 +105,10 @@ function PlanCard({ plan, onSaved }: PlanCardProps) {
       const { error } = await supabase
         .from('subscription_plans')
         .update({
-          label:       draft.label.trim(),
+          label:     draft.label.trim(),
           description: draft.description.trim() || null,
-          price_brl:   priceBrl,
+          price_brl: priceBrl,
+          price_pyg: pricePyg,
         })
         .eq('id', plan.id);
 
@@ -149,7 +138,7 @@ function PlanCard({ plan, onSaved }: PlanCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <CreditCard className={`h-4 w-4 ${style.accent}`} />
-            <h3 className="font-bold text-slate-800">{plan.name.toUpperCase()}</h3>
+            <h3 className="font-bold text-slate-800">{displayLabel}</h3>
             <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${style.badge}`}>
               Plano {plan.sort_order}
             </span>
@@ -179,7 +168,7 @@ function PlanCard({ plan, onSaved }: PlanCardProps) {
             id={`label-${plan.id}`}
             value={draft.label}
             onChange={(e) => set('label', e.target.value)}
-            placeholder="Ex: Standard"
+            placeholder={`Ex: ${displayLabel}`}
             className="h-9 text-sm"
           />
         </div>
@@ -199,24 +188,39 @@ function PlanCard({ plan, onSaved }: PlanCardProps) {
           />
         </div>
 
-        {/* Preço */}
-        <div className="space-y-1.5">
-          <Label htmlFor={`price-brl-${plan.id}`} className="text-xs font-semibold text-slate-600">
-            Preço (R$ / mês)
-          </Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">
-              R$
-            </span>
+        {/* Preços */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor={`price-brl-${plan.id}`} className="text-xs font-semibold text-slate-600">
+              Preço (R$ / mês)
+            </Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">R$</span>
+              <Input
+                id={`price-brl-${plan.id}`}
+                value={draft.price_brl}
+                onChange={(e) => set('price_brl', e.target.value)}
+                placeholder="0.00"
+                className="h-9 pl-8 text-sm font-mono"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`price-pyg-${plan.id}`} className="text-xs font-semibold text-slate-600">
+              Preço (Gs. / mês)
+            </Label>
             <Input
-              id={`price-brl-${plan.id}`}
-              value={draft.price_brl}
-              onChange={(e) => set('price_brl', e.target.value)}
-              placeholder="0.00"
-              className="h-9 pl-8 text-sm font-mono"
+              id={`price-pyg-${plan.id}`}
+              value={draft.price_pyg}
+              onChange={(e) => set('price_pyg', e.target.value.replace(/\D/g, ''))}
+              placeholder="0"
+              className="h-9 text-sm font-mono"
             />
           </div>
         </div>
+        <p className="text-[11px] text-slate-400">
+          Referência Ciudad del Este: ${style.priceUsd} USD / {formatPrice(style.pricePyg, 'PYG')}
+        </p>
 
         {/* Botão salvar */}
         <div className="flex items-center gap-3 pt-1">
@@ -298,7 +302,7 @@ export default function Plans() {
   };
 
   const handleToggleFeature = async (
-    planName: 'core' | 'standard' | 'enterprise',
+    planName: PlanName,
     featureId: string,
     included: boolean,
   ) => {
@@ -408,9 +412,9 @@ export default function Plans() {
                 {/* Header da tabela */}
                 <div className="grid grid-cols-[1fr_80px_80px_80px] gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600">
                   <span>Feature</span>
-                  <span className="text-center">Core</span>
-                  <span className="text-center">Standard</span>
-                  <span className="text-center">Enterprise</span>
+                  <span className="text-center">{PLAN_DISPLAY.core.label}</span>
+                  <span className="text-center">{PLAN_DISPLAY.standard.label}</span>
+                  <span className="text-center">{PLAN_DISPLAY.enterprise.label}</span>
                 </div>
                 {categories.map((cat) => (
                   <TabsContent key={cat} value={cat} className="mt-0">
@@ -465,7 +469,7 @@ interface PlanFeatureRowProps {
   coreIncluded: boolean;
   standardIncluded: boolean;
   enterpriseIncluded: boolean;
-  onToggle: (plan: 'core' | 'standard' | 'enterprise', featureId: string, included: boolean) => void;
+  onToggle: (plan: PlanName, featureId: string, included: boolean) => void;
   isLoading: { core: boolean; standard: boolean; enterprise: boolean };
 }
 
@@ -477,8 +481,7 @@ function PlanFeatureRow({
   onToggle,
   isLoading,
 }: PlanFeatureRowProps) {
-  const planStyle = (plan: string) =>
-    PLAN_STYLE[plan] ?? PLAN_STYLE.core;
+  const planStyle = (plan: string) => getPlanStyle(plan);
 
   return (
     <div

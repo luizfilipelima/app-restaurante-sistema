@@ -23,6 +23,7 @@ export interface SubscriptionPlan {
   label: string;
   description: string | null;
   price_brl: number;
+  price_pyg: number;
   sort_order: number;
 }
 
@@ -70,7 +71,7 @@ export function useSubscriptionPlans() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('subscription_plans')
-        .select('id, name, label, description, price_brl, sort_order')
+        .select('id, name, label, description, price_brl, price_pyg, sort_order')
         .eq('is_active', true)
         .order('sort_order');
       if (error) throw error;

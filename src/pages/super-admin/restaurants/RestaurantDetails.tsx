@@ -47,6 +47,8 @@ import {
   Settings,
 } from 'lucide-react';
 import { formatBRLReais } from '@/lib/core/utils';
+import { PLAN_DISPLAY, getPlanDisplayLabel } from '@/lib/planDisplay';
+import { formatPrice } from '@/lib/priceHelper';
 
 // ─── Ordem das categorias nas tabs (primeira = padrão) ────────────────────────
 
@@ -59,11 +61,15 @@ const CATEGORY_ORDER = [
   'Geral',
 ] as const;
 
-const PLAN_COLORS: Record<string, { badge: string; bg: string; text: string; border: string }> = {
-  core:       { badge: 'bg-slate-100 text-slate-700 border-slate-200',   bg: 'bg-slate-50',  text: 'text-slate-700', border: 'border-slate-200' },
-  standard:   { badge: 'bg-blue-100 text-blue-700 border-blue-200',      bg: 'bg-blue-50',   text: 'text-blue-700',  border: 'border-blue-200'  },
-  enterprise: { badge: 'bg-amber-100 text-amber-700 border-amber-200',   bg: 'bg-amber-50',  text: 'text-amber-700', border: 'border-amber-200' },
-};
+function getPlanColors(planName: string) {
+  const style = PLAN_DISPLAY[planName] ?? PLAN_DISPLAY.core;
+  return {
+    badge: `${style.badge} border`,
+    bg:    style.cardBg,
+    text:  style.accent,
+    border: style.border,
+  };
+}
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -306,18 +312,20 @@ export default function RestaurantDetails() {
                   </SelectTrigger>
                   <SelectContent>
                     {plans.map((plan) => {
-                      const colors = PLAN_COLORS[plan.name] ?? PLAN_COLORS.core;
+                      const colors = getPlanColors(plan.name);
+                      const displayLabel = getPlanDisplayLabel(plan.name);
+                      const priceLabel = plan.price_pyg != null && plan.price_pyg > 0
+                        ? `${formatPrice(plan.price_pyg, 'PYG')}/mês`
+                        : plan.price_brl > 0
+                        ? formatBRLReais(plan.price_brl) + '/mês'
+                        : 'Grátis';
                       return (
                         <SelectItem key={plan.id} value={plan.id}>
                           <div className="flex items-center gap-2">
                             <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${colors.badge}`}>
-                              {plan.label}
+                              {displayLabel}
                             </span>
-                            <span className="text-sm text-slate-600">
-                              {plan.price_brl > 0
-                                ? formatBRLReais(plan.price_brl) + '/mês'
-                                : 'Grátis'}
-                            </span>
+                            <span className="text-sm text-slate-600">{priceLabel}</span>
                           </div>
                         </SelectItem>
                       );
@@ -341,10 +349,10 @@ export default function RestaurantDetails() {
 
             {/* Detalhes do plano selecionado */}
             {activePlan && (
-              <div className={`p-4 rounded-lg border ${PLAN_COLORS[activePlan.name]?.bg ?? ''} ${PLAN_COLORS[activePlan.name]?.border ?? ''}`}>
+              <div className={`p-4 rounded-lg border ${getPlanColors(activePlan.name).bg} ${getPlanColors(activePlan.name).border}`}>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-xs font-bold uppercase tracking-wider ${PLAN_COLORS[activePlan.name]?.text ?? ''}`}>
-                    {activePlan.label}
+                  <span className={`text-xs font-bold uppercase tracking-wider ${getPlanColors(activePlan.name).text}`}>
+                    {getPlanDisplayLabel(activePlan.name)}
                   </span>
                   {!planChanged && subscription?.status && (
                     <Badge variant="outline" className="text-[10px] h-5">
@@ -357,11 +365,15 @@ export default function RestaurantDetails() {
                     </Badge>
                   )}
                 </div>
-                {activePlan.description && (
-                  <p className="text-sm text-slate-600">{activePlan.description}</p>
+                {(activePlan.description || PLAN_DISPLAY[activePlan.name]?.description) && (
+                  <p className="text-sm text-slate-600">{activePlan.description || PLAN_DISPLAY[activePlan.name]?.description}</p>
                 )}
                 <p className="text-sm font-semibold text-slate-800 mt-1">
-                  {activePlan.price_brl > 0 ? `${formatBRLReais(activePlan.price_brl)}/mês` : 'Grátis'}
+                  {activePlan.price_pyg != null && activePlan.price_pyg > 0
+                    ? `${formatPrice(activePlan.price_pyg, 'PYG')}/mês`
+                    : activePlan.price_brl > 0
+                    ? `${formatBRLReais(activePlan.price_brl)}/mês`
+                    : 'Grátis'}
                 </p>
               </div>
             )}
@@ -428,7 +440,7 @@ export default function RestaurantDetails() {
                       const isEnabled = isInPlan || (override?.is_enabled ?? false);
                       const isTogglingThis = toggleOverride.isPending &&
                         toggleOverride.variables?.featureId === feature.id;
-                      const planColor = PLAN_COLORS[feature.min_plan] ?? PLAN_COLORS.core;
+                      const planColor = getPlanColors(feature.min_plan);
                       return (
                         <FeatureRow
                           key={feature.id}
@@ -480,7 +492,7 @@ function FeatureRow({ feature, isInPlan, isEnabled, isLoading, planColor, onTogg
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-slate-800">{feature.label}</span>
           <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ${planColor.badge}`}>
-            {feature.min_plan}
+            {getPlanDisplayLabel(feature.min_plan)}
           </span>
           {isInPlan && (
             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
