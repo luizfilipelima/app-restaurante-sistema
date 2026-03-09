@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,10 @@ import { Label } from '@/components/ui/label';
 import { LogIn, AlertCircle, Loader2, UserPlus } from 'lucide-react';
 
 export default function LoginPage() {
+  useEffect(() => {
+    document.title = 'QuieroFood';
+  }, []);
+
   const [loginOrEmail, setLoginOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');

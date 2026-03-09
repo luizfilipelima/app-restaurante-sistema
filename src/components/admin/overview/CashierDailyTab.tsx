@@ -164,6 +164,8 @@ export function CashierDailyTab({
           summary: t('cashierDaily.pdfSummary'),
           totalOrders: t('cashierDaily.totalOrdersLabel'),
           totalSales: t('cashierDaily.totalSales'),
+          totalBilled: t('cashierDaily.pdfTotalBilled'),
+          generalInfo: t('cashierDaily.pdfGeneralInfo'),
           openingAmount: t('cashierDaily.openingAmount'),
           expectedClosing: t('cashierDaily.expectedClosing'),
           ordersDetail: t('cashierDaily.pdfOrdersDetail'),

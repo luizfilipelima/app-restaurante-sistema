@@ -1,0 +1,17 @@
+{
+  "name": "QuieroFood",
+  "short_name": "QuieroFood",
+  "description": "Sistema de gestão de restaurantes — cardápio digital, pedidos online e delivery",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F87116",
+  "theme_color": "#F87116",
+  "icons": [
+    {
+      "src": "/favicon-quierofood-logo-orange.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

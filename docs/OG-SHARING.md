@@ -19,10 +19,13 @@ O arquivo `middleware.ts` na raiz do projeto roda no **Vercel Edge** e:
 
 | Formato | Exemplo |
 |---------|---------|
+| **Brand (landing/login)** | `https://quiero.food`, `https://app.quiero.food/`, `https://app.quiero.food/login` |
 | Path no app | `https://app.quiero.food/pizzaria-da-vitoria` |
 | Path + subrota | `https://app.quiero.food/pizzaria-da-vitoria/menu` |
 | Subdomínio | `https://pizzaria.quiero.food/` |
 | Domínio personalizado | `https://cardapio.seudominio.com.br` (RPC `get_restaurant_slug_by_hostname`) |
+
+Para landing e login, o preview usa a imagem `og-image.png` (logo QuieroFood branca em fundo laranja #F87116).
 
 ## Variáveis de ambiente
 

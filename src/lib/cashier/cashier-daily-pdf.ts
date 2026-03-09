@@ -30,6 +30,8 @@ export interface CashierDailyPDFParams {
     summary: string;
     totalOrders: string;
     totalSales: string;
+    totalBilled: string;
+    generalInfo: string;
     openingAmount: string;
     expectedClosing: string;
     ordersDetail: string;
@@ -90,21 +92,37 @@ export function exportCashierDailyPDF(params: CashierDailyPDFParams): void {
   y += 5;
   doc.text(`${t.generatedAt}: ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })}`, margin, y);
   doc.setTextColor(0, 0, 0);
-  y += 12;
+  y += 14;
 
-  // ─── Resumo ────────────────────────────────────────────────────
+  // ─── Valor total faturado (destaque no início) ───────────────────
+  doc.setFillColor(255, 247, 237);
+  doc.roundedRect(margin, y, pageWidth - margin * 2, 22, 3, 3, 'F');
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  doc.text(t.totalBilled, margin + 6, y + 8);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text(formatPrice(totalRevenue, currency), margin + 6, y + 18);
+  y += 28;
+
+  // ─── Informações gerais do período ───────────────────────────────
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text(t.summary, margin, y);
+  doc.text(t.generalInfo, margin, y);
   y += 8;
-
-  const summaryRows: [string, string][] = [
-    [t.totalOrders, String(totalOrders)],
-    [t.totalSales, formatPrice(totalRevenue, currency)],
-  ];
 
   const today = new Date().toDateString();
   const sessionDateStr = session?.date ? new Date(session.date).toDateString() : '';
+
+  const summaryRows: [string, string][] = [
+    [t.period, periodLabel],
+    [t.totalOrders, String(totalOrders)],
+    [t.totalSales, formatPrice(totalRevenue, currency)],
+    [t.generatedAt, format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })],
+  ];
+
   if (session && sessionDateStr === today) {
     summaryRows.push([t.openingAmount, formatPrice(session.opening_amount, currency)]);
     const expected = session.opening_amount + totalRevenue;

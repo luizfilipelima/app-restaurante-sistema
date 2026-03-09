@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "test:e2e": "dotenv -e .env.e2e -- playwright test",
     "test:e2e:ui": "dotenv -e .env.e2e -- playwright test --ui",
-    "test:e2e:smoke": "dotenv -e .env.e2e -- playwright test --grep @checkly"
+    "test:e2e:smoke": "dotenv -e .env.e2e -- playwright test --grep @checkly",
+    "generate:og-image": "node scripts/generate-og-image.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -77,6 +78,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "postcss": "^8.4.35",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.1",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.2.2",

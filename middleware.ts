@@ -33,8 +33,12 @@ async function extractSlug(
   const hostname = url.hostname;
   const pathname = url.pathname;
 
-  // Ignorar rotas que não são de restaurante
-  const skipPaths = ['/login', '/register', '/unauthorized', '/super-admin', '/api', '/assets', '/_next', '/favicon'];
+  // Rotas de brand (landing/login) — middleware retornará OG com logo QuieroFood
+  const brandPaths = ['/login', '/register', '/'];
+  const isBrandPath = brandPaths.some((p) => pathname === p || (p === '/' && pathname === ''));
+  if (isBrandPath) return 'BRAND';
+
+  const skipPaths = ['/unauthorized', '/super-admin', '/api', '/assets', '/_next', '/favicon'];
   if (skipPaths.some((p) => pathname.startsWith(p))) return null;
 
   // Subdomínio de loja: pizzaria.quiero.food → slug = pizzaria
@@ -125,6 +129,26 @@ export default async function middleware(request: Request): Promise<Response> {
   }
 
   const slug = await extractSlug(url, supabaseUrl, supabaseAnonKey);
+
+  // Rotas de brand: landing (/) e login (/login) — retorna OG com logo QuieroFood
+  if (slug === 'BRAND') {
+    const siteName = 'QuieroFood';
+    const isLogin = url.pathname === '/login' || url.pathname.startsWith('/login/');
+    const title = isLogin ? 'QuieroFood — Acesso' : 'QuieroFood — Sistema de Gestão para Restaurantes';
+    const description = isLogin
+      ? 'Acesse sua conta e gerencie seu restaurante com o QuieroFood.'
+      : 'Cardápio digital, pedidos online, delivery e gestão completa. Aumente suas vendas com o QuieroFood.';
+    const imageUrl = `${url.origin}/og-image.png`;
+    const html = buildOgHtml(title, description, imageUrl, url.href, siteName);
+    return new Response(html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+      },
+    });
+  }
+
   if (!slug) {
     return fetch(request);
   }

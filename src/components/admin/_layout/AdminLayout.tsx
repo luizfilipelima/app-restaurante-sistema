@@ -496,11 +496,8 @@ export default function AdminLayout({
   const { data: restaurant } = useRestaurant(restaurantId);
 
   useEffect(() => {
-    document.title = restaurant?.name ?? 'Painel · Quiero.food';
-    return () => {
-      document.title = 'Sistema de Gestão de Restaurantes';
-    };
-  }, [restaurant?.name]);
+    document.title = 'QuieroFood';
+  }, []);
 
   // isSuperAdminView = true SOMENTE quando um super_admin está gerenciando outro restaurante.
   // Antes esse flag era !!managedRestaurantId, o que fazia com que todos os usuários acessando
