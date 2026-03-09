@@ -643,8 +643,8 @@ export default function AdminDashboard() {
         />
 
         {/* Abas principais: Visão Geral | Caixa Diário */}
-        <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'overview' | 'cashier')}>
-          <TabsList className="mb-6 h-10 bg-slate-100 border border-slate-200 p-1 w-fit">
+        <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'overview' | 'cashier')} className="mt-6">
+          <TabsList className="mb-6 h-10 bg-slate-100 border border-slate-200 p-1.5 w-fit gap-0.5">
             <TabsTrigger value="overview" className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
               <LayoutDashboard className="h-4 w-4" />
               {t('dashboard.sections.executiveSummary')}
@@ -667,144 +667,137 @@ export default function AdminDashboard() {
           )}
 
           {mainTab === 'overview' && (
-        <>
-        {/* ══ Seção: Resumo Executivo ══ */}
-        <div className="space-y-1">
-          <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-2">
+        <div className="space-y-8">
+        {/* ══ Seção: Resumo Executivo — 5 KPIs em grid unificado ══ */}
+        <section>
+          <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-2 mb-5">
             <LayoutDashboard className="h-4 w-4 text-primary" />
             {t('dashboard.sections.executiveSummary')}
           </h2>
-        </div>
-        <motion.div
-          className="grid gap-4 grid-cols-1 sm:grid-cols-3 min-w-0"
-          variants={metricContainerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {/* Faturamento */}
-          <motion.div className="admin-metric-card" variants={metricCardVariants}>
-            <div className="flex items-start justify-between">
-              <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.revenue')}</p>
-              <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
-                <DollarSign className="h-4 w-4 text-blue-600" />
+          <motion.div
+            className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 min-w-0"
+            variants={metricContainerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            {/* Faturamento */}
+            <motion.div className="admin-metric-card" variants={metricCardVariants}>
+              <div className="flex items-start justify-between">
+                <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.revenue')}</p>
+                <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                  <DollarSign className="h-4 w-4 text-blue-600" />
+                </div>
               </div>
-            </div>
-            <p className="text-3xl font-bold text-slate-900 mt-2">
-              {formatPrice(metrics.totalRevenue, currency)}
-            </p>
-            {prevMetrics.totalRevenue > 0 && (
-              <p className={`text-xs font-medium mt-1 flex items-center gap-1 ${Number(revPct) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {Number(revPct) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {revPct}% {t('common.vsPrevious')}
+              <p className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">
+                {formatPrice(metrics.totalRevenue, currency)}
               </p>
-            )}
-          </motion.div>
+              {prevMetrics.totalRevenue > 0 && (
+                <p className={`text-xs font-medium mt-1 flex items-center gap-1 ${Number(revPct) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {Number(revPct) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {revPct}% {t('common.vsPrevious')}
+                </p>
+              )}
+            </motion.div>
 
-          {/* Lucro Estimado (movido para a linha 1) */}
-          <motion.div className="admin-metric-card" variants={metricCardVariants}>
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-1.5">
-                <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.profit')}</p>
-                <span
-                  title={costByIngredients > 0
-                    ? 'Lucro calculado com CMV baseado em ingredientes (receitas cadastradas).'
-                    : 'O lucro depende do cadastro do preço de custo dos produtos ou receitas de ingredientes.'}
-                  className="cursor-help text-slate-400 hover:text-slate-600"
-                >
-                  <HelpCircle className="h-3.5 w-3.5" />
-                </span>
-              </div>
-              <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
-              </div>
-            </div>
-            <p className={`text-3xl font-bold mt-2 ${grossProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-              {formatPrice(grossProfit, currency)}
-            </p>
-            {totalCost > 0 && (
-              <p className="text-xs text-slate-500 mt-0.5">
-                CMV: {formatPrice(totalCost, currency)}
-                {costByIngredients > 0 && (
-                  <span className="text-emerald-600 ml-1" title="Parte do CMV vinda de receitas de ingredientes">
-                    (ingredientes)
+            {/* Lucro Estimado */}
+            <motion.div className="admin-metric-card" variants={metricCardVariants}>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <p className="text-sm font-medium text-slate-500 truncate">{t('dashboard.kpis.profit')}</p>
+                  <span
+                    title={costByIngredients > 0
+                      ? 'Lucro calculado com CMV baseado em ingredientes (receitas cadastradas).'
+                      : 'O lucro depende do cadastro do preço de custo dos produtos ou receitas de ingredientes.'}
+                    className="cursor-help text-slate-400 hover:text-slate-600 shrink-0"
+                  >
+                    <HelpCircle className="h-3.5 w-3.5" />
                   </span>
-                )}
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                  <TrendingUp className="h-4 w-4 text-emerald-600" />
+                </div>
+              </div>
+              <p className={`text-2xl sm:text-3xl font-bold mt-2 ${grossProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                {formatPrice(grossProfit, currency)}
               </p>
-            )}
-            <p className="text-xs text-slate-400 mt-0.5">{t('dashboard.kpis.profitDesc')}</p>
-          </motion.div>
+              {totalCost > 0 && (
+                <p className="text-xs text-slate-500 mt-0.5">
+                  CMV: {formatPrice(totalCost, currency)}
+                  {costByIngredients > 0 && (
+                    <span className="text-emerald-600 ml-1" title="Parte do CMV vinda de receitas de ingredientes">
+                      (ingredientes)
+                    </span>
+                  )}
+                </p>
+              )}
+              <p className="text-xs text-slate-400 mt-0.5">{t('dashboard.kpis.profitDesc')}</p>
+            </motion.div>
 
-          {/* Ticket Médio */}
-          <motion.div className="admin-metric-card" variants={metricCardVariants}>
-            <div className="flex items-start justify-between">
-              <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.avgTicket')}</p>
-              <div className="h-9 w-9 rounded-lg bg-violet-50 flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-violet-600" />
+            {/* Ticket Médio */}
+            <motion.div className="admin-metric-card" variants={metricCardVariants}>
+              <div className="flex items-start justify-between">
+                <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.avgTicket')}</p>
+                <div className="h-9 w-9 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                  <TrendingUp className="h-4 w-4 text-violet-600" />
+                </div>
               </div>
-            </div>
-            <p className="text-3xl font-bold text-slate-900 mt-2">
-              {formatPrice(metrics.averageTicket, currency)}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">{t('dashboard.kpis.avgOrderDesc')}</p>
-          </motion.div>
-        </motion.div>
-
-        {/* ══ LINHA 1b: KPIs Secundários — Pedidos + Pendentes ══ */}
-        <motion.div
-          className="grid gap-4 grid-cols-2 min-w-0"
-          variants={metricContainerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <motion.div className="admin-metric-card py-4" variants={metricCardVariants}>
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.orders')}</p>
-              <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <ShoppingCart className="h-3.5 w-3.5 text-emerald-600" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{metrics.totalOrders}</p>
-            {prevMetrics.totalOrders > 0 && (
-              <p className={`text-xs font-medium mt-0.5 flex items-center gap-1 ${Number(ordPct) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {Number(ordPct) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {ordPct}% {t('common.vsPrevious')}
+              <p className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">
+                {formatPrice(metrics.averageTicket, currency)}
               </p>
-            )}
-          </motion.div>
-          <motion.div className="admin-metric-card py-4" variants={metricCardVariants}>
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.pending')}</p>
-              <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center">
-                <Clock className="h-3.5 w-3.5 text-amber-600" />
+              <p className="text-xs text-slate-400 mt-1">{t('dashboard.kpis.avgOrderDesc')}</p>
+            </motion.div>
+
+            {/* Pedidos */}
+            <motion.div className="admin-metric-card" variants={metricCardVariants}>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.orders')}</p>
+                <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                  <ShoppingCart className="h-3.5 w-3.5 text-emerald-600" />
+                </div>
               </div>
-            </div>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{metrics.pendingOrders}</p>
-            <p className="text-xs text-slate-400 mt-0.5">{t('dashboard.kpis.awaitingPrep')}</p>
+              <p className="text-2xl font-bold text-slate-900 mt-1">{metrics.totalOrders}</p>
+              {prevMetrics.totalOrders > 0 && (
+                <p className={`text-xs font-medium mt-0.5 flex items-center gap-1 ${Number(ordPct) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {Number(ordPct) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {ordPct}% {t('common.vsPrevious')}
+                </p>
+              )}
+            </motion.div>
+
+            {/* Pendentes */}
+            <motion.div className="admin-metric-card" variants={metricCardVariants}>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.pending')}</p>
+                <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                  <Clock className="h-3.5 w-3.5 text-amber-600" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-slate-900 mt-1">{metrics.pendingOrders}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{t('dashboard.kpis.awaitingPrep')}</p>
+            </motion.div>
           </motion.div>
-        </motion.div>
+        </section>
 
         {/* ══ Seção: Visão por Canal (Salão vs Delivery) ══ */}
         {areaFilter === 'all' && (statsHall || statsDelivery) && (
-          <>
-          <div className="space-y-1 pt-4">
-            <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
-              {t('dashboard.sections.byChannel')}
-            </h2>
-          </div>
+          <section>
+          <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider mb-5 flex items-center gap-2">
+            {t('dashboard.sections.byChannel')}
+          </h2>
           <motion.div
             className="grid gap-4 grid-cols-1 md:grid-cols-2 min-w-0"
             variants={metricContainerVariants}
             initial="hidden"
             animate="visible"
           >
-            <motion.div className="admin-card p-5 min-w-0 overflow-hidden" variants={metricCardVariants}>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center">
-                  <Store className="h-4 w-4 text-slate-600" />
+            <motion.div className="admin-card p-6 min-w-0 overflow-hidden" variants={metricCardVariants}>
+              <div className="flex items-center gap-3 mb-5">
+                <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                  <Store className="h-5 w-5 text-slate-600" />
                 </div>
                 <h3 className="text-sm font-semibold text-slate-700">{t('dashboard.filters.hallAndPDV')}</h3>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">{t('dashboard.kpis.revenue')}</p>
                   <p className="text-lg font-bold text-slate-900 mt-0.5">
@@ -823,14 +816,14 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </motion.div>
-            <motion.div className="admin-card p-5 min-w-0 overflow-hidden" variants={metricCardVariants}>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-9 w-9 rounded-lg bg-cyan-50 flex items-center justify-center">
-                  <Bike className="h-4 w-4 text-cyan-600" />
+            <motion.div className="admin-card p-6 min-w-0 overflow-hidden" variants={metricCardVariants}>
+              <div className="flex items-center gap-3 mb-5">
+                <div className="h-10 w-10 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0">
+                  <Bike className="h-5 w-5 text-cyan-600" />
                 </div>
                 <h3 className="text-sm font-semibold text-slate-700">{t('dashboard.filters.delivery')}</h3>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">{t('dashboard.kpis.revenue')}</p>
                   <p className="text-lg font-bold text-slate-900 mt-0.5">
@@ -860,17 +853,16 @@ export default function AdminDashboard() {
               })()}
             </motion.div>
           </motion.div>
-          </>
+          </section>
         )}
 
         {/* ══ Seção: Operação ══ */}
-        <div className="space-y-1 pt-4">
-          <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-2">
+        <section>
+          <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider mb-5 flex items-center gap-2">
             <Flame className="h-4 w-4 text-orange-500" />
             {t('dashboard.sections.operation')}
           </h2>
-        </div>
-        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">
           {/* Tempos Operacionais + Horas Economizadas */}
           <div className="admin-card p-6 min-w-0 overflow-hidden">
             <h3 className="text-base font-semibold text-slate-700 mb-4 flex items-center gap-2">
@@ -990,6 +982,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+        </section>
 
         {/* Gráficos - Cards brancos estilo Shopeers */}
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 min-w-0">
@@ -1520,7 +1513,7 @@ export default function AdminDashboard() {
           </DialogContent>
         </Dialog>
 
-        </>
+        </div>
           )}
         </Tabs>
 

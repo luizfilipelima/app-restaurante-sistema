@@ -51,7 +51,7 @@ const AdminPageHeader = ({
         )}
       </div>
       {actions != null && actions !== false && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 pt-1 sm:pt-0">
+        <div className="flex shrink-0 flex-wrap items-center gap-3 pt-1 sm:pt-0">
           {actions}
         </div>
       )}
