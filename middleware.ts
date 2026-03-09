@@ -134,7 +134,7 @@ export default async function middleware(request: Request): Promise<Response> {
   if (slug === 'BRAND') {
     const siteName = 'QuieroFood';
     const isLogin = url.pathname === '/login' || url.pathname.startsWith('/login/');
-    const title = isLogin ? 'QuieroFood — Acesso' : 'QuieroFood — Sistema de Gestão para Restaurantes';
+    const title = isLogin ? 'Login | QuieroFood' : 'QuieroFood — Sistema de Gestão para Restaurantes';
     const description = isLogin
       ? 'Acesse sua conta e gerencie seu restaurante com o QuieroFood.'
       : 'Cardápio digital, pedidos online, delivery e gestão completa. Aumente suas vendas com o QuieroFood.';
