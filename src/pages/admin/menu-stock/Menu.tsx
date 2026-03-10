@@ -101,6 +101,7 @@ import CategoryIconPicker from '@/components/admin/menu-stock/CategoryIconPicker
 import { getCategoryIconComponent } from '@/lib/menu/categoryIcons';
 import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/menu-stock/ProductAddonsSection';
 import ProductAllergensLabelsSection from '@/components/admin/menu-stock/ProductAllergensLabelsSection';
+import PizzaConfigSection from '@/components/admin/menu-stock/PizzaConfigSection';
 import { useProductUpsells, useSaveProductUpsells, useProductComboItems, useProductAddons, useSaveProductAddons } from '@/hooks/queries';
 import { useCanAccess } from '@/hooks/auth/useUserRole';
 
@@ -1686,6 +1687,11 @@ export default function AdminMenu() {
               onAllergensChange={(ids) => setForm((f) => ({ ...f, allergens: ids }))}
               onLabelsChange={(ids) => setForm((f) => ({ ...f, labels: ids }))}
             />
+
+            {/* Configuração de Pizza (categoria Pizza) */}
+            {categoryConfig.isPizza && (
+              <PizzaConfigSection restaurantId={restaurantId} currency={currency} />
+            )}
 
             {/* Combo Builder (categoria Combos) */}
             {isComboCategory && (

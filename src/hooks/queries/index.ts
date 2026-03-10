@@ -60,6 +60,7 @@ export { useWaiterHallZone } from './useWaiterHallZone';
 export { useWaiterProfile, useUpdateMyWaiterHallZone } from './useWaiterProfile';
 export type { WaiterProfile } from './useWaiterProfile';
 export { useAdminProducts } from './useAdminProducts';
+export { usePizzaConfig, usePizzaConfigMutations } from './usePizzaConfig';
 export { useOrders } from './useOrders';
 export type { UseOrdersParams, OrderSourceFilter } from './useOrders';
 export { isDeliveryOrPickupOrder, getOrderSector } from './useOrders';
