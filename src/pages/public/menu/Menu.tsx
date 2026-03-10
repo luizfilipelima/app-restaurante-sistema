@@ -65,7 +65,7 @@ const CartDrawer = lazy(() => import('@/components/public/cart/CartDrawer'));
 // Lazy: modais só carregam quando o produto for clicado
 const ProductAddonModal = lazy(() => import('@/components/public/menu/ProductAddonModal'));
 const SimpleProductModal = lazy(() => import('@/components/public/menu/SimpleProductModal'));
-const PizzaModal = lazy(() => import('@/components/public/menu/PizzaModal'));
+const UnifiedProductModal = lazy(() => import('@/components/public/menu/UnifiedProductModal'));
 
 // MOCK DATA PARA VISUALIZAÇÃO DE DESIGN (Caso banco vazio)
 const MOCK_PRODUCTS: Product[] = [
@@ -1022,17 +1022,19 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         )}
 
         {pizzaModalProduct && (
-          <PizzaModal
+          <UnifiedProductModal
             open={!!pizzaModalProduct}
             onClose={() => setPizzaModalProduct(null)}
             product={pizzaModalProduct.product}
             basePrice={pizzaModalProduct.basePrice}
-            sizes={pizzaSizes}
-            flavors={pizzaFlavors}
-            doughs={pizzaDoughs}
-            edges={pizzaEdges}
             addonGroups={productAddonsMap[pizzaModalProduct.product.id] ?? []}
-            isSpecial={isPizzaSpecial(pizzaModalProduct.product)}
+            pizzaConfig={{
+              sizes: pizzaSizes,
+              flavors: pizzaFlavors,
+              doughs: pizzaDoughs,
+              edges: pizzaEdges,
+              isSpecial: isPizzaSpecial(pizzaModalProduct.product),
+            }}
             currency={currency}
             convertForDisplay={convertForDisplay}
           />
