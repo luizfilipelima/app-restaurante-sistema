@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { GripVertical, Edit, Copy, Trash2, Pizza, UtensilsCrossed } from 'lucide-react';
+import { GripVertical, Edit, Copy, Trash2, SlidersHorizontal, UtensilsCrossed } from 'lucide-react';
 
 interface ProductRowProps {
   product: Product;
@@ -69,7 +69,7 @@ export default function ProductRow({
           ) : (
             <div className="w-full h-full flex items-center justify-center text-muted-foreground">
               {product.is_pizza ? (
-                <Pizza className="h-5 w-5" />
+                <SlidersHorizontal className="h-5 w-5" />
               ) : product.is_marmita ? (
                 <UtensilsCrossed className="h-5 w-5" />
               ) : (

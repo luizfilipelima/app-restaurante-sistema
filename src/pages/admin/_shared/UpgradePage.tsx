@@ -56,7 +56,7 @@ const FEATURE_GROUPS: FeatureGroup[] = [
       { label: 'CRUD básico de produtos',              core: true,  standard: true,  enterprise: true  },
       { label: 'Gerenciamento de categorias',          core: true,  standard: true,  enterprise: true  },
       { label: 'Upload de imagem de produtos',         core: false, standard: true,  enterprise: true  },
-      { label: 'Config. de Pizza / Marmita',           core: false, standard: true,  enterprise: true  },
+      { label: 'Config. Custom',                       core: false, standard: true,  enterprise: true  },
       { label: 'Drag & drop de produtos',              core: false, standard: true,  enterprise: true  },
     ],
   },

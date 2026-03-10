@@ -44,8 +44,7 @@ import { getCategoryIconComponent } from '@/lib/menu/categoryIcons';
 
 const CATEGORY_TYPES = [
   { id: 'default', label: 'Padrão', is_pizza: false, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
-  { id: 'pizza', label: 'Pizza', is_pizza: true, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
-  { id: 'marmita', label: 'Marmita', is_pizza: false, is_marmita: true, extra_field: null, extra_label: null, extra_placeholder: null },
+  { id: 'pizza', label: 'Custom', is_pizza: true, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
   { id: 'volume', label: 'Bebidas (volume)', is_pizza: false, is_marmita: false, extra_field: 'volume', extra_label: 'Volume ou medida', extra_placeholder: 'Ex: 350ml, 1L, 2L' },
   { id: 'portion', label: 'Sobremesas (porção)', is_pizza: false, is_marmita: false, extra_field: 'portion', extra_label: 'Porção', extra_placeholder: 'Ex: individual, fatia, 500g' },
   { id: 'detail', label: 'Combos (detalhe)', is_pizza: false, is_marmita: false, extra_field: 'detail', extra_label: 'Detalhe do combo', extra_placeholder: 'Ex: Pizza + Refrigerante' },
@@ -209,8 +208,7 @@ function SortableCategoryRow({
             <div>
               <div className="font-medium text-foreground">{category.name}</div>
               <div className="flex flex-wrap gap-1 mt-0.5">
-                {category.is_pizza && <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">Pizza</span>}
-                {category.is_marmita && <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200">Marmita</span>}
+                {category.is_pizza && <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">Custom</span>}
                 {category.extra_field && <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">Extra</span>}
                 <span className="text-xs text-muted-foreground">Posição: {category.order_index + 1}</span>
               </div>
@@ -458,7 +456,7 @@ export default function CategoryManager({ restaurantId, onCategoriesChange }: Ca
 
   const openEditModal = (cat: Category) => {
     setEditingCategory(cat);
-    const typeId = cat.is_pizza ? 'pizza' : cat.is_marmita ? 'marmita' : (cat.extra_field || 'default');
+    const typeId = cat.is_pizza ? 'pizza' : (cat.extra_field || 'default');
     setEditForm({
       name: cat.name,
       type: CATEGORY_TYPES.some((t) => t.id === typeId) ? typeId : 'default',

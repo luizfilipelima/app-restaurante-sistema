@@ -782,7 +782,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                 <div key={index} className="flex items-start gap-3 px-4 py-3.5">
                   {/* Emoji/avatar */}
                   <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 text-xl mt-0.5">
-                    {item.isPizza ? '🍕' : item.isMarmita ? '🍱' : '🍽️'}
+                    {item.isPizza ? '🍽️' : item.isMarmita ? '🍱' : '🍽️'}
                   </div>
 
                   {/* Info */}

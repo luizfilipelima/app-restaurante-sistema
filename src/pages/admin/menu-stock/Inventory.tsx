@@ -60,7 +60,7 @@ import {
   Calendar,
   Clock,
   History,
-  Pizza,
+  SlidersHorizontal,
   UtensilsCrossed,
   ArrowUpRight,
   ArrowDownRight,
@@ -193,7 +193,7 @@ function ProductRow({ product, currency, exchangeRates, onEdit, onQuickAdjust, o
             <img src={product.image_url} alt="" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-muted-foreground/60 text-sm">
-              {product.is_pizza ? <Pizza className="h-4 w-4" /> : product.is_marmita ? <UtensilsCrossed className="h-4 w-4" /> : '🍽'}
+              {product.is_pizza ? <SlidersHorizontal className="h-4 w-4" /> : product.is_marmita ? <UtensilsCrossed className="h-4 w-4" /> : '🍽'}
             </div>
           )}
         </div>
@@ -1061,7 +1061,7 @@ export default function AdminInventory() {
                         <img src={p.image_url} alt="" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-muted-foreground/60">
-                          {p.is_pizza ? <Pizza className="h-5 w-5" /> : p.is_marmita ? <UtensilsCrossed className="h-5 w-5" /> : '🍽'}
+                          {p.is_pizza ? <SlidersHorizontal className="h-5 w-5" /> : p.is_marmita ? <UtensilsCrossed className="h-5 w-5" /> : '🍽'}
                         </div>
                       )}
                     </div>
@@ -1088,7 +1088,7 @@ export default function AdminInventory() {
                 <img src={editProduct.image_url} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-slate-400">
-                  {editProduct?.is_pizza ? <Pizza className="h-6 w-6" /> : editProduct?.is_marmita ? <UtensilsCrossed className="h-6 w-6" /> : <Package className="h-6 w-6" />}
+                  {editProduct?.is_pizza ? <SlidersHorizontal className="h-6 w-6" /> : editProduct?.is_marmita ? <UtensilsCrossed className="h-6 w-6" /> : <Package className="h-6 w-6" />}
                 </div>
               )}
             </div>

@@ -185,18 +185,27 @@ export default function UnifiedProductModal({
 
         <div className="flex-1 overflow-y-auto overscroll-contain min-h-0">
           <div className="p-4 sm:p-5 space-y-5">
-            {/* Topo: Pizza options (sem imagem) ou Imagem */}
-            {isPizza ? (
+            {/* Imagem (sempre) */}
+            <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-muted flex justify-center items-center">
+              {product.image_url ? (
+                <img src={product.image_url} alt={product.name} className="w-full h-full object-cover object-center" loading="lazy" />
+              ) : (
+                <span className="text-5xl opacity-25">🍽</span>
+              )}
+            </div>
+
+            {/* Opções de pizza (quando config de pizza) */}
+            {isPizza && (
               <div className="space-y-4">
                 {pizzaConfig!.sizes.length === 0 && (
                   <div className="rounded-xl bg-amber-50/80 border border-amber-200/80 p-4 text-amber-800 text-sm">
-                    {t('pizzaModal.menuConfigDesc')}
+                    {t('customModal.menuConfigDesc')}
                   </div>
                 )}
 
                 {!singleSize && (pizzaConfig!.sizes.length > 0) && (
                   <div className="space-y-2">
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase">{t('pizzaModal.chooseSize')}</h4>
+                    <h4 className="text-xs font-medium text-muted-foreground uppercase">{t('customModal.chooseSize')}</h4>
                     <div className="flex flex-wrap gap-2">
                       {pizzaConfig!.sizes.map((size) => (
                         <button
@@ -217,7 +226,7 @@ export default function UnifiedProductModal({
                 {effectiveSize && hasFlavors && (
                   <div className="space-y-2">
                     <h4 className="text-xs font-medium text-muted-foreground uppercase">
-                      {maxFlavors === 1 ? t('pizzaModal.chooseOneFlavor') : t('pizzaModal.chooseUpToFlavors', { max: maxFlavors, count: selectedFlavors.length })}
+                      {maxFlavors === 1 ? t('customModal.chooseOneFlavor') : t('customModal.chooseUpToFlavors', { max: maxFlavors, count: selectedFlavors.length })}
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
                       {pizzaConfig!.flavors.map((flavor) => {
@@ -247,7 +256,7 @@ export default function UnifiedProductModal({
                   <div className="space-y-3">
                     {pizzaConfig!.doughs.length > 0 && (
                       <div className="space-y-1.5">
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase">{t('pizzaModal.doughType')}</h4>
+                        <h4 className="text-xs font-medium text-muted-foreground uppercase">{t('customModal.doughType')}</h4>
                         <div className="flex flex-wrap gap-2">
                           {pizzaConfig!.doughs.map((dough) => (
                             <button
@@ -266,7 +275,7 @@ export default function UnifiedProductModal({
                     )}
                     {pizzaConfig!.edges.length > 0 && (
                       <div className="space-y-1.5">
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase">{t('pizzaModal.stuffedEdge')}</h4>
+                        <h4 className="text-xs font-medium text-muted-foreground uppercase">{t('customModal.stuffedEdge')}</h4>
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
@@ -275,7 +284,7 @@ export default function UnifiedProductModal({
                               !selectedEdge ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-muted/50'
                             }`}
                           >
-                            {t('pizzaModal.noEdge')}
+                            {t('customModal.noEdge')}
                           </button>
                           {pizzaConfig!.edges.map((edge) => (
                             <button
@@ -293,14 +302,6 @@ export default function UnifiedProductModal({
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-muted flex justify-center items-center">
-                {product.image_url ? (
-                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover object-center" loading="lazy" />
-                ) : (
-                  <span className="text-5xl opacity-25">🍽</span>
                 )}
               </div>
             )}
@@ -405,7 +406,7 @@ export default function UnifiedProductModal({
             disabled={!canAdd}
             className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base transition-colors active:scale-[0.99] touch-manipulation shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {!canAdd && hasFlavors ? t('pizzaModal.selectAtLeastOneFlavor') : t('productCard.addToCart')}
+            {!canAdd && hasFlavors ? t('customModal.selectAtLeastOneFlavor') : t('productCard.addToCart')}
           </button>
         </footer>
       </DialogContent>

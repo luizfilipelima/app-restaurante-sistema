@@ -109,8 +109,7 @@ import { useCanAccess } from '@/hooks/auth/useUserRole';
 
 const CATEGORY_TYPES = [
   { id: 'default', label: 'Padrão', is_pizza: false, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
-  { id: 'pizza', label: 'Pizza', is_pizza: true, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
-  { id: 'marmita', label: 'Marmita', is_pizza: false, is_marmita: true, extra_field: null, extra_label: null, extra_placeholder: null },
+  { id: 'pizza', label: 'Custom', is_pizza: true, is_marmita: false, extra_field: null, extra_label: null, extra_placeholder: null },
   { id: 'volume', label: 'Bebidas (volume)', is_pizza: false, is_marmita: false, extra_field: 'volume', extra_label: 'Volume ou medida', extra_placeholder: 'Ex: 350ml, 1L, 2L' },
   { id: 'portion', label: 'Sobremesas (porção)', is_pizza: false, is_marmita: false, extra_field: 'portion', extra_label: 'Porção', extra_placeholder: 'Ex: individual, fatia, 500g' },
   { id: 'detail', label: 'Combos (detalhe)', is_pizza: false, is_marmita: false, extra_field: 'detail', extra_label: 'Detalhe do combo', extra_placeholder: 'Ex: Pizza + Refrigerante' },
@@ -1099,8 +1098,7 @@ export default function AdminMenu() {
 
   const handleOpenEditCategory = (cat: Category) => {
     setEditingCategory(cat);
-    const typeId = cat.is_pizza ? 'pizza' : cat.is_marmita ? 'marmita'
-      : (cat.extra_field && (CATEGORY_TYPES.find((t) => t.extra_field === cat.extra_field)?.id)) ?? 'default';
+    const typeId = cat.is_pizza ? 'pizza' : (cat.extra_field && (CATEGORY_TYPES.find((t) => t.extra_field === cat.extra_field)?.id)) ?? 'default';
     setEditCategoryForm({
       name: cat.name,
       type: typeId,
@@ -1340,8 +1338,7 @@ export default function AdminMenu() {
               <h2 className="text-lg font-semibold text-foreground">
                 {selectedCategory ? selectedCategory.name : 'Todos os Produtos'}
               </h2>
-              {selectedCategory?.is_pizza && <Badge variant="secondary" className="text-xs font-medium">Pizza</Badge>}
-              {selectedCategory?.is_marmita && <Badge variant="secondary" className="text-xs font-medium">Marmita</Badge>}
+              {selectedCategory?.is_pizza && <Badge variant="secondary" className="text-xs font-medium">Custom</Badge>}
               <Badge variant="outline" className="text-xs font-medium">{filteredProducts.length} item{filteredProducts.length !== 1 ? 's' : ''}</Badge>
             </div>
             {selectedCategory && (
@@ -1563,7 +1560,7 @@ export default function AdminMenu() {
                     id="p-name"
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    placeholder={categoryConfig.isPizza ? 'Ex: Margherita, Calabresa' : 'Ex: nome do produto'}
+                    placeholder={categoryConfig.isPizza ? 'Ex: Margherita, Calabresa (ou nome do item customizado)' : 'Ex: nome do produto'}
                     required
                     className="h-10 text-base font-medium"
                   />
@@ -1578,7 +1575,7 @@ export default function AdminMenu() {
                       <SelectContent>
                         {categories.filter((c) => c.id).map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}{cat.is_pizza && ' (pizza)'}{cat.is_marmita && ' (marmita)'}
+                            {cat.name}{cat.is_pizza && ' (custom)'}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1688,7 +1685,7 @@ export default function AdminMenu() {
               onLabelsChange={(ids) => setForm((f) => ({ ...f, labels: ids }))}
             />
 
-            {/* Configuração de Pizza (categoria Pizza) */}
+            {/* Configuração Custom (categoria Custom) */}
             {categoryConfig.isPizza && (
               <PizzaConfigSection restaurantId={restaurantId} currency={currency} />
             )}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Pizza as PizzaIcon } from 'lucide-react';
+import { Plus, Trash2, SlidersHorizontal } from 'lucide-react';
 import { usePizzaConfig, usePizzaConfigMutations } from '@/hooks/queries/usePizzaConfig';
 import { formatPrice, convertPriceToStorage, getCurrencySymbol } from '@/lib/priceHelper';
 import type { PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge } from '@/types';
@@ -97,9 +97,9 @@ export default function PizzaConfigSection({ restaurantId, currency }: PizzaConf
   return (
     <div className="rounded-xl border border-primary/25 bg-primary/5 overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-primary/20">
-        <PizzaIcon className="h-4 w-4 text-primary" />
-        <span className="text-xs font-semibold uppercase tracking-wider text-primary">Configuração de Pizza</span>
-        <span className="text-xs text-muted-foreground">— tamanhos, sabores, massas e bordas (aplicam a todos os produtos da categoria Pizza)</span>
+        <SlidersHorizontal className="h-4 w-4 text-primary" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-primary">Configuração Custom</span>
+        <span className="text-xs text-muted-foreground">— tamanhos, sabores, massas e bordas (aplicam a todos os produtos da categoria Custom)</span>
       </div>
       <div className="p-4 space-y-6">
         {/* Tamanhos */}

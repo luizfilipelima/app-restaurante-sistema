@@ -140,10 +140,22 @@
     "details": "Detalles",
     "customize": "Personalizar",
     "from": "desde",
-    "badgePizza": "Pizza",
+    "badgePizza": "Custom",
     "badgeMarmita": "Marmita",
     "observations": "Observación",
     "observationsPlaceholder": "Ej: Sin cebolla, punto de la carne, etc."
+  },
+  "customModal": {
+    "menuConfigDesc": "Los tamaños aún no fueron configurados por el restaurante. Pronto podrás personalizar aquí. Por ahora, contacta por WhatsApp para hacer el pedido.",
+    "chooseSize": "Elige el Tamaño",
+    "chooseFlavor": "Elige el sabor",
+    "chooseOneFlavor": "Elige 1 sabor",
+    "chooseUpToFlavors": "Elige hasta {{max}} sabores · {{count}}/{{max}} seleccionados",
+    "selectAtLeastOneFlavor": "Selecciona al menos 1 sabor para continuar",
+    "doughType": "Tipo de Masa",
+    "stuffedEdge": "Borde Relleno",
+    "noEdge": "Sin borde",
+    "addedTitle": "¡Item añadido!"
   },
   "pizzaModal": {
     "stepsTitle": "Arma tu pizza",
