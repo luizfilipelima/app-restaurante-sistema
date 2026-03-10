@@ -33,24 +33,34 @@ async function extractSlug(
   const hostname = url.hostname;
   const pathname = url.pathname;
 
-  // Rotas de brand (landing/login) — middleware retornará OG com logo QuieroFood
-  const brandPaths = ['/login', '/register', '/'];
-  const isBrandPath = brandPaths.some((p) => pathname === p || (p === '/' && pathname === ''));
-  if (isBrandPath) return 'BRAND';
-
   const skipPaths = ['/unauthorized', '/super-admin', '/api', '/assets', '/_next', '/favicon'];
   if (skipPaths.some((p) => pathname.startsWith(p))) return null;
 
-  // Subdomínio de loja: pizzaria.quiero.food → slug = pizzaria
+  const isBrandPath = () => {
+    const p = pathname === '' ? '/' : pathname;
+    return p === '/' || p === '/login' || p.startsWith('/login/') || p === '/register';
+  };
+
+  // Domínio raiz ou www: quiero.food, www.quiero.food — BRAND
+  if (
+    hostname === 'quiero.food' ||
+    hostname === 'www.quiero.food' ||
+    hostname === 'localhost'
+  ) {
+    if (isBrandPath()) return 'BRAND';
+  }
+
+  // Subdomínio .quiero.food: talitacumis.quiero.food → slug; app.quiero.food → BRAND
   if (hostname.endsWith('.quiero.food') || hostname.endsWith('.localhost')) {
     const parts = hostname.split('.');
     const sub = parts[0];
     if (sub && sub !== 'www' && sub !== 'app' && sub !== 'admin' && sub !== 'kds') {
-      return sub;
+      return sub; // slug do restaurante (talitacumis, halals, etc.)
     }
+    if (sub === 'app' && isBrandPath()) return 'BRAND';
   }
 
-  // Path: app.quiero.food/pizzaria-da-vitoria ou /pizzaria-da-vitoria/menu
+  // Path: app.quiero.food/pizzaria-da-vitoria ou quiero.food/pizzaria-da-vitoria/menu
   const segments = pathname.split('/').filter(Boolean);
   const first = segments[0];
   if (first && first.length > 1 && !['super-admin'].includes(first)) {
