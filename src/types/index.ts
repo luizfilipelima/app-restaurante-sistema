@@ -532,6 +532,8 @@ export interface OrderItem {
   /** Adicionais do produto (ex: Borda Catupiry +R$5). quantity padrão 1 */
   addons?: Array<{ addonItemId?: string; name: string; price?: number; quantity?: number }>;
   created_at: string;
+  /** Momento em que o bar marcou o item como pronto. Usado para ocultar da cozinha. */
+  bar_ready_at?: string | null;
 }
 
 // ==================== UI/APP TYPES ====================

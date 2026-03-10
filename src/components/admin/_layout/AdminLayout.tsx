@@ -33,6 +33,7 @@ import {
   LogOut,
   ArrowLeft,
   ChefHat,
+  Wine,
   Copy,
   Bike,
   Scale,
@@ -531,6 +532,11 @@ export default function AdminLayout({
     : restaurantId
       ? `${origin}/kitchen?restaurant_id=${restaurantId}`
       : '';
+  const barUrl = restaurant?.slug
+    ? `${origin}/${restaurant.slug}/bar`
+    : restaurantId
+      ? `${origin}/bar?restaurant_id=${restaurantId}`
+      : '';
   const terminalUrl = restaurant?.slug
     ? `${origin}/${restaurant.slug}/terminal-garcom`
     : restaurantId
@@ -707,6 +713,29 @@ export default function AdminLayout({
                   </button>
                 </div>
               )}
+              {barUrl && (
+                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/60 overflow-hidden">
+                  <a
+                    href={barUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
+                    title="Abrir Central do Bar"
+                  >
+                    <Wine className="h-4 w-4 shrink-0" />
+                    <span className="text-sm font-medium hidden xl:inline">Central do Bar</span>
+                    <ExternalLink className="h-3 w-3 opacity-60 shrink-0" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(barUrl)}
+                    title="Copiar link da Central do Bar"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center border-l border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
               {terminalUrl && (
                 <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/60 overflow-hidden">
                   <a
@@ -847,6 +876,18 @@ export default function AdminLayout({
                 >
                   <a href={kdsUrl} target="_blank" rel="noopener noreferrer" title="Abrir Central da Cozinha">
                     <ChefHat className="h-4 w-4" />
+                  </a>
+                </Button>
+              )}
+              {barUrl && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  asChild
+                >
+                  <a href={barUrl} target="_blank" rel="noopener noreferrer" title="Abrir Central do Bar">
+                    <Wine className="h-4 w-4" />
                   </a>
                 </Button>
               )}

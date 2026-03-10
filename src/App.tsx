@@ -63,6 +63,7 @@ const UpgradePage           = lazyWithRetry(() => import('./pages/admin/_shared/
 
 // Cozinha (KDS) e Expedição (Expo Screen)
 const KitchenDisplay        = lazyWithRetry(() => import('./pages/kitchen/KitchenDisplay'));
+const BarDisplay            = lazyWithRetry(() => import('./pages/kitchen/BarDisplay'));
 const ExpoScreen            = lazyWithRetry(() => import('./pages/kitchen/ExpoScreen'));
 
 // Cardápio público
@@ -438,6 +439,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* /:slug/bar — Central do Bar (pedidos de bebidas) */}
+          <Route
+            path="/:slug/bar"
+            element={
+              <ProtectedRoute allowedRoles={KDS_ROLES}>
+                <BarDisplay />
+              </ProtectedRoute>
+            }
+          />
 
           {/* /:slug/garcom — Expo Screen (Tela do Garçom / Expedição) */}
           <Route
@@ -495,6 +505,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={KDS_ROLES}>
                 <KitchenDisplay />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/bar"
+            element={
+              <ProtectedRoute allowedRoles={KDS_ROLES}>
+                <BarDisplay />
               </ProtectedRoute>
             }
           />
@@ -563,6 +581,14 @@ function App() {
           }
         />
         <Route
+          path="/:slug/bar"
+          element={
+            <ProtectedRoute allowedRoles={KDS_ROLES}>
+              <BarDisplay />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/:slug/garcom"
           element={
             <ProtectedRoute allowedRoles={KDS_ROLES}>
@@ -605,6 +631,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={KDS_ROLES}>
               <KitchenDisplay />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bar"
+          element={
+            <ProtectedRoute allowedRoles={KDS_ROLES}>
+              <BarDisplay />
             </ProtectedRoute>
           }
         />
