@@ -116,7 +116,7 @@ export default function MapAddressPicker({
   const mapCenter: [number, number] = hasZoneBounds && zoneCenterLat != null && zoneCenterLng != null
     ? [Number(zoneCenterLat), Number(zoneCenterLng)]
     : [lat, lng];
-  const mapZoom = hasZoneBounds ? 15 : 17;
+  const mapZoom = hasZoneBounds ? 15 : 14;
 
   const instruction = hasZoneBounds
     ? t('checkout.mapInstructionZone')

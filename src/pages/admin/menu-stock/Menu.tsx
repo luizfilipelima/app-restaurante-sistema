@@ -569,9 +569,10 @@ export default function AdminMenu() {
   // ─── Derived data ─────────────────────────────────────────────────────────────
 
   const selectedCategory = selectedCategoryId ? categories.find((c) => c.id === selectedCategoryId) ?? null : null;
-  const categoryConfig = getCategoryConfigFromCategory(
-    editingProduct ? (categories.find((c) => c.id === form.categoryId) ?? null) : (selectedCategory ?? (categories[0] ?? null))
-  );
+  const categoryForConfig = categories.find(
+    (c) => c.id === (form.categoryId || selectedCategoryId || categories[0]?.id)
+  ) ?? null;
+  const categoryConfig = getCategoryConfigFromCategory(categoryForConfig);
   const subcategoriesOfSelected = (form.categoryId && subcategoriesByCategory[form.categoryId]) || [];
 
   const filteredProducts = useMemo(() => {
