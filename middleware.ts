@@ -101,6 +101,8 @@ function buildOgHtml(
   <meta property="og:title" content="${escaped(title)}" />
   <meta property="og:description" content="${escaped(description)}" />
   <meta property="og:image" content="${escaped(imageUrl)}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta property="og:url" content="${escaped(url)}" />
   <meta property="og:site_name" content="${escaped(siteName)}" />
   <meta property="og:locale" content="pt_BR" />
@@ -121,8 +123,14 @@ export default async function middleware(request: Request): Promise<Response> {
   }
 
   const url = new URL(request.url);
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  const supabaseUrl =
+    process.env.VITE_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey =
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return fetch(request);
@@ -181,8 +189,7 @@ export default async function middleware(request: Request): Promise<Response> {
       imageUrl = imageUrl.startsWith('/') ? `${url.origin}${imageUrl}` : `${url.origin}/${imageUrl}`;
     }
     if (!imageUrl) {
-      // Fallback: logo genérico (ajustar conforme o projeto)
-      imageUrl = `${url.origin}/favicon-quierofood-logo-orange.svg`;
+      imageUrl = `${url.origin}/og-image.png`;
     }
 
     const html = buildOgHtml(title, description, imageUrl, url.href, siteName);

@@ -16,6 +16,7 @@ const pngPath = join(root, 'public', 'og-image.png');
 
 const svg = readFileSync(svgPath);
 await sharp(svg)
+  .resize(1200, 630)
   .png()
   .toFile(pngPath);
 

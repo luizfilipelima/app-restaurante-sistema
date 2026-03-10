@@ -159,6 +159,15 @@ VALUES (
 
 ## 🔧 Configurações Adicionais
 
+### Preview de Links (WhatsApp, Facebook)
+
+Para que links compartilhados exibam título e imagem corretos, o middleware usa `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (já configurados). Em **Settings** → **Domains**, adicione:
+
+- `app.quiero.food` (ou domínio principal)
+- `*.quiero.food` (wildcard para subdomínios de restaurantes)
+
+Consulte `docs/OG-SHARING.md` para mais detalhes e testes.
+
 ### Domínio Personalizado (Opcional)
 
 1. Na Vercel, vá em **Settings** > **Domains**
