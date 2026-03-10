@@ -1,5 +1,8 @@
 {
   "rewrites": [
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    {
+      "source": "/((?!assets/|og-image\\.png|og-image\\.svg|favicon|manifest\\.json|quierofood-logo).*)",
+      "destination": "/index.html"
+    }
   ]
 }
