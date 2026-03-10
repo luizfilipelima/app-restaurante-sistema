@@ -10,7 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/shared/use-toast';
 import { Clock, AlertTriangle, Wine, ArrowRight, UtensilsCrossed, Bike, Scale, LayoutDashboard } from 'lucide-react';
 
-type OrderItemWithProduct = { product?: { print_destination?: string } | null; bar_ready_at?: string | null } & Record<string, unknown>;
+type OrderItemWithProduct = {
+  product?: { print_destination?: string } | null;
+  bar_ready_at?: string | null;
+};
 
 export default function BarDisplay() {
   const { user } = useAuthStore();
