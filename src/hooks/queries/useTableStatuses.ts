@@ -2,10 +2,13 @@
  * useTableStatuses — Agrega mesas com status em tempo real
  *
  * Status: free | occupied | calling_waiter | awaiting_closure
- * - free: sem pedidos não pagos
- * - occupied: tem pedidos não pagos, sem bill_requested
+ * - free: sem pedidos não pagos e sem nome de cliente
+ * - occupied: tem pedidos não pagos OU tem nome de cliente (cliente sentado, ainda sem pedido)
  * - calling_waiter: tem waiter_call pendente
  * - awaiting_closure: pedidos com bill_requested=true
+ *
+ * current_customer_name: se preenchido = cliente sentado = mesa ocupada, mesmo sem pedido.
+ * O nome é limpo ao fechar conta (useCloseTableAccount) ou resetar mesa (reset_table).
  *
  * hasReservation: apenas quando há reserva para o dia atual (scheduled_at no dia)
  */
@@ -128,6 +131,8 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
       if (created && (!openedAt || created < openedAt)) openedAt = created;
     });
 
+    const currentCustomerName = (t as { current_customer_name?: string | null }).current_customer_name?.trim() || null;
+
     let status: TableStatus = 'free';
     if (tableOrders.length > 0) {
       if (billRequested) status = 'awaiting_closure';
@@ -135,6 +140,8 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
       else status = 'occupied';
     } else if (hasPendingWaiterCall) {
       status = 'calling_waiter';
+    } else if (currentCustomerName) {
+      status = 'occupied';
     }
 
     const resList = reservationsByTable.get(t.id) ?? [];
@@ -154,7 +161,7 @@ async function fetchTableStatuses(restaurantId: string | null): Promise<TableWit
       reservationCustomerName: nextRes?.customer_name ?? null,
       reservationCustomerPhone: nextRes?.customer_phone ?? null,
       reservationNotes: nextRes?.notes ?? null,
-      currentCustomerName: (t as { current_customer_name?: string | null }).current_customer_name ?? null,
+      currentCustomerName: currentCustomerName,
     } satisfies TableWithStatus;
   });
 }
