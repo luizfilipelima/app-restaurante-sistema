@@ -73,6 +73,7 @@ import {
   Check,
   Search,
   LayoutGrid,
+  PanelTop,
   LayoutList,
   QrCode,
   GripVertical,
@@ -1632,11 +1633,11 @@ export default function AdminMenu() {
                   <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-0.5 ${
                     form.cardLayout === 'grid' ? 'bg-primary/15' : 'bg-muted/60'
                   }`}>
-                    <LayoutGrid className="h-5 w-5 text-slate-600" />
-                    <span className="text-[8px] font-medium text-slate-500 uppercase">Grid</span>
+                    <PanelTop className="h-5 w-5 text-slate-600" />
+                    <span className="text-[8px] font-medium text-slate-500 uppercase">Padrão</span>
                   </div>
                   <div>
-                    <span className="text-sm font-semibold block">Card vertical</span>
+                    <span className="text-sm font-semibold block">Card Padrão</span>
                     <span className="text-xs text-muted-foreground">Foto em destaque, ideal para pratos</span>
                   </div>
                 </button>

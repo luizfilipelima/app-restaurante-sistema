@@ -53,11 +53,13 @@ export const useCartStore = create<CartState>()(
           if (i.isLoyaltyReward !== item.isLoyaltyReward) return false;
           if (i.isPizza && item.isPizza) {
             const sameFlavors = (JSON.stringify(i.pizzaFlavors ?? []) === JSON.stringify(item.pizzaFlavors ?? []));
+            const sameAddonsPizza = (JSON.stringify(i.addons ?? []) === JSON.stringify(item.addons ?? []));
             return (
               i.pizzaSize === item.pizzaSize &&
               sameFlavors &&
               i.pizzaDough === item.pizzaDough &&
               i.pizzaEdge === item.pizzaEdge &&
+              sameAddonsPizza &&
               i.observations === item.observations
             );
           }

@@ -10,55 +10,75 @@ import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
 import { Check, Pizza as PizzaIcon, Minus, Plus, X } from 'lucide-react';
 
+interface AddonGroup {
+  id: string;
+  name: string;
+  items: { id: string; name: string; price: number }[];
+}
+
 interface PizzaModalProps {
   open: boolean;
   onClose: () => void;
   product: Product;
+  basePrice: number;
   sizes: PizzaSize[];
   flavors?: PizzaFlavor[];
   doughs: PizzaDough[];
   edges: PizzaEdge[];
+  addonGroups?: AddonGroup[];
+  isSpecial?: boolean;
   currency?: CurrencyCode;
+  convertForDisplay?: (value: number) => number;
 }
 
 export default function PizzaModal({
   open,
   onClose,
   product,
+  basePrice,
   sizes,
   flavors = [],
   doughs,
   edges,
+  addonGroups = [],
+  isSpecial = false,
   currency = 'BRL',
+  convertForDisplay,
 }: PizzaModalProps) {
   const [selectedSize, setSelectedSize] = useState<PizzaSize | null>(null);
   const [selectedFlavors, setSelectedFlavors] = useState<PizzaFlavor[]>([]);
   const [selectedDough, setSelectedDough] = useState<PizzaDough | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<PizzaEdge | null>(null);
+  const [selectedAddons, setSelectedAddons] = useState<Array<{ addonItemId: string; name: string; price: number; quantity: number }>>([]);
   const [observations, setObservations] = useState('');
   const [quantity, setQuantity] = useState(1);
   const { t } = useTranslation();
   const addItem = useCartStore((state) => state.addItem);
 
+  const singleSize = sizes.length === 1;
+  const effectiveSize = singleSize ? sizes[0] ?? null : selectedSize;
+
   useEffect(() => {
     if (open) {
-      setSelectedSize(sizes[0] || null);
+      setSelectedSize(singleSize ? sizes[0] ?? null : sizes[0] ?? null);
       setSelectedFlavors([]);
       setSelectedDough(doughs[0] || null);
       setSelectedEdge(null);
+      setSelectedAddons([]);
       setObservations('');
       setQuantity(1);
     }
-  }, [open, sizes, doughs]);
+  }, [open, sizes, doughs, singleSize]);
 
-  // Quando o tamanho muda, limpa sabores que excedem o novo max_flavors
+  // maxFlavors: Especial = 1, Padrão = até 2 (ou o limite do tamanho)
+  const maxFlavors = isSpecial ? 1 : Math.min(2, effectiveSize?.max_flavors ?? 2);
+
   useEffect(() => {
-    if (selectedSize && selectedFlavors.length > selectedSize.max_flavors) {
-      setSelectedFlavors((prev) => prev.slice(0, selectedSize.max_flavors));
+    if (effectiveSize && selectedFlavors.length > maxFlavors) {
+      setSelectedFlavors((prev) => prev.slice(0, maxFlavors));
     }
-  }, [selectedSize]);
+  }, [effectiveSize, maxFlavors]);
 
-  const maxFlavors = selectedSize?.max_flavors ?? 1;
   const hasFlavors = flavors.length > 0;
 
   const toggleFlavor = (flavor: PizzaFlavor) => {
@@ -72,17 +92,35 @@ export default function PizzaModal({
     }
   };
 
-  // Preço fixo do produto + adicionais (massa e borda)
-  // Todos os preços vêm do banco como INTEGER (centavos para BRL, inteiro para PYG)
+  const getAddonQty = (addonItemId: string) =>
+    selectedAddons.find((a) => a.addonItemId === addonItemId)?.quantity ?? 0;
+
+  const changeAddonQty = (item: { id: string; name: string; price: number }, delta: number) => {
+    setSelectedAddons((prev) => {
+      const existing = prev.find((a) => a.addonItemId === item.id);
+      const currentQty = existing?.quantity ?? 0;
+      const nextQty = Math.max(0, currentQty + delta);
+      if (nextQty === 0) {
+        return prev.filter((a) => a.addonItemId !== item.id);
+      }
+      const entry = { addonItemId: item.id, name: item.name, price: item.price, quantity: nextQty };
+      if (existing) {
+        return prev.map((a) => (a.addonItemId === item.id ? entry : a));
+      }
+      return [...prev, entry];
+    });
+  };
+
+  const addonsTotal = selectedAddons.reduce((s, a) => s + a.price * a.quantity, 0);
+  const flavorExtras = selectedFlavors.reduce((s, f) => s + (f.price ?? 0), 0);
+
+  // Todos os preços em formato de armazenamento (centavos BRL, inteiro PYG)
   const calculatePrice = () => {
-    const basePrice = currency === 'BRL' ? product.price / 100 : product.price;
-    const doughExtra = currency === 'BRL' ? (selectedDough?.extra_price ?? 0) / 100 : (selectedDough?.extra_price ?? 0);
-    const edgePrice = currency === 'BRL' ? (selectedEdge?.price ?? 0) / 100 : (selectedEdge?.price ?? 0);
-    return basePrice + doughExtra + edgePrice;
+    return basePrice + (selectedDough?.extra_price ?? 0) + (selectedEdge?.price ?? 0) + flavorExtras + addonsTotal;
   };
 
   const handleAddToCart = () => {
-    if (!selectedSize) return;
+    if (!effectiveSize) return;
     if (hasFlavors && selectedFlavors.length === 0) return;
 
     const unitPrice = calculatePrice();
@@ -94,24 +132,30 @@ export default function PizzaModal({
       quantity,
       unitPrice,
       isPizza: true,
-      pizzaSize: selectedSize.name,
+      pizzaSize: effectiveSize.name,
       pizzaFlavors: selectedFlavors.map((f) => f.name),
       pizzaDough: selectedDough?.name,
       pizzaEdge: selectedEdge?.name,
       pizzaDoughPrice: selectedDough?.extra_price ?? 0,
       pizzaEdgePrice: selectedEdge?.price ?? 0,
+      addons: selectedAddons.length > 0 ? selectedAddons.map((a) => ({ addonItemId: a.addonItemId, name: a.name, price: a.price, quantity: a.quantity })) : undefined,
       observations,
     });
 
     onClose();
   };
 
-  const canAddToCart = selectedSize !== null && (!hasFlavors || selectedFlavors.length > 0);
+  const canAddToCart = effectiveSize !== null && (!hasFlavors || selectedFlavors.length > 0);
 
-  // Numeração dinâmica de passos
-  const stepFlavors = 2;
-  const stepDoughEdge = hasFlavors ? 3 : 2;
-  const stepObs = hasFlavors ? 4 : 3;
+  const fmt = (v: number) => formatPrice(convertForDisplay ? convertForDisplay(v) : v, currency);
+
+  // Numeração dinâmica de passos (tamanho oculto quando único)
+  let step = 1;
+  const stepSize = singleSize ? 0 : step++;
+  const stepFlavors = hasFlavors ? step++ : 0;
+  const stepDoughEdge = (doughs.length > 0 || edges.length > 0) ? step++ : 0;
+  const stepAddons = addonGroups.length > 0 ? step++ : 0;
+  const stepObs = step++;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -149,61 +193,63 @@ export default function PizzaModal({
             </div>
           )}
 
-          {/* PASSO 1: Tamanho */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="bg-primary text-primary-foreground w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">1</div>
-              <Label className="text-lg sm:text-xl font-bold text-foreground">{t('pizzaModal.chooseSize')}</Label>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              {sizes.map((size) => (
-                <button
-                  key={size.id}
-                  onClick={() => setSelectedSize(size)}
-                  className={`group relative p-4 sm:p-5 rounded-2xl text-left transition-all duration-200 border-2 touch-manipulation min-h-[100px] sm:min-h-[110px] ${
-                    selectedSize?.id === size.id
-                      ? 'border-primary bg-primary/5 shadow-md scale-[1.02]'
-                      : 'border-border bg-card hover:border-primary/40 hover:bg-muted/50 active:scale-[0.98]'
-                  }`}
-                >
-                  <div className="flex flex-col h-full justify-between">
-                    <div className="flex-1">
-                      <div className={`font-bold text-lg sm:text-xl mb-1 ${selectedSize?.id === size.id ? 'text-primary' : 'text-foreground'}`}>
-                        {size.name}
+          {/* PASSO 1: Tamanho (oculto quando único) */}
+          {!singleSize && sizes.length > 0 && (
+            <section className="space-y-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="bg-primary text-primary-foreground w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">{stepSize}</div>
+                <Label className="text-lg sm:text-xl font-bold text-foreground">{t('pizzaModal.chooseSize')}</Label>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                {sizes.map((size) => (
+                  <button
+                    key={size.id}
+                    onClick={() => setSelectedSize(size)}
+                    className={`group relative p-4 sm:p-5 rounded-2xl text-left transition-all duration-200 border-2 touch-manipulation min-h-[100px] sm:min-h-[110px] ${
+                      selectedSize?.id === size.id
+                        ? 'border-primary bg-primary/5 shadow-md scale-[1.02]'
+                        : 'border-border bg-card hover:border-primary/40 hover:bg-muted/50 active:scale-[0.98]'
+                    }`}
+                  >
+                    <div className="flex flex-col h-full justify-between">
+                      <div className="flex-1">
+                        <div className={`font-bold text-lg sm:text-xl mb-1 ${selectedSize?.id === size.id ? 'text-primary' : 'text-foreground'}`}>
+                          {size.name}
+                        </div>
+                        {size.max_flavors > 1 && (
+                          <div className={`text-xs font-medium mb-1 ${selectedSize?.id === size.id ? 'text-primary' : 'text-muted-foreground'}`}>
+                            até {size.max_flavors} sabores
+                          </div>
+                        )}
+                        <div className={`text-sm font-semibold ${selectedSize?.id === size.id ? 'text-primary' : 'text-muted-foreground'}`}>
+                          {fmt(basePrice)}
+                        </div>
                       </div>
-                      {size.max_flavors > 1 && (
-                        <div className={`text-xs font-medium mb-1 ${selectedSize?.id === size.id ? 'text-primary' : 'text-muted-foreground'}`}>
-                          até {size.max_flavors} sabores
+                      {selectedSize?.id === size.id && (
+                        <div className="mt-3 flex justify-end">
+                          <div className="bg-primary rounded-full p-1.5 flex-shrink-0 shadow-sm">
+                            <Check className="h-4 w-4 text-primary-foreground" />
+                          </div>
                         </div>
                       )}
-                      <div className={`text-sm font-semibold ${selectedSize?.id === size.id ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {formatPrice(product.price, currency)}
-                      </div>
                     </div>
-                    {selectedSize?.id === size.id && (
-                      <div className="mt-3 flex justify-end">
-                        <div className="bg-primary rounded-full p-1.5 flex-shrink-0 shadow-sm">
-                          <Check className="h-4 w-4 text-primary-foreground" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* PASSO 2: Sabores */}
-          {selectedSize && hasFlavors && (
+          {effectiveSize && hasFlavors && (
             <section className="space-y-4 animate-slide-in-bottom">
               <div className="flex items-center gap-3 mb-2">
                 <div className="bg-primary text-primary-foreground w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">{stepFlavors}</div>
                 <div className="flex-1 min-w-0">
-                  <Label className="text-lg sm:text-xl font-bold text-foreground">Escolha o sabor</Label>
+                  <Label className="text-lg sm:text-xl font-bold text-foreground">{t('pizzaModal.chooseFlavor')}</Label>
                   <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
                     {maxFlavors === 1
-                      ? 'Escolha 1 sabor'
-                      : `Escolha até ${maxFlavors} sabores · ${selectedFlavors.length}/${maxFlavors} selecionados`}
+                      ? t('pizzaModal.chooseOneFlavor')
+                      : t('pizzaModal.chooseUpToFlavors', { max: maxFlavors, count: selectedFlavors.length })}
                   </p>
                 </div>
                 {selectedFlavors.length > 0 && (
@@ -248,7 +294,7 @@ export default function PizzaModal({
                         )}
                         {flavor.price > 0 && (
                           <div className={`text-xs font-semibold mt-1 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
-                            +{formatPrice(flavor.price, currency)}
+                            +{fmt(flavor.price)}
                           </div>
                         )}
                       </div>
@@ -259,14 +305,14 @@ export default function PizzaModal({
 
               {selectedFlavors.length === 0 && (
                 <p className="text-xs text-red-500 font-medium px-1">
-                  Selecione pelo menos 1 sabor para continuar
+                  {t('pizzaModal.selectAtLeastOneFlavor')}
                 </p>
               )}
             </section>
           )}
 
-          {/* PASSO 3 (ou 2): Massa e Borda */}
-          {selectedSize && (doughs.length > 0 || edges.length > 0) && (
+          {/* PASSO 3 (ou 2): Massa e Borda — borda sempre opcional */}
+          {effectiveSize && (doughs.length > 0 || edges.length > 0) && (
             <section className="space-y-5 animate-slide-in-bottom">
               <div className="flex items-center gap-3 mb-2">
                 <div className="bg-primary text-primary-foreground w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">{stepDoughEdge}</div>
@@ -289,7 +335,7 @@ export default function PizzaModal({
                       >
                         {dough.name}{' '}
                         {dough.extra_price > 0 && (
-                          <span className="text-xs opacity-90">(+{formatPrice(dough.extra_price, currency)})</span>
+                          <span className="text-xs opacity-90">(+{fmt(dough.extra_price)})</span>
                         )}
                       </button>
                     ))}
@@ -299,7 +345,7 @@ export default function PizzaModal({
 
               {edges.length > 0 && (
                 <div className="bg-card p-4 sm:p-5 rounded-2xl border border-border/80 shadow-sm space-y-3">
-                  <span className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider block mb-1">{t('pizzaModal.stuffedEdge')}</span>
+                  <span className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider block mb-1">{t('pizzaModal.stuffedEdge')} {isSpecial && <span className="normal-case font-normal text-muted-foreground">({t('pizzaModal.optional')})</span>}</span>
                   <div className="space-y-2.5">
                     <button
                       onClick={() => setSelectedEdge(null)}
@@ -328,7 +374,7 @@ export default function PizzaModal({
                       >
                         <span className="font-semibold text-base text-foreground">{edge.name}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-muted-foreground">+{formatPrice(edge.price, currency)}</span>
+                          <span className="text-sm font-bold text-muted-foreground">+{fmt(edge.price)}</span>
                           {selectedEdge?.id === edge.id && (
                             <div className="bg-primary rounded-full p-1.5 flex-shrink-0">
                               <Check className="h-4 w-4 text-primary-foreground" />
@@ -343,8 +389,58 @@ export default function PizzaModal({
             </section>
           )}
 
-          {/* PASSO 4 (ou 3 ou 2): Observações */}
-          {selectedSize && (
+          {/* Adicionais */}
+          {effectiveSize && addonGroups.length > 0 && (
+            <section className="space-y-5 animate-slide-in-bottom">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="bg-primary text-primary-foreground w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">{stepAddons}</div>
+                <Label className="text-lg sm:text-xl font-bold text-foreground">{t('pizzaModal.addons')}</Label>
+              </div>
+              <div className="space-y-4">
+                {addonGroups.map((group) => (
+                  <div key={group.id} className="bg-card p-4 sm:p-5 rounded-2xl border border-border/80 shadow-sm space-y-3">
+                    <span className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider block">
+                      {group.name}
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {group.items.map((item) => {
+                        const qty = getAddonQty(item.id);
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex items-center gap-1 rounded-xl border-2 border-border overflow-hidden bg-card"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => changeAddonQty(item, -1)}
+                              disabled={qty === 0}
+                              className="px-3 py-2 bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed text-foreground touch-manipulation"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                            <span className="px-3 py-2 text-sm font-medium min-w-[2.5rem] text-center">{qty}</span>
+                            <button
+                              type="button"
+                              onClick={() => changeAddonQty(item, 1)}
+                              className="px-3 py-2 bg-muted hover:bg-muted/80 text-foreground touch-manipulation"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                            <span className="px-3 py-2 text-sm font-semibold text-muted-foreground border-l border-border">
+                              {item.name} {item.price > 0 && `+${fmt(item.price)}`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Observações */}
+          {effectiveSize && (
             <section className="space-y-4 pb-4 animate-slide-in-bottom">
               <div className="flex items-center gap-3 mb-2">
                 <div className="bg-primary text-primary-foreground w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">{stepObs}</div>
@@ -405,7 +501,7 @@ export default function PizzaModal({
             <div className="text-right min-w-0 flex-shrink-0">
               <span className="text-xs text-muted-foreground block mb-1">{t('pizzaModal.total')}</span>
               <span className="text-xl sm:text-2xl font-bold text-foreground whitespace-nowrap">
-                {formatPrice(calculatePrice() * quantity, currency)}
+                {fmt(calculatePrice() * quantity)}
               </span>
             </div>
           </div>
@@ -416,7 +512,7 @@ export default function PizzaModal({
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-14 sm:h-14 rounded-2xl shadow-lg touch-manipulation active:scale-[0.98] text-base sm:text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {!canAddToCart && hasFlavors && selectedFlavors.length === 0
-              ? 'Escolha pelo menos 1 sabor'
+              ? t('pizzaModal.selectAtLeastOneFlavor')
               : t('pizzaModal.addToCart')}
           </Button>
         </div>

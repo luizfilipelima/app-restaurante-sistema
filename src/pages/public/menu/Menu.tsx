@@ -65,6 +65,7 @@ const CartDrawer = lazy(() => import('@/components/public/cart/CartDrawer'));
 // Lazy: modais só carregam quando o produto for clicado
 const ProductAddonModal = lazy(() => import('@/components/public/menu/ProductAddonModal'));
 const SimpleProductModal = lazy(() => import('@/components/public/menu/SimpleProductModal'));
+const PizzaModal = lazy(() => import('@/components/public/menu/PizzaModal'));
 
 // MOCK DATA PARA VISUALIZAÇÃO DE DESIGN (Caso banco vazio)
 const MOCK_PRODUCTS: Product[] = [
@@ -136,6 +137,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const [cartOpen, setCartOpen] = useState(false);
   const [addonModalProduct, setAddonModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
   const [simpleModalProduct, setSimpleModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
+  const [pizzaModalProduct, setPizzaModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
   const [infoModalOpen, setInfoModalOpen] = useState(false);
 
   const { data: menuData, isLoading: loading, isError, isFetching, isPlaceholderData } = useRestaurantMenuData(restaurantSlug);
@@ -149,7 +151,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
   const isTableOrder = !!(tableId && tableNumber);
 
-  const { restaurant, products, categories, categoriesFromDb, subcategories, productComboItemsMap, productAddonsMap } = useMemo(() => {
+  const { restaurant, products, categories, categoriesFromDb, subcategories, productComboItemsMap, productAddonsMap, pizzaSizes, pizzaFlavors, pizzaDoughs, pizzaEdges } = useMemo(() => {
     if (!menuData) {
       return {
         restaurant: null as Restaurant | null,
@@ -159,6 +161,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         subcategories: [] as Subcategory[],
         productComboItemsMap: {} as Record<string, Array<{ product: Product; quantity: number }>>,
         productAddonsMap: {} as Record<string, Array<{ id: string; name: string; items: Array<{ id: string; name: string; price: number }> }>>,
+        pizzaSizes: [] as import('@/types').PizzaSize[],
+        pizzaFlavors: [] as import('@/types').PizzaFlavor[],
+        pizzaDoughs: [] as import('@/types').PizzaDough[],
+        pizzaEdges: [] as import('@/types').PizzaEdge[],
       };
     }
     let p = menuData.products.length > 0 ? menuData.products : MOCK_PRODUCTS;
@@ -178,6 +184,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       subcategories: menuData.subcategories,
       productComboItemsMap: menuData.productComboItemsMap ?? {},
       productAddonsMap: menuData.productAddonsMap ?? {},
+      pizzaSizes: menuData.pizzaSizes ?? [],
+      pizzaFlavors: menuData.pizzaFlavors ?? [],
+      pizzaDoughs: menuData.pizzaDoughs ?? [],
+      pizzaEdges: menuData.pizzaEdges ?? [],
     };
   }, [menuData, isTableOrder]);
 
@@ -303,6 +313,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
   const handleOfferProductClick = (offer: { product: Product; offer_price: number; original_price: number; label?: string | null }) => {
     const p = offer.product;
+    if (p.is_pizza) {
+      setPizzaModalProduct({ product: p, basePrice: offer.offer_price });
+      return;
+    }
     const addons = productAddonsMap[p.id];
     if (addons && addons.length > 0) {
       setAddonModalProduct({ product: p, basePrice: offer.offer_price });
@@ -312,12 +326,22 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   };
 
   const handleProductClick = (product: Product) => {
+    if (product.is_pizza) {
+      setPizzaModalProduct({ product, basePrice: Number(product.price_sale || product.price) });
+      return;
+    }
     const addons = productAddonsMap[product.id];
     if (addons && addons.length > 0) {
       setAddonModalProduct({ product, basePrice: Number(product.price_sale || product.price) });
     } else {
       setSimpleModalProduct({ product, basePrice: Number(product.price_sale || product.price) });
     }
+  };
+
+  const isPizzaSpecial = (product: Product): boolean => {
+    if (!product.subcategory_id) return false;
+    const sub = subcategories.find((s) => s.id === product.subcategory_id);
+    return sub ? sub.name.toLowerCase().includes('especial') : false;
   };
 
   // Agrupamento por categoria para o modo "Todos" — memoizado para não recalcular
@@ -994,6 +1018,23 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 observations: observations?.trim() || undefined,
               });
             }}
+          />
+        )}
+
+        {pizzaModalProduct && (
+          <PizzaModal
+            open={!!pizzaModalProduct}
+            onClose={() => setPizzaModalProduct(null)}
+            product={pizzaModalProduct.product}
+            basePrice={pizzaModalProduct.basePrice}
+            sizes={pizzaSizes}
+            flavors={pizzaFlavors}
+            doughs={pizzaDoughs}
+            edges={pizzaEdges}
+            addonGroups={productAddonsMap[pizzaModalProduct.product.id] ?? []}
+            isSpecial={isPizzaSpecial(pizzaModalProduct.product)}
+            currency={currency}
+            convertForDisplay={convertForDisplay}
           />
         )}
       </Suspense>
