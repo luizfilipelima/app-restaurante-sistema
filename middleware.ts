@@ -93,6 +93,12 @@ function buildOgHtml(
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
 
+  const safeImage = escaped(imageUrl);
+  const secureImageTag =
+    imageUrl.startsWith('https://')
+      ? `\n  <meta property="og:image:secure_url" content="${safeImage}" />`
+      : '';
+
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -100,7 +106,7 @@ function buildOgHtml(
   <meta property="og:type" content="website" />
   <meta property="og:title" content="${escaped(title)}" />
   <meta property="og:description" content="${escaped(description)}" />
-  <meta property="og:image" content="${escaped(imageUrl)}" />
+  <meta property="og:image" content="${safeImage}" />${secureImageTag}
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:url" content="${escaped(url)}" />
@@ -109,20 +115,51 @@ function buildOgHtml(
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${escaped(title)}" />
   <meta name="twitter:description" content="${escaped(description)}" />
-  <meta name="twitter:image" content="${escaped(imageUrl)}" />
+  <meta name="twitter:image" content="${safeImage}" />
   <title>${escaped(title)}</title>
 </head>
 <body><p><a href="${escaped(url)}">${escaped(title)}</a></p></body>
 </html>`;
 }
 
-export default async function middleware(request: Request): Promise<Response> {
-  const userAgent = request.headers.get('user-agent');
-  if (!isCrawler(userAgent)) {
-    return fetch(request);
-  }
+function buildDynamicManifest(
+  name: string,
+  logoUrl: string | null,
+  baseUrl: string
+): string {
+  const safeName = name.replace(/"/g, '\\"');
+  const iconUrl = logoUrl && (logoUrl.startsWith('http') || logoUrl.startsWith('//'))
+    ? logoUrl
+    : `${baseUrl}/favicon-quierofood-logo-orange.svg`;
+  return JSON.stringify({
+    name: safeName,
+    short_name: safeName,
+    description: `Cardápio de ${safeName} — peça online com facilidade`,
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#F87116',
+    theme_color: '#F87116',
+    icons: [
+      {
+        src: iconUrl,
+        sizes: 'any',
+        type: iconUrl.endsWith('.svg') ? 'image/svg+xml' : 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: iconUrl,
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'any',
+      },
+    ],
+  });
+}
 
+export default async function middleware(request: Request): Promise<Response> {
   const url = new URL(request.url);
+  const pathname = url.pathname;
+
   const supabaseUrl =
     process.env.VITE_SUPABASE_URL ||
     process.env.SUPABASE_URL ||
@@ -131,6 +168,49 @@ export default async function middleware(request: Request): Promise<Response> {
     process.env.VITE_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // Manifest dinâmico para subdomínios de restaurante (nome + logo)
+  if (pathname === '/manifest.json' && supabaseUrl && supabaseAnonKey) {
+    const slug = await extractSlug(url, supabaseUrl, supabaseAnonKey);
+    if (slug && slug !== 'BRAND') {
+      try {
+        const res = await fetch(
+          `${supabaseUrl}/rest/v1/restaurants?slug=eq.${encodeURIComponent(slug)}&select=name,logo&is_active=eq.true&deleted_at=is.null`,
+          {
+            headers: {
+              apikey: supabaseAnonKey,
+              Authorization: `Bearer ${supabaseAnonKey}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        if (res.ok) {
+          const data = (await res.json()) as { name?: string; logo?: string }[];
+          const restaurant = data?.[0];
+          if (restaurant?.name) {
+            const logo = (restaurant.logo || '').trim();
+            const logoAbsolute =
+              logo.startsWith('http://') || logo.startsWith('https://') ? logo : null;
+            const manifest = buildDynamicManifest(restaurant.name, logoAbsolute, url.origin);
+            return new Response(manifest, {
+              status: 200,
+              headers: {
+                'Content-Type': 'application/json; charset=utf-8',
+                'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+              },
+            });
+          }
+        }
+      } catch {
+        // fall through to static manifest
+      }
+    }
+  }
+
+  const userAgent = request.headers.get('user-agent');
+  if (!isCrawler(userAgent)) {
+    return fetch(request);
+  }
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return fetch(request);
@@ -178,14 +258,16 @@ export default async function middleware(request: Request): Promise<Response> {
     const data = (await res.json()) as { name?: string; logo?: string }[];
     const restaurant = data?.[0];
 
-    const siteName = 'Quiero Food';
+    const siteName = 'QuieroFood';
     const title = restaurant?.name ? `${restaurant.name} — Cardápio` : siteName;
     const description = restaurant?.name
       ? `Confira o cardápio de ${restaurant.name}. Peça online com facilidade.`
       : 'Sistema de cardápio e pedidos online.';
 
-    let imageUrl = restaurant?.logo || '';
-    if (imageUrl && !imageUrl.startsWith('http')) {
+    // Logo do restaurante (Supabase Storage retorna URL completa https://...)
+    let imageUrl = (restaurant?.logo || '').trim();
+    if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+      // Fallback para logos salvas como path relativo (legado)
       imageUrl = imageUrl.startsWith('/') ? `${url.origin}${imageUrl}` : `${url.origin}/${imageUrl}`;
     }
     if (!imageUrl) {
