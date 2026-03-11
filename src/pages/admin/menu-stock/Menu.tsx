@@ -1687,7 +1687,12 @@ export default function AdminMenu() {
 
             {/* Configuração Custom (categoria Custom) */}
             {categoryConfig.isPizza && (
-              <PizzaConfigSection restaurantId={restaurantId} currency={currency} />
+              <PizzaConfigSection
+                restaurantId={restaurantId}
+                currency={currency}
+                costCurrency={form.costCurrency}
+                ingredients={ingredients}
+              />
             )}
 
             {/* Combo Builder (categoria Combos) */}
@@ -1768,15 +1773,17 @@ export default function AdminMenu() {
               </div>
             )}
 
-            {/* Adicionais do produto */}
-            <ProductAddonsSection
-              ref={addonSectionRef}
-              addons={addons}
-              productId={editingProduct?.id ?? null}
-              currency={currency}
-              costCurrency={form.costCurrency}
-              ingredients={ingredients}
-            />
+            {/* Adicionais do produto — oculto em modo Custom (usa Extras e Bordas na Configuração Custom) */}
+            {!categoryConfig.isPizza && (
+              <ProductAddonsSection
+                ref={addonSectionRef}
+                addons={addons}
+                productId={editingProduct?.id ?? null}
+                currency={currency}
+                costCurrency={form.costCurrency}
+                ingredients={ingredients}
+              />
+            )}
 
             {/* Extra field (não-Combo) se categoria tiver */}
             {categoryConfig.extraField && !isComboCategory && (

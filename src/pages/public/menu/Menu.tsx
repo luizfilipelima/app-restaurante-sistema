@@ -97,6 +97,20 @@ const sortCategories = (categories: string[]): string[] => {
   });
 };
 
+/** Monta addonGroups para produto Custom: Extras (pizza_extras) como primeiro grupo; product addons vêm depois (modo Custom costuma ocultar product addons). */
+function buildPizzaAddonGroups(
+  productId: string,
+  pizzaExtras: Array<{ id: string; name: string; price: number }>,
+  productAddonsMap: Record<string, Array<{ id: string; name: string; items: Array<{ id: string; name: string; price: number }> }>>
+): Array<{ id: string; name: string; items: Array<{ id: string; name: string; price: number }> }> {
+  const extrasGroup =
+    pizzaExtras.length > 0
+      ? [{ id: 'pizza-extras', name: 'Extras', items: pizzaExtras.map((e) => ({ id: e.id, name: e.name, price: e.price })) }]
+      : [];
+  const productAddons = productAddonsMap[productId] ?? [];
+  return [...extrasGroup, ...productAddons];
+}
+
 interface PublicMenuProps {
   /** Quando renderizado dentro de StoreLayout (subdomínio), o slug é passado por prop */
   tenantSlug?: string;
@@ -142,7 +156,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
   const isTableOrder = !!(tableId && tableNumber);
 
-  const { restaurant, products, categories, categoriesFromDb, subcategories, productComboItemsMap, productAddonsMap, pizzaSizes, pizzaFlavors, pizzaDoughs, pizzaEdges } = useMemo(() => {
+  const { restaurant, products, categories, categoriesFromDb, subcategories, productComboItemsMap, productAddonsMap, pizzaSizes, pizzaFlavors, pizzaDoughs, pizzaEdges, pizzaExtras } = useMemo(() => {
     if (!menuData) {
       return {
         restaurant: null as Restaurant | null,
@@ -156,6 +170,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         pizzaFlavors: [] as import('@/types').PizzaFlavor[],
         pizzaDoughs: [] as import('@/types').PizzaDough[],
         pizzaEdges: [] as import('@/types').PizzaEdge[],
+        pizzaExtras: [] as import('@/types').PizzaExtra[],
       };
     }
     let p = menuData.products.length > 0 ? menuData.products : MOCK_PRODUCTS;
@@ -179,6 +194,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       pizzaFlavors: menuData.pizzaFlavors ?? [],
       pizzaDoughs: menuData.pizzaDoughs ?? [],
       pizzaEdges: menuData.pizzaEdges ?? [],
+      pizzaExtras: menuData.pizzaExtras ?? [],
     };
   }, [menuData, isTableOrder]);
 
@@ -359,11 +375,12 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   // Filtrar e ordenar produtos — memoizado para não recalcular a cada render
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
+    const sortByOrderIndex = (a: Product, b: Product) => (a.order_index ?? 0) - (b.order_index ?? 0);
     let result = viewingSingleCategory && currentCategoryFromRoute
-      ? products.filter((p) => p.category === currentCategoryFromRoute.name).sort((a, b) => a.name.localeCompare(b.name))
+      ? products.filter((p) => p.category === currentCategoryFromRoute.name).sort(sortByOrderIndex)
       : selectedCategory === 'all'
         ? products
-        : products.filter((p) => p.category === selectedCategory).sort((a, b) => a.name.localeCompare(b.name));
+        : products.filter((p) => p.category === selectedCategory).sort(sortByOrderIndex);
     if (query) {
       result = result.filter(
         (p) =>
@@ -1011,12 +1028,13 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             onClose={() => setPizzaModalProduct(null)}
             product={pizzaModalProduct.product}
             basePrice={pizzaModalProduct.basePrice}
-            addonGroups={productAddonsMap[pizzaModalProduct.product.id] ?? []}
+            addonGroups={buildPizzaAddonGroups(pizzaModalProduct.product.id, pizzaExtras, productAddonsMap)}
             pizzaConfig={{
               sizes: pizzaSizes,
               flavors: pizzaFlavors,
               doughs: pizzaDoughs,
               edges: pizzaEdges,
+              extras: pizzaExtras,
               isSpecial: isPizzaSpecial(pizzaModalProduct.product),
             }}
             pizzaProducts={products.filter((p) => p.is_pizza && p.id !== pizzaModalProduct.product.id)}

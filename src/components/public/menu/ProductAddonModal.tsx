@@ -250,8 +250,8 @@ export default function ProductAddonModal({
 
         {/* Rodapé — botão único "Adicionar ao Carrinho" */}
         <footer
-          className="flex-shrink-0 p-4 pt-0 bg-card border-t border-border"
-          style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+          className="flex-shrink-0 p-4 bg-card border-t border-border"
+          style={{ paddingTop: 'max(16px, env(safe-area-inset-bottom))', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
         >
           <button
             type="button"

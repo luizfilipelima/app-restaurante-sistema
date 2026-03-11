@@ -294,7 +294,25 @@ export interface PizzaEdge {
   restaurant_id: string;
   name: string; // Ex: Catupiry, Cheddar, Chocolate
   price: number;
+  cost?: number;
+  cost_currency?: string;
+  in_stock?: boolean;
+  ingredient_id?: string | null;
   is_active: boolean;
+  created_at: string;
+}
+
+export interface PizzaExtra {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  price: number;
+  cost?: number;
+  cost_currency?: string;
+  in_stock?: boolean;
+  ingredient_id?: string | null;
+  is_active: boolean;
+  order_index?: number;
   created_at: string;
 }
 

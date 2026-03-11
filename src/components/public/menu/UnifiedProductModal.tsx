@@ -3,7 +3,7 @@
  * Suporta produtos simples, com addons e pizza (opções de pizza no topo, sem imagem).
  */
 import { useState, useEffect } from 'react';
-import { Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge } from '@/types';
+import { Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, PizzaExtra } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { type CurrencyCode } from '@/lib/core/utils';
 import { formatPrice } from '@/lib/priceHelper';
@@ -26,6 +26,7 @@ export interface PizzaConfig {
   flavors: PizzaFlavor[];
   doughs: PizzaDough[];
   edges: PizzaEdge[];
+  extras?: PizzaExtra[];
   isSpecial: boolean;
 }
 
@@ -327,43 +328,7 @@ export default function UnifiedProductModal({
               </div>
             )}
 
-            {/* Info do produto / Total */}
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-foreground leading-snug">{t('menu.total')}</h3>
-              <p className="text-base font-semibold text-primary tabular-nums">{fmt(total)}</p>
-              {product.description && (
-                <ExpandableDescription>{product.description}</ExpandableDescription>
-              )}
-              {(product.allergens?.length || product.labels?.length) ? (
-                <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} className="pt-2" />
-              ) : null}
-            </div>
-
-            {/* Quantidade */}
-            <div className="flex items-center justify-end">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  disabled={quantity <= 1}
-                  className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted/80 disabled:opacity-40 touch-manipulation"
-                  aria-label="Diminuir"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="w-8 text-center text-base font-semibold tabular-nums">{quantity}</span>
-                <button
-                  type="button"
-                  onClick={() => setQuantity((q) => q + 1)}
-                  className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 active:scale-95 touch-manipulation"
-                  aria-label="Aumentar"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Addons */}
+            {/* Addons (extras) — antes do Total */}
             {addonGroups.map((group) => (
               <div key={group.id} className="space-y-2">
                 <h4 className="text-xs font-medium text-muted-foreground uppercase">{group.name}</h4>
@@ -401,6 +366,42 @@ export default function UnifiedProductModal({
               </div>
             ))}
 
+            {/* Info do produto / Total */}
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-foreground leading-snug">{t('menu.total')}</h3>
+              <p className="text-base font-semibold text-primary tabular-nums">{fmt(total)}</p>
+              {product.description && (
+                <ExpandableDescription>{product.description}</ExpandableDescription>
+              )}
+              {(product.allergens?.length || product.labels?.length) ? (
+                <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} className="pt-2" />
+              ) : null}
+            </div>
+
+            {/* Quantidade */}
+            <div className="flex items-center justify-end">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                  className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted/80 disabled:opacity-40 touch-manipulation"
+                  aria-label="Diminuir"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="w-8 text-center text-base font-semibold tabular-nums">{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => q + 1)}
+                  className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 active:scale-95 touch-manipulation"
+                  aria-label="Aumentar"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
             {/* Observações — placeholder no campo */}
             <Textarea
                 placeholder={t('productCard.observationsPlaceholder')}
@@ -412,7 +413,7 @@ export default function UnifiedProductModal({
           </div>
         </div>
 
-        <footer className="flex-shrink-0 p-4 pt-0 bg-card border-t border-border" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+        <footer className="flex-shrink-0 p-4 bg-card border-t border-border" style={{ paddingTop: 'max(16px, env(safe-area-inset-bottom))', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
           <button
             type="button"
             onClick={handleAdd}
