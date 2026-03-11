@@ -135,7 +135,14 @@ async function fetchRestaurantMenuDataFallback(restaurantSlug: string): Promise<
     supabase.from('pizza_flavors').select('*').eq('restaurant_id', rid).eq('is_active', true).order('name'),
     supabase.from('pizza_doughs').select('*').eq('restaurant_id', rid).eq('is_active', true).order('name'),
     supabase.from('pizza_edges').select('*').eq('restaurant_id', rid).eq('is_active', true).order('name'),
-    supabase.from('pizza_extras').select('*').eq('restaurant_id', rid).eq('is_active', true).order('order_index').order('name').then((r) => r.data ?? []).catch(() => []),
+    (async () => {
+      try {
+        const { data } = await supabase.from('pizza_extras').select('*').eq('restaurant_id', rid).eq('is_active', true).order('order_index').order('name');
+        return data ?? [];
+      } catch {
+        return [];
+      }
+    })(),
     supabase.from('marmita_sizes').select('*').eq('restaurant_id', rid).eq('is_active', true).order('order_index'),
     supabase.from('marmita_proteins').select('*').eq('restaurant_id', rid).eq('is_active', true).order('name'),
     supabase.from('marmita_sides').select('*').eq('restaurant_id', rid).eq('is_active', true).order('category').order('name'),
@@ -163,7 +170,7 @@ async function fetchRestaurantMenuDataFallback(restaurantSlug: string): Promise<
       return (a.order_index ?? 0) - (b.order_index ?? 0);
     });
     products = sorted;
-    const unique = Array.from(new Set(productsData.map((p: Product) => p.category)));
+    const unique = Array.from(new Set(productsData.map((p: Product) => p.category))).filter((c): c is string => typeof c === 'string');
     categories = unique.sort((a, b) => {
       const orderA = categoryOrderMap.get(a) ?? CATEGORY_ORDER[a] ?? 999;
       const orderB = categoryOrderMap.get(b) ?? CATEGORY_ORDER[b] ?? 999;
@@ -228,7 +235,7 @@ async function fetchRestaurantMenuDataFallback(restaurantSlug: string): Promise<
     pizzaFlavors: (pizzaFlavorsRes.data ?? []) as PizzaFlavor[],
     pizzaDoughs: (pizzaDoughsRes.data ?? []) as PizzaDough[],
     pizzaEdges: (pizzaEdgesRes.data ?? []) as PizzaEdge[],
-    pizzaExtras: (pizzaExtrasRes.data ?? []) as PizzaExtra[],
+    pizzaExtras: (pizzaExtrasRes ?? []) as PizzaExtra[],
     marmitaSizes: (marmitaSizesRes.data ?? []) as MarmitaSize[],
     marmitaProteins: (marmitaProteinsRes.data ?? []) as MarmitaProtein[],
     marmitaSides: (marmitaSidesRes.data ?? []) as MarmitaSide[],
