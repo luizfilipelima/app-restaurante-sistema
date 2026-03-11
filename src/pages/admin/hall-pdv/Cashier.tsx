@@ -35,7 +35,6 @@ import { usePrinter } from '@/hooks/printer/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -62,7 +61,6 @@ import {
   QrCode,
   Download,
   Printer,
-  Plus,
   Trash2,
   User,
   Clock,
@@ -71,7 +69,6 @@ import {
   RefreshCw,
   ListChecks,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { CashierCompletedView } from '@/components/cashier/CashierCompletedView';
 import { useTables, useCancelVirtualComanda } from '@/hooks/queries';
@@ -492,7 +489,7 @@ function CashierContent() {
   })();
 
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
-  const [paymentInputs, setPaymentInputs] = useState<Record<string, string>>({});
+  const [, setPaymentInputs] = useState<Record<string, string>>({});
 
   const loadQueue = useCallback(async (showLoading = false) => {
     if (!restaurantId) return;
@@ -1086,20 +1083,6 @@ function CashierContent() {
       })()
     : 0;
 
-  const totalReceivedBRL = useMemo(() => {
-    let sum = 0;
-    payments.forEach((p) => {
-      const val = p.amount;
-      const inBRL = convertBetweenCurrencies(val, p.currency, 'BRL', exchangeRates);
-      sum += inBRL / 100;
-    });
-    return sum * 100;
-  }, [payments, exchangeRates]);
-
-  const totalToPayBRL = baseCurrency === 'BRL' ? totalToPay : convertBetweenCurrencies(totalToPay, baseCurrency, 'BRL', exchangeRates);
-  const remaining = totalToPayBRL - totalReceivedBRL;
-  const changeAmount = remaining < 0 ? -remaining : 0;
-
   const totalToReceive = useMemo(() => {
     const ps = (restaurant as { print_settings_by_sector?: import('@/types').PrintSettingsBySector })?.print_settings_by_sector;
     const getSector = (q: CashierQueueItem): WaiterTipSector => q.type === 'comanda_buffet' ? 'buffet' : 'table';
@@ -1114,41 +1097,6 @@ function CashierContent() {
   const totalReceivedToday = useMemo(() => {
     return completedList.reduce((sum, c) => sum + c.totalAmount, 0);
   }, [completedList]);
-
-  const addPayment = () => {
-    const id = `pay-${Date.now()}`;
-    setPayments((prev) => [...prev, { id, method: 'cash' as PaymentMethod, currency: baseCurrency, amount: 0, displayValue: '' }]);
-    setPaymentInputs((prev) => ({ ...prev, [id]: '' }));
-  };
-
-  const receivedInBase = useMemo(
-    () => convertBetweenCurrencies(totalReceivedBRL, 'BRL', baseCurrency, exchangeRates),
-    [totalReceivedBRL, baseCurrency, exchangeRates]
-  );
-  const remainingInBase = useMemo(
-    () => convertBetweenCurrencies(Math.max(0, remaining), 'BRL', baseCurrency, exchangeRates),
-    [remaining, baseCurrency, exchangeRates]
-  );
-  const changeInBase = useMemo(
-    () => (changeAmount > 0 ? convertBetweenCurrencies(changeAmount, 'BRL', baseCurrency, exchangeRates) : 0),
-    [changeAmount, baseCurrency, exchangeRates]
-  );
-
-  const updatePaymentAmount = (id: string, displayValue: string, curr: CurrencyCode) => {
-    setPaymentInputs((prev) => ({ ...prev, [id]: displayValue }));
-    const parsed = curr === 'PYG' ? parseFloat(displayValue.replace(/\./g, '').replace(',', '.')) || 0 : parseFloat(displayValue.replace(',', '.')) || 0;
-    const amount = curr === 'PYG' ? Math.round(parsed) : Math.round(parsed * 100);
-    setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, currency: curr, amount, displayValue } : p)));
-  };
-
-  const removePayment = (id: string) => {
-    setPayments((prev) => prev.filter((p) => p.id !== id));
-    setPaymentInputs((prev => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    }));
-  };
 
   const canOpenFinalizeModal = totalToPay > 0;
 

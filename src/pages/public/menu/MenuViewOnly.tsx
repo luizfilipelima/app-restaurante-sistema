@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSubdomain } from '@/lib/core/subdomain';
 import { useRestaurantMenuData } from '@/hooks/queries';
-import { Clock, Search, Utensils, Coffee, IceCream, UtensilsCrossed, ArrowLeft, ChevronRight, Info } from 'lucide-react';
+import { Clock, Search, Utensils, ArrowLeft, ChevronRight, Info } from 'lucide-react';
 import { getCategoryIconComponent } from '@/lib/menu/categoryIcons';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';

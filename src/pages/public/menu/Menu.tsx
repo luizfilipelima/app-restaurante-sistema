@@ -6,7 +6,7 @@ import { useCartStore } from '@/store/cartStore';
 import { useTableOrderStore } from '@/store/tableOrderStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { useRestaurantMenuData, useActiveOffersByRestaurantId, useLoyaltyProgram, useLoyaltyStatus, useUpdateTableCustomerName } from '@/hooks/queries';
-import { ShoppingCart, Search, ChevronRight, Utensils, Coffee, IceCream, UtensilsCrossed, Bell, Loader2, ArrowLeft, Info } from 'lucide-react';
+import { ShoppingCart, Search, ChevronRight, Utensils, UtensilsCrossed, Bell, Loader2, ArrowLeft, Info } from 'lucide-react';
 import { getCategoryIconComponent } from '@/lib/menu/categoryIcons';
 import { Button } from '@/components/ui/button';
 import {
