@@ -442,11 +442,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       return;
     }
 
-    if (!isTableOrder && deliveryType === DeliveryType.DELIVERY && ((mode === 'zones' && zones.length > 0) || isKilometersMode) && !addressDetails.trim()) {
-      setFormError(t('checkout.errorFillAddressDetails'));
-      return;
-    }
-
     if (!restaurantId) {
       setFormError(t('checkout.errorInvalidCart'));
       handleBackToMenu();
@@ -1168,15 +1163,14 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               {/* Complemento / Referência */}
               <div>
                 <Label htmlFor="addressDetails" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
-                  Complemento / Referência <span className="text-destructive">*</span>
+                  Complemento / Referência
                 </Label>
                 <Input
                   id="addressDetails"
                   value={addressDetails}
                   onChange={(e) => { setAddressDetails(e.target.value); setFormError(null); }}
-                  placeholder="Apto, Bloco, Casa, Ponto de referência..."
+                  placeholder="Apto, Bloco, Casa, Ponto de referência... (opcional)"
                   className="h-12 bg-muted border-border rounded-xl text-base focus:bg-background"
-                  required
                 />
               </div>
             </div>

@@ -11,7 +11,8 @@ import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Minus, Plus, ArrowLeft, Check } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Minus, Plus, ArrowLeft, X } from 'lucide-react';
 import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
 
 interface AddonGroup {
@@ -35,6 +36,8 @@ interface UnifiedProductModalProps {
   basePrice: number;
   addonGroups?: AddonGroup[];
   pizzaConfig?: PizzaConfig | null;
+  /** Produtos de pizza do cardápio (exceto o principal) para Meio a Meio */
+  pizzaProducts?: Product[];
   currency?: CurrencyCode;
   convertForDisplay?: (value: number) => number;
 }
@@ -46,6 +49,7 @@ export default function UnifiedProductModal({
   basePrice,
   addonGroups = [],
   pizzaConfig,
+  pizzaProducts = [],
   currency = 'BRL',
   convertForDisplay,
 }: UnifiedProductModalProps) {
@@ -58,47 +62,27 @@ export default function UnifiedProductModal({
   const [selectedAddons, setSelectedAddons] = useState<Array<{ addonItemId: string; name: string; price: number; quantity: number }>>([]);
 
   const [selectedSize, setSelectedSize] = useState<PizzaSize | null>(null);
-  const [selectedFlavors, setSelectedFlavors] = useState<PizzaFlavor[]>([]);
+  const [selectedSecondProduct, setSelectedSecondProduct] = useState<Product | null>(null);
   const [selectedDough, setSelectedDough] = useState<PizzaDough | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<PizzaEdge | null>(null);
 
   const singleSize = pizzaConfig && pizzaConfig.sizes.length === 1;
   const effectiveSize = pizzaConfig && (singleSize ? pizzaConfig.sizes[0] ?? null : selectedSize);
-  const maxFlavors = pizzaConfig
-    ? (pizzaConfig.isSpecial ? 1 : Math.min(2, effectiveSize?.max_flavors ?? 2))
-    : 0;
-  const hasFlavors = (pizzaConfig?.flavors?.length ?? 0) > 0;
+  const canAddSecondFlavor = pizzaProducts.length > 0;
 
   useEffect(() => {
     if (open) {
       setQuantity(1);
       setObservations('');
       setSelectedAddons([]);
+      setSelectedSecondProduct(null);
       if (pizzaConfig) {
         setSelectedSize(singleSize ? pizzaConfig.sizes[0] ?? null : pizzaConfig.sizes[0] ?? null);
-        setSelectedFlavors([]);
         setSelectedDough(pizzaConfig.doughs[0] || null);
         setSelectedEdge(null);
       }
     }
   }, [open, pizzaConfig, singleSize]);
-
-  useEffect(() => {
-    if (pizzaConfig && effectiveSize && selectedFlavors.length > maxFlavors) {
-      setSelectedFlavors((prev) => prev.slice(0, maxFlavors));
-    }
-  }, [pizzaConfig, effectiveSize, maxFlavors]);
-
-  const toggleFlavor = (flavor: PizzaFlavor) => {
-    const isSelected = selectedFlavors.some((f) => f.id === flavor.id);
-    if (isSelected) {
-      setSelectedFlavors((prev) => prev.filter((f) => f.id !== flavor.id));
-    } else if (maxFlavors === 1) {
-      setSelectedFlavors([flavor]);
-    } else if (selectedFlavors.length < maxFlavors) {
-      setSelectedFlavors((prev) => [...prev, flavor]);
-    }
-  };
 
   const getAddonQty = (addonItemId: string) =>
     selectedAddons.find((a) => a.addonItemId === addonItemId)?.quantity ?? 0;
@@ -116,23 +100,24 @@ export default function UnifiedProductModal({
   };
 
   const addonsTotal = selectedAddons.reduce((s, a) => s + a.price * a.quantity, 0);
-  const flavorExtras = selectedFlavors.reduce((s, f) => s + (f.price ?? 0), 0);
   const doughExtra = selectedDough?.extra_price ?? 0;
   const edgePrice = selectedEdge?.price ?? 0;
 
+  const mainPrice = basePrice;
+  const secondPrice = selectedSecondProduct ? Number(selectedSecondProduct.price_sale ?? selectedSecondProduct.price) : 0;
+  const basePizzaPrice = selectedSecondProduct ? Math.max(mainPrice, secondPrice) : mainPrice;
   const unitPrice = isPizza
-    ? basePrice + doughExtra + edgePrice + flavorExtras + addonsTotal
+    ? basePizzaPrice + doughExtra + edgePrice + addonsTotal
     : basePrice + addonsTotal;
   const total = unitPrice * quantity;
   const fmt = (v: number) => formatPrice(convertForDisplay ? convertForDisplay(v) : v, currency);
 
-  const canAdd = isPizza
-    ? effectiveSize !== null && (!hasFlavors || selectedFlavors.length > 0)
-    : true;
+  const canAdd = isPizza ? effectiveSize !== null : true;
 
   const handleAdd = () => {
     if (isPizza) {
-      if (!effectiveSize || (hasFlavors && selectedFlavors.length === 0)) return;
+      if (!effectiveSize) return;
+      const pizzaFlavors = selectedSecondProduct ? [product.name, selectedSecondProduct.name] : [product.name];
       addItem({
         productId: product.id,
         productName: product.name,
@@ -141,9 +126,9 @@ export default function UnifiedProductModal({
         unitPrice,
         isPizza: true,
         pizzaSize: effectiveSize.name,
-        pizzaFlavors: selectedFlavors.map((f) => f.name),
-        pizzaDough: selectedDough?.name,
-        pizzaEdge: selectedEdge?.name,
+        pizzaFlavors,
+        pizzaDough: selectedDough?.name ?? undefined,
+        pizzaEdge: selectedEdge?.name ?? undefined,
         pizzaDoughPrice: doughExtra,
         pizzaEdgePrice: edgePrice,
         addons: selectedAddons.length > 0 ? selectedAddons.map((a) => ({ addonItemId: a.addonItemId, name: a.name, price: a.price, quantity: a.quantity })) : undefined,
@@ -223,32 +208,50 @@ export default function UnifiedProductModal({
                   </div>
                 )}
 
-                {effectiveSize && hasFlavors && (
+                {effectiveSize && (
                   <div className="space-y-2">
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase">
-                      {maxFlavors === 1 ? t('customModal.chooseOneFlavor') : t('customModal.chooseUpToFlavors', { max: maxFlavors, count: selectedFlavors.length })}
-                    </h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {pizzaConfig!.flavors.map((flavor) => {
-                        const isSelected = selectedFlavors.some((f) => f.id === flavor.id);
-                        const isDisabled = !isSelected && selectedFlavors.length >= maxFlavors;
-                        return (
-                          <button
-                            key={flavor.id}
-                            type="button"
-                            onClick={() => !isDisabled && toggleFlavor(flavor)}
-                            disabled={isDisabled}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-all flex items-center gap-1.5 ${
-                              isSelected ? 'border-primary bg-primary/10 text-primary' : isDisabled ? 'border-border opacity-50' : 'border-border hover:bg-muted/50'
-                            }`}
-                          >
-                            {isSelected && <Check className="h-3.5 w-3.5" />}
-                            {flavor.name}
-                            {flavor.price > 0 && <span className="text-xs">+{fmt(flavor.price)}</span>}
-                          </button>
-                        );
-                      })}
+                    <h4 className="text-xs font-medium text-muted-foreground uppercase">{t('customModal.mainFlavor')}</h4>
+                    <div className="px-3 py-2 rounded-lg border-2 border-primary bg-primary/5 text-primary font-medium">
+                      {product.name}
                     </div>
+                    {canAddSecondFlavor && (
+                      <div className="space-y-2">
+                        {selectedSecondProduct ? (
+                          <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border-2 border-primary bg-primary/10 text-primary">
+                            <span className="text-sm font-medium">
+                              {t('customModal.halfAndHalf', { a: product.name, b: selectedSecondProduct.name })}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedSecondProduct(null)}
+                              className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              aria-label={t('customModal.removeSecondFlavor')}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <Select
+                            value=""
+                            onValueChange={(id) => {
+                              const p = pizzaProducts.find((x) => x.id === id);
+                              if (p) setSelectedSecondProduct(p);
+                            }}
+                          >
+                            <SelectTrigger className="w-full rounded-lg border-2 border-border hover:bg-muted/50">
+                              <SelectValue placeholder={t('customModal.addSecondFlavor')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {pizzaProducts.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.name} — {fmt(Number(p.price_sale ?? p.price))}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -406,7 +409,7 @@ export default function UnifiedProductModal({
             disabled={!canAdd}
             className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base transition-colors active:scale-[0.99] touch-manipulation shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {!canAdd && hasFlavors ? t('customModal.selectAtLeastOneFlavor') : t('productCard.addToCart')}
+            {t('productCard.addToCart')}
           </button>
         </footer>
       </DialogContent>

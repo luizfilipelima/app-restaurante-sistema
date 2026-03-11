@@ -188,6 +188,8 @@ export interface WhatsAppTemplates {
   new_order?: string;
   /** Mensagem enviada ao cliente quando o pedido sai para entrega */
   delivery_notification?: string;
+  /** Mensagem enviada ao cliente quando o pedido está em preparo */
+  preparing_notification?: string;
   /** Mensagem enviada ao entregador quando despachado */
   courier_dispatch?: string;
 }

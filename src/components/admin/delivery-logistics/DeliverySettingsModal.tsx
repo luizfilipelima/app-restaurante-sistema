@@ -73,6 +73,7 @@ export function DeliverySettingsModal({
         whatsapp_templates: {
           new_order: whatsappTemplates.new_order ?? DEFAULT_TEMPLATES.new_order,
           delivery_notification: whatsappTemplates.delivery_notification ?? DEFAULT_TEMPLATES.delivery_notification,
+          preparing_notification: whatsappTemplates.preparing_notification ?? DEFAULT_TEMPLATES.preparing_notification,
           courier_dispatch: whatsappTemplates.courier_dispatch ?? DEFAULT_TEMPLATES.courier_dispatch,
         },
       };

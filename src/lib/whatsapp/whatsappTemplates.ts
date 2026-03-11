@@ -41,6 +41,11 @@ export const TEMPLATE_VARS = {
     { key: 'restaurante_nome',  label: 'Nome do restaurante', example: 'Pizzaria da Vitória', description: 'Nome do restaurante' },
   ] as TemplateVariable[],
 
+  preparing_notification: [
+    { key: 'cliente_nome',      label: 'Primeiro nome',    example: 'João',                description: 'Primeiro nome do cliente' },
+    { key: 'restaurante_nome',  label: 'Nome do restaurante', example: 'Pizzaria da Vitória', description: 'Nome do restaurante' },
+  ] as TemplateVariable[],
+
   courier_dispatch: [
     { key: 'codigo_pedido',     label: 'Código do pedido',     example: '#F8737EBC',          description: 'Código único do pedido (ex: #F8737EBC)' },
     { key: 'cliente_nome',      label: 'Nome do cliente',      example: 'João Silva',        description: 'Nome completo do cliente' },
@@ -85,6 +90,9 @@ export const DEFAULT_TEMPLATES = {
 
   delivery_notification:
 `Olá {{cliente_nome}}! 🛵 Seu pedido acabou de sair para entrega. Em breve estará na sua porta! 😊`,
+
+  preparing_notification:
+`Olá {{cliente_nome}}! ✅ Seu pedido foi confirmado e já está em preparo no {{restaurante_nome}}. Em breve você receberá a confirmação de envio para entrega! 😊`,
 
   courier_dispatch:
 `🛵 *Novo pedido para entrega*
@@ -133,6 +141,9 @@ export const DEFAULT_TEMPLATES_ES = {
 
   delivery_notification:
 `¡Hola {{cliente_nome}}! 🛵 Tu pedido acaba de salir para entrega. ¡En breve estará en tu puerta! 😊`,
+
+  preparing_notification:
+`¡Hola {{cliente_nome}}! ✅ Tu pedido fue confirmado y ya está en preparación en {{restaurante_nome}}. ¡En breve recibirás la confirmación de envío para entrega! 😊`,
 
   courier_dispatch:
 `🛵 *Nuevo pedido para entrega*
@@ -193,7 +204,7 @@ export function processTemplate(
  */
 export function getTemplate(
   key: TemplateKey,
-  templates?: { new_order?: string | null; delivery_notification?: string | null; courier_dispatch?: string | null } | null,
+  templates?: { new_order?: string | null; delivery_notification?: string | null; preparing_notification?: string | null; courier_dispatch?: string | null } | null,
   lang: MenuLanguage = 'pt',
 ): string {
   if (templates && templates[key]) return templates[key]!;

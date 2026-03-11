@@ -178,7 +178,7 @@ const adminRoutes = (
       path="tables"
       element={
         <ProtectedRoute requiredFeature="feature_tables">
-          <RoleProtectedRoute allowedRoles={['manager', 'restaurant_admin', 'super_admin']}>
+          <RoleProtectedRoute allowedRoles={['owner', 'manager', 'cashier', 'restaurant_admin', 'super_admin']}>
             <AdminTables />
           </RoleProtectedRoute>
         </ProtectedRoute>

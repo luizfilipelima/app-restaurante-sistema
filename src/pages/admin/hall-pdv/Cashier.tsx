@@ -456,6 +456,8 @@ function CashierContent() {
   const [showExcludeOrderConfirm, setShowExcludeOrderConfirm] = useState(false);
   const [excludingOrder, setExcludingOrder] = useState(false);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
+  const [payPersonDialog, setPayPersonDialog] = useState<{ customerKey: string; label: string; subtotal: number } | null>(null);
+  const [payingPerson, setPayingPerson] = useState(false);
   const [mainView, setMainView] = useState<'cashier' | 'completed'>('cashier');
   const [completedList, setCompletedList] = useState<CompletedItem[]>([]);
 
@@ -516,7 +518,7 @@ function CashierContent() {
               .select(`
                 id, customer_name, total, created_at, table_id, bill_requested,
                 delivery_type, order_source,
-                order_items(id, product_name, quantity, unit_price, total_price, observations, customer_name),
+                order_items(id, product_name, quantity, unit_price, total_price, observations, customer_name, is_paid),
                 tables(number, hall_zone_id)
               `)
               .eq('restaurant_id', restaurantId)
@@ -1013,15 +1015,65 @@ function CashierContent() {
   const printSettings = (restaurant as { print_settings_by_sector?: import('@/types').PrintSettingsBySector })?.print_settings_by_sector;
   const getSector = (item: CashierDisplayItem): WaiterTipSector =>
     item.type === 'comanda_buffet' ? 'buffet' : 'table';
+
+  // Para mesa: agrupa por customer_name (João, Maria, Mesa Geral). Filtra itens NÃO pagos (is_paid).
+  type TableGroupItem = { id: string; orderId: string; name: string; qty: number; price: number };
+  type TableGroupWithKey = { customerKey: string; label: string; items: TableGroupItem[]; subtotal: number };
+  const tableItemsGroupedForPay = selected
+    ? (() => {
+        if (selected.type !== 'table' && !isTableGroup(selected)) return null;
+        type OiRow = { id: string; order_id: string; product_name: string; quantity: number; total_price: number; customer_name?: string | null; is_paid?: boolean };
+        let items: OiRow[] = [];
+        if (isTableGroup(selected)) {
+          items = selected.items.flatMap((o) =>
+            (o.order.order_items ?? []).filter((oi: any) => !oi.is_paid).map((oi: any) => ({
+              id: oi.id, order_id: o.order.id, product_name: oi.product_name, quantity: oi.quantity,
+              total_price: oi.total_price, customer_name: oi.customer_name, is_paid: oi.is_paid,
+            }))
+          );
+        } else {
+          const o = (selected as QueueItemTable).order as { id: string; order_items?: any[] };
+          items = (o.order_items ?? []).filter((oi: any) => !oi.is_paid).map((oi: any) => ({
+            id: oi.id, order_id: o.id, product_name: oi.product_name, quantity: oi.quantity,
+            total_price: oi.total_price, customer_name: oi.customer_name, is_paid: oi.is_paid,
+          }));
+        }
+        if (items.length === 0) return null;
+        const map = new Map<string, { customerKey: string; label: string; items: TableGroupItem[]; subtotal: number }>();
+        for (const i of items) {
+          const key = (i.customer_name ?? '').trim() || '__mesa_geral__';
+          const label = key === '__mesa_geral__' ? t('cashier.tableGeneral') : key;
+          const row: TableGroupItem = { id: i.id, orderId: i.order_id, name: i.product_name, qty: i.quantity, price: Number(i.total_price) };
+          const ex = map.get(key);
+          if (ex) {
+            ex.items.push(row);
+            ex.subtotal += row.price;
+          } else {
+            map.set(key, { customerKey: key, label, items: [row], subtotal: row.price });
+          }
+        }
+        return Array.from(map.values()).sort((a, b) =>
+          (a.label === t('cashier.tableGeneral') ? 1 : 0) - (b.label === t('cashier.tableGeneral') ? 1 : 0) || a.label.localeCompare(b.label)
+        ) as TableGroupWithKey[];
+      })()
+    : null;
+
   const totalToPay = selected
-    ? isTableGroup(selected)
-      ? getDisplayTotalWithWaiterTip(selected.totalAmount, undefined, 'table', printSettings)
-      : getDisplayTotalWithWaiterTip(
-          selected.totalAmount,
-          selected.type === 'comanda_digital' ? selected.items : selected.type === 'comanda_buffet' ? selected.items : undefined,
-          getSector(selected),
-          printSettings
-        )
+    ? (() => {
+        if (tableItemsGroupedForPay && (selected.type === 'table' || isTableGroup(selected))) {
+          const unpaidTotal = tableItemsGroupedForPay.reduce((s, g) => s + g.subtotal, 0);
+          const unpaidItems = tableItemsGroupedForPay.flatMap((g) => g.items.map((i) => ({ total_price: i.price })));
+          return getDisplayTotalWithWaiterTip(unpaidTotal, unpaidItems.length ? unpaidItems : undefined, 'table', printSettings);
+        }
+        return isTableGroup(selected)
+          ? getDisplayTotalWithWaiterTip(selected.totalAmount, undefined, 'table', printSettings)
+          : getDisplayTotalWithWaiterTip(
+              selected.totalAmount,
+              selected.type === 'comanda_digital' ? selected.items : selected.type === 'comanda_buffet' ? selected.items : undefined,
+              getSector(selected),
+              printSettings
+            );
+      })()
     : 0;
 
   const totalReceivedBRL = useMemo(() => {
@@ -1322,50 +1374,74 @@ function CashierContent() {
     return [];
   })();
 
-  // Para mesa: agrupa por customer_name (João, Maria, Mesa Geral). Inclui id e orderId para remover item.
-  type TableGroupItem = { id: string; orderId: string; name: string; qty: number; price: number };
-  const tableItemsGrouped = (() => {
-    if (!selected) return null;
-    type OrderItemRow = { id: string; order_id: string; product_name: string; quantity: number; total_price: number; customer_name?: string | null };
-    let orderItems: OrderItemRow[] = [];
-    if (isTableGroup(selected)) {
-      orderItems = selected.items.flatMap((o) =>
-        (o.order.order_items ?? []).map((oi: any) => ({
-          id: oi.id,
-          order_id: o.order.id,
-          product_name: oi.product_name,
-          quantity: oi.quantity,
-          total_price: oi.total_price,
-          customer_name: oi.customer_name,
-        }))
-      );
-    } else if (selected.type === 'table') {
-      const o = selected.order as { id: string; order_items?: any[] };
-      orderItems = (o.order_items ?? []).map((oi: any) => ({
-        id: oi.id,
-        order_id: o.id,
-        product_name: oi.product_name,
-        quantity: oi.quantity,
-        total_price: oi.total_price,
-        customer_name: oi.customer_name,
-      }));
-    }
-    if (orderItems.length === 0) return null;
-    const map = new Map<string, { label: string; items: TableGroupItem[]; subtotal: number }>();
-    for (const i of orderItems) {
-      const key = (i.customer_name ?? '').trim() || '__mesa_geral__';
-      const label = key === '__mesa_geral__' ? t('cashier.tableGeneral') : key;
-      const row: TableGroupItem = { id: i.id, orderId: i.order_id, name: i.product_name, qty: i.quantity, price: Number(i.total_price) };
-      const existing = map.get(key);
-      if (existing) {
-        existing.items.push(row);
-        existing.subtotal += row.price;
+  const tableItemsGrouped = tableItemsGroupedForPay;
+
+  const handlePayCustomerPortion = async () => {
+    if (!payPersonDialog || !selected || !restaurantId) return;
+    const { customerKey } = payPersonDialog;
+    const orderIds: string[] =
+      selected.type === 'table'
+        ? [selected.orderId]
+        : isTableGroup(selected)
+          ? selected.items.map((i) => i.order.id)
+          : [];
+    if (orderIds.length === 0) return;
+    setPayingPerson(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.rpc('cashier_pay_customer_portion', {
+        p_order_ids: orderIds,
+        p_customer_key: customerKey,
+        p_payment_method: 'cash',
+        p_closed_by_user_id: user?.id ?? null,
+      });
+      if (error) throw error;
+      setPayPersonDialog(null);
+      toast({ title: t('cashier.payPersonSuccess') });
+      const stillUnpaid = tableItemsGrouped?.filter((g) => g.customerKey !== customerKey) ?? [];
+      if (stillUnpaid.length === 0) {
+        handleClearSelection();
       } else {
-        map.set(key, { label, items: [row], subtotal: row.price });
+        setSelected((prev) => {
+          if (!prev) return prev;
+          const match = (cn: string | null) =>
+            (customerKey === '__mesa_geral__' || !customerKey)
+              ? !(cn ?? '').trim()
+              : (cn ?? '').trim() === customerKey;
+          if (prev.type === 'table') {
+            const o = prev.order as { order_items?: any[] };
+            const next = (o.order_items ?? []).map((oi: any) =>
+              match(oi.customer_name) ? { ...oi, is_paid: true } : oi
+            );
+            return { ...prev, order: { ...o, order_items: next } } as CashierDisplayItem;
+          }
+          if (isTableGroup(prev)) {
+            return {
+              ...prev,
+              items: prev.items.map((tbl) => {
+                const o = tbl.order as { order_items?: any[] };
+                const next = (o.order_items ?? []).map((oi: any) =>
+                  match(oi.customer_name) ? { ...oi, is_paid: true } : oi
+                );
+                return { ...tbl, order: { ...o, order_items: next } };
+              }),
+              totalAmount: stillUnpaid.reduce((s, g) => s + g.subtotal, 0),
+            } as CashierDisplayItem;
+          }
+          return prev;
+        });
       }
+      loadQueue();
+      loadCompletedToday();
+      queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['tableOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['cashier-completed'] });
+    } catch (err: any) {
+      toast({ title: t('cashier.payPersonError'), description: err?.message, variant: 'destructive' });
+    } finally {
+      setPayingPerson(false);
     }
-    return Array.from(map.values()).sort((a, b) => (a.label === t('cashier.tableGeneral') ? 1 : 0) - (b.label === t('cashier.tableGeneral') ? 1 : 0) || a.label.localeCompare(b.label));
-  })();
+  };
 
   const handleRemoveOrderItem = async (orderId: string, orderItemId: string) => {
     if (!restaurantId || removingItemId) return;
@@ -1680,10 +1756,23 @@ function CashierContent() {
               <div className="divide-y divide-border max-h-64 overflow-y-auto">
                 {tableItemsGrouped ? (
                   tableItemsGrouped.map((group) => (
-                    <div key={group.label} className="px-4 py-3 border-b border-border/60 last:border-0">
-                      <p className="text-xs font-semibold text-muted-foreground mb-1.5">
-                        {group.label} — {formatPrice(group.subtotal, currency)}
-                      </p>
+                    <div key={group.customerKey} className="px-4 py-3 border-b border-border/60 last:border-0">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <p className="text-xs font-semibold text-muted-foreground">
+                          {group.label} — {formatPrice(group.subtotal, currency)}
+                        </p>
+                        {tableItemsGrouped.length > 1 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => setPayPersonDialog({ customerKey: group.customerKey, label: group.label, subtotal: group.subtotal })}
+                          >
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            {t('cashier.payPerson')}
+                          </Button>
+                        )}
+                      </div>
                       {group.items.map((it) => (
                         <div key={it.id} className="flex justify-between items-center gap-2 text-sm py-0.5 group/item">
                           <span className="truncate flex-1">{Number(it.qty) % 1 === 0 ? `${it.qty}×` : it.qty} {it.name}</span>
@@ -1904,6 +1993,32 @@ function CashierContent() {
             <Button variant="destructive" onClick={handleRemoveComanda} disabled={cancelComanda.isPending}>
               {cancelComanda.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
               {t('cashier.removeComanda')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal confirmação: Pagar parte de uma pessoa */}
+      <Dialog open={!!payPersonDialog} onOpenChange={(open) => !open && setPayPersonDialog(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('cashier.payPerson')}</DialogTitle>
+            <DialogDescription>
+              {payPersonDialog
+                ? t('cashier.payPersonConfirm', {
+                    name: payPersonDialog.label,
+                    amount: formatPrice(payPersonDialog.subtotal, baseCurrency),
+                  })
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayPersonDialog(null)} disabled={payingPerson}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handlePayCustomerPortion} disabled={payingPerson}>
+              {payingPerson ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+              {t('cashier.payPerson')}
             </Button>
           </DialogFooter>
         </DialogContent>

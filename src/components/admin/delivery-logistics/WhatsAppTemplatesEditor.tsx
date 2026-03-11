@@ -12,6 +12,7 @@ import {
   Truck,
   Bike,
   ShoppingBag,
+  ChefHat,
   Eye,
   EyeOff,
   RotateCcw,
@@ -39,6 +40,10 @@ const SAMPLE_VARS: Record<TemplateKey, Record<string, string>> = {
     cliente_nome:     'João',
     restaurante_nome: 'Pizzaria da Vitória',
   },
+  preparing_notification: {
+    cliente_nome:     'João',
+    restaurante_nome: 'Pizzaria da Vitória',
+  },
   courier_dispatch: {
     codigo_pedido:     '#F8737EBC',
     cliente_nome:      'João Silva',
@@ -57,6 +62,7 @@ const SAMPLE_VARS: Record<TemplateKey, Record<string, string>> = {
 const TAB_META: Record<TemplateKey, { icon: React.ElementType; whatsappColor: string }> = {
   new_order:             { icon: ShoppingBag, whatsappColor: 'bg-emerald-500' },
   delivery_notification: { icon: Truck,       whatsappColor: 'bg-blue-500'    },
+  preparing_notification:{ icon: ChefHat,     whatsappColor: 'bg-indigo-500'  },
   courier_dispatch:      { icon: Bike,        whatsappColor: 'bg-orange-500'  },
 };
 
@@ -118,6 +124,7 @@ function TemplateTab({
   const DESC_KEYS: Record<TemplateKey, string> = {
     new_order: 'waTemplates.descNewOrder',
     delivery_notification: 'waTemplates.descDelivery',
+    preparing_notification: 'waTemplates.descPreparing',
     courier_dispatch: 'waTemplates.descCourier',
   };
 
@@ -192,7 +199,7 @@ function TemplateTab({
   );
 }
 
-const TABS: TemplateKey[] = ['new_order', 'delivery_notification', 'courier_dispatch'];
+const TABS: TemplateKey[] = ['new_order', 'delivery_notification', 'preparing_notification', 'courier_dispatch'];
 
 export interface WhatsAppTemplatesEditorProps {
   value: WhatsAppTemplates;
@@ -206,6 +213,7 @@ export function WhatsAppTemplatesEditor({ value, onChange, compact }: WhatsAppTe
   const templates: Record<TemplateKey, string> = {
     new_order:             value?.new_order             ?? DEFAULT_TEMPLATES.new_order,
     delivery_notification: value?.delivery_notification ?? DEFAULT_TEMPLATES.delivery_notification,
+    preparing_notification: value?.preparing_notification ?? DEFAULT_TEMPLATES.preparing_notification,
     courier_dispatch:      value?.courier_dispatch      ?? DEFAULT_TEMPLATES.courier_dispatch,
   };
 
@@ -216,18 +224,20 @@ export function WhatsAppTemplatesEditor({ value, onChange, compact }: WhatsAppTe
   const tabLabels: Record<TemplateKey, string> = {
     new_order:             t('waTemplates.tabNewOrder'),
     delivery_notification: t('waTemplates.tabDelivery'),
+    preparing_notification: t('waTemplates.tabPreparing'),
     courier_dispatch:      t('waTemplates.tabCourier'),
   };
 
   const tabIcons: Record<TemplateKey, React.ElementType> = {
     new_order:             ShoppingBag,
     delivery_notification: Truck,
+    preparing_notification: ChefHat,
     courier_dispatch:      Bike,
   };
 
   return (
     <Tabs defaultValue="new_order" className="w-full">
-      <TabsList className={`grid grid-cols-3 w-full ${compact ? 'h-9' : 'h-10'} bg-muted/60`}>
+      <TabsList className={`grid grid-cols-4 w-full ${compact ? 'h-9' : 'h-10'} bg-muted/60`}>
         {TABS.map((key) => {
           const Icon = tabIcons[key];
           return (

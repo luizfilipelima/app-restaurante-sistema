@@ -20,7 +20,16 @@ interface CategoryIconPickerProps {
   compact?: boolean;
 }
 
-const GROUPS_ORDER = ['Geral', 'Bebidas', 'Pratos', 'Lanches', 'Comida árabe', 'Doces'];
+const GROUPS_ORDER = [
+  'Geral',
+  'Bebidas',
+  'Pizza',
+  'Comida japonesa',
+  'Burger e lanches',
+  'Comida árabe',
+  'Pratos',
+  'Doces',
+];
 
 function IconPickerGrid({ value, onChange }: { value: string; onChange: (id: string) => void }) {
   const byGroup = GROUPS_ORDER.reduce<Record<string, typeof CATEGORY_ICON_OPTIONS>>((acc, g) => {
@@ -29,7 +38,7 @@ function IconPickerGrid({ value, onChange }: { value: string; onChange: (id: str
   }, {});
 
   return (
-    <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
+    <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
       {GROUPS_ORDER.map((groupName) => {
         const options = byGroup[groupName];
         if (!options?.length) return null;

@@ -1035,6 +1035,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               edges: pizzaEdges,
               isSpecial: isPizzaSpecial(pizzaModalProduct.product),
             }}
+            pizzaProducts={products.filter((p) => p.is_pizza && p.id !== pizzaModalProduct.product.id)}
             currency={currency}
             convertForDisplay={convertForDisplay}
           />

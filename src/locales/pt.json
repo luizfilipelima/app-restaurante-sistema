@@ -146,6 +146,10 @@
   "customModal": {
     "menuConfigDesc": "Os tamanhos ainda não foram configurados pelo restaurante. Em breve você poderá personalizar aqui. Por enquanto, entre em contato pelo WhatsApp para fazer o pedido.",
     "chooseSize": "Escolha o Tamanho",
+    "mainFlavor": "Sabor Principal",
+    "addSecondFlavor": "Adicionar 2º sabor (Meio a Meio)",
+    "halfAndHalf": "Metade {{a}} / Metade {{b}}",
+    "removeSecondFlavor": "Remover 2º sabor",
     "chooseFlavor": "Escolha o sabor",
     "chooseOneFlavor": "Escolha 1 sabor",
     "chooseUpToFlavors": "Escolha até {{max}} sabores · {{count}}/{{max}} selecionados",

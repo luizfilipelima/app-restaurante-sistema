@@ -1614,95 +1614,10 @@ export default function AdminSettings() {
               </div>
             </div>
 
-            {/* Cotações — moeda nativa sempre como base: "Quantos [nativa] = 1 [outra]?" */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cotações de câmbio</h3>
+            {/* Moedas no alternador — nativa em destaque (vem primeiro para ativar moedas antes de configurar cotações) */}
+            <div className="mt-4 space-y-4">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Moedas disponíveis no checkout</h3>
               <p className="text-sm text-muted-foreground -mt-1">
-                Quanto da moeda nativa equivale a 1 unidade de cada moeda estrangeira.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {(['BRL', 'ARS', 'USD'] as const)
-                  .filter((fc) => fc !== formData.currency)
-                  .map((foreignCurr) => {
-                    const native = formData.currency;
-                    const r = formData.exchange_rates;
-                    const pyg = r.pyg_per_brl ?? 3600;
-                    const ars = r.ars_per_brl ?? 1150;
-                    const usd = r.usd_per_brl ?? 0.18;
-
-                    const NATIVE_LABELS: Record<string, string> = { BRL: 'Reais', PYG: 'Gs.', ARS: 'Pesos', USD: 'US$' };
-                    const FOREIGN_LABELS: Record<string, string> = { BRL: 'Real', PYG: 'Gs.', ARS: 'Peso', USD: 'Dólar' };
-                    const nativeUnit = NATIVE_LABELS[native] ?? native;
-                    const foreignUnit = FOREIGN_LABELS[foreignCurr] ?? foreignCurr;
-
-                    let displayVal: number;
-                    let step: number;
-                    let placeholder: string;
-                    let min: number;
-
-                    if (foreignCurr === 'BRL') {
-                      displayVal = native === 'PYG' ? pyg : native === 'ARS' ? ars : 1 / usd;
-                      step = native === 'PYG' ? 100 : native === 'USD' ? 0.01 : 10;
-                      placeholder = native === 'PYG' ? '3600' : native === 'ARS' ? '1150' : '5.50';
-                      min = native === 'USD' ? 0.01 : 1;
-                    } else if (foreignCurr === 'ARS') {
-                      displayVal = native === 'PYG' ? pyg / ars : native === 'BRL' ? 1 / ars : ars / usd;
-                      step = displayVal < 10 ? 0.01 : 1;
-                      placeholder = native === 'PYG' ? '0.96' : native === 'BRL' ? '0.0009' : '6.40';
-                      min = 0.0001;
-                    } else {
-                      displayVal = native === 'PYG' ? pyg / usd : native === 'BRL' ? 1 / usd : ars / usd;
-                      step = native === 'PYG' ? 100 : 0.01;
-                      placeholder = native === 'PYG' ? '20000' : native === 'BRL' ? '5.50' : '6.40';
-                      min = 0.01;
-                    }
-
-                    const onCurrChange = (raw: number) => {
-                      const val = Math.max(min, raw);
-                      if (foreignCurr === 'BRL') {
-                        if (native === 'PYG') set('exchange_rates', { ...r, pyg_per_brl: Math.round(val) });
-                        else if (native === 'ARS') set('exchange_rates', { ...r, ars_per_brl: Math.max(1, Math.round(val)) });
-                        else set('exchange_rates', { ...r, usd_per_brl: Math.max(0.01, Math.min(100, 1 / val)) });
-                      } else if (foreignCurr === 'ARS') {
-                        if (native === 'PYG') set('exchange_rates', { ...r, ars_per_brl: pyg / val });
-                        else if (native === 'BRL') set('exchange_rates', { ...r, ars_per_brl: 1 / val });
-                        else set('exchange_rates', { ...r, usd_per_brl: ars / val });
-                      } else {
-                        if (native === 'PYG') set('exchange_rates', { ...r, usd_per_brl: pyg / val });
-                        else if (native === 'BRL') set('exchange_rates', { ...r, usd_per_brl: 1 / val });
-                        else set('exchange_rates', { ...r, usd_per_brl: ars / val });
-                      }
-                    };
-
-                    return (
-                      <div key={foreignCurr} className="admin-card-border bg-background/60 p-4 space-y-2">
-                        <Label className="text-sm font-medium flex flex-wrap items-center gap-1">
-                          <span className="text-muted-foreground">Quantos {nativeUnit}</span>
-                          <span className="text-foreground">=</span>
-                          <span className="text-foreground">1 {foreignUnit}?</span>
-                        </Label>
-                        <Input
-                          type="number"
-                          min={min}
-                          step={step}
-                          value={displayVal}
-                          onChange={(e) => onCurrChange(Number(e.target.value) || min)}
-                          placeholder={placeholder}
-                          className="h-11 font-mono"
-                        />
-                        <p className="text-[11px] text-muted-foreground">
-                          {nativeUnit} necessários para 1 {foreignUnit}
-                        </p>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-
-            {/* Moedas no alternador — nativa em destaque */}
-            <div className="mt-6 pt-6 border-t border-border">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Moedas disponíveis no checkout</h3>
-              <p className="text-sm text-muted-foreground mb-4">
                 Selecione as moedas que o cliente poderá escolher no cardápio e na tela de pagamento. A moeda nativa é sempre exibida primeiro.
               </p>
               <div className="flex flex-wrap gap-3">
@@ -1749,6 +1664,160 @@ export default function AdminSettings() {
                     );
                   })}
               </div>
+            </div>
+
+            {/* Cotações — apenas para moedas ativas no checkout (exceto nativa) */}
+            <div className="mt-6 pt-6 border-t border-border space-y-4">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cotações de câmbio</h3>
+              <p className="text-sm text-muted-foreground -mt-1">
+                Configure quanto da moeda nativa equivale a 1 unidade de cada moeda ativa acima.
+              </p>
+              {(() => {
+                const native = formData.currency as CurrencyCode;
+                const activeForeign = formData.payment_currencies.filter(
+                  (c): c is CurrencyCode => c !== native && ['BRL', 'PYG', 'ARS', 'USD'].includes(c)
+                );
+                if (activeForeign.length === 0) {
+                  return (
+                    <div className="rounded-xl border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+                      Marque pelo menos uma moeda adicional acima para configurar as cotações.
+                    </div>
+                  );
+                }
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {activeForeign.map((foreignCurr) => {
+                      const r = formData.exchange_rates;
+                      const pyg = r.pyg_per_brl ?? 3600;
+                      const ars = r.ars_per_brl ?? 1150;
+                      const usd = r.usd_per_brl ?? 0.18;
+
+                      const NATIVE_LABELS: Record<string, string> = { BRL: 'Reais', PYG: 'Gs.', ARS: 'Pesos', USD: 'US$' };
+                      const FOREIGN_LABELS: Record<string, string> = { BRL: 'Real', PYG: 'Gs.', ARS: 'Peso', USD: 'Dólar' };
+                      const nativeUnit = NATIVE_LABELS[native] ?? native;
+                      const foreignUnit = FOREIGN_LABELS[foreignCurr] ?? foreignCurr;
+
+                      let displayVal: number;
+                      let step: number;
+                      let placeholder: string;
+                      let min: number;
+
+                      if (native === 'BRL') {
+                        if (foreignCurr === 'PYG') {
+                          displayVal = 1 / pyg;
+                          step = 0.00001;
+                          placeholder = '0.00028';
+                          min = 0.00001;
+                        } else if (foreignCurr === 'ARS') {
+                          displayVal = 1 / ars;
+                          step = 0.0001;
+                          placeholder = '0.0009';
+                          min = 0.00001;
+                        } else {
+                          displayVal = 1 / usd;
+                          step = 0.01;
+                          placeholder = '5.50';
+                          min = 0.01;
+                        }
+                      } else if (native === 'PYG') {
+                        if (foreignCurr === 'BRL') {
+                          displayVal = pyg;
+                          step = 100;
+                          placeholder = '3600';
+                          min = 1;
+                        } else if (foreignCurr === 'ARS') {
+                          displayVal = pyg / ars;
+                          step = displayVal < 10 ? 0.01 : 1;
+                          placeholder = '3.13';
+                          min = 0.0001;
+                        } else {
+                          displayVal = pyg / usd;
+                          step = 100;
+                          placeholder = '20000';
+                          min = 0.01;
+                        }
+                      } else if (native === 'ARS') {
+                        if (foreignCurr === 'BRL') {
+                          displayVal = ars;
+                          step = 10;
+                          placeholder = '1150';
+                          min = 1;
+                        } else if (foreignCurr === 'PYG') {
+                          displayVal = ars / pyg;
+                          step = displayVal < 1 ? 0.0001 : 0.01;
+                          placeholder = '0.32';
+                          min = 0.00001;
+                        } else {
+                          displayVal = ars / usd;
+                          step = 0.01;
+                          placeholder = '6400';
+                          min = 0.01;
+                        }
+                      } else {
+                        if (foreignCurr === 'BRL') {
+                          displayVal = usd;
+                          step = 0.01;
+                          placeholder = '0.18';
+                          min = 0.01;
+                        } else if (foreignCurr === 'PYG') {
+                          displayVal = usd / pyg;
+                          step = 0.0000001;
+                          placeholder = '0.00005';
+                          min = 0.00000001;
+                        } else {
+                          displayVal = usd / ars;
+                          step = 0.0001;
+                          placeholder = '0.00016';
+                          min = 0.00001;
+                        }
+                      }
+
+                      const onCurrChange = (raw: number) => {
+                        const val = Math.max(min, raw);
+                        if (native === 'BRL') {
+                          if (foreignCurr === 'PYG') set('exchange_rates', { ...r, pyg_per_brl: Math.max(1, Math.round(1 / val)) });
+                          else if (foreignCurr === 'ARS') set('exchange_rates', { ...r, ars_per_brl: Math.max(1, 1 / val) });
+                          else set('exchange_rates', { ...r, usd_per_brl: Math.max(0.01, Math.min(100, 1 / val)) });
+                        } else if (native === 'PYG') {
+                          if (foreignCurr === 'BRL') set('exchange_rates', { ...r, pyg_per_brl: Math.round(val) });
+                          else if (foreignCurr === 'ARS') set('exchange_rates', { ...r, ars_per_brl: Math.max(1, pyg / val) });
+                          else set('exchange_rates', { ...r, usd_per_brl: Math.max(0.01, pyg / val) });
+                        } else if (native === 'ARS') {
+                          if (foreignCurr === 'BRL') set('exchange_rates', { ...r, ars_per_brl: Math.max(1, Math.round(val)) });
+                          else if (foreignCurr === 'PYG') set('exchange_rates', { ...r, pyg_per_brl: Math.max(1, Math.round(ars / val)) });
+                          else set('exchange_rates', { ...r, usd_per_brl: Math.max(0.01, ars / val) });
+                        } else {
+                          if (foreignCurr === 'BRL') set('exchange_rates', { ...r, usd_per_brl: Math.max(0.01, Math.min(100, val)) });
+                          else if (foreignCurr === 'PYG') set('exchange_rates', { ...r, pyg_per_brl: Math.max(1, Math.round(usd / val)) });
+                          else set('exchange_rates', { ...r, ars_per_brl: Math.max(1, usd / val) });
+                        }
+                      };
+
+                      return (
+                        <div key={foreignCurr} className="admin-card-border bg-background/60 p-4 space-y-2">
+                          <Label className="text-sm font-medium flex flex-wrap items-center gap-1">
+                            <span className="text-muted-foreground">Quantos {nativeUnit}</span>
+                            <span className="text-foreground">=</span>
+                            <span className="text-foreground">1 {foreignUnit}?</span>
+                          </Label>
+                          <Input
+                            type="number"
+                            min={min}
+                            step={step}
+                            value={displayVal}
+                            onChange={(e) => onCurrChange(Number(e.target.value) || min)}
+                            placeholder={placeholder}
+                            className="h-11 font-mono"
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            {nativeUnit} necessários para 1 {foreignUnit}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

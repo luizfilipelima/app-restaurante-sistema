@@ -587,8 +587,10 @@ export default function AdminOrders() {
                     {statusOrders.map((order) => {
                       const isTableOrder = order.order_source === 'table' || !!order.table_id;
                       const isComandaOrder = order.order_source === 'comanda';
+                      const isPreparing = status === OrderStatus.PREPARING;
                       const isDelivering = status === OrderStatus.DELIVERING;
                       const isDeliveryOrder = !isTableOrder && !isComandaOrder && (order.delivery_type === 'delivery' || order.order_source === 'delivery');
+                      const canNotifyPreparingWhatsApp = isPreparing && isDeliveryOrder;
                       const canNotifyWhatsApp = isDelivering && isDeliveryOrder;
 
                       // Botão de avanço de status:
@@ -622,6 +624,20 @@ export default function AdminOrders() {
                         const orderLang = ((order as { customer_language?: string })?.customer_language === 'es' || (restaurant as { language?: string })?.language === 'es') ? 'es' as const : 'pt' as const;
                         const msg = processTemplate(
                           getTemplate('delivery_notification', restaurant?.whatsapp_templates ?? null, orderLang),
+                          {
+                            cliente_nome:     firstName,
+                            restaurante_nome: restaurant?.name ?? '',
+                          },
+                        );
+                        return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+                      };
+
+                      const buildWhatsAppPreparingUrl = () => {
+                        const phone = ensurePhoneForWhatsApp(order.customer_phone, orderCustomerCountry);
+                        const firstName = order.customer_name.split(' ')[0];
+                        const orderLang = ((order as { customer_language?: string })?.customer_language === 'es' || (restaurant as { language?: string })?.language === 'es') ? 'es' as const : 'pt' as const;
+                        const msg = processTemplate(
+                          getTemplate('preparing_notification', restaurant?.whatsapp_templates ?? null, orderLang),
                           {
                             cliente_nome:     firstName,
                             restaurante_nome: restaurant?.name ?? '',
@@ -829,6 +845,19 @@ export default function AdminOrders() {
                                 <Truck className="h-3.5 w-3.5 mr-1.5" />
                                 Despachar para Entregador
                               </Button>
+                            )}
+
+                            {/* ── WhatsApp "Em preparo" (delivery, coluna Em Preparo) ── */}
+                            {canNotifyPreparingWhatsApp && (
+                              <a
+                                href={buildWhatsAppPreparingUrl()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center gap-1.5 w-full h-8 rounded-md bg-[#25D366] hover:bg-[#1ebe5d] hover:brightness-105 transition-all text-xs font-semibold text-white shadow-sm hover:shadow-md"
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                                Avisar cliente no WhatsApp
+                              </a>
                             )}
 
                             {/* ── WhatsApp "Saiu pra entrega" (delivery, coluna Em Conclusão) ── */}

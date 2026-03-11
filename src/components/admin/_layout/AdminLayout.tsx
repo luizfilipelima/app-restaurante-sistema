@@ -181,7 +181,7 @@ const buildNavSections = (base: string, t: TFn): NavSection[] => [
         icon: LayoutGrid,
         featureFlag: 'feature_tables',
         featureLabel: 'Plano Standard',
-        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
+        roleRequired: ['owner', 'manager', 'cashier', 'restaurant_admin', 'super_admin'],
       },
       {
         kind: 'leaf',
