@@ -82,7 +82,7 @@ function ReservationsContent() {
   const { data: hallZones = [] } = useHallZones(restaurantId);
   const createReservation = useCreateReservation(restaurantId);
   const cancelReservation = useCancelReservation(restaurantId);
-  const { data: waitingQueue = [], refetch: refetchWaitingQueue } = useWaitingQueue(hasReservations ? restaurantId : null);
+  const { data: waitingQueue = [] } = useWaitingQueue(hasReservations ? restaurantId : null);
   const addToQueue = useAddToWaitingQueue(restaurantId);
   const notifyQueue = useNotifyQueueItem(restaurantId);
   const { data: tableStatuses = [] } = useTableStatuses(restaurantId);

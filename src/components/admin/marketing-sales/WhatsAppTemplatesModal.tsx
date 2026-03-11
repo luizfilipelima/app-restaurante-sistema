@@ -22,6 +22,7 @@ import {
   MessageCircle,
   Truck,
   Bike,
+  ChefHat,
   ShoppingBag,
   Eye,
   EyeOff,
@@ -54,6 +55,10 @@ const SAMPLE_VARS: Record<TemplateKey, Record<string, string>> = {
     cliente_nome:     'João',
     restaurante_nome: 'Pizzaria da Vitória',
   },
+  preparing_notification: {
+    cliente_nome:     'João',
+    restaurante_nome: 'Pizzaria da Vitória',
+  },
   courier_dispatch: {
     codigo_pedido:     '#F8737EBC',
     cliente_nome:      'João Silva',
@@ -72,6 +77,7 @@ const SAMPLE_VARS: Record<TemplateKey, Record<string, string>> = {
 const TAB_META: Record<TemplateKey, { icon: React.ElementType; color: string; whatsappColor: string }> = {
   new_order:             { icon: ShoppingBag, color: 'text-emerald-500', whatsappColor: 'bg-emerald-500' },
   delivery_notification: { icon: Truck,       color: 'text-blue-500',    whatsappColor: 'bg-blue-500'    },
+  preparing_notification:{ icon: ChefHat,     color: 'text-indigo-500',  whatsappColor: 'bg-indigo-500'  },
   courier_dispatch:      { icon: Bike,        color: 'text-orange-500',  whatsappColor: 'bg-orange-500'  },
 };
 
@@ -243,7 +249,7 @@ interface WhatsAppTemplatesModalProps {
   onSaved?: (templates: WhatsAppTemplates) => void;
 }
 
-const TABS: TemplateKey[] = ['new_order', 'delivery_notification', 'courier_dispatch'];
+const TABS: TemplateKey[] = ['new_order', 'delivery_notification', 'preparing_notification', 'courier_dispatch'];
 
 export function WhatsAppTemplatesModal({
   open,
@@ -259,6 +265,7 @@ export function WhatsAppTemplatesModal({
   const [templates, setTemplates] = useState<Record<TemplateKey, string>>({
     new_order:             currentTemplates?.new_order             ?? DEFAULT_TEMPLATES.new_order,
     delivery_notification: currentTemplates?.delivery_notification ?? DEFAULT_TEMPLATES.delivery_notification,
+    preparing_notification: currentTemplates?.preparing_notification ?? DEFAULT_TEMPLATES.preparing_notification,
     courier_dispatch:      currentTemplates?.courier_dispatch      ?? DEFAULT_TEMPLATES.courier_dispatch,
   });
 
@@ -267,6 +274,7 @@ export function WhatsAppTemplatesModal({
     setTemplates({
       new_order:             currentTemplates?.new_order             ?? DEFAULT_TEMPLATES.new_order,
       delivery_notification: currentTemplates?.delivery_notification ?? DEFAULT_TEMPLATES.delivery_notification,
+      preparing_notification: currentTemplates?.preparing_notification ?? DEFAULT_TEMPLATES.preparing_notification,
       courier_dispatch:      currentTemplates?.courier_dispatch      ?? DEFAULT_TEMPLATES.courier_dispatch,
     });
   }, [currentTemplates]);
@@ -278,6 +286,7 @@ export function WhatsAppTemplatesModal({
       const payload: WhatsAppTemplates = {
         new_order:             templates.new_order,
         delivery_notification: templates.delivery_notification,
+        preparing_notification: templates.preparing_notification,
         courier_dispatch:      templates.courier_dispatch,
       };
 
@@ -305,12 +314,14 @@ export function WhatsAppTemplatesModal({
   const tabLabels: Record<TemplateKey, string> = {
     new_order:             t('waTemplates.tabNewOrder'),
     delivery_notification: t('waTemplates.tabDelivery'),
+    preparing_notification: t('waTemplates.tabPreparing'),
     courier_dispatch:      t('waTemplates.tabCourier'),
   };
 
   const tabIcons: Record<TemplateKey, React.ElementType> = {
     new_order:             ShoppingBag,
     delivery_notification: Truck,
+    preparing_notification: ChefHat,
     courier_dispatch:      Bike,
   };
 
@@ -336,7 +347,7 @@ export function WhatsAppTemplatesModal({
 
         {/* ── Body ──────────────────────────────────────────────────────── */}
         <Tabs defaultValue="new_order" className="flex flex-col flex-1 overflow-hidden">
-          <TabsList className="grid grid-cols-3 mx-6 mt-4 flex-shrink-0 h-10 bg-muted/60">
+          <TabsList className="grid grid-cols-4 mx-6 mt-4 flex-shrink-0 h-10 bg-muted/60">
             {TABS.map((key) => {
               const Icon = tabIcons[key];
               return (
