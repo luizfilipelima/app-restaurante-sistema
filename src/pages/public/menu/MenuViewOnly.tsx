@@ -10,7 +10,6 @@ import { useSharingMeta } from '@/hooks/shared/useSharingMeta';
 import { isWithinOpeningHours } from '@/lib/core/utils';
 import { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
-import MenuSettingsPopover from '@/components/public/menu/MenuSettingsPopover';
 import RestaurantInfoModal from '@/components/public/_shared/RestaurantInfoModal';
 import ProductCardViewOnly from '@/components/public/menu/ProductCardViewOnly';
 
@@ -198,19 +197,6 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
               >
                 <Info className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
-              <MenuSettingsPopover
-                currency={currency}
-                currencyOptions={[currency]}
-                baseCurrency={currency}
-                onCurrencyChange={() => {}}
-                language={(i18n.language === 'es' ? 'es' : 'pt') as MenuLanguage}
-                onLanguageChange={(lang) => {
-                  i18n.changeLanguage(lang);
-                  setStoredMenuLanguage(lang);
-                }}
-                nativeLanguage={(restaurant.language === 'es' ? 'es' : 'pt') as MenuLanguage}
-                variant="white"
-              />
             </div>
           </div>
         </div>

@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 import { Product } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { type CurrencyCode } from '@/lib/core/utils';
 import { formatPrice } from '@/lib/priceHelper';
@@ -139,20 +138,14 @@ export default function SimpleProductModal({
               </div>
             </div>
 
-            {/* Observações */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">
-                {t('productCard.observations')}{' '}
-                <span className="font-normal">({t('cart.optional')})</span>
-              </Label>
-              <Textarea
-                placeholder=""
+            {/* Observações — placeholder no campo */}
+            <Textarea
+                placeholder={t('productCard.observationsPlaceholder')}
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
                 rows={2}
                 className="rounded-lg border-border bg-muted/50 focus:bg-card focus:ring-1 focus:ring-primary/30 min-h-[64px] resize-none text-sm touch-manipulation"
               />
-            </div>
           </div>
         </div>
 

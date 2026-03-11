@@ -439,15 +439,14 @@ export default function PizzaModal({
             </section>
           )}
 
-          {/* Observações */}
+          {/* Observações — placeholder no campo */}
           {effectiveSize && (
             <section className="space-y-4 pb-4 animate-slide-in-bottom">
               <div className="flex items-center gap-3 mb-2">
                 <div className="bg-primary text-primary-foreground w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">{stepObs}</div>
-                <Label className="text-lg sm:text-xl font-bold text-foreground">{t('pizzaModal.observations')}</Label>
               </div>
               <Textarea
-                placeholder=""
+                placeholder={t('productCard.observationsPlaceholder')}
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
                 rows={4}

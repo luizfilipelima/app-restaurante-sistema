@@ -20,7 +20,6 @@ import { Input } from '@/components/ui/input';
 import { useSharingMeta } from '@/hooks/shared/useSharingMeta';
 import { isWithinOpeningHours, normalizePhoneWithCountryCode } from '@/lib/core/utils';
 import { useMenuCurrency } from '@/hooks/menu/useMenuCurrency';
-import MenuSettingsPopover from '@/components/public/menu/MenuSettingsPopover';
 import RestaurantInfoModal from '@/components/public/_shared/RestaurantInfoModal';
 import { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
@@ -186,11 +185,8 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   // IMPORTANTE: useMenuCurrency deve ser chamado incondicionalmente (Rules of Hooks)
   const {
     displayCurrency: currency,
-    setDisplayCurrency,
-    paymentCurrencies,
     convertForDisplay,
     formatForDisplay,
-    baseCurrency,
   } = useMenuCurrency(restaurant);
 
   const isSubdomain = subdomain && !['app', 'www', 'localhost'].includes(subdomain);
@@ -496,19 +492,6 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               >
                 <Info className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
-              <MenuSettingsPopover
-                currency={currency}
-                currencyOptions={paymentCurrencies}
-                baseCurrency={baseCurrency}
-                onCurrencyChange={setDisplayCurrency}
-                language={(i18n.language === 'es' ? 'es' : 'pt') as import('@/lib/i18n').MenuLanguage}
-                onLanguageChange={(lang) => {
-                  i18n.changeLanguage(lang);
-                  setStoredMenuLanguage(lang);
-                }}
-                nativeLanguage={(restaurant.language === 'es' ? 'es' : 'pt') as import('@/lib/i18n').MenuLanguage}
-                variant="white"
-              />
               <button
                 type="button"
                 data-testid="menu-view-cart"
@@ -878,17 +861,13 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       </main>
     </div>
 
-      {/* Cart FAB (Mobile) — só aparece após o splash inicial terminar; em mesa, mostra também quando há itens pedidos */}
+      {/* Cart FAB (Mobile) — alinhado à largura do cardápio (container max-w-6xl) */}
       {((getItemsCount() > 0) || (isTableOrder && getOrderedItemsCount() > 0)) && !splashOverlay && (
         <div 
           className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
-          style={{ 
-            paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
-            paddingLeft: 'max(12px, env(safe-area-inset-left))',
-            paddingRight: 'max(12px, env(safe-area-inset-right))'
-          }}
+          style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
         >
-          <div className="px-3 pb-3">
+          <div className="container mx-auto max-w-6xl px-3 sm:px-4 pb-3">
             <button
               type="button"
               onClick={() => setCartOpen(true)}
