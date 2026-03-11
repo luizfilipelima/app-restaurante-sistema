@@ -861,13 +861,17 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       </main>
     </div>
 
-      {/* Cart FAB (Mobile) — alinhado à largura do cardápio (container max-w-6xl) */}
+      {/* Cart FAB (Mobile) — só aparece após o splash inicial terminar; em mesa, mostra também quando há itens pedidos */}
       {((getItemsCount() > 0) || (isTableOrder && getOrderedItemsCount() > 0)) && !splashOverlay && (
         <div 
           className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
-          style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+          style={{ 
+            paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+            paddingLeft: 'max(12px, env(safe-area-inset-left))',
+            paddingRight: 'max(12px, env(safe-area-inset-right))'
+          }}
         >
-          <div className="container mx-auto max-w-6xl px-3 sm:px-4 pb-3">
+          <div className="px-3 pb-3">
             <button
               type="button"
               onClick={() => setCartOpen(true)}

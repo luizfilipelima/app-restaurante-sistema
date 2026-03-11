@@ -6,7 +6,7 @@ import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
 import { Plus, Minus, Trash2, Sparkles, ShoppingBag, ChevronRight, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchUpsellsForProducts, type UpsellRow, useLoyaltyStatus } from '@/hooks/queries';
+import { fetchUpsellsForProducts, type UpsellRow, useLoyaltyProgram, useLoyaltyStatus } from '@/hooks/queries';
 import type { CartItem } from '@/types';
 import LoyaltyCard, { LoyaltyInvite } from '../loyalty/LoyaltyCard';
 
@@ -30,6 +30,9 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
   const { items, orderedTableItems, addItem, updateQuantity, removeItem, getSubtotal } = useCartStore();
   const isTableOrder = tableNumber != null;
   const [upsellRows, setUpsellRows] = useState<UpsellRow[]>([]);
+
+  const { data: loyaltyProgram } = useLoyaltyProgram(open ? (restaurantId ?? null) : null);
+  const loyaltyEnabled = !!loyaltyProgram?.enabled;
 
   const { data: loyaltyStatus } = useLoyaltyStatus(
     open ? (restaurantId ?? null) : null,
@@ -208,16 +211,18 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                     </div>
                   )}
 
-                  {/* Plano de fidelidade — mesmo padrão de card que os itens */}
-                  {loyaltyStatus ? (
-                    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-                      <LoyaltyCard status={loyaltyStatus} compact noMargin />
-                    </div>
-                  ) : loyaltyStatus === null && restaurantId ? (
-                    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-                      <LoyaltyInvite enabled={true} noMargin />
-                    </div>
-                  ) : null}
+                  {/* Plano de fidelidade — só exibe quando o programa está ativado no restaurante */}
+                  {loyaltyEnabled && (
+                    loyaltyStatus ? (
+                      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                        <LoyaltyCard status={loyaltyStatus} compact noMargin />
+                      </div>
+                    ) : loyaltyStatus === null && restaurantId ? (
+                      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                        <LoyaltyInvite enabled={true} noMargin />
+                      </div>
+                    ) : null
+                  )}
 
                   {/* Upsell (order bump) — usa cores do tema do restaurante */}
                   {upsellRows.length > 0 && (

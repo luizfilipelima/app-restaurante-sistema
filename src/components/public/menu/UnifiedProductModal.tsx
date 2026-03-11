@@ -108,7 +108,7 @@ export default function UnifiedProductModal({
   const secondPrice = selectedSecondProduct
     ? Number(selectedSecondProduct.price_sale ?? selectedSecondProduct.price) * sizeMultiplier
     : 0;
-  const basePizzaPrice = selectedSecondProduct ? Math.max(mainPrice, secondPrice) : mainPrice;
+  const basePizzaPrice = selectedSecondProduct ? (mainPrice + secondPrice) / 2 : mainPrice;
   const unitPrice = isPizza
     ? basePizzaPrice + doughExtra + edgePrice + addonsTotal
     : basePrice + addonsTotal;
@@ -222,10 +222,7 @@ export default function UnifiedProductModal({
                         {selectedSecondProduct ? (
                           <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border-2 border-primary bg-primary/10 text-primary">
                             <span className="text-sm font-medium">
-                              {t('customModal.halfAndHalf', {
-                                a: product.name,
-                                b: `${selectedSecondProduct.name} (${selectedSecondProduct.category})`,
-                              })}
+                              {selectedSecondProduct.name}
                             </span>
                             <button
                               type="button"
