@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Minus, Plus, ArrowLeft, X } from 'lucide-react';
+import { Minus, Plus, ArrowLeft, X, Check } from 'lucide-react';
 import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
 import ExpandableDescription from './ExpandableDescription';
 
@@ -259,51 +259,66 @@ export default function UnifiedProductModal({
                 )}
 
                 {effectiveSize && (pizzaConfig!.doughs.length > 0 || pizzaConfig!.edges.length > 0) && (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {pizzaConfig!.doughs.length > 0 && (
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <h4 className="text-xs font-medium text-muted-foreground uppercase">{t('customModal.doughType')}</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {pizzaConfig!.doughs.map((dough) => (
-                            <button
-                              key={dough.id}
-                              type="button"
-                              onClick={() => setSelectedDough(dough)}
-                              className={`px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-all ${
-                                selectedDough?.id === dough.id ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-muted/50'
-                              }`}
-                            >
-                              {dough.name}{dough.extra_price > 0 && ` +${fmt(dough.extra_price)}`}
-                            </button>
-                          ))}
+                        <div className="flex flex-col gap-2">
+                          {pizzaConfig!.doughs.map((dough) => {
+                            const isSelected = selectedDough?.id === dough.id;
+                            return (
+                              <button
+                                key={dough.id}
+                                type="button"
+                                onClick={() => setSelectedDough(dough)}
+                                className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg border text-left transition-all ${
+                                  isSelected ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted/50'
+                                }`}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-sm font-medium">{dough.name}</span>
+                                  {dough.extra_price > 0 && <span className="text-xs text-muted-foreground ml-1">+{fmt(dough.extra_price)}</span>}
+                                </div>
+                                {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
                     {pizzaConfig!.edges.length > 0 && (
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <h4 className="text-xs font-medium text-muted-foreground uppercase">{t('customModal.stuffedEdge')}</h4>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-col gap-2">
                           <button
                             type="button"
                             onClick={() => setSelectedEdge(null)}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-all ${
-                              !selectedEdge ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-muted/50'
+                            className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg border text-left transition-all ${
+                              !selectedEdge ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted/50'
                             }`}
                           >
-                            {t('customModal.noEdge')}
+                            <span className="text-sm font-medium">{t('customModal.noEdge')}</span>
+                            {!selectedEdge && <Check className="h-4 w-4 text-primary shrink-0" />}
                           </button>
-                          {pizzaConfig!.edges.map((edge) => (
-                            <button
-                              key={edge.id}
-                              type="button"
-                              onClick={() => setSelectedEdge(edge)}
-                              className={`px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-all ${
-                                selectedEdge?.id === edge.id ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-muted/50'
-                              }`}
-                            >
-                              {edge.name} +{fmt(edge.price)}
-                            </button>
-                          ))}
+                          {pizzaConfig!.edges.map((edge) => {
+                            const isSelected = selectedEdge?.id === edge.id;
+                            return (
+                              <button
+                                key={edge.id}
+                                type="button"
+                                onClick={() => setSelectedEdge(edge)}
+                                className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg border text-left transition-all ${
+                                  isSelected ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted/50'
+                                }`}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-sm font-medium">{edge.name}</span>
+                                  <span className="text-xs text-muted-foreground ml-1">+{fmt(edge.price)}</span>
+                                </div>
+                                {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -325,10 +340,7 @@ export default function UnifiedProductModal({
             </div>
 
             {/* Quantidade */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">
-                {t('menu.total')}: {fmt(total)}
-              </span>
+            <div className="flex items-center justify-end">
               <div className="flex items-center gap-3">
                 <button
                   type="button"

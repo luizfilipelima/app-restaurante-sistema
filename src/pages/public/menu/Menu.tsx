@@ -861,10 +861,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       </main>
     </div>
 
-      {/* Cart FAB (Mobile) — só aparece após o splash inicial terminar; em mesa, mostra também quando há itens pedidos */}
+      {/* Cart FAB (Mobile) — fundo igual ao da página para evitar barra branca na safe-area */}
       {((getItemsCount() > 0) || (isTableOrder && getOrderedItemsCount() > 0)) && !splashOverlay && (
         <div 
-          className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
+          className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background"
           style={{ 
             paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
             paddingLeft: 'max(12px, env(safe-area-inset-left))',
