@@ -109,7 +109,7 @@
     "waiterTip": "Taxa de camarero",
     "total": "Total",
     "sending": "Enviando...",
-    "sendWhatsApp": "Enviar Pedido por WhatsApp",
+    "sendWhatsApp": "Confirmar Pedido",
     "sendWhatsAppShort": "Enviar por WhatsApp",
     "errorFillNamePhone": "Completa nombre y teléfono",
     "errorSelectZone": "Selecciona el barrio/zona de entrega",
@@ -143,13 +143,15 @@
     "badgePizza": "Custom",
     "badgeMarmita": "Marmita",
     "observations": "Observación",
-    "observationsPlaceholder": "Ej: Sin cebolla, punto de la carne, etc."
+    "observationsPlaceholder": "Ej: Sin cebolla, punto de la carne, etc.",
+    "readMore": "Ver más",
+    "readLess": "Ver menos"
   },
   "customModal": {
     "menuConfigDesc": "Los tamaños aún no fueron configurados por el restaurante. Pronto podrás personalizar aquí. Por ahora, contacta por WhatsApp para hacer el pedido.",
     "chooseSize": "Elige el Tamaño",
     "mainFlavor": "Sabor Principal",
-    "addSecondFlavor": "Añadir 2º sabor (Mitad y Mitad)",
+    "addSecondFlavor": "Añadir 2º Sabor",
     "halfAndHalf": "Mitad {{a}} / Mitad {{b}}",
     "removeSecondFlavor": "Quitar 2º sabor",
     "chooseFlavor": "Elige el sabor",

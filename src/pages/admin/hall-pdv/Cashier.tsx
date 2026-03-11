@@ -456,8 +456,18 @@ function CashierContent() {
   const [showExcludeOrderConfirm, setShowExcludeOrderConfirm] = useState(false);
   const [excludingOrder, setExcludingOrder] = useState(false);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
-  const [payPersonDialog, setPayPersonDialog] = useState<{ customerKey: string; label: string; subtotal: number } | null>(null);
+  const [payPersonDialog, setPayPersonDialog] = useState<{
+    customerKey: string;
+    label: string;
+    subtotal: number;
+    method: PaymentMethod;
+    currency: CurrencyCode;
+  } | null>(null);
   const [payingPerson, setPayingPerson] = useState(false);
+  const [finalizePaymentModal, setFinalizePaymentModal] = useState<{
+    method: PaymentMethod;
+    currency: CurrencyCode;
+  } | null>(null);
   const [mainView, setMainView] = useState<'cashier' | 'completed'>('cashier');
   const [completedList, setCompletedList] = useState<CompletedItem[]>([]);
 
@@ -1140,12 +1150,15 @@ function CashierContent() {
     }));
   };
 
-  const canFinalize = totalReceivedBRL >= totalToPayBRL && totalToPayBRL > 0;
+  const canOpenFinalizeModal = totalToPay > 0;
 
   const handleFinalize = async () => {
-    if (!selected || closing || !canFinalize) return;
+    if (!selected || closing) return;
+    const primaryMethod = (finalizePaymentModal?.method ?? payments[0]?.method ?? 'cash') as 'cash' | 'card' | 'pix';
+    const canProceed = totalToPay > 0;
+    if (!canProceed) return;
+    setFinalizePaymentModal(null);
     setClosing(true);
-    const primaryMethod = payments.length > 0 ? (payments[0].method as 'cash' | 'card' | 'pix') : 'cash';
     const { data: { user } } = await supabase.auth.getUser();
     const closedByUserId = user?.id ?? null;
     const orderUpdatePayload = (method: string) => {
@@ -1389,10 +1402,11 @@ function CashierContent() {
     setPayingPerson(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      const method = payPersonDialog.method ?? 'cash';
       const { error } = await supabase.rpc('cashier_pay_customer_portion', {
         p_order_ids: orderIds,
         p_customer_key: customerKey,
-        p_payment_method: 'cash',
+        p_payment_method: method,
         p_closed_by_user_id: user?.id ?? null,
       });
       if (error) throw error;
@@ -1766,7 +1780,13 @@ function CashierContent() {
                             size="sm"
                             variant="outline"
                             className="h-7 text-xs"
-                            onClick={() => setPayPersonDialog({ customerKey: group.customerKey, label: group.label, subtotal: group.subtotal })}
+                            onClick={() => setPayPersonDialog({
+                              customerKey: group.customerKey,
+                              label: group.label,
+                              subtotal: group.subtotal,
+                              method: 'cash',
+                              currency: baseCurrency,
+                            })}
                           >
                             <CheckCircle2 className="h-3 w-3 mr-1" />
                             {t('cashier.payPerson')}
@@ -1817,110 +1837,14 @@ function CashierContent() {
                 </div>
               </div>
 
-              <div className="px-5 py-4 space-y-4 border-t border-border bg-slate-50/50 dark:bg-slate-900/30">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('cashier.paymentMethod')}
-                  </Label>
-                  <Button variant="outline" size="sm" onClick={addPayment} className="gap-1.5">
-                    <Plus className="h-3.5 w-3.5" />
-                    {t('cashier.add')}
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  <AnimatePresence>
-                    {payments.map((p) => (
-                      <motion.div
-                        key={p.id}
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="flex gap-2 items-center flex-wrap p-2.5 admin-card-border bg-white dark:bg-slate-800/50"
-                      >
-                        <select
-                          value={p.method}
-                          onChange={(e) => {
-                            const m = e.target.value as PaymentMethod;
-                            setPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, method: m } : x)));
-                          }}
-                          className="h-9 rounded-lg border border-input bg-background px-3 text-sm w-[110px] font-medium"
-                          title={t('cashier.paymentMethod')}
-                        >
-                          {(Object.entries(getPaymentLabels(t)) as [PaymentMethod, string][]).map(([v, l]) => (
-                            <option key={v} value={v}>{l}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={p.currency}
-                          onChange={(e) => {
-                            const c = e.target.value as CurrencyCode;
-                            setPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, currency: c } : x)));
-                          }}
-                          className="h-9 rounded-lg border border-input bg-background px-3 text-sm w-[72px] font-medium"
-                          title="Moeda"
-                        >
-                          {paymentCurrencies.map((c) => (
-                            <option key={c} value={c}>{getCurrencySymbol(c)}</option>
-                          ))}
-                        </select>
-                        <Input
-                          value={paymentInputs[p.id] ?? ''}
-                          onChange={(e) => updatePaymentAmount(p.id, e.target.value, p.currency)}
-                          placeholder={p.currency === 'PYG' ? '0' : '0,00'}
-                          className="flex-1 min-w-[100px] font-mono h-9 text-base"
-                          aria-label="Valor recebido"
-                        />
-                        <Button variant="ghost" size="icon" onClick={() => removePayment(p.id)} className="h-9 w-9 shrink-0" title="Remover">
-                          <Trash2 className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{t('cashier.received')}</span>
-                  <span className="font-semibold tabular-nums">
-                    {formatPrice(receivedInBase, baseCurrency)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{t('cashier.remaining')}</span>
-                  <span
-                    className={`font-bold tabular-nums ${
-                      remaining <= 0 ? 'text-emerald-600' : 'text-amber-600'
-                    }`}
-                  >
-                    {formatPrice(remainingInBase, baseCurrency)}
-                  </span>
-                </div>
-                {changeAmount > 0 && (
-                  <div className="rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800 p-3">
-                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-1">{t('cashier.changeSuggested')}</p>
-                    <p className="text-sm font-bold text-amber-900 dark:text-amber-100">
-                      {formatPrice(changeInBase, baseCurrency)}
-                    </p>
-                    {paymentCurrencies.length > 1 && paymentCurrencies.some((c) => c !== baseCurrency) && (
-                      <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
-                        {t('cashier.changeOtherCurrencies')}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
               <div className="px-5 pb-5 pt-1">
-                {!canFinalize && payments.length > 0 && remaining > 0 && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mb-3 text-center">
-                    {t('cashier.informValue')}
-                  </p>
-                )}
                 <Button
                   className={`w-full h-14 text-base font-bold transition-all rounded-xl ${
-                    canFinalize ? 'bg-emerald-600 hover:bg-emerald-700 shadow-md hover:shadow-lg' : ''
+                    canOpenFinalizeModal ? 'bg-emerald-600 hover:bg-emerald-700 shadow-md hover:shadow-lg' : ''
                   }`}
-                  disabled={closing || !canFinalize}
-                  onClick={handleFinalize}
-                  variant={canFinalize ? 'default' : 'secondary'}
+                  disabled={closing || !canOpenFinalizeModal}
+                  onClick={() => setFinalizePaymentModal({ method: 'cash', currency: baseCurrency })}
+                  variant={canOpenFinalizeModal ? 'default' : 'secondary'}
                 >
                   {closing ? (
                     <Loader2 className="h-5 w-5 animate-spin mr-2" />
@@ -1998,7 +1922,7 @@ function CashierContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal confirmação: Pagar parte de uma pessoa */}
+      {/* Modal pagar parte: forma de pagamento, moeda e valor */}
       <Dialog open={!!payPersonDialog} onOpenChange={(open) => !open && setPayPersonDialog(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -2012,6 +1936,59 @@ function CashierContent() {
                 : ''}
             </DialogDescription>
           </DialogHeader>
+          {payPersonDialog && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t('cashier.totalToPay')}
+                </Label>
+                <p className="text-2xl font-bold tabular-nums mt-1">
+                  {formatPrice(
+                    payPersonDialog.currency === baseCurrency
+                      ? payPersonDialog.subtotal
+                      : convertBetweenCurrencies(payPersonDialog.subtotal, baseCurrency, payPersonDialog.currency, exchangeRates),
+                    payPersonDialog.currency
+                  )}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t('cashier.paymentMethod')}
+                </Label>
+                <select
+                  value={payPersonDialog.method}
+                  onChange={(e) =>
+                    setPayPersonDialog((prev) =>
+                      prev ? { ...prev, method: e.target.value as PaymentMethod } : null
+                    )
+                  }
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-medium"
+                >
+                  {(Object.entries(getPaymentLabels(t)) as [PaymentMethod, string][]).map(([v, l]) => (
+                    <option key={v} value={v}>{l}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t('cashier.currencyLabel')}
+                </Label>
+                <select
+                  value={payPersonDialog.currency}
+                  onChange={(e) =>
+                    setPayPersonDialog((prev) =>
+                      prev ? { ...prev, currency: e.target.value as CurrencyCode } : null
+                    )
+                  }
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-medium"
+                >
+                  {paymentCurrencies.map((c) => (
+                    <option key={c} value={c}>{getCurrencySymbol(c)} {c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayPersonDialog(null)} disabled={payingPerson}>
               {t('common.cancel')}
@@ -2019,6 +1996,80 @@ function CashierContent() {
             <Button onClick={handlePayCustomerPortion} disabled={payingPerson}>
               {payingPerson ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
               {t('cashier.payPerson')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal pagamento da conta geral: forma de pagamento, moeda e valor total (sem recibido/saldo restante) */}
+      <Dialog open={!!finalizePaymentModal} onOpenChange={(open) => !open && setFinalizePaymentModal(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('cashier.finalize')}</DialogTitle>
+            <DialogDescription>
+              {selected ? t('cashier.finalizeModalDesc', { label: selected.label }) : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {finalizePaymentModal && selected && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t('cashier.totalToPay')}
+                </Label>
+                <p className="text-2xl font-bold tabular-nums mt-1">
+                  {formatPrice(
+                    finalizePaymentModal.currency === baseCurrency
+                      ? totalToPay
+                      : convertBetweenCurrencies(totalToPay, baseCurrency, finalizePaymentModal.currency, exchangeRates),
+                    finalizePaymentModal.currency
+                  )}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t('cashier.paymentMethod')}
+                </Label>
+                <select
+                  value={finalizePaymentModal.method}
+                  onChange={(e) =>
+                    setFinalizePaymentModal((prev) =>
+                      prev ? { ...prev, method: e.target.value as PaymentMethod } : null
+                    )
+                  }
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-medium"
+                >
+                  {(Object.entries(getPaymentLabels(t)) as [PaymentMethod, string][]).map(([v, l]) => (
+                    <option key={v} value={v}>{l}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t('cashier.currencyLabel')}
+                </Label>
+                <select
+                  value={finalizePaymentModal.currency}
+                  onChange={(e) =>
+                    setFinalizePaymentModal((prev) =>
+                      prev ? { ...prev, currency: e.target.value as CurrencyCode } : null
+                    )
+                  }
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-medium"
+                >
+                  {paymentCurrencies.map((c) => (
+                    <option key={c} value={c}>{getCurrencySymbol(c)} {c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFinalizePaymentModal(null)} disabled={closing}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleFinalize} disabled={closing}>
+              {closing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+              {t('cashier.finalize')}
             </Button>
           </DialogFooter>
         </DialogContent>

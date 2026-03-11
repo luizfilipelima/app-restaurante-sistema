@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Minus, Plus, ArrowLeft, X } from 'lucide-react';
 import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
+import ExpandableDescription from './ExpandableDescription';
 
 interface AddonGroup {
   id: string;
@@ -103,8 +104,11 @@ export default function UnifiedProductModal({
   const doughExtra = selectedDough?.extra_price ?? 0;
   const edgePrice = selectedEdge?.price ?? 0;
 
-  const mainPrice = basePrice;
-  const secondPrice = selectedSecondProduct ? Number(selectedSecondProduct.price_sale ?? selectedSecondProduct.price) : 0;
+  const sizeMultiplier = effectiveSize?.price_multiplier ?? 1;
+  const mainPrice = isPizza ? basePrice * sizeMultiplier : basePrice;
+  const secondPrice = selectedSecondProduct
+    ? Number(selectedSecondProduct.price_sale ?? selectedSecondProduct.price) * sizeMultiplier
+    : 0;
   const basePizzaPrice = selectedSecondProduct ? Math.max(mainPrice, secondPrice) : mainPrice;
   const unitPrice = isPizza
     ? basePizzaPrice + doughExtra + edgePrice + addonsTotal
@@ -219,7 +223,10 @@ export default function UnifiedProductModal({
                         {selectedSecondProduct ? (
                           <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border-2 border-primary bg-primary/10 text-primary">
                             <span className="text-sm font-medium">
-                              {t('customModal.halfAndHalf', { a: product.name, b: selectedSecondProduct.name })}
+                              {t('customModal.halfAndHalf', {
+                                a: product.name,
+                                b: `${selectedSecondProduct.name} (${selectedSecondProduct.category})`,
+                              })}
                             </span>
                             <button
                               type="button"
@@ -244,7 +251,7 @@ export default function UnifiedProductModal({
                             <SelectContent>
                               {pizzaProducts.map((p) => (
                                 <SelectItem key={p.id} value={p.id}>
-                                  {p.name} — {fmt(Number(p.price_sale ?? p.price))}
+                                  {p.name} ({p.category})
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -309,12 +316,12 @@ export default function UnifiedProductModal({
               </div>
             )}
 
-            {/* Info do produto */}
+            {/* Info do produto / Total */}
             <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-foreground leading-snug">{product.name}</h3>
-              <p className="text-base font-semibold text-primary tabular-nums">{fmt(isPizza ? unitPrice : basePrice)}</p>
+              <h3 className="text-lg font-semibold text-foreground leading-snug">{t('menu.total')}</h3>
+              <p className="text-base font-semibold text-primary tabular-nums">{fmt(total)}</p>
               {product.description && (
-                <p className="text-sm text-muted-foreground leading-relaxed pt-1">{product.description}</p>
+                <ExpandableDescription>{product.description}</ExpandableDescription>
               )}
               {(product.allergens?.length || product.labels?.length) ? (
                 <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} className="pt-2" />
@@ -392,7 +399,7 @@ export default function UnifiedProductModal({
                 {t('productCard.observations')} <span className="font-normal">({t('cart.optional')})</span>
               </Label>
               <Textarea
-                placeholder={t('productCard.observationsPlaceholder')}
+                placeholder=""
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
                 rows={2}

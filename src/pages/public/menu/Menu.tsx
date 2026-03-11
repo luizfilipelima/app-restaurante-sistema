@@ -76,14 +76,6 @@ const MOCK_PRODUCTS: Product[] = [
   { id: 'm5', restaurant_id: '1', category: 'Sobremesas', name: 'Petit Gâteau', description: 'Bolo de chocolate com recheio cremoso e sorvete de creme.', price: 24.90, image_url: 'https://images.unsplash.com/photo-1624353365286-3f8d62daad51?w=800&q=80', is_pizza: false, is_active: true, created_at: '', updated_at: '' },
 ];
 
-const CATEGORY_ICONS: Record<string, any> = {
-  'Marmitas': UtensilsCrossed,
-  'Pizza': Utensils,
-  'Bebidas': Coffee,
-  'Sobremesas': IceCream,
-  'default': Utensils
-};
-
 // Ordem de categorias: pratos principais primeiro, bebidas por último
 const CATEGORY_ORDER: Record<string, number> = {
   'Marmitas': 0,
@@ -635,14 +627,16 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               />
             </div>
 
-            {/* Categorias em formato pill — ocultas quando vendo uma categoria específica */}
-            {!viewingSingleCategory && (
+            {/* Categorias em formato pill — sempre visível (modo padrão e quando visualizando categoria no modo categorias-first) */}
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory scroll-smooth">
               <button
                 type="button"
-                onClick={() => setSelectedCategory('all')}
+                onClick={() => {
+                  setSelectedCategory('all');
+                  if (categoriesFirst) setViewingCategoryId(null);
+                }}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
-                  selectedCategory === 'all'
+                  (!viewingSingleCategory && selectedCategory === 'all')
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'bg-card text-muted-foreground border border-border hover:bg-muted'
                 }`}
@@ -650,26 +644,33 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 <Utensils className="h-4 w-4 flex-shrink-0" />
                 <span>{t('menu.all')}</span>
               </button>
-              {categories.map((category) => {
-                const Icon = CATEGORY_ICONS[category] || CATEGORY_ICONS['default'];
+              {categories.map((categoryName) => {
+                const catFromDb = categoriesFromDb.find((c) => c.name === categoryName);
+                const IconComp = getCategoryIconComponent(catFromDb?.icon);
+                const isSelected =
+                  viewingSingleCategory && currentCategoryFromRoute?.name === categoryName
+                    ? true
+                    : !viewingSingleCategory && selectedCategory === categoryName;
                 return (
                   <button
                     type="button"
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
+                    key={categoryName}
+                    onClick={() => {
+                      setSelectedCategory(categoryName);
+                      if (categoriesFirst && catFromDb) setViewingCategoryId(catFromDb.id);
+                    }}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
-                      selectedCategory === category
+                      isSelected
                         ? 'bg-primary text-primary-foreground shadow-sm'
                         : 'bg-card text-muted-foreground border border-border hover:bg-muted'
                     }`}
                   >
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    <span className="whitespace-nowrap">{category}</span>
+                    <IconComp className="h-4 w-4 flex-shrink-0" />
+                    <span className="whitespace-nowrap">{categoryName}</span>
                   </button>
                 );
               })}
             </div>
-            )}
           </div>
         </div>
         )}

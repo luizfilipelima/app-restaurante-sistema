@@ -14,14 +14,6 @@ import MenuSettingsPopover from '@/components/public/menu/MenuSettingsPopover';
 import RestaurantInfoModal from '@/components/public/_shared/RestaurantInfoModal';
 import ProductCardViewOnly from '@/components/public/menu/ProductCardViewOnly';
 
-const CATEGORY_ICONS: Record<string, any> = {
-  Marmitas: UtensilsCrossed,
-  Pizza: Utensils,
-  Bebidas: Coffee,
-  Sobremesas: IceCream,
-  default: Utensils,
-};
-
 interface MenuViewOnlyProps {
   /** Quando renderizado dentro de StoreLayout (subdomínio), o slug é passado por prop */
   tenantSlug?: string;
@@ -292,44 +284,54 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
               />
             </div>
 
-            {!viewingSingleCategory && (
+            {/* Categorias em formato pill — sempre visível (modo padrão e quando visualizando categoria no modo categorias-first) */}
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory scroll-smooth -mx-1 px-1">
               <button
                 type="button"
-                onClick={() => setSelectedCategory('all')}
+                onClick={() => {
+                  setSelectedCategory('all');
+                  if (categoriesFirst) setViewingCategoryId(null);
+                }}
                 className={`flex flex-col items-center justify-center gap-1 min-w-[64px] sm:min-w-[70px] h-[68px] sm:h-[74px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
-                  selectedCategory === 'all'
+                  !viewingSingleCategory && selectedCategory === 'all'
                     ? 'bg-primary text-primary-foreground shadow-md'
                     : 'bg-card text-muted-foreground border border-border active:border-border active:bg-muted'
                 }`}
               >
-                <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${selectedCategory === 'all' ? 'bg-primary-foreground/20' : 'bg-muted'}`}>
+                <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${!viewingSingleCategory && selectedCategory === 'all' ? 'bg-primary-foreground/20' : 'bg-muted'}`}>
                   <Utensils className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
                 <span className="text-[10px] sm:text-xs font-semibold leading-tight">{t('menu.all')}</span>
               </button>
-              {categories.map((category) => {
-                const Icon = CATEGORY_ICONS[category] || CATEGORY_ICONS['default'];
+              {categories.map((categoryName) => {
+                const catFromDb = categoriesFromDb.find((c) => c.name === categoryName);
+                const IconComp = getCategoryIconComponent(catFromDb?.icon);
+                const isSelected =
+                  viewingSingleCategory && currentCategoryFromRoute?.name === categoryName
+                    ? true
+                    : !viewingSingleCategory && selectedCategory === categoryName;
                 return (
                   <button
                     type="button"
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
+                    key={categoryName}
+                    onClick={() => {
+                      setSelectedCategory(categoryName);
+                      if (categoriesFirst && catFromDb) setViewingCategoryId(catFromDb.id);
+                    }}
                     className={`flex flex-col items-center justify-center gap-1 min-w-[64px] sm:min-w-[70px] h-[68px] sm:h-[74px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl transition-all duration-200 flex-shrink-0 snap-start touch-manipulation active:scale-95 ${
-                      selectedCategory === category
+                      isSelected
                         ? 'bg-primary text-primary-foreground shadow-md'
                         : 'bg-card text-muted-foreground border border-border active:border-border active:bg-muted'
                     }`}
                   >
-                    <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${selectedCategory === category ? 'bg-primary-foreground/20' : 'bg-muted'}`}>
-                      <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${isSelected ? 'bg-primary-foreground/20' : 'bg-muted'}`}>
+                      <IconComp className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
-                    <span className="text-[10px] sm:text-xs font-semibold whitespace-nowrap leading-tight">{category}                </span>
-              </button>
+                    <span className="text-[10px] sm:text-xs font-semibold whitespace-nowrap leading-tight">{categoryName}</span>
+                  </button>
                 );
               })}
             </div>
-            )}
           </div>
         </div>
         )}

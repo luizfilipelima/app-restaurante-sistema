@@ -549,10 +549,10 @@ function ReservationsContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Fila de Espera Modal */}
+      {/* Fila de Espera Modal — responsivo desktop e tablet */}
       <Dialog open={showWaitingQueue} onOpenChange={setShowWaitingQueue}>
-        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-lg sm:max-w-xl md:max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col p-4 sm:p-6">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>{t('cashier.waitingQueue')}</DialogTitle>
             <DialogDescription>{t('cashier.addToQueue')}</DialogDescription>
           </DialogHeader>
@@ -572,31 +572,32 @@ function ReservationsContent() {
                 toast({ title: err?.message, variant: 'destructive' });
               }
             }}
-            className="space-y-2"
+            className="space-y-3 flex-shrink-0"
           >
             <Input
               placeholder={t('cashier.queueCustomerName')}
               value={queueName}
               onChange={(e) => setQueueName(e.target.value)}
-              className="w-full"
+              className="w-full h-10 sm:h-11"
             />
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <PhoneCountryInput
                 value={queuePhone}
                 country={queuePhoneCountry}
                 onValueChange={(phone, country) => { setQueuePhone(phone); setQueuePhoneCountry(country); }}
                 placeholder={t('cashier.queueCustomerPhone')}
                 showWhatsAppIcon
-                className="flex-1"
+                className="flex-1 min-w-0"
               />
-              <Button type="submit" disabled={!queueName.trim() || addToQueue.isPending}>
+              <Button type="submit" disabled={!queueName.trim() || addToQueue.isPending} className="h-10 sm:h-11 shrink-0">
                 {addToQueue.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                <span className="ml-1.5 sm:ml-2">{t('cashier.queueAssignButton')}</span>
               </Button>
             </div>
           </form>
-          <div className="space-y-2">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-2 mt-2 -mx-1 px-1">
             {waitingQueue.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">{t('cashier.queueEmpty')}</p>
+              <p className="text-sm text-muted-foreground py-6 sm:py-8 text-center">{t('cashier.queueEmpty')}</p>
             ) : (
               waitingQueue.map((item) => {
                 const queuePhoneCountry = (restaurant as { phone_country?: string })?.phone_country === 'PY' ? 'PY' as const
@@ -605,27 +606,29 @@ function ReservationsContent() {
                   ? ensurePhoneForWhatsApp(item.customer_phone, queuePhoneCountry)
                   : null;
                 return (
-                  <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">{item.customer_name}</p>
-                      {item.customer_phone && <p className="text-xs text-muted-foreground">{item.customer_phone}</p>}
+                  <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 sm:px-4 sm:py-3">
+                    <div className="min-w-0 flex-1 flex items-center gap-2">
+                      <span className="text-xs font-semibold text-muted-foreground shrink-0">#{item.position}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{item.customer_name}</p>
+                        {item.customer_phone && <p className="text-xs text-muted-foreground truncate">{item.customer_phone}</p>}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-xs text-muted-foreground">#{item.position}</span>
+                    <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                       {item.customer_phone && itemPhoneForWa && (
                         <a
                           href={generateWhatsAppLink(itemPhoneForWa, '')}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-[#25D366] hover:bg-[#25D366]/10 transition-colors"
-                          title="Abrir WhatsApp do cliente"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-[#25D366] hover:bg-[#25D366]/10 transition-colors touch-manipulation"
+                          title={t('cashier.queueCustomerPhone')}
                         >
                           <MessageCircle className="h-4 w-4" />
                         </a>
                       )}
                       <Select value={notifyTableId} onValueChange={setNotifyTableId}>
-                        <SelectTrigger className="w-[100px] h-8">
-                          <SelectValue placeholder={t('cashier.callNext')} />
+                        <SelectTrigger className="w-[90px] sm:w-[100px] h-9">
+                          <SelectValue placeholder={t('cashier.queueTableLabel')} />
                         </SelectTrigger>
                         <SelectContent>
                           {tableStatuses
@@ -640,6 +643,7 @@ function ReservationsContent() {
                       <Button
                         size="sm"
                         variant="default"
+                        className="h-9 shrink-0"
                         onClick={async () => {
                           const freeTables = tableStatuses.filter((tbl) => tbl.status === 'free');
                           if (freeTables.length === 0) {
@@ -665,8 +669,8 @@ function ReservationsContent() {
                         }}
                         disabled={notifyQueue.isPending || tableStatuses.filter((tbl) => tbl.status === 'free').length === 0}
                       >
-                        {notifyQueue.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRightLeft className="h-3 w-3 mr-1" />}
-                        {notifyQueue.isPending ? null : t('cashier.callNext')}
+                        {notifyQueue.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                        {t('cashier.queueAssignButton')}
                       </Button>
                     </div>
                   </div>

@@ -384,7 +384,7 @@ export default function MarmitaModal({
                 <Label className="text-lg sm:text-xl font-bold text-foreground">{t('marmitaModal.observations')}</Label>
               </div>
               <Textarea
-                placeholder={t('marmitaModal.observationsPlaceholder')}
+                placeholder=""
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
                 rows={4}

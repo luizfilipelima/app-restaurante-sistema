@@ -447,7 +447,7 @@ export default function PizzaModal({
                 <Label className="text-lg sm:text-xl font-bold text-foreground">{t('pizzaModal.observations')}</Label>
               </div>
               <Textarea
-                placeholder={t('pizzaModal.observationsPlaceholder')}
+                placeholder=""
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
                 rows={4}

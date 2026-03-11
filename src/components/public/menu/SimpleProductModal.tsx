@@ -13,6 +13,7 @@ import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
 import { Minus, Plus, ArrowLeft } from 'lucide-react';
 import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
+import ExpandableDescription from './ExpandableDescription';
 
 interface SimpleProductModalProps {
   open: boolean;
@@ -102,9 +103,7 @@ export default function SimpleProductModal({
                 {fmt(basePrice)}
               </p>
               {product.description && (
-                <p className="text-sm text-muted-foreground leading-relaxed pt-1">
-                  {product.description}
-                </p>
+                <ExpandableDescription>{product.description}</ExpandableDescription>
               )}
               {(product.allergens?.length || product.labels?.length) ? (
                 <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} className="pt-2" />
@@ -147,7 +146,7 @@ export default function SimpleProductModal({
                 <span className="font-normal">({t('cart.optional')})</span>
               </Label>
               <Textarea
-                placeholder={t('productCard.observationsPlaceholder')}
+                placeholder=""
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
                 rows={2}
