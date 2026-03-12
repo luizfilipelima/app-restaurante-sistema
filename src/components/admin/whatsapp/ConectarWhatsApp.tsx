@@ -7,6 +7,7 @@
  * - Botão "Desconectar" para encerrar a sessão
  */
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/core/supabase';
 
 /** Extrai mensagem de erro do retorno da Edge Function (inclui body em 4xx/5xx). */
@@ -51,6 +52,7 @@ export function ConectarWhatsApp({
   className = '',
 }: ConectarWhatsAppProps) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [qrImageSrc, setQrImageSrc] = useState<string | null>(null);
@@ -73,14 +75,20 @@ export function ConectarWhatsApp({
 
       const { data: res, error: err } = await supabase.functions.invoke('get-evolution-qrcode', {
         body: { restaurantId },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       if (err) {
         const ctx = err && typeof err === 'object' && 'context' in err ? (err as { context?: { status?: number } }).context : undefined;
         const status = ctx && typeof ctx === 'object' && typeof ctx.status === 'number' ? ctx.status : null;
-        const msg = status === 401
-          ? 'Sessão expirada ou inválida. Faça logout e login novamente.'
-          : await getInvokeErrorMessage(err);
+        if (status === 401) {
+          await supabase.auth.signOut();
+          setError('Sessão expirada. Redirecionando para login…');
+          toast({ title: 'Sessão expirada', description: 'Faça login novamente para continuar.', variant: 'destructive' });
+          navigate('/login', { replace: true });
+          return;
+        }
+        const msg = await getInvokeErrorMessage(err);
         throw new Error(msg);
       }
 
@@ -130,7 +138,7 @@ export function ConectarWhatsApp({
     } finally {
       setLoading(false);
     }
-  }, [restaurantId, queryClient, onStatusChange]);
+  }, [restaurantId, queryClient, onStatusChange, navigate]);
 
   const handleDesconectar = useCallback(async () => {
     if (!restaurantId) return;

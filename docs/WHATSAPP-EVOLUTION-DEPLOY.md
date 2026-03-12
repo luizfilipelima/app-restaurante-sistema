@@ -53,9 +53,9 @@ Verifique:
 
 ## 5. Troubleshooting — Erro 401
 
-Se aparecer **"Edge Function returned a non-2xx"** ou **401 Unauthorized** ao gerar o QR Code:
+Se aparecer **401 Unauthorized** ou **"Sessão expirada ou inválida"** ao gerar o QR Code:
 
-1. **Sessão expirada** — Faça logout e login novamente no painel.
+1. **Sessão expirada** — O app redireciona para o login automaticamente. Faça login novamente e tente de novo.
 2. **Projeto diferente** — Confirme que `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no frontend são do **mesmo projeto** onde as Edge Functions estão deployed.
 3. **Confira os logs** — Em Supabase → Edge Functions → `get-evolution-qrcode` → Logs, veja a mensagem de erro retornada.
 
