@@ -34,7 +34,10 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return fail('Token de autenticação ausente');
+    if (!authHeader) return fail('Token de autenticação ausente. Faça login novamente.', 401);
+
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    if (!token) return fail('Token inválido. Faça login novamente.', 401);
 
     const evolutionBase = Deno.env.get('EVOLUTION_API_BASE_URL');
     const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
@@ -49,8 +52,12 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const admin = createClient(supabaseUrl, serviceKey);
 
-    const { data: { user } } = await admin.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (!user) return fail('Não autenticado', 401);
+    const { data: { user }, error: authErr } = await admin.auth.getUser(token);
+    if (authErr) {
+      console.warn('[get-evolution-qrcode] Auth error:', authErr.message);
+      return fail('Sessão expirada ou inválida. Faça logout e login novamente.', 401);
+    }
+    if (!user) return fail('Sessão expirada ou inválida. Faça logout e login novamente.', 401);
 
     let restaurantId: string | null = null;
     try {

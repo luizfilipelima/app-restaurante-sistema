@@ -8,6 +8,23 @@
  */
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/core/supabase';
+
+/** Extrai mensagem de erro do retorno da Edge Function (inclui body em 4xx/5xx). */
+async function getInvokeErrorMessage(err: unknown): Promise<string> {
+  const fallback = 'Falha ao chamar API';
+  if (!err || typeof err !== 'object') return fallback;
+  const e = err as { message?: string; context?: { json?: () => Promise<{ error?: string }> } };
+  const ctx = e.context;
+  if (ctx && typeof ctx.json === 'function') {
+    try {
+      const body = await ctx.json();
+      if (body?.error && typeof body.error === 'string') return body.error;
+    } catch {
+      /* ignore */
+    }
+  }
+  return e.message || fallback;
+}
 import { Button } from '@/components/ui/button';
 import { Loader2, QrCode, RefreshCw, AlertCircle, CheckCircle2, Link2Off } from 'lucide-react';
 import { toast } from '@/hooks/shared/use-toast';
@@ -47,14 +64,29 @@ export function ConectarWhatsApp({
     setQrImageSrc(null);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Sessão expirada. Faça logout e login novamente para continuar.');
+        toast({ title: 'Sessão expirada', description: 'Faça login novamente.', variant: 'destructive' });
+        return;
+      }
+
       const { data: res, error: err } = await supabase.functions.invoke('get-evolution-qrcode', {
         body: { restaurantId },
       });
 
-      if (err) throw new Error(err.message || 'Falha ao chamar API');
+      if (err) {
+        const msg = await getInvokeErrorMessage(err);
+        throw new Error(msg);
+      }
 
-      const payload = (res as { ok?: boolean; data?: Record<string, unknown>; instanceName?: string } | null);
-      if (!payload?.ok || !payload.data) {
+      const payload = (res as { ok?: boolean; data?: Record<string, unknown>; error?: string } | null);
+      if (!payload?.ok) {
+        const errMsg = (payload as { error?: string })?.error;
+        const isAuthError = errMsg && /401|autentic|sessão|token|login/i.test(errMsg);
+        throw new Error(isAuthError ? 'Sessão expirada ou inválida. Faça logout e login novamente.' : (errMsg || 'Resposta inválida'));
+      }
+      if (!payload.data) {
         throw new Error((payload as { error?: string })?.error || 'Resposta inválida');
       }
 
@@ -101,11 +133,20 @@ export function ConectarWhatsApp({
 
     setDisconnecting(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({ title: 'Sessão expirada', description: 'Faça login novamente.', variant: 'destructive' });
+        return;
+      }
+
       const { error: err } = await supabase.functions.invoke('evolution-disconnect', {
         body: { restaurantId },
       });
 
-      if (err) throw new Error(err.message || 'Falha ao desconectar');
+      if (err) {
+        const msg = await getInvokeErrorMessage(err);
+        throw new Error(msg);
+      }
 
       setQrImageSrc(null);
       toast({ title: 'WhatsApp desconectado' });
