@@ -33,8 +33,8 @@ Deno.serve(async (req) => {
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
     if (!token) return fail('Token inválido. Faça login novamente.', 401);
 
-    const evolutionBase = Deno.env.get('EVOLUTION_API_BASE_URL');
-    const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
+    const evolutionBase = Deno.env.get('EVOLUTION_API_BASE_URL')?.trim();
+    const evolutionKey = Deno.env.get('EVOLUTION_API_KEY')?.trim();
 
     if (!evolutionBase || !evolutionKey) return fail('Evolution API não configurada', 500);
 

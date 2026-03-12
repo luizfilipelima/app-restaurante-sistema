@@ -39,9 +39,9 @@ Deno.serve(async (req) => {
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
     if (!token) return fail('Token inválido. Faça login novamente.', 401);
 
-    const evolutionBase = Deno.env.get('EVOLUTION_API_BASE_URL');
-    const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
-    const webhookBase = Deno.env.get('WEBHOOK_BASE_URL');
+    const evolutionBase = Deno.env.get('EVOLUTION_API_BASE_URL')?.trim();
+    const evolutionKey = Deno.env.get('EVOLUTION_API_KEY')?.trim();
+    const webhookBase = Deno.env.get('WEBHOOK_BASE_URL')?.trim();
 
     if (!evolutionBase || !evolutionKey) {
       console.error('[get-evolution-qrcode] EVOLUTION_API_BASE_URL ou EVOLUTION_API_KEY não configurados');
@@ -113,7 +113,10 @@ Deno.serve(async (req) => {
         // Instância já existe — continua para obter QR
       } else {
         console.error('[get-evolution-qrcode] Create instance erro:', createRes.status, createData);
-        return fail(msg || `Erro ao criar instância: ${createRes.status}`, 502);
+        const hint = createRes.status === 403
+          ? ' Verifique EVOLUTION_API_KEY no Supabase (deve ser igual a AUTHENTICATION_API_KEY da Evolution API).'
+          : '';
+        return fail((msg || `Erro ao criar instância: ${createRes.status}`) + hint, 502);
       }
     }
 

@@ -25,11 +25,44 @@ O endpoint `/api/webhooks/evolution` usa `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE
 
 ## 2. Secrets do Supabase (Edge Functions)
 
-Já configurados via `npx supabase secrets set`:
+As Edge Functions `get-evolution-qrcode` e `evolution-disconnect` precisam dos secrets abaixo. O header `apikey` enviado à Evolution API usa o valor de `EVOLUTION_API_KEY`.
 
-- `EVOLUTION_API_BASE_URL`
-- `EVOLUTION_API_KEY`
-- `WEBHOOK_BASE_URL` (URL pública da app, ex: `https://app.quiero.food`)
+**Importante:** `EVOLUTION_API_KEY` deve ser **idêntico** a `AUTHENTICATION_API_KEY` do `.env` da Evolution API na VPS.
+
+### Comandos para configurar (projeto de produção)
+
+Na raiz do projeto, com o Supabase CLI linkado ao projeto de produção:
+
+```bash
+# 1. URL da Evolution API (ex: https://api.quiero.food)
+npx supabase secrets set EVOLUTION_API_BASE_URL="https://api.quiero.food"
+
+# 2. Chave de API (mesmo valor de AUTHENTICATION_API_KEY na VPS)
+npx supabase secrets set EVOLUTION_API_KEY="sua-chave-aqui"
+
+# 3. URL base da sua app (para o webhook receber callbacks)
+npx supabase secrets set WEBHOOK_BASE_URL="https://app.quiero.food"
+```
+
+Ou em um único comando, passando os valores interativamente:
+
+```bash
+npx supabase secrets set EVOLUTION_API_BASE_URL
+# Cole: https://api.quiero.food
+
+npx supabase secrets set EVOLUTION_API_KEY
+# Cole: o valor de AUTHENTICATION_API_KEY do .env da Evolution API
+
+npx supabase secrets set WEBHOOK_BASE_URL
+# Cole: https://app.quiero.food (ou o domínio da sua app Vercel)
+```
+
+Depois de alterar secrets, faça o redeploy das funções:
+
+```bash
+npx supabase functions deploy get-evolution-qrcode
+npx supabase functions deploy evolution-disconnect
+```
 
 ## 3. Super Admin — Habilitar por restaurante
 
@@ -54,7 +87,17 @@ Verifique:
 - [ ] Sem bloqueio de firewall na VPS
 - [ ] URL configurada em `WEBHOOK_BASE_URL` (usada ao criar a instância)
 
-## 5. Troubleshooting — Erro 401
+## 5. Troubleshooting
+
+### Erro 403 ao criar instância
+
+Se aparecer **"Erro ao criar instância: 403"**:
+
+1. **EVOLUTION_API_KEY** — Deve ser exatamente igual a `AUTHENTICATION_API_KEY` do `.env` da Evolution API na VPS. Sem espaços no início/fim.
+2. **Secrets aplicados** — Depois de `npx supabase secrets set EVOLUTION_API_KEY="..."`, faça o redeploy: `npx supabase functions deploy get-evolution-qrcode`
+3. **Teste na VPS** — Na máquina onde a Evolution API roda: `curl -X GET "https://api.quiero.food/instance/fetchInstances" -H "apikey: SUA_CHAVE"` — deve retornar 200 (ou JSON vazio), não 403.
+
+### Erro 401 (Frontend/Token)
 
 Se aparecer **401 Unauthorized** ou **"Sessão expirada ou inválida"**:
 
