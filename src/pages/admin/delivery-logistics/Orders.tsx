@@ -590,7 +590,8 @@ export default function AdminOrders() {
                       const isPreparing = status === OrderStatus.PREPARING;
                       const isDelivering = status === OrderStatus.DELIVERING;
                       const isDeliveryOrder = !isTableOrder && !isComandaOrder && (order.delivery_type === 'delivery' || order.order_source === 'delivery');
-                      const canNotifyPreparingWhatsApp = isPreparing && isDeliveryOrder;
+                      const isPickupOrder = !isTableOrder && !isComandaOrder && !isDeliveryOrder;
+                      const canNotifyPreparingWhatsApp = isPreparing && (isDeliveryOrder || isPickupOrder);
                       const canNotifyWhatsApp = isDelivering && isDeliveryOrder;
 
                       // Botão de avanço de status:
@@ -604,7 +605,6 @@ export default function AdminOrders() {
                       const goToCompleted = isComandaOrder || tablePreparingOverride || tableReadyOverride || tableDeliveringOverride;
                       const nextStatus = goToCompleted ? OrderStatus.COMPLETED : config.nextStatus;
                       // Pedidos Retirada em Prontos: botão "Aguardando Retirada" em vez de "Saiu para Entrega"
-                      const isPickupOrder = !isTableOrder && !isComandaOrder && !isDeliveryOrder;
                       const pickupReadyLabel = status === OrderStatus.READY && isPickupOrder ? 'Aguardando Retirada' : null;
                       const nextLabel = goToCompleted ? 'Concluir' : (pickupReadyLabel ?? config.nextLabel);
                       const NextIconComponent = goToCompleted ? completedConfig.icon : config.nextIcon;

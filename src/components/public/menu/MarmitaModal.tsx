@@ -399,7 +399,18 @@ export default function MarmitaModal({
             </section>
           )}
 
-          {/* Total e seletor de quantidade */}
+          {/* Observações */}
+          {selectedSize && (
+            <Textarea
+              placeholder={t('productCard.observationsPlaceholder')}
+              value={observations}
+              onChange={(e) => setObservations(e.target.value)}
+              rows={3}
+              className="rounded-lg border-border bg-muted/50 focus:bg-card focus:ring-1 focus:ring-primary/30 min-h-[80px] resize-none text-sm touch-manipulation"
+            />
+          )}
+
+          {/* Total e seletor de quantidade — por último, acima do botão */}
           {selectedSize && (
             <div className="flex items-center justify-between pt-2">
               <span className="text-sm font-medium text-muted-foreground">
@@ -426,17 +437,6 @@ export default function MarmitaModal({
                 </button>
               </div>
             </div>
-          )}
-
-          {/* Observações */}
-          {selectedSize && (
-            <Textarea
-              placeholder={t('productCard.observationsPlaceholder')}
-              value={observations}
-              onChange={(e) => setObservations(e.target.value)}
-              rows={3}
-              className="rounded-lg border-border bg-muted/50 focus:bg-card focus:ring-1 focus:ring-primary/30 min-h-[80px] resize-none text-sm touch-manipulation"
-            />
           )}
           </div>
         </div>

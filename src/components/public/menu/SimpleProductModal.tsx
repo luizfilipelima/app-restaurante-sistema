@@ -111,7 +111,16 @@ export default function SimpleProductModal({
               <ExpandableDescription>{product.description}</ExpandableDescription>
             )}
 
-            {/* Total e seletor de quantidade */}
+            {/* Observações — placeholder no campo */}
+            <Textarea
+                placeholder={t('productCard.observationsPlaceholder')}
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                rows={2}
+                className="rounded-lg border-border bg-muted/50 focus:bg-card focus:ring-1 focus:ring-primary/30 min-h-[64px] resize-none text-sm touch-manipulation"
+              />
+
+            {/* Total e seletor de quantidade — por último, acima do botão */}
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">
                 {t('menu.total')}: {fmt(total)}
@@ -139,15 +148,6 @@ export default function SimpleProductModal({
                 </button>
               </div>
             </div>
-
-            {/* Observações — placeholder no campo */}
-            <Textarea
-                placeholder={t('productCard.observationsPlaceholder')}
-                value={observations}
-                onChange={(e) => setObservations(e.target.value)}
-                rows={2}
-                className="rounded-lg border-border bg-muted/50 focus:bg-card focus:ring-1 focus:ring-primary/30 min-h-[64px] resize-none text-sm touch-manipulation"
-              />
           </div>
         </div>
 
