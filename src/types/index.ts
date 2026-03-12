@@ -48,6 +48,9 @@ export enum ProductCategory {
   APPETIZERS = 'appetizers',
 }
 
+/** Config de extras do Custom: Padrão (seleção) ou Quantidade (max por extra) */
+export type CustomExtrasMode = 'padrao' | 'quantidade';
+
 // ==================== DATABASE TYPES ====================
 
 export type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
@@ -178,6 +181,14 @@ export interface Restaurant {
   menu_theme_accent?: string | null;
   /** Domínio personalizado (Enterprise). Ex: cardapio.minhapizzaria.com.br. */
   custom_domain?: string | null;
+  /** Modo dos extras Custom: padrao = Sem Extras + lista selecionável; quantidade = +/- com max por extra */
+  custom_extras_mode?: CustomExtrasMode | null;
+  /** Quantidade mínima de extras selecionáveis (modo Padrão) */
+  custom_extras_min?: number | null;
+  /** Quantidade máxima de extras selecionáveis (modo Padrão) */
+  custom_extras_max?: number | null;
+  /** Se obrigatório (modo Padrão): usuário deve selecionar ao menos custom_extras_min extras */
+  custom_extras_required?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -255,8 +266,17 @@ export interface Product {
   labels?: string[] | null;
   /** Se true, o item aparece no cardápio para pedidos delivery */
   available_for_delivery?: boolean;
+  /** Para produtos Custom: subconjunto de tamanhos, massas, bordas e extras. Null/vazio = usa todos */
+  custom_config?: ProductCustomConfig | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProductCustomConfig {
+  sizeIds?: string[];
+  doughIds?: string[];
+  edgeIds?: string[];
+  extraIds?: string[];
 }
 
 export interface PizzaSize {
@@ -313,6 +333,8 @@ export interface PizzaExtra {
   ingredient_id?: string | null;
   is_active: boolean;
   order_index?: number;
+  /** Quantidade máxima que o usuário pode adicionar (modo Quantidade). Default 10 */
+  max_quantity?: number;
   created_at: string;
 }
 
@@ -345,6 +367,10 @@ export interface ProductAddonGroup {
   product_id: string;
   name: string;
   order_index: number;
+  addon_mode?: 'padrao' | 'quantidade';
+  addon_min?: number;
+  addon_max?: number;
+  addon_required?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -360,6 +386,8 @@ export interface ProductAddonItem {
   in_stock: boolean;
   ingredient_id?: string | null;
   order_index: number;
+  /** Quantidade máxima (modo Quantidade). Default 10 */
+  max_quantity?: number;
   created_at: string;
   updated_at: string;
 }

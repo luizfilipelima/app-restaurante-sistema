@@ -9,7 +9,7 @@ import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Minus, Plus, ArrowLeft } from 'lucide-react';
+import { Minus, Plus, ArrowLeft, Check } from 'lucide-react';
 import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
 import ExpandableDescription from './ExpandableDescription';
 
@@ -17,12 +17,17 @@ interface AddonItem {
   id: string;
   name: string;
   price: number;
+  max_quantity?: number;
 }
 
 interface AddonGroup {
   id: string;
   name: string;
   items: AddonItem[];
+  addon_mode?: 'padrao' | 'quantidade';
+  addon_min?: number;
+  addon_max?: number;
+  addon_required?: boolean;
 }
 
 interface ProductAddonModalProps {
@@ -67,11 +72,38 @@ export default function ProductAddonModal({
   const getAddonQty = (addonItemId: string) =>
     selectedAddons.find((a) => a.addonItemId === addonItemId)?.quantity ?? 0;
 
-  const changeAddonQty = (item: AddonItem, delta: number) => {
+  const mode = (g: AddonGroup) => g.addon_mode ?? 'quantidade';
+
+  const padraoSelectedCount = (g: AddonGroup) =>
+    selectedAddons.filter((a) => g.items.some((i) => i.id === a.addonItemId)).length;
+
+  const isPadraoExtrasSelected = (g: AddonGroup) =>
+    mode(g) === 'padrao' && padraoSelectedCount(g) === 0;
+
+  const isPadraoItemSelected = (g: AddonGroup, itemId: string) =>
+    mode(g) === 'padrao' && selectedAddons.some((a) => a.addonItemId === itemId);
+
+  const selectSemExtras = (g: AddonGroup) => {
+    setSelectedAddons((prev) => prev.filter((a) => !g.items.some((i) => i.id === a.addonItemId)));
+  };
+
+  const togglePadraoItem = (g: AddonGroup, item: AddonItem) => {
+    if (mode(g) !== 'padrao') return;
+    const sel = isPadraoItemSelected(g, item.id);
+    const max = g.addon_max ?? 5;
+    if (sel) {
+      setSelectedAddons((prev) => prev.filter((a) => a.addonItemId !== item.id));
+      return;
+    }
+    if (padraoSelectedCount(g) >= max) return;
+    setSelectedAddons((prev) => [...prev.filter((a) => a.addonItemId !== item.id), { addonItemId: item.id, name: item.name, price: item.price, quantity: 1 }]);
+  };
+
+  const changeAddonQty = (item: AddonItem, delta: number, maxQty = 99) => {
     setSelectedAddons((prev) => {
       const existing = prev.find((a) => a.addonItemId === item.id);
       const currentQty = existing?.quantity ?? 0;
-      const nextQty = Math.max(0, currentQty + delta);
+      const nextQty = Math.max(0, Math.min(maxQty, currentQty + delta));
       if (nextQty === 0) {
         return prev.filter((a) => a.addonItemId !== item.id);
       }
@@ -82,6 +114,14 @@ export default function ProductAddonModal({
       return [...prev, entry];
     });
   };
+
+  const padraoValidationFailed = addonGroups.some(
+    (g) =>
+      mode(g) === 'padrao' &&
+      (g.addon_required ?? false) &&
+      (g.addon_min ?? 0) > 0 &&
+      padraoSelectedCount(g) < (g.addon_min ?? 0)
+  );
 
   const addonsTotal = selectedAddons.reduce((s, a) => s + a.price * (a.quantity ?? 1), 0);
   const unitPrice = basePrice + addonsTotal;
@@ -141,6 +181,10 @@ export default function ProductAddonModal({
               )}
             </div>
 
+            {product.description && (
+              <ExpandableDescription>{product.description}</ExpandableDescription>
+            )}
+
             {/* Info do produto */}
             <div className="space-y-1">
               <h3 className="text-lg font-semibold text-foreground leading-snug">
@@ -149,9 +193,6 @@ export default function ProductAddonModal({
               <p className="text-base font-semibold text-primary tabular-nums">
                 {fmt(basePrice)}
               </p>
-              {product.description && (
-                <ExpandableDescription>{product.description}</ExpandableDescription>
-              )}
               {(product.allergens?.length || product.labels?.length) ? (
                 <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} className="pt-2" />
               ) : null}
@@ -186,54 +227,87 @@ export default function ProductAddonModal({
               </div>
             </div>
 
-            {/* Addons — com seletor de quantidade por item */}
+            {/* Addons — Padrão (lista) ou Quantidade (+/-) */}
             {addonGroups.map((group) => (
               <div key={group.id} className="space-y-2">
                 <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {group.name}
                 </h4>
-                <div className="flex flex-col gap-2">
-                  {group.items.map((item) => {
-                    const qty = getAddonQty(item.id);
-                    return (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border bg-card"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm font-medium text-foreground">{item.name}</span>
-                          {item.price > 0 && (
-                            <span className="text-xs text-muted-foreground ml-1">
-                              +{fmt(item.price)}
-                            </span>
-                          )}
+                {mode(group) === 'padrao' ? (
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => selectSemExtras(group)}
+                      className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg border text-left transition-colors ${
+                        isPadraoExtrasSelected(group) ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted/50'
+                      }`}
+                    >
+                      <span className="text-sm font-medium">Sem Extras</span>
+                      {isPadraoExtrasSelected(group) && <Check className="h-4 w-4 text-primary shrink-0" />}
+                    </button>
+                    {group.items.map((item) => {
+                      const sel = isPadraoItemSelected(group, item.id);
+                      const max = group.addon_max ?? 5;
+                      const count = padraoSelectedCount(group);
+                      const canAdd = !sel && count < max;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => (sel || canAdd) && togglePadraoItem(group, item)}
+                          className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg border text-left transition-colors ${
+                            sel ? 'border-primary bg-primary/5' : canAdd ? 'border-border bg-card hover:bg-muted/50' : 'border-border bg-muted/30 opacity-60'
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium">{item.name}</span>
+                            {item.price > 0 && <span className="text-xs text-muted-foreground ml-1">+{fmt(item.price)}</span>}
+                          </div>
+                          {sel && <Check className="h-4 w-4 text-primary shrink-0" />}
+                        </button>
+                      );
+                    })}
+                    {(group.addon_required ?? false) && padraoSelectedCount(group) < (group.addon_min ?? 0) && (
+                      <p className="text-xs text-amber-600">Selecione ao menos {group.addon_min} extra(s)</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {group.items.map((item) => {
+                      const qty = getAddonQty(item.id);
+                      const max = item.max_quantity ?? 10;
+                      return (
+                        <div key={item.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border bg-card">
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium text-foreground">{item.name}</span>
+                            {item.price > 0 && <span className="text-xs text-muted-foreground ml-1">+{fmt(item.price)}</span>}
+                          </div>
+                          <div className="flex items-center gap-1 rounded-lg bg-muted overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => changeAddonQty(item, -1, max)}
+                              disabled={qty <= 0}
+                              className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted-foreground/15 disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
+                              aria-label="Diminuir quantidade"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                            <span className="w-8 text-center text-sm font-semibold tabular-nums">{qty}</span>
+                            <button
+                              type="button"
+                              onClick={() => changeAddonQty(item, 1, max)}
+                              disabled={qty >= max}
+                              className="h-9 w-9 flex items-center justify-center text-primary hover:bg-primary/10 disabled:opacity-40 touch-manipulation"
+                              aria-label="Aumentar quantidade"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 rounded-lg bg-muted overflow-hidden">
-                          <button
-                            type="button"
-                            onClick={() => changeAddonQty(item, -1)}
-                            disabled={qty <= 0}
-                            className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted-foreground/15 disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation transition-colors"
-                            aria-label="Diminuir quantidade"
-                          >
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="w-8 text-center text-sm font-semibold text-foreground tabular-nums">
-                            {qty}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => changeAddonQty(item, 1)}
-                            className="h-9 w-9 flex items-center justify-center text-primary hover:bg-primary/10 touch-manipulation transition-colors"
-                            aria-label="Aumentar quantidade"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
 
@@ -256,7 +330,8 @@ export default function ProductAddonModal({
           <button
             type="button"
             onClick={handleAdd}
-                className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base transition-colors active:scale-[0.99] touch-manipulation shadow-sm"
+            disabled={padraoValidationFailed}
+            className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base transition-colors active:scale-[0.99] touch-manipulation shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {t('productCard.addToCart')}
           </button>

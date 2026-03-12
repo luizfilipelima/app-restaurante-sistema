@@ -10,7 +10,7 @@ import {
   formatPrice,
   convertBetweenCurrencies,
 } from '@/lib/priceHelper';
-import { Product, Restaurant, Category, Subcategory } from '@/types';
+import { Product, Restaurant, Category, Subcategory, type ProductCustomConfig } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -94,6 +94,7 @@ import {
   Tag,
   ShoppingCart,
   Palette,
+  SlidersHorizontal,
 } from 'lucide-react';
 import MenuQRCodeCard from '@/components/admin/menu-stock/MenuQRCodeCard';
 import MenuThemeSelector from '@/components/admin/menu-stock/MenuThemeSelector';
@@ -102,7 +103,9 @@ import { getCategoryIconComponent } from '@/lib/menu/categoryIcons';
 import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/menu-stock/ProductAddonsSection';
 import ProductAllergensLabelsSection from '@/components/admin/menu-stock/ProductAllergensLabelsSection';
 import PizzaConfigSection from '@/components/admin/menu-stock/PizzaConfigSection';
+import ProductCustomDetailsModal from '@/components/admin/menu-stock/ProductCustomDetailsModal';
 import { useProductUpsells, useSaveProductUpsells, useProductComboItems, useProductAddons, useSaveProductAddons } from '@/hooks/queries';
+import { usePizzaConfig } from '@/hooks/queries/usePizzaConfig';
 import { useCanAccess } from '@/hooks/auth/useUserRole';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -436,6 +439,7 @@ export default function AdminMenu() {
 
   // Category edit modal
   const [showEditCategoryModal, setShowEditCategoryModal] = useState(false);
+  const [showCustomConfigModal, setShowCustomConfigModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editCategoryForm, setEditCategoryForm] = useState<{
     name: string;
@@ -473,6 +477,11 @@ export default function AdminMenu() {
   const { addons } = useProductAddons(editingProduct?.id ?? null);
   const saveAddonsMutation = useSaveProductAddons(null);
   const addonSectionRef = useRef<{ getGroups: () => AddonGroupEdit[] }>(null);
+
+  // Detalhes Custom (quais itens aplicam ao produto — só quando categoria Custom)
+  const [showCustomDetailsModal, setShowCustomDetailsModal] = useState(false);
+  const [customConfig, setCustomConfig] = useState<ProductCustomConfig | null>(null);
+  const { sizes: pizzaSizesConfig, doughs: pizzaDoughsConfig, edges: pizzaEdgesConfig, extras: pizzaExtrasConfig } = usePizzaConfig(restaurantId);
 
   // Receita de ingredientes (para CMV preciso no BI)
   const [ingredients, setIngredients] = useState<Array<{ id: string; name: string; unit: string }>>([]);
@@ -687,6 +696,7 @@ export default function AdminMenu() {
       costCurrency: currency as CostCurrencyCode,
       cardLayout: 'grid',
     });
+    setCustomConfig(null);
     setModalOpen(true);
   };
 
@@ -756,6 +766,7 @@ export default function AdminMenu() {
       invUnit,
       invExpiry,
     });
+    setCustomConfig(product.custom_config ?? null);
     setProductRecipeItems([]);
     setRecipeSearch('');
     if (restaurantId) {
@@ -784,7 +795,9 @@ export default function AdminMenu() {
   const handleCategoryChange = (categoryId: string) => {
     const cat = categories.find((c) => c.id === categoryId) ?? null;
     const isNowCombo = cat?.extra_field === 'detail';
+    const isNowCustom = cat?.is_pizza ?? false;
     if (!isNowCombo) setComboItems([]);
+    if (!isNowCustom) setCustomConfig(null);
     setForm((f) => ({
       ...f,
       categoryId,
@@ -834,6 +847,7 @@ export default function AdminMenu() {
         allergens: form.allergens?.length ? form.allergens : null,
         labels: form.labels?.length ? form.labels : null,
         available_for_delivery: form.available_for_delivery ?? true,
+        custom_config: cfg.isPizza ? (customConfig ?? null) : null,
       };
       let savedProductId = editingProduct?.id ?? '';
 
@@ -888,6 +902,10 @@ export default function AdminMenu() {
           .map((g) => ({
             name: g.name.trim(),
             order_index: g.order_index,
+            addon_mode: g.addon_mode ?? 'quantidade',
+            addon_min: g.addon_min ?? 0,
+            addon_max: g.addon_max ?? 5,
+            addon_required: g.addon_required ?? false,
             items: g.items
               .filter((it) => it.name.trim())
               .map((it) => ({
@@ -898,6 +916,7 @@ export default function AdminMenu() {
                 in_stock: it.in_stock,
                 ingredient_id: it.ingredient_id || null,
                 order_index: it.order_index,
+                max_quantity: it.max_quantity ?? 10,
               })),
           }))
           .filter((g) => g.items.length > 0);
@@ -1001,6 +1020,7 @@ export default function AdminMenu() {
           is_pizza: product.is_pizza, is_marmita: product.is_marmita ?? false, is_active: product.is_active, order_index: nextOrder ?? 0,
           print_destination: product.print_destination ?? null,
           card_layout: product.card_layout ?? 'grid',
+          custom_config: product.custom_config ?? null,
           available_for_delivery: product.available_for_delivery ?? true,
         })
         .select('*').single();
@@ -1029,7 +1049,15 @@ export default function AdminMenu() {
           const g = addonGroups[gi];
           const { data: newGroup, error: groupErr } = await supabase
             .from('product_addon_groups')
-            .insert({ product_id: newProduct.id, name: g.name, order_index: g.order_index })
+            .insert({
+              product_id: newProduct.id,
+              name: g.name,
+              order_index: g.order_index,
+              addon_mode: g.addon_mode ?? 'quantidade',
+              addon_min: g.addon_min ?? 0,
+              addon_max: g.addon_max ?? 5,
+              addon_required: g.addon_required ?? false,
+            })
             .select('id')
             .single();
           if (groupErr) throw groupErr;
@@ -1045,6 +1073,7 @@ export default function AdminMenu() {
               in_stock: it.in_stock,
               ingredient_id: it.ingredient_id ?? null,
               order_index: it.order_index ?? ii,
+              max_quantity: it.max_quantity ?? 10,
             });
             if (itemErr) throw itemErr;
           }
@@ -1608,6 +1637,23 @@ export default function AdminMenu() {
                     </div>
                   )}
                 </div>
+                {categoryConfig.isPizza && (
+                  <div className="pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 h-9 text-sm"
+                      onClick={() => setShowCustomDetailsModal(true)}
+                    >
+                      <SlidersHorizontal className="h-3.5 w-3.5" />
+                      Detalhes Custom
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Tamanhos, massas, bordas e extras que se aplicam a este produto
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1684,16 +1730,6 @@ export default function AdminMenu() {
               onAllergensChange={(ids) => setForm((f) => ({ ...f, allergens: ids }))}
               onLabelsChange={(ids) => setForm((f) => ({ ...f, labels: ids }))}
             />
-
-            {/* Configuração Custom (categoria Custom) */}
-            {categoryConfig.isPizza && (
-              <PizzaConfigSection
-                restaurantId={restaurantId}
-                currency={currency}
-                costCurrency={form.costCurrency}
-                ingredients={ingredients}
-              />
-            )}
 
             {/* Combo Builder (categoria Combos) */}
             {isComboCategory && (
@@ -2188,6 +2224,18 @@ export default function AdminMenu() {
         </DialogContent>
       </Dialog>
 
+      {/* ── Detalhes Custom (produto) ────────────────────────────────────────── */}
+      <ProductCustomDetailsModal
+        open={showCustomDetailsModal}
+        onOpenChange={setShowCustomDetailsModal}
+        config={customConfig}
+        onChange={setCustomConfig}
+        sizes={pizzaSizesConfig}
+        doughs={pizzaDoughsConfig}
+        edges={pizzaEdgesConfig}
+        extras={pizzaExtrasConfig}
+      />
+
       {/* ── New Category Modal ──────────────────────────────────────────────── */}
       <Dialog open={showCategoryModal} onOpenChange={(open) => { if (!open) setCategoryFormImageUrl(''); setShowCategoryModal(open); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -2277,6 +2325,15 @@ export default function AdminMenu() {
                 </div>
               </div>
             </div>
+            {categoryFormType === 'pizza' && (
+              <div className="border-t border-border pt-4">
+                <Button type="button" variant="outline" className="w-full justify-center gap-2" onClick={() => setShowCustomConfigModal(true)}>
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Configurar Custom
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2 text-center">Tamanhos, massas, extras e bordas que aplicam a todos os produtos da categoria Custom</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCategoryModal(false)}>Cancelar</Button>
@@ -2378,6 +2435,15 @@ export default function AdminMenu() {
                     <p className="text-xs text-muted-foreground mt-0.5">Ativa gerenciamento de quantidade e custo para esta categoria.</p>
                   </div>
                 </div>
+                {editCategoryForm.type === 'pizza' && (
+                  <div className="border-t border-border pt-4 mt-4">
+                    <Button type="button" variant="outline" className="w-full justify-center gap-2" onClick={() => setShowCustomConfigModal(true)}>
+                      <SlidersHorizontal className="h-4 w-4" />
+                      Configurar Custom
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-2 text-center">Tamanhos, massas, extras e bordas que aplicam a todos os produtos da categoria Custom</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2385,6 +2451,25 @@ export default function AdminMenu() {
             <Button variant="outline" onClick={() => setShowEditCategoryModal(false)}>Cancelar</Button>
             <Button onClick={handleUpdateCategory} disabled={!editingCategory || !editCategoryForm.name.trim()}>Salvar</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal Configurar Custom (tamanhos, massas, extras, bordas) ──────── */}
+      <Dialog open={showCustomConfigModal} onOpenChange={setShowCustomConfigModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Configuração Custom</DialogTitle>
+            <p className="text-sm text-muted-foreground">Tamanhos, massas, extras e bordas que aplicam a todos os produtos da categoria Custom</p>
+          </DialogHeader>
+          <div className="py-2">
+            <PizzaConfigSection
+              restaurantId={restaurantId}
+              currency={currency}
+              costCurrency={currency}
+              ingredients={ingredients}
+              onExtrasConfigSaved={() => invalidatePublicMenuCache(queryClient, slug || restaurant?.slug || ctxRestaurant?.slug)}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 

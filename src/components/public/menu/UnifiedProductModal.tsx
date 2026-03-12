@@ -18,7 +18,15 @@ import ExpandableDescription from './ExpandableDescription';
 interface AddonGroup {
   id: string;
   name: string;
-  items: { id: string; name: string; price: number }[];
+  items: { id: string; name: string; price: number; maxQuantity?: number; max_quantity?: number }[];
+  extrasMode?: 'padrao' | 'quantidade';
+  extrasMin?: number;
+  extrasMax?: number;
+  extrasRequired?: boolean;
+  addon_mode?: 'padrao' | 'quantidade';
+  addon_min?: number;
+  addon_max?: number;
+  addon_required?: boolean;
 }
 
 export interface PizzaConfig {
@@ -88,17 +96,51 @@ export default function UnifiedProductModal({
   const getAddonQty = (addonItemId: string) =>
     selectedAddons.find((a) => a.addonItemId === addonItemId)?.quantity ?? 0;
 
-  const changeAddonQty = (item: { id: string; name: string; price: number }, delta: number) => {
+  const changeAddonQty = (item: { id: string; name: string; price: number; maxQuantity?: number }, delta: number) => {
+    const max = item.maxQuantity ?? 99;
     setSelectedAddons((prev) => {
       const existing = prev.find((a) => a.addonItemId === item.id);
       const currentQty = existing?.quantity ?? 0;
-      const nextQty = Math.max(0, currentQty + delta);
+      const nextQty = Math.max(0, Math.min(max, currentQty + delta));
       if (nextQty === 0) return prev.filter((a) => a.addonItemId !== item.id);
       const entry = { addonItemId: item.id, name: item.name, price: item.price, quantity: nextQty };
       if (existing) return prev.map((a) => (a.addonItemId === item.id ? entry : a));
       return [...prev, entry];
     });
   };
+
+  /** Toggle extra selection (modo Padrão) — "Sem Extras" = id especial, quantity 0 */
+  const togglePadraoExtra = (group: AddonGroup, item: { id: string; name: string; price: number }) => {
+    if (addonGroupMode(group) !== 'padrao') return;
+    const max = addonGroupMax(group);
+    const selected = selectedAddons.filter((a) => group.items.some((i) => i.id === a.addonItemId));
+    const isSelected = selected.some((a) => a.addonItemId === item.id);
+    if (isSelected) {
+      setSelectedAddons((prev) => prev.filter((a) => a.addonItemId !== item.id));
+      return;
+    }
+    if (selected.length >= max) return;
+    setSelectedAddons((prev) => [...prev.filter((a) => a.addonItemId !== item.id), { addonItemId: item.id, name: item.name, price: item.price, quantity: 1 }]);
+  };
+
+  const selectSemExtras = (group: AddonGroup) => {
+    if (addonGroupMode(group) !== 'padrao') return;
+    setSelectedAddons((prev) => prev.filter((a) => !group.items.some((i) => i.id === a.addonItemId)));
+  };
+
+  const addonGroupMode = (g: AddonGroup) => g.extrasMode ?? g.addon_mode ?? 'quantidade';
+  const addonGroupMin = (g: AddonGroup) => g.extrasMin ?? g.addon_min ?? 0;
+  const addonGroupMax = (g: AddonGroup) => g.extrasMax ?? g.addon_max ?? 5;
+  const addonGroupRequired = (g: AddonGroup) => g.extrasRequired ?? g.addon_required ?? false;
+
+  const isPadraoExtrasSelected = (group: AddonGroup) =>
+    addonGroupMode(group) === 'padrao' && selectedAddons.filter((a) => group.items.some((i) => i.id === a.addonItemId)).length === 0;
+
+  const isPadraoExtraItemSelected = (group: AddonGroup, itemId: string) =>
+    addonGroupMode(group) === 'padrao' && selectedAddons.some((a) => a.addonItemId === itemId);
+
+  const padraoSelectedCount = (group: AddonGroup) =>
+    selectedAddons.filter((a) => group.items.some((i) => i.id === a.addonItemId)).length;
 
   const addonsTotal = selectedAddons.reduce((s, a) => s + a.price * a.quantity, 0);
   const doughExtra = selectedDough?.extra_price ?? 0;
@@ -116,7 +158,14 @@ export default function UnifiedProductModal({
   const total = unitPrice * quantity;
   const fmt = (v: number) => formatPrice(convertForDisplay ? convertForDisplay(v) : v, currency);
 
-  const canAdd = isPizza ? effectiveSize !== null : true;
+  const padraoValidationFailed = addonGroups.some(
+    (g) =>
+      addonGroupMode(g) === 'padrao' &&
+      addonGroupRequired(g) &&
+      addonGroupMin(g) > 0 &&
+      padraoSelectedCount(g) < addonGroupMin(g)
+  );
+  const canAdd = isPizza ? effectiveSize !== null && !padraoValidationFailed : true;
 
   const handleAdd = () => {
     if (isPizza) {
@@ -182,6 +231,10 @@ export default function UnifiedProductModal({
                 <span className="text-5xl opacity-25">🍽</span>
               )}
             </div>
+
+            {product.description && (
+              <ExpandableDescription>{product.description}</ExpandableDescription>
+            )}
 
             {/* Opções de pizza (quando config de pizza) */}
             {isPizza && (
@@ -332,37 +385,79 @@ export default function UnifiedProductModal({
             {addonGroups.map((group) => (
               <div key={group.id} className="space-y-2">
                 <h4 className="text-xs font-medium text-muted-foreground uppercase">{group.name}</h4>
-                <div className="flex flex-col gap-2">
-                  {group.items.map((item) => {
-                    const qty = getAddonQty(item.id);
-                    return (
-                      <div key={item.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border bg-card">
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm font-medium">{item.name}</span>
-                          {item.price > 0 && <span className="text-xs text-muted-foreground ml-1">+{fmt(item.price)}</span>}
+                {addonGroupMode(group) === 'padrao' ? (
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => selectSemExtras(group)}
+                      className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg border text-left transition-all ${
+                        isPadraoExtrasSelected(group) ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted/50'
+                      }`}
+                    >
+                      <span className="text-sm font-medium">Sem Extras</span>
+                      {isPadraoExtrasSelected(group) && <Check className="h-4 w-4 text-primary shrink-0" />}
+                    </button>
+                    {group.items.map((item) => {
+                      const sel = isPadraoExtraItemSelected(group, item.id);
+                      const max = addonGroupMax(group);
+                      const count = padraoSelectedCount(group);
+                      const canAdd = !sel && count < max;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => (sel || canAdd) && togglePadraoExtra(group, item)}
+                          className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg border text-left transition-all ${
+                            sel ? 'border-primary bg-primary/5' : canAdd ? 'border-border bg-card hover:bg-muted/50' : 'border-border bg-muted/30 opacity-60 cursor-default'
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium">{item.name}</span>
+                            {item.price > 0 && <span className="text-xs text-muted-foreground ml-1">+{fmt(item.price)}</span>}
+                          </div>
+                          {sel && <Check className="h-4 w-4 text-primary shrink-0" />}
+                        </button>
+                      );
+                    })}
+                    {addonGroupRequired(group) && padraoSelectedCount(group) < addonGroupMin(group) && (
+                      <p className="text-xs text-amber-600">Selecione ao menos {addonGroupMin(group)} extra(s)</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {group.items.map((item) => {
+                      const qty = getAddonQty(item.id);
+                      const max = item.maxQuantity ?? item.max_quantity ?? 99;
+                      return (
+                        <div key={item.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border bg-card">
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium">{item.name}</span>
+                            {item.price > 0 && <span className="text-xs text-muted-foreground ml-1">+{fmt(item.price)}</span>}
+                          </div>
+                          <div className="flex items-center gap-1 rounded-lg bg-muted overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => changeAddonQty(item, -1)}
+                              disabled={qty <= 0}
+                              className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-40 touch-manipulation"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                            <span className="w-8 text-center text-sm font-semibold tabular-nums">{qty}</span>
+                            <button
+                              type="button"
+                              onClick={() => changeAddonQty(item, 1)}
+                              disabled={qty >= max}
+                              className="h-9 w-9 flex items-center justify-center text-primary hover:bg-primary/10 disabled:opacity-40 touch-manipulation"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 rounded-lg bg-muted overflow-hidden">
-                          <button
-                            type="button"
-                            onClick={() => changeAddonQty(item, -1)}
-                            disabled={qty <= 0}
-                            className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-40 touch-manipulation"
-                          >
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="w-8 text-center text-sm font-semibold tabular-nums">{qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => changeAddonQty(item, 1)}
-                            className="h-9 w-9 flex items-center justify-center text-primary hover:bg-primary/10 touch-manipulation"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
 
@@ -370,9 +465,6 @@ export default function UnifiedProductModal({
             <div className="space-y-1">
               <h3 className="text-lg font-semibold text-foreground leading-snug">{t('menu.total')}</h3>
               <p className="text-base font-semibold text-primary tabular-nums">{fmt(total)}</p>
-              {product.description && (
-                <ExpandableDescription>{product.description}</ExpandableDescription>
-              )}
               {(product.allergens?.length || product.labels?.length) ? (
                 <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} className="pt-2" />
               ) : null}

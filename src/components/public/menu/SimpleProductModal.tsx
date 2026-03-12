@@ -93,6 +93,10 @@ export default function SimpleProductModal({
               )}
             </div>
 
+            {product.description && (
+              <ExpandableDescription>{product.description}</ExpandableDescription>
+            )}
+
             {/* Info do produto */}
             <div className="space-y-1">
               <h3 className="text-lg font-semibold text-foreground leading-snug">
@@ -101,9 +105,6 @@ export default function SimpleProductModal({
               <p className="text-base font-semibold text-primary tabular-nums">
                 {fmt(basePrice)}
               </p>
-              {product.description && (
-                <ExpandableDescription>{product.description}</ExpandableDescription>
-              )}
               {(product.allergens?.length || product.labels?.length) ? (
                 <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} className="pt-2" />
               ) : null}

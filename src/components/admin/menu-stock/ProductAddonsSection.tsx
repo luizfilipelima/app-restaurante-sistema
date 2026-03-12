@@ -10,15 +10,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, GripVertical, Package, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Package, AlertCircle, ListChecks, Hash } from 'lucide-react';
 import { convertPriceToStorage, convertPriceFromStorage, getCurrencySymbol } from '@/lib/priceHelper';
 import type { ProductAddonGroupWithItems } from '@/hooks/queries/useProductAddons';
 import type { CostCurrencyCode } from '@/lib/priceHelper';
+
+export type AddonMode = 'padrao' | 'quantidade';
 
 export interface AddonGroupEdit {
   id: string;
   name: string;
   order_index: number;
+  addon_mode?: AddonMode;
+  addon_min?: number;
+  addon_max?: number;
+  addon_required?: boolean;
   items: AddonItemEdit[];
 }
 
@@ -33,6 +39,7 @@ export interface AddonItemEdit {
   in_stock: boolean;
   ingredient_id: string | null;
   order_index: number;
+  max_quantity?: number;
 }
 
 export interface ProductAddonsSectionRef {
@@ -54,6 +61,10 @@ function toEditGroups(addons: ProductAddonGroupWithItems[], currency: CostCurren
     id: g.id,
     name: g.name,
     order_index: g.order_index,
+    addon_mode: (g as ProductAddonGroupWithItems & { addon_mode?: AddonMode }).addon_mode ?? 'quantidade',
+    addon_min: (g as ProductAddonGroupWithItems & { addon_min?: number }).addon_min ?? 0,
+    addon_max: (g as ProductAddonGroupWithItems & { addon_max?: number }).addon_max ?? 5,
+    addon_required: (g as ProductAddonGroupWithItems & { addon_required?: boolean }).addon_required ?? false,
     items: g.items.map((it, ii) => ({
       id: it.id,
       name: it.name,
@@ -65,6 +76,7 @@ function toEditGroups(addons: ProductAddonGroupWithItems[], currency: CostCurren
       in_stock: it.in_stock ?? false,
       ingredient_id: it.ingredient_id ?? null,
       order_index: ii,
+      max_quantity: (it as { max_quantity?: number }).max_quantity ?? 10,
     })),
   }));
 }
@@ -114,6 +126,10 @@ const ProductAddonsSectionInner = ({
         id: `new-${Date.now()}`,
         name: '',
         order_index: groups.length,
+        addon_mode: 'quantidade' as AddonMode,
+        addon_min: 0,
+        addon_max: 5,
+        addon_required: false,
         items: [],
       },
     ];
@@ -148,6 +164,7 @@ const ProductAddonsSectionInner = ({
           in_stock: false,
           ingredient_id: null,
           order_index: g.items.length,
+          max_quantity: 10,
         },
       ],
     };
@@ -207,6 +224,49 @@ const ProductAddonsSectionInner = ({
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground">Tipo:</span>
+                <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => updateGroup(gi, { addon_mode: 'padrao' })}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium ${
+                      (g.addon_mode ?? 'quantidade') === 'padrao' ? 'bg-background shadow-sm' : 'text-muted-foreground'
+                    }`}
+                  >
+                    <ListChecks className="h-3 w-3" /> Padrão
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateGroup(gi, { addon_mode: 'quantidade' })}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium ${
+                      (g.addon_mode ?? 'quantidade') === 'quantidade' ? 'bg-background shadow-sm' : 'text-muted-foreground'
+                    }`}
+                  >
+                    <Hash className="h-3 w-3" /> Quantidade
+                  </button>
+                </div>
+                {(g.addon_mode ?? 'quantidade') === 'padrao' && (
+                  <div className="flex items-center gap-3 ml-2">
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs">Mín</Label>
+                      <Input type="number" min={0} max={20} value={g.addon_min ?? 0}
+                        onChange={(e) => updateGroup(gi, { addon_min: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                        className="h-7 w-12 text-xs" />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs">Máx</Label>
+                      <Input type="number" min={0} max={20} value={g.addon_max ?? 5}
+                        onChange={(e) => updateGroup(gi, { addon_max: Math.max(0, parseInt(e.target.value, 10) || 5) })}
+                        className="h-7 w-12 text-xs" />
+                    </div>
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <Switch checked={g.addon_required ?? false} onCheckedChange={(v) => updateGroup(gi, { addon_required: v })} />
+                      Obrigatório
+                    </label>
+                  </div>
+                )}
               </div>
               <div className="space-y-3">
                 {g.items.map((it, ii) => {
@@ -284,7 +344,17 @@ const ProductAddonsSectionInner = ({
                         </div>
                       </div>
                     </div>
-
+                    {(g.addon_mode ?? 'quantidade') === 'quantidade' && (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs text-muted-foreground">Qtde. máx</Label>
+                        <Input type="number" min={1} max={50} defaultValue={it.max_quantity ?? 10}
+                          onBlur={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (!Number.isNaN(v) && v >= 1 && v <= 50) updateItem(gi, ii, { max_quantity: v });
+                          }}
+                          className="h-8 w-16 text-sm" />
+                      </div>
+                    )}
                     <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-border/60">
                       <label className="flex items-center gap-2 text-sm cursor-pointer">
                         <Switch

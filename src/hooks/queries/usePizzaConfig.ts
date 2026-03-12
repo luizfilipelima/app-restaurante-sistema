@@ -125,6 +125,7 @@ export function usePizzaConfigMutations(restaurantId: string | null) {
       cost_currency?: string;
       in_stock?: boolean;
       ingredient_id?: string | null;
+      max_quantity?: number;
     }) => {
       if (!restaurantId) throw new Error('restaurant_id required');
       const { data: existing } = await supabase.from('pizza_extras').select('order_index').eq('restaurant_id', restaurantId).order('order_index', { ascending: false }).limit(1).single();
@@ -137,6 +138,7 @@ export function usePizzaConfigMutations(restaurantId: string | null) {
         cost_currency: data.cost_currency ?? 'BRL',
         in_stock: data.in_stock ?? false,
         ingredient_id: data.ingredient_id ?? null,
+        max_quantity: data.max_quantity ?? 10,
         order_index: order,
         is_active: true,
       });
@@ -237,6 +239,7 @@ export function usePizzaConfigMutations(restaurantId: string | null) {
         in_stock?: boolean;
         ingredient_id?: string | null;
         is_active?: boolean;
+        max_quantity?: number;
       };
     }) => {
       const { error } = await supabase.from('pizza_extras').update(data).eq('id', id);

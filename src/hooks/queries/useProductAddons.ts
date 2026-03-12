@@ -108,19 +108,37 @@ export function useSaveProductAddons(productIdOrNull?: string | null) {
 
   const mutation = useMutation({
     mutationFn: async (
-      payload: { productId?: string; groups: { name: string; order_index: number; items: { name: string; price: number; cost?: number; cost_currency?: string; in_stock: boolean; ingredient_id?: string | null; order_index: number }[] }[] }
+      payload: {
+        productId?: string;
+        groups: {
+          name: string;
+          order_index: number;
+          addon_mode?: 'padrao' | 'quantidade';
+          addon_min?: number;
+          addon_max?: number;
+          addon_required?: boolean;
+          items: { name: string; price: number; cost?: number; cost_currency?: string; in_stock: boolean; ingredient_id?: string | null; order_index: number; max_quantity?: number }[];
+        }[];
+      }
     ) => {
       const productId = payload.productId ?? productIdOrNull;
       if (!productId) throw new Error('Product ID required');
 
-      // Remove grupos existentes (cascade remove itens)
       await supabase.from('product_addon_groups').delete().eq('product_id', productId);
 
       for (let gi = 0; gi < payload.groups.length; gi++) {
         const g = payload.groups[gi];
         const { data: groupRow, error: groupErr } = await supabase
           .from('product_addon_groups')
-          .insert({ product_id: productId, name: g.name, order_index: gi })
+          .insert({
+            product_id: productId,
+            name: g.name,
+            order_index: gi,
+            addon_mode: g.addon_mode ?? 'quantidade',
+            addon_min: g.addon_min ?? 0,
+            addon_max: g.addon_max ?? 5,
+            addon_required: g.addon_required ?? false,
+          })
           .select('id')
           .single();
         if (groupErr) throw groupErr;
@@ -137,6 +155,7 @@ export function useSaveProductAddons(productIdOrNull?: string | null) {
             in_stock: it.in_stock,
             ingredient_id: it.ingredient_id || null,
             order_index: ii,
+            max_quantity: it.max_quantity ?? 10,
           });
           if (itemErr) throw itemErr;
         }

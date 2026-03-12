@@ -97,15 +97,38 @@ const sortCategories = (categories: string[]): string[] => {
   });
 };
 
-/** Monta addonGroups para produto Custom: Extras (pizza_extras) como primeiro grupo; product addons vêm depois (modo Custom costuma ocultar product addons). */
+/** Monta addonGroups para produto Custom: Extras (pizza_extras) como primeiro grupo; product addons vêm depois. */
 function buildPizzaAddonGroups(
   productId: string,
-  pizzaExtras: Array<{ id: string; name: string; price: number }>,
-  productAddonsMap: Record<string, Array<{ id: string; name: string; items: Array<{ id: string; name: string; price: number }> }>>
-): Array<{ id: string; name: string; items: Array<{ id: string; name: string; price: number }> }> {
+  pizzaExtras: Array<{ id: string; name: string; price: number; max_quantity?: number }>,
+  extrasConfig: { mode?: string; min?: number; max?: number; required?: boolean } | null | undefined,
+  productAddonsMap: Record<string, Array<{ id: string; name: string; items: Array<{ id: string; name: string; price: number; maxQuantity?: number }> }>>
+): Array<{
+  id: string;
+  name: string;
+  items: Array<{ id: string; name: string; price: number; maxQuantity?: number }>;
+  extrasMode?: 'padrao' | 'quantidade';
+  extrasMin?: number;
+  extrasMax?: number;
+  extrasRequired?: boolean;
+}> {
+  const mode = (extrasConfig?.mode ?? 'quantidade') as 'padrao' | 'quantidade';
   const extrasGroup =
     pizzaExtras.length > 0
-      ? [{ id: 'pizza-extras', name: 'Extras', items: pizzaExtras.map((e) => ({ id: e.id, name: e.name, price: e.price })) }]
+      ? [{
+          id: 'pizza-extras',
+          name: 'Extras',
+          items: pizzaExtras.map((e) => ({
+            id: e.id,
+            name: e.name,
+            price: e.price,
+            ...(mode === 'quantidade' && { maxQuantity: e.max_quantity ?? 10 }),
+          })),
+          extrasMode: mode,
+          extrasMin: extrasConfig?.min ?? 0,
+          extrasMax: extrasConfig?.max ?? 5,
+          extrasRequired: extrasConfig?.required ?? false,
+        }]
       : [];
   const productAddons = productAddonsMap[productId] ?? [];
   return [...extrasGroup, ...productAddons];
@@ -1022,26 +1045,39 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           />
         )}
 
-        {pizzaModalProduct && (
+        {pizzaModalProduct && (() => {
+          const p = pizzaModalProduct.product;
+          const cc = p.custom_config;
+          const filteredSizes = cc?.sizeIds?.length ? pizzaSizes.filter((s) => cc.sizeIds!.includes(s.id)) : pizzaSizes;
+          const filteredDoughs = cc?.doughIds?.length ? pizzaDoughs.filter((d) => cc.doughIds!.includes(d.id)) : pizzaDoughs;
+          const filteredEdges = cc?.edgeIds?.length ? pizzaEdges.filter((e) => cc.edgeIds!.includes(e.id)) : pizzaEdges;
+          const filteredExtras = cc?.extraIds?.length ? pizzaExtras.filter((e) => cc.extraIds!.includes(e.id)) : pizzaExtras;
+          return (
           <UnifiedProductModal
             open={!!pizzaModalProduct}
             onClose={() => setPizzaModalProduct(null)}
-            product={pizzaModalProduct.product}
+            product={p}
             basePrice={pizzaModalProduct.basePrice}
-            addonGroups={buildPizzaAddonGroups(pizzaModalProduct.product.id, pizzaExtras, productAddonsMap)}
+            addonGroups={buildPizzaAddonGroups(
+              p.id,
+              filteredExtras,
+              restaurant ? { mode: restaurant.custom_extras_mode, min: restaurant.custom_extras_min ?? undefined, max: restaurant.custom_extras_max ?? undefined, required: restaurant.custom_extras_required ?? undefined } : undefined,
+              productAddonsMap
+            )}
             pizzaConfig={{
-              sizes: pizzaSizes,
+              sizes: filteredSizes,
               flavors: pizzaFlavors,
-              doughs: pizzaDoughs,
-              edges: pizzaEdges,
-              extras: pizzaExtras,
-              isSpecial: isPizzaSpecial(pizzaModalProduct.product),
+              doughs: filteredDoughs,
+              edges: filteredEdges,
+              extras: filteredExtras,
+              isSpecial: isPizzaSpecial(p),
             }}
-            pizzaProducts={products.filter((p) => p.is_pizza && p.id !== pizzaModalProduct.product.id)}
+            pizzaProducts={products.filter((pr) => pr.is_pizza && pr.id !== p.id)}
             currency={currency}
             convertForDisplay={convertForDisplay}
           />
-        )}
+          );
+        })()}
       </Suspense>
       {splashOverlay && <InitialSplashScreen exiting={splashFadeOut} />}
     </>

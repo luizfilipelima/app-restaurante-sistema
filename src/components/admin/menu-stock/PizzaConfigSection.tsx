@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, SlidersHorizontal, Package, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, SlidersHorizontal, Package, AlertCircle, ListChecks, Hash } from 'lucide-react';
 import { usePizzaConfig, usePizzaConfigMutations } from '@/hooks/queries/usePizzaConfig';
 import {
   formatPrice,
@@ -20,6 +21,8 @@ import {
   formatPriceInputPyG,
 } from '@/lib/priceHelper';
 import type { PizzaSize, PizzaDough, PizzaEdge, PizzaExtra } from '@/types';
+import type { CustomExtrasMode } from '@/types';
+import { supabase } from '@/lib/core/supabase';
 import type { CurrencyCode, CostCurrencyCode } from '@/lib/priceHelper';
 import { toast } from '@/hooks/shared/use-toast';
 
@@ -28,6 +31,8 @@ interface PizzaConfigSectionProps {
   currency: CurrencyCode;
   costCurrency?: CostCurrencyCode;
   ingredients?: Array<{ id: string; name: string; unit: string }>;
+  /** Chamado quando configuração de extras é salva (para invalidar cache do cardápio público) */
+  onExtrasConfigSaved?: () => void;
 }
 
 export default function PizzaConfigSection({
@@ -35,10 +40,51 @@ export default function PizzaConfigSection({
   currency,
   costCurrency,
   ingredients = [],
+  onExtrasConfigSaved,
 }: PizzaConfigSectionProps) {
   const costCur = costCurrency ?? currency;
+  const qc = useQueryClient();
   const { sizes, doughs, edges, extras, loading } = usePizzaConfig(restaurantId);
   const mut = usePizzaConfigMutations(restaurantId);
+
+  const { data: extrasConfig } = useQuery({
+    queryKey: ['restaurant-extras-config', restaurantId],
+    queryFn: async () => {
+      if (!restaurantId) return null;
+      const { data } = await supabase
+        .from('restaurants')
+        .select('custom_extras_mode, custom_extras_min, custom_extras_max, custom_extras_required')
+        .eq('id', restaurantId)
+        .single();
+      return data as {
+        custom_extras_mode: CustomExtrasMode | null;
+        custom_extras_min: number | null;
+        custom_extras_max: number | null;
+        custom_extras_required: boolean | null;
+      } | null;
+    },
+    enabled: !!restaurantId,
+  });
+
+  const updateExtrasConfig = useMutation({
+    mutationFn: async (data: {
+      custom_extras_mode?: CustomExtrasMode;
+      custom_extras_min?: number;
+      custom_extras_max?: number;
+      custom_extras_required?: boolean;
+    }) => {
+      if (!restaurantId) throw new Error('restaurant_id required');
+      const { error } = await supabase.from('restaurants').update(data).eq('id', restaurantId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['restaurant-extras-config', restaurantId] });
+      onExtrasConfigSaved?.();
+      toast({ title: 'Configuração salva!' });
+    },
+  });
+
+  const extrasMode = (extrasConfig?.custom_extras_mode ?? 'quantidade') as CustomExtrasMode;
 
   const [newSizeName, setNewSizeName] = useState('');
   const [newSizeMaxFlavors, setNewSizeMaxFlavors] = useState('2');
@@ -261,8 +307,88 @@ export default function PizzaConfigSection({
         </div>
 
         {/* Extras */}
-        <div className="space-y-2">
-          <Label className="text-xs font-semibold text-muted-foreground uppercase">Extras</Label>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs font-semibold text-muted-foreground uppercase">Extras</Label>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-muted-foreground">Tipo:</span>
+              <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => updateExtrasConfig.mutate({ custom_extras_mode: 'padrao' })}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    extrasMode === 'padrao' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <ListChecks className="h-3.5 w-3.5" />
+                  Padrão
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateExtrasConfig.mutate({ custom_extras_mode: 'quantidade' })}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    extrasMode === 'quantidade' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Hash className="h-3.5 w-3.5" />
+                  Quantidade
+                </button>
+              </div>
+              {extrasMode === 'padrao' && (
+                <span className="text-xs text-muted-foreground ml-2">— Sem Extras + lista selecionável</span>
+              )}
+              {extrasMode === 'quantidade' && (
+                <span className="text-xs text-muted-foreground ml-2">— +/- com limite por extra</span>
+              )}
+            </div>
+            {extrasMode === 'padrao' && (
+              <div className="flex flex-wrap items-center gap-4 mt-3 p-3 rounded-lg bg-muted/20 border border-border/60">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Mín.</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={20}
+                    value={extrasConfig?.custom_extras_min ?? 0}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!Number.isNaN(v)) updateExtrasConfig.mutate({ custom_extras_min: Math.max(0, v) });
+                    }}
+                    onBlur={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!Number.isNaN(v)) updateExtrasConfig.mutate({ custom_extras_min: Math.max(0, Math.min(20, v)) });
+                    }}
+                    className="h-8 w-16 text-sm"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Máx.</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={20}
+                    value={extrasConfig?.custom_extras_max ?? 5}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!Number.isNaN(v)) updateExtrasConfig.mutate({ custom_extras_max: Math.max(0, v) });
+                    }}
+                    onBlur={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!Number.isNaN(v)) updateExtrasConfig.mutate({ custom_extras_max: Math.max(0, Math.min(20, v)) });
+                    }}
+                    className="h-8 w-16 text-sm"
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Switch
+                    checked={extrasConfig?.custom_extras_required ?? false}
+                    onCheckedChange={(v) => updateExtrasConfig.mutate({ custom_extras_required: v })}
+                  />
+                  <span>Obrigatório</span>
+                </label>
+              </div>
+            )}
+          </div>
           <div className="space-y-3">
             {extras.filter((x: PizzaExtra) => x.is_active).map((x: PizzaExtra) => {
               const needsIngredient = x.in_stock && !x.ingredient_id;
@@ -348,6 +474,23 @@ export default function PizzaConfigSection({
                       </div>
                     </div>
                   </div>
+                  {extrasMode === 'quantidade' && (
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Qtde. máxima</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={50}
+                        defaultValue={x.max_quantity ?? 10}
+                        onBlur={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          if (!Number.isNaN(v) && v >= 1 && v !== (x.max_quantity ?? 10))
+                            handleUpdateExtra(x.id, { max_quantity: Math.min(50, Math.max(1, v)) });
+                        }}
+                        className="h-8 w-20 text-sm"
+                      />
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-border/60">
                     <label className="flex items-center gap-2 text-sm cursor-pointer">
                       <Switch
