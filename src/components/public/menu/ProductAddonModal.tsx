@@ -181,11 +181,7 @@ export default function ProductAddonModal({
               )}
             </div>
 
-            {product.description && (
-              <ExpandableDescription>{product.description}</ExpandableDescription>
-            )}
-
-            {/* Info do produto */}
+            {/* Nome, preço e alérgenos */}
             <div className="space-y-1">
               <h3 className="text-lg font-semibold text-foreground leading-snug">
                 {product.name}
@@ -198,34 +194,10 @@ export default function ProductAddonModal({
               ) : null}
             </div>
 
-            {/* Seletor de quantidade — compacto */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">
-                {t('menu.total')}: {fmt(total)}
-              </span>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  disabled={quantity <= 1}
-                  className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted/80 disabled:opacity-40 disabled:hover:bg-muted touch-manipulation transition-colors"
-                  aria-label="Diminuir quantidade"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="w-8 text-center text-base font-semibold text-foreground tabular-nums">
-                  {quantity}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setQuantity((q) => q + 1)}
-                  className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 active:scale-95 touch-manipulation transition-all"
-                  aria-label="Aumentar quantidade"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            {/* Descrição */}
+            {product.description && (
+              <ExpandableDescription>{product.description}</ExpandableDescription>
+            )}
 
             {/* Addons — Padrão (lista) ou Quantidade (+/-) */}
             {addonGroups.map((group) => (
@@ -310,6 +282,35 @@ export default function ProductAddonModal({
                 )}
               </div>
             ))}
+
+            {/* Total e seletor de quantidade */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">
+                {t('menu.total')}: {fmt(total)}
+              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                  className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted/80 disabled:opacity-40 disabled:hover:bg-muted touch-manipulation transition-colors"
+                  aria-label="Diminuir quantidade"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="w-8 text-center text-base font-semibold text-foreground tabular-nums">
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => q + 1)}
+                  className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 active:scale-95 touch-manipulation transition-all"
+                  aria-label="Aumentar quantidade"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
 
             {/* Observações — placeholder no campo */}
             <Textarea

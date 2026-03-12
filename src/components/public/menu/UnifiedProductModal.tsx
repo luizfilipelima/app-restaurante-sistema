@@ -223,7 +223,7 @@ export default function UnifiedProductModal({
 
         <div className="flex-1 overflow-y-auto overscroll-contain min-h-0">
           <div className="p-4 sm:p-5 space-y-5">
-            {/* Imagem (sempre) */}
+            {/* Imagem */}
             <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-muted flex justify-center items-center">
               {product.image_url ? (
                 <img src={product.image_url} alt={product.name} className="w-full h-full object-cover object-center" loading="lazy" />
@@ -232,6 +232,18 @@ export default function UnifiedProductModal({
               )}
             </div>
 
+            {/* Nome, preço e alérgenos */}
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-foreground leading-snug">{product.name}</h3>
+              <p className="text-base font-semibold text-primary tabular-nums">
+                {fmt(isPizza ? basePrice * (effectiveSize?.price_multiplier ?? 1) : basePrice)}
+              </p>
+              {(product.allergens?.length || product.labels?.length) ? (
+                <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} className="pt-2" />
+              ) : null}
+            </div>
+
+            {/* Descrição */}
             {product.description && (
               <ExpandableDescription>{product.description}</ExpandableDescription>
             )}
@@ -461,17 +473,11 @@ export default function UnifiedProductModal({
               </div>
             ))}
 
-            {/* Info do produto / Total */}
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-foreground leading-snug">{t('menu.total')}</h3>
-              <p className="text-base font-semibold text-primary tabular-nums">{fmt(total)}</p>
-              {(product.allergens?.length || product.labels?.length) ? (
-                <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} className="pt-2" />
-              ) : null}
-            </div>
-
-            {/* Quantidade */}
-            <div className="flex items-center justify-end">
+            {/* Total e seletor de quantidade */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">
+                {t('menu.total')}: {fmt(total)}
+              </span>
               <div className="flex items-center gap-3">
                 <button
                   type="button"

@@ -8,7 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { type CurrencyCode } from '@/lib/core/utils';
 import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
-import { Check, Pizza as PizzaIcon, Minus, Plus, X } from 'lucide-react';
+import { Check, Pizza as PizzaIcon, Minus, Plus, ArrowLeft } from 'lucide-react';
+import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
+import ExpandableDescription from './ExpandableDescription';
 
 interface AddonGroup {
   id: string;
@@ -155,35 +157,53 @@ export default function PizzaModal({
   const stepFlavors = hasFlavors ? step++ : 0;
   const stepDoughEdge = (doughs.length > 0 || edges.length > 0) ? step++ : 0;
   const stepAddons = addonGroups.length > 0 ? step++ : 0;
-  const stepObs = step++;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent hideClose className="max-w-2xl w-[calc(100vw-24px)] sm:w-full h-[100dvh] md:h-auto md:max-h-[92dvh] p-0 gap-0 overflow-hidden flex flex-col rounded-none sm:rounded-2xl border-0 sm:border shadow-none sm:shadow-xl bg-card">
 
-        {/* Header Fixo — mobile first */}
-        <div className="pt-6 pb-5 px-5 sm:pt-6 sm:pb-4 sm:px-6 border-b border-border bg-card z-10 flex-shrink-0">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0 shadow-sm ring-2 ring-primary/20">
-              <PizzaIcon className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="text-lg sm:text-xl font-bold text-foreground truncate leading-tight">{product.name}</DialogTitle>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{t('pizzaModal.stepsTitle')}</p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-11 w-11 sm:h-10 sm:w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 touch-manipulation active:scale-95 flex-shrink-0"
-              aria-label={t('pizzaModal.close')}
-            >
-              <X className="h-5 w-5 sm:h-5 sm:w-5" />
-            </button>
-          </div>
-        </div>
+        {/* Header minimalista */}
+        <header className="flex-shrink-0 flex items-center h-12 px-4 border-b border-border">
+          <DialogTitle className="sr-only">{product.name}</DialogTitle>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 w-9 -ml-1 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-95 transition-all touch-manipulation"
+            aria-label={t('pizzaModal.close')}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        </header>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth py-6 px-5 sm:py-6 sm:px-6 space-y-8">
+        <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth min-h-0">
+          <div className="p-4 sm:p-5 space-y-5 pb-6">
+            {/* Imagem */}
+            <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-muted flex justify-center items-center">
+              {product.image_url ? (
+                <img src={product.image_url} alt={product.name} className="w-full h-full object-cover object-center" loading="lazy" />
+              ) : (
+                <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <PizzaIcon className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
+                </div>
+              )}
+            </div>
+
+            {/* Nome, preço e alérgenos */}
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-foreground leading-snug">{product.name}</h3>
+              <p className="text-base font-semibold text-primary tabular-nums">
+                {fmt(basePrice * (effectiveSize?.price_multiplier ?? 1))}
+              </p>
+              {(product.allergens?.length || product.labels?.length) ? (
+                <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} className="pt-2" />
+              ) : null}
+            </div>
+
+            {/* Descrição */}
+            {product.description && (
+              <ExpandableDescription>{product.description}</ExpandableDescription>
+            )}
 
           {/* Aviso quando não há tamanhos configurados */}
           {sizes.length === 0 && (
@@ -439,82 +459,62 @@ export default function PizzaModal({
             </section>
           )}
 
-          {/* Observações — placeholder no campo */}
+          {/* Total e seletor de quantidade */}
           {effectiveSize && (
-            <section className="space-y-4 pb-4 animate-slide-in-bottom">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="bg-primary text-primary-foreground w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">{stepObs}</div>
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-sm font-medium text-muted-foreground">
+                {t('menu.total')}: {fmt(calculatePrice() * quantity)}
+              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                  className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted/80 disabled:opacity-40 touch-manipulation"
+                  aria-label="Diminuir quantidade"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="w-8 text-center text-base font-semibold tabular-nums">{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => q + 1)}
+                  className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 active:scale-95 touch-manipulation"
+                  aria-label="Aumentar quantidade"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
               </div>
-              <Textarea
-                placeholder={t('productCard.observationsPlaceholder')}
-                value={observations}
-                onChange={(e) => setObservations(e.target.value)}
-                rows={4}
-                className="bg-card border-2 border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl text-base p-4 touch-manipulation resize-none min-h-[100px] transition-all duration-200"
-              />
-            </section>
+            </div>
           )}
+
+          {/* Observações */}
+          {effectiveSize && (
+            <Textarea
+              placeholder={t('productCard.observationsPlaceholder')}
+              value={observations}
+              onChange={(e) => setObservations(e.target.value)}
+              rows={3}
+              className="rounded-lg border-border bg-muted/50 focus:bg-card focus:ring-1 focus:ring-primary/30 min-h-[80px] resize-none text-sm touch-manipulation"
+            />
+          )}
+          </div>
         </div>
 
-        {/* Footer Actions — sticky, safe area */}
-        <div className="pt-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] px-5 sm:pt-6 sm:pb-6 sm:px-6 bg-card border-t border-border/80 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.06)] z-20 flex-shrink-0">
-          {/* Sabores selecionados (resumo) */}
-          {selectedFlavors.length > 0 && (
-            <div className="mb-3 flex flex-wrap gap-1.5">
-              {selectedFlavors.map((f) => (
-                <span
-                  key={f.id}
-                  className="inline-flex items-center gap-1 text-xs font-semibold bg-primary/10 text-primary border border-primary/30 rounded-full px-2.5 py-1"
-                >
-                  {f.name}
-                  <button
-                    onClick={() => toggleFlavor(f)}
-                    className="text-primary hover:text-primary/80 leading-none"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-center justify-between mb-4 gap-4">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center border-2 border-border rounded-xl overflow-hidden bg-card shadow-sm">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-4 py-3 bg-muted hover:bg-muted/80 active:bg-muted text-foreground touch-manipulation active:scale-95 min-w-[44px] flex items-center justify-center transition-colors"
-                  disabled={quantity <= 1}
-                >
-                  <Minus className="h-5 w-5" />
-                </button>
-                <div className="px-5 py-3 font-bold text-lg text-foreground bg-card min-w-[3rem] text-center border-x border-border">{quantity}</div>
-                <button
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="px-4 py-3 bg-muted hover:bg-muted/80 active:bg-muted text-foreground touch-manipulation active:scale-95 min-w-[44px] flex items-center justify-center transition-colors"
-                >
-                  <Plus className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-            <div className="text-right min-w-0 flex-shrink-0">
-              <span className="text-xs text-muted-foreground block mb-1">{t('pizzaModal.total')}</span>
-              <span className="text-xl sm:text-2xl font-bold text-foreground whitespace-nowrap">
-                {fmt(calculatePrice() * quantity)}
-              </span>
-            </div>
-          </div>
+        {/* Footer — botão Adicionar ao Carrinho */}
+        <footer className="flex-shrink-0 p-4 bg-card border-t border-border" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
           <Button
+            type="button"
             size="lg"
             onClick={handleAddToCart}
             disabled={!canAddToCart}
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-14 sm:h-14 rounded-2xl shadow-lg touch-manipulation active:scale-[0.98] text-base sm:text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base transition-colors active:scale-[0.99] touch-manipulation shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {!canAddToCart && hasFlavors && selectedFlavors.length === 0
               ? t('pizzaModal.selectAtLeastOneFlavor')
               : t('pizzaModal.addToCart')}
           </Button>
-        </div>
+        </footer>
       </DialogContent>
     </Dialog>
   );

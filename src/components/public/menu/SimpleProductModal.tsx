@@ -93,11 +93,7 @@ export default function SimpleProductModal({
               )}
             </div>
 
-            {product.description && (
-              <ExpandableDescription>{product.description}</ExpandableDescription>
-            )}
-
-            {/* Info do produto */}
+            {/* Nome, preço e alérgenos */}
             <div className="space-y-1">
               <h3 className="text-lg font-semibold text-foreground leading-snug">
                 {product.name}
@@ -110,7 +106,12 @@ export default function SimpleProductModal({
               ) : null}
             </div>
 
-            {/* Seletor de quantidade — compacto */}
+            {/* Descrição */}
+            {product.description && (
+              <ExpandableDescription>{product.description}</ExpandableDescription>
+            )}
+
+            {/* Total e seletor de quantidade */}
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">
                 {t('menu.total')}: {fmt(total)}
