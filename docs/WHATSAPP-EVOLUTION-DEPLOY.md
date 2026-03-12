@@ -65,6 +65,14 @@ Se aparecer **401 Unauthorized** ou **"Sessão expirada ou inválida"**:
 3. **Projeto Supabase** — Confirme que `VITE_SUPABASE_URL` (Vercel) é do **mesmo projeto** onde as funções estão deployed.
 4. **Logs** — Supabase → Edge Functions → `get-evolution-qrcode` → Logs.
 
+### QR Code vazio (count: 0)
+
+Se a mensagem for "A instância não retornou QR Code":
+
+1. **Na VPS** — Execute `evolution-api-setup/fix-qr-connection.sh` para atualizar `CONFIG_SESSION_PHONE_VERSION`, `WEBSOCKET_ENABLED` e `SERVER_URL`.
+2. **Tente novamente** — O componente faz retry automático; clique em "Atualizar" após alguns segundos.
+3. **Evolution Manager** — Acesse `https://api.quiero.food/manager`, abra a instância e verifique se o QR aparece lá.
+
 ## 6. Resumo rápido
 
 | Item | Onde | Status |

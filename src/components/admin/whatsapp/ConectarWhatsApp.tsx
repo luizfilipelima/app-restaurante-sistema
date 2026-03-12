@@ -105,12 +105,8 @@ export function ConectarWhatsApp({
       const data = payload.data as Record<string, unknown>;
       const base64 = data.base64 as string | undefined;
       const code = data.code as string | undefined;
+      const pairingCode = data.pairingCode as string | undefined;
       const count = data.count as number | undefined;
-
-      if (count === 0) {
-        setError('A instância não retornou QR Code. Tente novamente ou reinicie a instância na Evolution API.');
-        return;
-      }
 
       if (base64 && typeof base64 === 'string') {
         const src = base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`;
@@ -130,7 +126,18 @@ export function ConectarWhatsApp({
         return;
       }
 
-      setError('A API não retornou QR Code. Verifique a configuração da Evolution API.');
+      if (pairingCode && typeof pairingCode === 'string' && pairingCode.length >= 6) {
+        setQrImageSrc(null);
+        setError(`Código de pareamento: ${pairingCode}. No WhatsApp: Menu → Aparelhos conectados → Conectar com número de telefone`);
+        return;
+      }
+
+      if (count === 0) {
+        setError('A instância não retornou QR Code. Tente novamente ou aguarde alguns segundos e clique em "Atualizar".');
+        return;
+      }
+
+      setError('A API não retornou QR Code. Verifique a Evolution API na VPS (CONFIG_SESSION_PHONE_VERSION, SERVER_URL).');
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro ao obter QR Code';
       setError(msg);

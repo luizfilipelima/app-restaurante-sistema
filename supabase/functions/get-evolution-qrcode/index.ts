@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
     // Verifica se restaurante existe e se usuário tem acesso
     const { data: restaurant, error: restErr } = await admin
       .from('restaurants')
-      .select('id, whatsapp_evolution_enabled, evolution_instance_name')
+      .select('id, whatsapp_evolution_enabled, evolution_instance_name, whatsapp, phone')
       .eq('id', restaurantId)
       .single();
 
@@ -126,20 +126,55 @@ Deno.serve(async (req) => {
       })
       .eq('id', restaurantId);
 
-    // 3. Obter QR Code
-    const connectRes = await fetch(`${baseUrl}/instance/connect/${encodeURIComponent(instanceName)}`, {
-      method: 'GET',
-      headers: { 'apikey': evolutionKey },
-    });
+    // 3. Obter QR Code (retry quando count=0 — Evolution API pode demorar para gerar)
+    const whatsapp = (restaurant as { whatsapp?: string; phone?: string })?.whatsapp?.trim();
+    const phone = (restaurant as { phone?: string })?.phone?.trim();
+    let numberParam = (whatsapp || phone || '').replace(/\D/g, '');
+    if (numberParam.length >= 10 && numberParam.length <= 11 && !numberParam.startsWith('55') && !numberParam.startsWith('595') && !numberParam.startsWith('54')) {
+      numberParam = '55' + numberParam;
+    }
+    const qs = numberParam ? `?number=${encodeURIComponent(numberParam)}` : '';
 
-    const connectData = await connectRes.json().catch(() => ({}));
+    let connectData: Record<string, unknown> = {};
+    const maxRetries = 4;
+    const retryDelayMs = 2000;
 
-    if (!connectRes.ok) {
-      console.error('[get-evolution-qrcode] Connect erro:', connectRes.status, connectData);
-      return fail(
-        (connectData as { message?: string })?.message || `Erro ao obter QR: ${connectRes.status}`,
-        502
-      );
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const connectRes = await fetch(`${baseUrl}/instance/connect/${encodeURIComponent(instanceName)}${qs}`, {
+        method: 'GET',
+        headers: { 'apikey': evolutionKey },
+      });
+
+      connectData = await connectRes.json().catch(() => ({}));
+
+      if (!connectRes.ok) {
+        console.error('[get-evolution-qrcode] Connect erro:', connectRes.status, connectData);
+        return fail(
+          (connectData as { message?: string })?.message || `Erro ao obter QR: ${connectRes.status}`,
+          502
+        );
+      }
+
+      const count = (connectData as { count?: number }).count;
+      const hasCode = !!(connectData as { code?: string }).code;
+      const hasBase64 = !!(connectData as { base64?: string }).base64;
+      const hasPairingCode = !!(connectData as { pairingCode?: string }).pairingCode;
+
+      if (hasCode || hasBase64 || (hasPairingCode && count > 0)) {
+        break;
+      }
+
+      if (attempt < maxRetries && (count === 0 || !hasCode) && !hasBase64) {
+        console.warn(`[get-evolution-qrcode] Tentativa ${attempt}/${maxRetries}, count=${count ?? '?'}, aguardando ${retryDelayMs}ms...`);
+        await new Promise((r) => setTimeout(r, retryDelayMs));
+      }
+    }
+
+    const finalCount = (connectData as { count?: number }).count;
+    const finalCode = (connectData as { code?: string }).code;
+    const finalBase64 = (connectData as { base64?: string }).base64;
+    if ((finalCount === 0 || (!finalCode && !finalBase64)) && maxRetries > 1) {
+      console.warn('[get-evolution-qrcode] QR não disponível após retries. Resposta:', JSON.stringify(connectData));
     }
 
     return ok({ data: connectData, instanceName });
