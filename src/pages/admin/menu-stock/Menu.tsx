@@ -103,7 +103,7 @@ import { getCategoryIconComponent } from '@/lib/menu/categoryIcons';
 import ProductAddonsSection, { type AddonGroupEdit } from '@/components/admin/menu-stock/ProductAddonsSection';
 import ProductAllergensLabelsSection from '@/components/admin/menu-stock/ProductAllergensLabelsSection';
 import PizzaConfigSection from '@/components/admin/menu-stock/PizzaConfigSection';
-import ProductCustomDetailsModal from '@/components/admin/menu-stock/ProductCustomDetailsModal';
+import ProductCustomDetailsCard from '@/components/admin/menu-stock/ProductCustomDetailsCard';
 import { useProductUpsells, useSaveProductUpsells, useProductComboItems, useProductAddons, useSaveProductAddons } from '@/hooks/queries';
 import { usePizzaConfig } from '@/hooks/queries/usePizzaConfig';
 import { useCanAccess } from '@/hooks/auth/useUserRole';
@@ -479,7 +479,6 @@ export default function AdminMenu() {
   const addonSectionRef = useRef<{ getGroups: () => AddonGroupEdit[] }>(null);
 
   // Detalhes Custom (quais itens aplicam ao produto — só quando categoria Custom)
-  const [showCustomDetailsModal, setShowCustomDetailsModal] = useState(false);
   const [customConfig, setCustomConfig] = useState<ProductCustomConfig | null>(null);
   const { sizes: pizzaSizesConfig, doughs: pizzaDoughsConfig, edges: pizzaEdgesConfig, extras: pizzaExtrasConfig } = usePizzaConfig(restaurantId);
 
@@ -1637,23 +1636,6 @@ export default function AdminMenu() {
                     </div>
                   )}
                 </div>
-                {categoryConfig.isPizza && (
-                  <div className="pt-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 h-9 text-sm"
-                      onClick={() => setShowCustomDetailsModal(true)}
-                    >
-                      <SlidersHorizontal className="h-3.5 w-3.5" />
-                      Detalhes Custom
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-1.5">
-                      Tamanhos, massas, bordas e extras que se aplicam a este produto
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -1730,6 +1712,18 @@ export default function AdminMenu() {
               onAllergensChange={(ids) => setForm((f) => ({ ...f, allergens: ids }))}
               onLabelsChange={(ids) => setForm((f) => ({ ...f, labels: ids }))}
             />
+
+            {/* Detalhes Custom — card abaixo de Etiquetas (categoria Custom) */}
+            {categoryConfig.isPizza && (
+              <ProductCustomDetailsCard
+                config={customConfig}
+                onChange={setCustomConfig}
+                sizes={pizzaSizesConfig}
+                doughs={pizzaDoughsConfig}
+                edges={pizzaEdgesConfig}
+                extras={pizzaExtrasConfig}
+              />
+            )}
 
             {/* Combo Builder (categoria Combos) */}
             {isComboCategory && (
@@ -2223,18 +2217,6 @@ export default function AdminMenu() {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* ── Detalhes Custom (produto) ────────────────────────────────────────── */}
-      <ProductCustomDetailsModal
-        open={showCustomDetailsModal}
-        onOpenChange={setShowCustomDetailsModal}
-        config={customConfig}
-        onChange={setCustomConfig}
-        sizes={pizzaSizesConfig}
-        doughs={pizzaDoughsConfig}
-        edges={pizzaEdgesConfig}
-        extras={pizzaExtrasConfig}
-      />
 
       {/* ── New Category Modal ──────────────────────────────────────────────── */}
       <Dialog open={showCategoryModal} onOpenChange={(open) => { if (!open) setCategoryFormImageUrl(''); setShowCategoryModal(open); }}>

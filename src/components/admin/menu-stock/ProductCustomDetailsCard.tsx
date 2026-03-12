@@ -1,17 +1,13 @@
 /**
- * Modal "Detalhes Custom" — permite vincular/desvincular itens da Config Custom ao produto.
- * Exibe tamanhos, massas, bordas e extras de forma organizada. Vazio = usa todos.
+ * Card "Detalhes Custom" — permite ativar/desativar itens da Config Custom para o produto.
+ * Posicionado abaixo do card de Etiquetas. Vazio = usa todos.
  */
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { SlidersHorizontal, Check } from 'lucide-react';
 import type { ProductCustomConfig } from '@/types';
 import type { PizzaSize, PizzaDough, PizzaEdge, PizzaExtra } from '@/types';
 
-interface ProductCustomDetailsModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface ProductCustomDetailsCardProps {
   config: ProductCustomConfig | null | undefined;
   onChange: (config: ProductCustomConfig) => void;
   sizes: PizzaSize[];
@@ -24,8 +20,8 @@ function toggleIds(ids: string[] | undefined, id: string, allIds: string[]): str
   const current = ids && ids.length > 0 ? ids : allIds;
   const hasId = current.includes(id);
   const next = hasId ? current.filter((x) => x !== id) : [...current, id];
-  if (next.length === 0) return null; // sem alteração (não permite ficar sem nenhum)
-  if (next.length === allIds.length) return undefined; // todos = não filtrar
+  if (next.length === 0) return null;
+  if (next.length === allIds.length) return undefined;
   return next;
 }
 
@@ -34,16 +30,14 @@ function isSelected(ids: string[] | undefined, id: string, _allIds: string[]): b
   return ids.includes(id);
 }
 
-export default function ProductCustomDetailsModal({
-  open,
-  onOpenChange,
+export default function ProductCustomDetailsCard({
   config,
   onChange,
   sizes,
   doughs,
   edges,
   extras,
-}: ProductCustomDetailsModalProps) {
+}: ProductCustomDetailsCardProps) {
   const activeSizes = sizes.filter((s: PizzaSize) => s.id);
   const activeDoughs = doughs.filter((d: PizzaDough) => d.is_active);
   const activeEdges = edges.filter((e: PizzaEdge) => e.is_active);
@@ -56,7 +50,7 @@ export default function ProductCustomDetailsModal({
   ) => {
     const current = config?.[key];
     const next = toggleIds(current, id, allIds);
-    if (next === null) return; // sem alteração
+    if (next === null) return;
     onChange({ ...config, [key]: next });
   };
 
@@ -110,58 +104,48 @@ export default function ProductCustomDetailsModal({
     );
   };
 
+  const hasAny = activeSizes.length > 0 || activeDoughs.length > 0 || activeEdges.length > 0 || activeExtras.length > 0;
+  if (!hasAny) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <SlidersHorizontal className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <DialogTitle className="text-base">Detalhes Custom</DialogTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Quais itens da Configuração Custom se aplicam a este produto. Deixe todos selecionados ou escolha apenas alguns.
-              </p>
-            </div>
-          </div>
-        </DialogHeader>
-        <div className="space-y-5 pt-2">
-          <Section
-            title="Tamanhos"
-            items={activeSizes}
-            keyName="sizeIds"
-            getLabel={(s) => (s as PizzaSize).name}
-            allIds={activeSizes.map((s) => s.id)}
-          />
-          <Section
-            title="Tipos de massa"
-            items={activeDoughs}
-            keyName="doughIds"
-            getLabel={(d) => (d as PizzaDough).name}
-            allIds={activeDoughs.map((d) => d.id)}
-          />
-          <Section
-            title="Bordas recheadas"
-            items={activeEdges}
-            keyName="edgeIds"
-            getLabel={(e) => (e as PizzaEdge).name}
-            allIds={activeEdges.map((e) => e.id)}
-          />
-          <Section
-            title="Extras"
-            items={activeExtras}
-            keyName="extraIds"
-            getLabel={(e) => (e as PizzaExtra).name}
-            allIds={activeExtras.map((e) => e.id)}
-          />
-        </div>
-        <div className="flex justify-end pt-2 border-t border-border">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Fechar
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <div className="rounded-xl border border-primary/25 bg-primary/5 overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-primary/20">
+        <SlidersHorizontal className="h-4 w-4 text-primary" />
+        <span className="text-sm font-medium text-primary">Detalhes Custom</span>
+        <span className="text-[11px] text-muted-foreground">
+          Quais itens da Configuração Custom se aplicam a este produto. Ative ou desative conforme necessário.
+        </span>
+      </div>
+      <div className="p-4 space-y-5">
+        <Section
+          title="Tamanhos"
+          items={activeSizes}
+          keyName="sizeIds"
+          getLabel={(s) => (s as PizzaSize).name}
+          allIds={activeSizes.map((s) => s.id)}
+        />
+        <Section
+          title="Tipos de massa"
+          items={activeDoughs}
+          keyName="doughIds"
+          getLabel={(d) => (d as PizzaDough).name}
+          allIds={activeDoughs.map((d) => d.id)}
+        />
+        <Section
+          title="Bordas recheadas"
+          items={activeEdges}
+          keyName="edgeIds"
+          getLabel={(e) => (e as PizzaEdge).name}
+          allIds={activeEdges.map((e) => e.id)}
+        />
+        <Section
+          title="Extras"
+          items={activeExtras}
+          keyName="extraIds"
+          getLabel={(e) => (e as PizzaExtra).name}
+          allIds={activeExtras.map((e) => e.id)}
+        />
+      </div>
+    </div>
   );
 }
