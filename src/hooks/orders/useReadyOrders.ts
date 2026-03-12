@@ -144,6 +144,12 @@ export function useReadyOrders(restaurantId: string | null, options?: UseReadyOr
 
       if (error) throw error;
 
+      if (nextStatus === 'delivering') {
+        import('@/lib/whatsapp/notifyOrderStatusWhatsApp').then(({ notifyOrderStatusWhatsApp }) =>
+          notifyOrderStatusWhatsApp(order.id, 'delivering')
+        ).catch(() => {});
+      }
+
       setOrders((prev) => prev.filter((o) => o.id !== order.id));
       toast({
         title: '✅ Entregue!',

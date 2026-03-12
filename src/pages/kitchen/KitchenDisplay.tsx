@@ -198,6 +198,11 @@ export default function KitchenDisplay() {
         if (newStatus === 'ready') payload.ready_at = now;
 
         await supabase.from('orders').update(payload).eq('id', orderId);
+        if (newStatus === 'preparing') {
+          import('@/lib/whatsapp/notifyOrderStatusWhatsApp').then(({ notifyOrderStatusWhatsApp }) =>
+            notifyOrderStatusWhatsApp(orderId, 'preparing')
+          ).catch(() => {});
+        }
       } catch (e) {
         console.error(e);
         loadOrders(true);

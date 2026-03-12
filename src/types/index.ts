@@ -171,6 +171,10 @@ export interface Restaurant {
   delivery_min_order_value?: number | null;
   /** Templates personalizáveis de mensagens WhatsApp */
   whatsapp_templates?: WhatsAppTemplates | null;
+  /** Habilitado pelo super-admin: notificações automáticas via Evolution API */
+  whatsapp_evolution_enabled?: boolean | null;
+  /** Nome da instância WhatsApp na Evolution API */
+  evolution_instance_name?: string | null;
   /** Override manual da receita mensal em BRL (Super Admin). Se definido, usado no Dashboard BI em vez do preço do plano. */
   manual_monthly_revenue_brl?: number | null;
   /** Preço padrão por Kg para buffet (moeda nativa: centavos BRL, inteiro PYG). Usado na pesagem quando produto não tem preço. */

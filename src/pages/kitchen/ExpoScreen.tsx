@@ -456,6 +456,12 @@ export default function ExpoScreen() {
 
       if (error) throw error;
 
+      if (nextStatus === 'delivering') {
+        import('@/lib/whatsapp/notifyOrderStatusWhatsApp').then(({ notifyOrderStatusWhatsApp }) =>
+          notifyOrderStatusWhatsApp(order.id, 'delivering')
+        ).catch(() => {});
+      }
+
       // Remove otimisticamente da lista
       setOrders(prev => prev.filter(o => o.id !== order.id));
 

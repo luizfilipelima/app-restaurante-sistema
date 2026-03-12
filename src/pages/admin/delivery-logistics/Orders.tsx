@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dialog';
 import { Clock, Phone, MapPin, CreditCard, ChevronRight, Package, Truck, CheckCircle2, X, Loader2, Bike, Printer, UtensilsCrossed, MessageCircle, LayoutGrid, ListChecks, Receipt, Banknote, Smartphone, Wifi, WifiOff, QrCode, Landmark, Store, BookOpen, ClipboardList, Settings2 } from 'lucide-react';
 import { processTemplate, getTemplate } from '@/lib/whatsapp/whatsappTemplates';
+import { notifyOrderStatusWhatsApp } from '@/lib/whatsapp/notifyOrderStatusWhatsApp';
 import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { useCanAccess } from '@/hooks/auth/useUserRole';
@@ -447,6 +448,11 @@ export default function AdminOrders() {
       }
 
       await refetchOrders();
+
+      // Notificação WhatsApp automática via Evolution API (preparando/entregando)
+      if (newStatus === OrderStatus.PREPARING || newStatus === OrderStatus.DELIVERING) {
+        notifyOrderStatusWhatsApp(orderId, newStatus).catch(() => {});
+      }
 
       // Atualiza métricas do Dashboard BI (pedidos concluídos refletem nos KPIs e analytics)
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });

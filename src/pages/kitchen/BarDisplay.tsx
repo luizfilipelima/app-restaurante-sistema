@@ -209,6 +209,11 @@ export default function BarDisplay() {
       if (newStatus === 'preparing') payload.accepted_at = now;
 
       await supabase.from('orders').update(payload).eq('id', orderId);
+      if (newStatus === 'preparing') {
+        import('@/lib/whatsapp/notifyOrderStatusWhatsApp').then(({ notifyOrderStatusWhatsApp }) =>
+          notifyOrderStatusWhatsApp(orderId, 'preparing')
+        ).catch(() => {});
+      }
     } catch (e) {
       console.error(e);
       loadOrders(true);

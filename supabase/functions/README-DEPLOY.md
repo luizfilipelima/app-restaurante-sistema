@@ -38,6 +38,25 @@ No Supabase: **Project Settings** → **Edge Functions** → **Secrets** (ou na 
 
 Sem esses três, a função devolve erro ao criar usuário.
 
+---
+
+## send-order-whatsapp-notification
+
+Envia notificação WhatsApp ao cliente quando o pedido vai para "Em Preparo" ou "Saiu para Entrega", via Evolution API.
+
+### Deploy
+
+```bash
+npx supabase functions deploy send-order-whatsapp-notification --project-ref SEU_PROJECT_REF
+```
+
+### Secrets adicionais
+
+| Nome | Descrição |
+|------|-----------|
+| `EVOLUTION_API_BASE_URL` | URL base da Evolution API (ex: `https://api.quiero.food`) |
+| `EVOLUTION_API_KEY` | Chave de API da Evolution API |
+
 ### Erros comuns
 
 | Erro / Comportamento | Causa | Solução |

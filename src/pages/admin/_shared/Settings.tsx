@@ -27,7 +27,7 @@ import {
   Save, Upload, Loader2, Printer,
   Phone, Globe, ImageIcon, AlarmClock, Clock, X, Wifi, Store,
   Users, ExternalLink, Link2, FileText,
-  MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode, Settings as SettingsIcon,
+  MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode, Settings as SettingsIcon, MessageSquare,
   Pencil, Trash2, Plus, ChevronUp, ChevronDown, Lock,
   Bike, Bluetooth, Cable,
 } from 'lucide-react';
@@ -361,6 +361,7 @@ export default function AdminSettings() {
     bank_account:            { pyg: {}, ars: {} } as BankAccountByCountry,
     description:             '',
     custom_domain:           '',
+    evolution_instance_name: '',
   });
 
   const [bankCountry, setBankCountry] = useState<'pyg' | 'ars'>('pyg');
@@ -391,7 +392,7 @@ export default function AdminSettings() {
   const set = <K extends keyof typeof formData>(k: K, v: (typeof formData)[K]) =>
     setFormData(f => ({ ...f, [k]: v }));
 
-  const validTabs = ['perfil', 'dominios', 'pagamentos', 'impressao', 'cambio', 'links-bio', 'usuarios', 'horarios'];
+  const validTabs = ['perfil', 'dominios', 'pagamentos', 'impressao', 'cambio', 'links-bio', 'whatsapp', 'usuarios', 'horarios'];
   const hashTab = location.hash ? location.hash.replace(/^#/, '') : null;
   const initialTab = hashTab && validTabs.includes(hashTab) ? hashTab : 'perfil';
   const [activeTab, setActiveTab] = useState<string>(initialTab);
@@ -457,6 +458,7 @@ export default function AdminSettings() {
         bank_account:            parseBankAccount(data.bank_account),
         description:             data.description ?? '',
         custom_domain:           data.custom_domain ?? '',
+        evolution_instance_name: data.evolution_instance_name ?? '',
       });
     } catch (err) {
       console.error('Erro ao carregar restaurante:', err);
@@ -503,6 +505,7 @@ export default function AdminSettings() {
           if (!v) return null;
           return v;
         })(),
+        evolution_instance_name: formData.evolution_instance_name?.trim() || null,
         updated_at:              new Date().toISOString(),
       };
       const { error } = await supabase.from('restaurants').update(updatePayload).eq('id', restaurantId);
@@ -560,6 +563,7 @@ export default function AdminSettings() {
               { value: 'cambio',       icon: Repeat,     label: 'Câmbio' },
               { value: 'horarios',     icon: Clock,      label: 'Horários' },
               { value: 'links-bio',    icon: Link2,      label: 'Links e Bio' },
+              { value: 'whatsapp',     icon: MessageSquare, label: 'WhatsApp' },
               ...(canAccessUsers ? [{ value: 'usuarios', icon: Users, label: t('settings.tabs.users') }] : []),
             ].map(({ value, icon: Icon, label }) => (
               <TabsTrigger
@@ -2036,6 +2040,48 @@ export default function AdminSettings() {
                 )}
               </ul>
             )}
+          </div>
+        </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            ABA — WhatsApp (Evolution API: notificações automáticas Kanban)
+        ══════════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="whatsapp" className="mt-0 space-y-5">
+          <div className="admin-card-border bg-card p-6">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                <MessageSquare className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base font-semibold text-foreground">Notificações WhatsApp (Evolution API)</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Enviamos automaticamente ao cliente quando o pedido vai para &quot;Em Preparo&quot; e quando sai &quot;Saiu para Entrega&quot;.
+                </p>
+                {(restaurant as { whatsapp_evolution_enabled?: boolean })?.whatsapp_evolution_enabled ? (
+                  <div className="mt-4 space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="evolution_instance">Nome da instância WhatsApp</Label>
+                      <Input
+                        id="evolution_instance"
+                        value={formData.evolution_instance_name}
+                        onChange={(e) => set('evolution_instance_name', e.target.value)}
+                        placeholder="restaurante-principal"
+                        className="font-mono"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Mesmo nome configurado na Evolution API. Se vazio, as notificações não serão enviadas.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-sm text-amber-800">
+                      As notificações WhatsApp automáticas estão desativadas para este restaurante. Entre em contato com o administrador da plataforma para habilitá-las.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </TabsContent>
 

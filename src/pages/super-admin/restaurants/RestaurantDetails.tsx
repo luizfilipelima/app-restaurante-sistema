@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { isUUID } from '@/hooks/admin/useResolveRestaurantId';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/core/supabase';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +45,7 @@ import {
   Zap,
   AlertTriangle,
   Settings,
+  MessageSquare,
 } from 'lucide-react';
 import { formatBRLReais } from '@/lib/core/utils';
 import { PLAN_DISPLAY, getPlanDisplayLabel } from '@/lib/planDisplay';
@@ -81,8 +82,10 @@ export default function RestaurantDetails() {
    */
   const { identifier } = useParams<{ identifier: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [savingPlan, setSavingPlan] = useState(false);
+  const [savingWhatsApp, setSavingWhatsApp] = useState(false);
 
   // Dados do restaurante — busca por slug OU por id dependendo do formato do identifier.
   const { data: restaurant, isLoading: loadingRestaurant } = useQuery({
@@ -101,7 +104,7 @@ export default function RestaurantDetails() {
 
       const { data, error } = await supabase
         .from('restaurants')
-        .select('id, name, slug, logo, is_active')
+        .select('id, name, slug, logo, is_active, whatsapp_evolution_enabled')
         .eq(column, identifier)
         .maybeSingle();
 
@@ -172,6 +175,29 @@ export default function RestaurantDetails() {
       toast({ title: 'Erro ao salvar plano', description: String(err), variant: 'destructive' });
     } finally {
       setSavingPlan(false);
+    }
+  };
+
+  const handleToggleWhatsAppEvolution = async (enabled: boolean) => {
+    if (!restaurantId) return;
+    setSavingWhatsApp(true);
+    try {
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ whatsapp_evolution_enabled: enabled, updated_at: new Date().toISOString() })
+        .eq('id', restaurantId);
+      if (error) throw error;
+      toast({
+        title: enabled ? 'WhatsApp habilitado' : 'WhatsApp desabilitado',
+        description: enabled
+          ? 'O restaurante pode configurar a instância nas Configurações.'
+          : 'Notificações automáticas desativadas.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['restaurant-by-identifier', identifier] });
+    } catch (err) {
+      toast({ title: 'Erro', description: String(err), variant: 'destructive' });
+    } finally {
+      setSavingWhatsApp(false);
     }
   };
 
@@ -248,6 +274,38 @@ export default function RestaurantDetails() {
       </div>
 
       <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+
+        {/* ── Card: Integrações WhatsApp ──────────────────────────────────── */}
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <MessageSquare className="h-4 w-4 text-emerald-500" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Notificações WhatsApp (Evolution API)</CardTitle>
+                <CardDescription>
+                  Envia mensagem automática ao cliente quando o pedido vai para &quot;Em Preparo&quot; ou &quot;Saiu para Entrega&quot;.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-slate-700">Habilitar para este restaurante</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  O restaurante configurará o nome da instância nas Configurações.
+                </p>
+              </div>
+              <Switch
+                checked={(restaurant as { whatsapp_evolution_enabled?: boolean })?.whatsapp_evolution_enabled ?? false}
+                onCheckedChange={(v) => handleToggleWhatsAppEvolution(v)}
+                disabled={savingWhatsApp}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* ── Alerta: slug ausente ────────────────────────────────────────── */}
         {/*
