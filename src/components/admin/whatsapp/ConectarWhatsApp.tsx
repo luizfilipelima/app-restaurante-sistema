@@ -92,24 +92,24 @@ export function ConectarWhatsApp({
         throw new Error(msg);
       }
 
-      const payload = (res as { ok?: boolean; data?: Record<string, unknown>; error?: string } | null);
+      const payload = (res as { ok?: boolean; qrCode?: string; code?: string; pairingCode?: string; count?: number; data?: Record<string, unknown>; error?: string } | null);
+      console.log('Resposta do Supabase:', payload);
+
       if (!payload?.ok) {
         const errMsg = (payload as { error?: string })?.error;
         const isAuthError = errMsg && /401|autentic|sessão|token|login/i.test(errMsg);
         throw new Error(isAuthError ? 'Sessão expirada ou inválida. Faça logout e login novamente.' : (errMsg || 'Resposta inválida'));
       }
-      if (!payload.data) {
-        throw new Error((payload as { error?: string })?.error || 'Resposta inválida');
-      }
 
-      const data = payload.data as Record<string, unknown>;
-      const base64 = data.base64 as string | undefined;
-      const code = data.code as string | undefined;
-      const pairingCode = data.pairingCode as string | undefined;
-      const count = data.count as number | undefined;
+      const qrCode = payload.qrCode as string | undefined;
+      const code = payload.code as string | undefined;
+      const pairingCode = payload.pairingCode as string | undefined;
+      const count = payload.count as number | undefined;
+      const data = payload.data as Record<string, unknown> | undefined;
+      const legacyBase64 = data?.base64 as string | undefined;
 
-      if (base64 && typeof base64 === 'string') {
-        const src = base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`;
+      if (qrCode && typeof qrCode === 'string') {
+        const src = qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`;
         setQrImageSrc(src);
         toast({ title: 'QR Code gerado', description: 'Escaneie com o WhatsApp do celular.' });
         queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
@@ -120,6 +120,15 @@ export function ConectarWhatsApp({
       if (code && typeof code === 'string') {
         const dataUrl = await QRCode.toDataURL(code, { margin: 2, width: 280 });
         setQrImageSrc(dataUrl);
+        toast({ title: 'QR Code gerado', description: 'Escaneie com o WhatsApp do celular.' });
+        queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
+        onStatusChange?.();
+        return;
+      }
+
+      if (legacyBase64 && typeof legacyBase64 === 'string') {
+        const src = legacyBase64.startsWith('data:') ? legacyBase64 : `data:image/png;base64,${legacyBase64}`;
+        setQrImageSrc(src);
         toast({ title: 'QR Code gerado', description: 'Escaneie com o WhatsApp do celular.' });
         queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
         onStatusChange?.();

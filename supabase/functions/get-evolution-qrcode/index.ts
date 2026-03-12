@@ -23,6 +23,29 @@ export function toInstanceName(restaurantId: string): string {
   return `rest_${restaurantId.replace(/-/g, '_')}`;
 }
 
+/** Extrai e normaliza o payload do QR Code (Evolution API v1/v2). Retorna qrCode pronto para <img src>. */
+function extractQrPayload(connectData: Record<string, unknown>): Record<string, unknown> {
+  const base64 =
+    (connectData.base64 as string) ??
+    ((connectData.qrcode as Record<string, unknown> | undefined)?.base64 as string) ??
+    ((connectData.data as Record<string, unknown> | undefined)?.base64 as string);
+  const code = connectData.code as string | undefined;
+  const pairingCode = connectData.pairingCode as string | undefined;
+  const count = connectData.count as number | undefined;
+
+  let qrCode: string | null = null;
+  if (base64 && typeof base64 === 'string') {
+    qrCode = base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`;
+  }
+  return {
+    success: true,
+    qrCode: qrCode ?? undefined,
+    code: code ?? undefined,
+    pairingCode: pairingCode ?? undefined,
+    count: count ?? 0,
+  };
+}
+
 function ok(data: Record<string, unknown>) {
   return new Response(JSON.stringify({ ok: true, ...data }), {
     status: 200,
@@ -164,12 +187,15 @@ Deno.serve(async (req) => {
     const hasValidQr = (d: Record<string, unknown>) => {
       const hasCode = !!(d?.code as string);
       const hasBase64 = !!(d?.base64 as string);
+      const qrcode = d?.qrcode as Record<string, unknown> | undefined;
+      const hasNestedBase64 = !!(qrcode?.base64 as string);
       const count = d?.count as number | undefined;
       const hasPairing = !!(d?.pairingCode as string) && (count ?? 0) > 0;
-      return hasCode || hasBase64 || hasPairing;
+      return hasCode || hasBase64 || hasNestedBase64 || hasPairing;
     };
     if (hasValidQr(connectData)) {
-      return ok({ data: connectData, instanceName });
+      const normalized = extractQrPayload(connectData);
+      return ok({ ...normalized, instanceName });
     }
     const maxRetries = 4;
     const retryDelayMs = 2000;
@@ -212,7 +238,8 @@ Deno.serve(async (req) => {
       console.warn('[get-evolution-qrcode] QR não disponível após retries. Resposta:', JSON.stringify(connectData));
     }
 
-    return ok({ data: connectData, instanceName });
+    const normalized = extractQrPayload(connectData);
+    return ok({ ...normalized, instanceName });
   } catch (e) {
     console.error('[get-evolution-qrcode]', e);
     return fail(e instanceof Error ? e.message : 'Erro interno', 500);
