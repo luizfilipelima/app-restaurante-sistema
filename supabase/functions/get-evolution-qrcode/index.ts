@@ -33,8 +33,8 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return fail('Token de autenticação ausente. Faça login novamente.', 401);
+    const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization');
+    if (!authHeader || typeof authHeader !== 'string') return fail('Token de autenticação ausente. Faça login novamente.', 401);
 
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
     if (!token) return fail('Token inválido. Faça login novamente.', 401);

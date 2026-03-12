@@ -53,11 +53,17 @@ Verifique:
 
 ## 5. Troubleshooting — Erro 401
 
-Se aparecer **401 Unauthorized** ou **"Sessão expirada ou inválida"** ao gerar o QR Code:
+Se aparecer **401 Unauthorized** ou **"Sessão expirada ou inválida"**:
 
-1. **Sessão expirada** — O app redireciona para o login automaticamente. Faça login novamente e tente de novo.
-2. **Projeto diferente** — Confirme que `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no frontend são do **mesmo projeto** onde as Edge Functions estão deployed.
-3. **Confira os logs** — Em Supabase → Edge Functions → `get-evolution-qrcode` → Logs, veja a mensagem de erro retornada.
+1. **Redeploy das funções** — O `supabase/config.toml` define `verify_jwt = false` (validação do JWT é feita dentro da função). Deploy:
+   ```bash
+   npx supabase functions deploy get-evolution-qrcode
+   npx supabase functions deploy evolution-disconnect
+   ```
+   Se o 401 persistir, tente: `npx supabase functions deploy get-evolution-qrcode --no-verify-jwt`
+2. **Sessão expirada** — O app redireciona para o login. Faça login novamente e tente de novo.
+3. **Projeto Supabase** — Confirme que `VITE_SUPABASE_URL` (Vercel) é do **mesmo projeto** onde as funções estão deployed.
+4. **Logs** — Supabase → Edge Functions → `get-evolution-qrcode` → Logs.
 
 ## 6. Resumo rápido
 

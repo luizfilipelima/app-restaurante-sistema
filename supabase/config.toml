@@ -1,0 +1,9 @@
+# Configuração das Edge Functions
+# A validação do JWT é feita DENTRO da função (admin.auth.getUser),
+# evitando rejeição prematura pelo gateway que causava 401.
+
+[functions.get-evolution-qrcode]
+verify_jwt = false
+
+[functions.evolution-disconnect]
+verify_jwt = false
