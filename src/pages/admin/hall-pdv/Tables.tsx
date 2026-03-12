@@ -1239,7 +1239,7 @@ const ZONE_BADGE_STYLES = [
 
 /** Hash estável: zoneId quando disponível, senão zoneName. Garante cores distintas por zona. */
 function getZoneBadgeStyle(zoneId: string | null, zoneName: string): string {
-  const key = zoneId ?? zoneName || 'none';
+  const key = (zoneId ?? zoneName) || 'none';
   let hash = 0;
   for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash) + key.charCodeAt(i);
   return ZONE_BADGE_STYLES[Math.abs(hash) % ZONE_BADGE_STYLES.length];

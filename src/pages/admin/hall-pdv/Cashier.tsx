@@ -776,22 +776,22 @@ function CashierContent() {
             setSelected((prev) => {
               if (!prev) return prev;
               if (prev.type === 'table') {
-                const o = prev.order as { order_items?: any[]; total?: number };
-                const nextItems = [...(o.order_items ?? []), newItem];
-                const newTotal = (prev.totalAmount ?? 0) + unitPrice * quantity;
-                return { ...prev, order: { ...o, order_items: nextItems, total: newTotal }, totalAmount: newTotal };
+                const order = prev.order;
+                const nextItems = [...(order.order_items ?? []), newItem];
+                const newTotalVal = (prev.totalAmount ?? 0) + unitPrice * quantity;
+                return { ...prev, order: { ...order, order_items: nextItems, total: newTotalVal }, totalAmount: newTotalVal } as CashierDisplayItem;
               }
               if (isTableGroup(prev)) {
                 const items = (prev as TableGroup).items;
                 const updated = items.map((tbl) => {
                   if (tbl.order.id !== orderId) return tbl;
-                  const o = tbl.order as { order_items?: any[]; total?: number };
-                  const nextItems = [...(o.order_items ?? []), newItem];
-                  const newTotal = (tbl.order.total ?? 0) + unitPrice * quantity;
-                  return { ...tbl, order: { ...o, order_items: nextItems, total: newTotal } };
+                  const order = tbl.order;
+                  const nextItems = [...(order.order_items ?? []), newItem];
+                  const newTotalVal = (tbl.order.total ?? 0) + unitPrice * quantity;
+                  return { ...tbl, order: { ...order, order_items: nextItems, total: newTotalVal } };
                 });
                 const newGroupTotal = (prev as TableGroup).totalAmount + unitPrice * quantity;
-                return { ...prev, items: updated, totalAmount: newGroupTotal } as TableGroup;
+                return { ...prev, items: updated, totalAmount: newGroupTotal } as CashierDisplayItem;
               }
               return prev;
             });
