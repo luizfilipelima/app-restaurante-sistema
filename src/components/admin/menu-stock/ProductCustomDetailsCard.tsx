@@ -83,11 +83,11 @@ export default function ProductCustomDetailsCard({
                 onClick={() => !isLastSelected && handleToggle(keyName, item.id, allIds)}
                 disabled={isLastSelected}
                 title={isLastSelected ? 'Selecione pelo menos um' : undefined}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-sm font-medium transition-all duration-200 touch-manipulation select-none ${
                   sel
                     ? 'border-primary bg-primary/10 text-primary'
                     : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50'
-                } ${isLastSelected ? 'opacity-90 cursor-default' : 'cursor-pointer'}`}
+                } ${isLastSelected ? 'opacity-90 cursor-default' : 'cursor-pointer active:scale-[0.97]'}`}
               >
                 {sel && <Check className="h-3.5 w-3.5" />}
                 {getLabel(item)}

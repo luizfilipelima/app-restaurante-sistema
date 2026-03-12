@@ -901,10 +901,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       </main>
     </div>
 
-      {/* Cart FAB (Mobile) — fundo igual ao da página para evitar barra branca na safe-area */}
+      {/* Cart FAB (Mobile) — fundo transparente */}
       {((getItemsCount() > 0) || (isTableOrder && getOrderedItemsCount() > 0)) && !splashOverlay && (
         <div 
-          className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background"
+          className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-transparent"
           style={{ 
             paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
             paddingLeft: 'max(12px, env(safe-area-inset-left))',
