@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/table';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/shared/use-toast';
-import { generateSlug, getCardapioPublicUrl } from '@/lib/core/utils';
+import { getCardapioPublicUrl } from '@/lib/core/utils';
 import { invalidatePublicMenuCache } from '@/lib/cache/invalidatePublicCache';
 import { uploadProductImage } from '@/lib/imageUpload';
 import {
@@ -417,7 +417,7 @@ export default function AdminMenu() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   // Product search
-  const [productSearch, setProductSearch] = useState('');
+  const [productSearch] = useState('');
 
   // Inventory mode toggle
   const [showInventory, setShowInventory] = useState(false);
@@ -461,7 +461,6 @@ export default function AdminMenu() {
   const [showOnlineModal, setShowOnlineModal] = useState(false);
   const [showMenuConfigModal, setShowMenuConfigModal] = useState(false);
   const [slug, setSlug] = useState('');
-  const [slugSaving, setSlugSaving] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [menuLinkCopied, setMenuLinkCopied] = useState(false);
 
@@ -617,7 +616,6 @@ export default function AdminMenu() {
     : Object.keys(groupedProducts);
 
   const totalProducts = products.length;
-  const activeProducts = products.filter((p) => p.is_active).length;
 
   // ─── DnD handlers ─────────────────────────────────────────────────────────────
 
@@ -1205,22 +1203,6 @@ export default function AdminMenu() {
       await loadProducts();
       toast({ title: 'Categoria removida!' });
     } catch (e) { toast({ title: 'Erro ao remover categoria', variant: 'destructive' }); }
-  };
-
-  // ─── Slug ─────────────────────────────────────────────────────────────────────
-
-  const handleSaveSlug = async () => {
-    if (!restaurantId) return;
-    const slugNormalized = generateSlug(slug) || generateSlug(restaurant?.name || '');
-    if (!slugNormalized) { toast({ title: 'Slug inválido', variant: 'destructive' }); return; }
-    setSlugSaving(true);
-    try {
-      const { error } = await supabase.from('restaurants').update({ slug: slugNormalized }).eq('id', restaurantId);
-      if (error) throw error;
-      setSlug(slugNormalized);
-      toast({ title: 'Slug salvo com sucesso!' });
-    } catch { toast({ title: 'Erro ao salvar slug', variant: 'destructive' }); }
-    finally { setSlugSaving(false); }
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────────
@@ -2555,32 +2537,8 @@ export default function AdminMenu() {
           <div className="flex-1 overflow-y-auto min-h-0">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px] divide-y lg:divide-y-0 lg:divide-x divide-border/50 min-h-full">
 
-              {/* ── Coluna esquerda: Slug + Links ── */}
+              {/* ── Coluna esquerda: Links ── */}
               <div className="p-6 space-y-6">
-
-                {/* Slug */}
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-0.5">Endereço do Cardápio</h3>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Defina o slug único que aparece no URL do seu cardápio.
-                  </p>
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1 space-y-1.5">
-                      <Label htmlFor="slug-online" className="text-xs text-muted-foreground">Slug</Label>
-                      <Input
-                        id="slug-online"
-                        value={slug}
-                        onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'))}
-                        placeholder="ex: minha-pizzaria"
-                        className="font-mono text-sm h-10"
-                      />
-                      <p className="text-[11px] text-muted-foreground">Apenas letras minúsculas, números e hífens.</p>
-                    </div>
-                    <Button onClick={handleSaveSlug} disabled={slugSaving} className="h-10 shrink-0 mb-[22px]">
-                      {slugSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
-                    </Button>
-                  </div>
-                </div>
 
                 {/* Links — aparece apenas quando o slug está definido */}
                 {(slug || restaurant?.slug) && (() => {

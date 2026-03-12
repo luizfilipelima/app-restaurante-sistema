@@ -24,7 +24,7 @@ import { useQueryErrorToast } from '@/hooks/shared/useQueryErrorToast';
 import { formatPrice } from '@/lib/priceHelper';
 import {
   DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2,
-  MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon, Flame, Bike, Wine, HelpCircle,
+  MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon, Flame, Bike, Wine,
   Users, LayoutGrid, Printer,
   Gift, Star, LayoutDashboard, Store, Zap, Timer,
 } from 'lucide-react';
@@ -95,7 +95,7 @@ export default function AdminDashboard() {
   const [period, setPeriod] = useState<PeriodValue>('max');
   const [customStartStr, setCustomStartStr] = useState('');
   const [customEndStr, setCustomEndStr] = useState('');
-  const [areaFilter, setAreaFilter] = useState<AreaValue>('all');
+  const [areaFilter] = useState<AreaValue>('all');
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetPassword, setResetPassword] = useState('');
   const [resetting, setResetting] = useState(false);
@@ -224,8 +224,6 @@ export default function AdminDashboard() {
   const avgDeliveryTime = operational?.avg_delivery_time ?? 0;
   const avgBarTime = operational?.avg_bar_time ?? 0;
   const grossProfit = financial?.gross_profit ?? 0;
-  const totalCost = financial?.total_cost ?? 0;
-  const costByIngredients = financial?.cost_by_ingredients ?? 0;
 
   const restaurantName = restaurant?.name ?? 'Restaurante';
   const periodLabel = (() => {

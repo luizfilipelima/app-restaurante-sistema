@@ -54,7 +54,7 @@ import { ptBR, es, enUS } from 'date-fns/locale';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { useCanAccess } from '@/hooks/auth/useUserRole';
 import { PhoneCountryInput } from '@/components/ui/PhoneCountryInput';
-import { generateWhatsAppLink, ensurePhoneForWhatsApp, normalizePhoneWithCountryCode, getCardapioPublicUrl } from '@/lib/core/utils';
+import { generateWhatsAppLink, ensurePhoneForWhatsApp, normalizePhoneWithCountryCode } from '@/lib/core/utils';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
@@ -196,9 +196,6 @@ function ReservationsContent() {
 
   // Data mínima em horário local para permitir reserva no dia atual
   const today = format(new Date(), 'yyyy-MM-dd');
-  const basePublicUrl = restaurant?.slug ? getCardapioPublicUrl(restaurant.slug) : '';
-  const linkReservar = basePublicUrl ? `${basePublicUrl.replace(/\/$/, '')}/reservar` : '';
-  const linkFila = basePublicUrl ? `${basePublicUrl.replace(/\/$/, '')}/fila` : '';
 
   return (
     <AdminPageLayout className="pb-8">
