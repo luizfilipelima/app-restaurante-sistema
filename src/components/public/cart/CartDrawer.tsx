@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { type CurrencyCode } from '@/lib/core/utils';
 import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
-import { Plus, Minus, Trash2, Sparkles, ShoppingBag, ChevronRight, Check, Pencil } from 'lucide-react';
+import { Plus, Trash2, Sparkles, ShoppingBag, ChevronRight, Check, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchUpsellsForProducts, type UpsellRow, useLoyaltyProgram, useLoyaltyStatus } from '@/hooks/queries';
 import type { CartItem } from '@/types';
