@@ -182,8 +182,10 @@ Deno.serve(async (req) => {
         .eq('id', restaurantId);
     }
 
-    // 3. Obter QR Code (retry quando count=0 — Evolution API pode demorar para gerar)
-    let connectData: Record<string, unknown> = firstConnectRes.ok ? firstConnectData : {};
+    // 3. Obter QR Code — Evolution API v2 pode demorar alguns ms para gerar; polling com retry
+    const RETRY_DELAY_MS = 1500;
+    const MAX_RETRIES = 3;
+
     const hasValidQr = (d: Record<string, unknown>) => {
       const hasCode = !!(d?.code as string);
       const hasBase64 = !!(d?.base64 as string);
@@ -193,19 +195,21 @@ Deno.serve(async (req) => {
       const hasPairing = !!(d?.pairingCode as string) && (count ?? 0) > 0;
       return hasCode || hasBase64 || hasNestedBase64 || hasPairing;
     };
+
+    let connectData: Record<string, unknown> = firstConnectRes.ok ? firstConnectData : {};
     if (hasValidQr(connectData)) {
       const normalized = extractQrPayload(connectData);
       return ok({ ...normalized, instanceName });
     }
-    const maxRetries = 4;
-    const retryDelayMs = 2000;
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      console.warn(`[get-evolution-qrcode] QR não veio na resposta, retry ${attempt}/${MAX_RETRIES} em ${RETRY_DELAY_MS}ms...`);
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+
       const connectRes = await fetch(
         `${baseUrl}/instance/connect/${encodeURIComponent(instanceName)}${qs}`,
         { method: 'GET', headers: evolutionHeaders(evolutionKey) }
       );
-
       connectData = await connectRes.json().catch(() => ({}));
 
       if (!connectRes.ok) {
@@ -215,27 +219,11 @@ Deno.serve(async (req) => {
           502
         );
       }
-
-      const count = (connectData as { count?: number }).count;
-      const hasCode = !!(connectData as { code?: string }).code;
-      const hasBase64 = !!(connectData as { base64?: string }).base64;
-      const hasPairingCode = !!(connectData as { pairingCode?: string }).pairingCode;
-
-      if (hasCode || hasBase64 || (hasPairingCode && count > 0)) {
-        break;
-      }
-
-      if (attempt < maxRetries && (count === 0 || !hasCode) && !hasBase64) {
-        console.warn(`[get-evolution-qrcode] Tentativa ${attempt}/${maxRetries}, count=${count ?? '?'}, aguardando ${retryDelayMs}ms...`);
-        await new Promise((r) => setTimeout(r, retryDelayMs));
-      }
+      if (hasValidQr(connectData)) break;
     }
 
-    const finalCount = (connectData as { count?: number }).count;
-    const finalCode = (connectData as { code?: string }).code;
-    const finalBase64 = (connectData as { base64?: string }).base64;
-    if ((finalCount === 0 || (!finalCode && !finalBase64)) && maxRetries > 1) {
-      console.warn('[get-evolution-qrcode] QR não disponível após retries. Resposta:', JSON.stringify(connectData));
+    if (!hasValidQr(connectData)) {
+      console.warn('[get-evolution-qrcode] QR não disponível após', MAX_RETRIES, 'retries. Resposta:', JSON.stringify(connectData));
     }
 
     const normalized = extractQrPayload(connectData);
