@@ -38,6 +38,7 @@ export interface DashboardPrintData {
   grossProfit:      number;
   avgPrepTime:      number;
   avgDeliveryTime:  number;
+  avgBarTime?:      number;
   paymentMethods:   { name: string; value: number }[];
   topProducts:      { name: string; quantity: number }[];
   bottomProducts?:  { name: string; quantity: number }[];
@@ -137,6 +138,7 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
       grossProfit,
       avgPrepTime,
       avgDeliveryTime,
+      avgBarTime = 0,
       paymentMethods,
       topProducts,
       bottomProducts = [],
@@ -301,6 +303,10 @@ const DashboardPrintReport = forwardRef<HTMLDivElement, DashboardPrintData>(
             <KpiRow
               label={t('print.deliveryAvg')}
               value={avgDeliveryTime > 0 ? `${Math.round(avgDeliveryTime)} min` : t('print.noData')}
+            />
+            <KpiRow
+              label={t('print.barAvg')}
+              value={avgBarTime > 0 ? `${Math.round(avgBarTime)} min` : t('print.noData')}
             />
             {totalOrders > 0 && (
               <KpiRow

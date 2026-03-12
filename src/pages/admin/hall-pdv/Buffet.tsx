@@ -814,7 +814,6 @@ export default function Buffet() {
     <AdminPageLayout className="flex flex-col gap-5 min-h-screen">
       <AdminPageHeader
         title="Buffet / Kg"
-        description="Operação offline-first · atualização em tempo real"
         icon={Scale}
         actions={
           <>

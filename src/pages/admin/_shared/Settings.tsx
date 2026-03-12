@@ -25,7 +25,7 @@ import { getBioPublicUrl, getCardapioPublicUrl, generateWhatsAppLink } from '@/l
 import { toast } from '@/hooks/shared/use-toast';
 import {
   Save, Upload, Loader2, Printer,
-  Phone, Globe, ImageIcon, AlarmClock, X, Wifi, Store,
+  Phone, Globe, ImageIcon, AlarmClock, Clock, X, Wifi, Store,
   Users, ExternalLink, Link2, FileText,
   MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode, Settings as SettingsIcon,
   Pencil, Trash2, Plus, ChevronUp, ChevronDown, Lock,
@@ -36,6 +36,7 @@ import { useLinkBioButtons, useLinkBioButtonsMutations, type CreateLinkBioButton
 import { useCanAccess } from '@/hooks/auth/useUserRole';
 import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import RestaurantUsersPanel from '@/components/admin/_shared/RestaurantUsersPanel';
+import SettingsHorariosSection from '@/pages/admin/_shared/SettingsHorariosSection';
 import { FeatureGuard } from '@/components/auth/FeatureGuard';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -390,10 +391,12 @@ export default function AdminSettings() {
   const set = <K extends keyof typeof formData>(k: K, v: (typeof formData)[K]) =>
     setFormData(f => ({ ...f, [k]: v }));
 
-  const hashTab = location.hash === '#cambio' ? 'cambio' : null;
-  const [activeTab, setActiveTab] = useState<string>(hashTab || 'perfil');
+  const validTabs = ['perfil', 'dominios', 'pagamentos', 'impressao', 'cambio', 'links-bio', 'usuarios', 'horarios'];
+  const hashTab = location.hash ? location.hash.replace(/^#/, '') : null;
+  const initialTab = hashTab && validTabs.includes(hashTab) ? hashTab : 'perfil';
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
   useEffect(() => {
-    if (hashTab) setActiveTab(hashTab);
+    if (hashTab && validTabs.includes(hashTab)) setActiveTab(hashTab);
   }, [hashTab]);
 
   useEffect(() => {
@@ -555,6 +558,7 @@ export default function AdminSettings() {
               { value: 'pagamentos',   icon: CreditCard, label: 'Formas de Pagamento' },
               { value: 'impressao',    icon: Printer,    label: 'Impressão' },
               { value: 'cambio',       icon: Repeat,     label: 'Câmbio' },
+              { value: 'horarios',     icon: Clock,      label: 'Horários' },
               { value: 'links-bio',    icon: Link2,      label: 'Links e Bio' },
               ...(canAccessUsers ? [{ value: 'usuarios', icon: Users, label: t('settings.tabs.users') }] : []),
             ].map(({ value, icon: Icon, label }) => (
@@ -1824,6 +1828,13 @@ export default function AdminSettings() {
           <div className="flex justify-end">
             <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
           </div>
+        </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            ABA — Horários de funcionamento
+        ══════════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="horarios" className="mt-0">
+          <SettingsHorariosSection />
         </TabsContent>
 
         {/* ══════════════════════════════════════════════════════════════════════

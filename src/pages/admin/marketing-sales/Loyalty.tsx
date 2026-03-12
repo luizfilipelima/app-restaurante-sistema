@@ -129,8 +129,8 @@ export default function AdminLoyalty() {
     <AdminPageLayout className="pb-10">
       <AdminPageHeader
         title={t('loyalty.pageTitle')}
-        description={t('loyalty.heroMessage', { name: restaurant?.name || 'seu restaurante' })}
         icon={Gift}
+        backHref={`${basePath}/menu`}
       />
         <motion.div
           initial={{ opacity: 0, y: 12 }}

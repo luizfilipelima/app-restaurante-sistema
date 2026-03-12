@@ -2,14 +2,14 @@
  * Central de Mesas e Praças (Backoffice / Gestão)
  *
  * Tela de configuração: zonas, mesas, QR Codes.
- * Inclui card com link para o Terminal do Garçom.
  */
 
 import { useEffect, useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '@/lib/core/supabase';
-import { useAdminRestaurantId, useAdminRestaurant, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminRestaurant, useAdminCurrency, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import {
   useTables,
   useTableStatuses,
@@ -78,8 +78,6 @@ import {
   Link2,
   Unlink,
   ExternalLink,
-  Copy,
-  ConciergeBell,
   RotateCcw,
   Trash2,
   LayoutGrid,
@@ -92,6 +90,7 @@ import {
   Upload,
   ImageIcon,
   ArrowRightLeft,
+  CalendarClock,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import type { Locale } from 'date-fns';
@@ -407,6 +406,7 @@ function HallZonesConfig({ restaurantId, hallZones, t }: { restaurantId: string 
 
 export default function AdminTables() {
   const restaurantId = useAdminRestaurantId();
+  const basePath = useAdminBasePath();
   const queryClient = useQueryClient();
   const { restaurant } = useAdminRestaurant();
   const currency = useAdminCurrency();
@@ -512,10 +512,6 @@ export default function AdminTables() {
     if (fresh) setSelectedTable(fresh);
   }, [tableStatuses, selectedTable?.id]);
 
-  const terminalUrl = restaurant?.slug
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${restaurant.slug}/terminal-garcom`
-    : '';
-
   const [resetTableTarget, setResetTableTarget] = useState<TableWithStatus | null>(null);
   const resetTableMutation = useResetTable(restaurantId);
   const canResetTable = useCanAccess(['manager', 'waiter', 'restaurant_admin', 'super_admin']);
@@ -536,10 +532,15 @@ export default function AdminTables() {
     <AdminPageLayout className="pb-8">
       <AdminPageHeader
         title={t('tablesCentral.title')}
-        description={t('tablesCentral.subtitle')}
         icon={LayoutGrid}
         actions={
           <>
+            <Button variant="outline" size="lg" className="min-h-[48px] touch-manipulation" asChild>
+              <Link to={`${basePath}/reservations`}>
+                <CalendarClock className="h-5 w-5 mr-2" />
+                {t('reservations.title')}
+              </Link>
+            </Button>
             <Button variant="outline" size="lg" className="min-h-[48px] touch-manipulation" onClick={() => setShowConfig(true)}>
               <Settings className="h-5 w-5 mr-2" />
               {t('tablesCentral.configure')}
@@ -551,45 +552,6 @@ export default function AdminTables() {
           </>
         }
       />
-      <div className="flex flex-col gap-3">
-        {/* Barra compacta Terminal do Garçom (max ~50–60px) */}
-        <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 h-12 max-h-12">
-          <ConciergeBell className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-          <code className="flex-1 min-w-0 truncate text-xs text-muted-foreground">
-            {terminalUrl || 'Carregando...'}
-          </code>
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 px-2 text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                if (terminalUrl) {
-                  navigator.clipboard.writeText(terminalUrl);
-                  toast({ title: 'Link copiado!' });
-                }
-              }}
-              disabled={!terminalUrl}
-            >
-              <Copy className="h-4 w-4" />
-              <span className="sr-only sm:not-sr-only sm:ml-1">{t('tablesCentral.copyLink')}</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 px-2 text-muted-foreground hover:text-foreground"
-              asChild
-              disabled={!terminalUrl}
-            >
-              <a href={terminalUrl || '#'} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" />
-                <span className="sr-only sm:not-sr-only sm:ml-1">{t('tablesCentral.openInNewTab')}</span>
-              </a>
-            </Button>
-          </div>
-        </div>
-      </div>
-
       {/* Filtro por Zona (Pills scrolláveis) */}
       {hallZones.length > 0 && (
         <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-thin">

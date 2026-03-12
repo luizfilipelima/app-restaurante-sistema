@@ -542,6 +542,41 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         {/* Página de vendas principal PT-BR (Hyper Professional Enterprise) */}
         <Route path="/pagina-ptbr" element={<PaginaPtBr />} />
+        <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+
+        {/* Super Admin (localhost e domínio principal) — antes de /:restaurantSlug para não capturar "super-admin" como slug */}
+        <Route
+          path="/super-admin"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
+              <SuperAdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<SaasMetrics />} />
+          <Route path="restaurants" element={<SuperAdminRestaurants />} />
+          <Route path="plans" element={<Plans />} />
+          <Route path="landing-page" element={<LandingPageEditor />} />
+        </Route>
+        <Route
+          path="/super-admin/restaurants/:identifier/subscription"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
+              <RestaurantDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/super-admin/restaurants/:identifier"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
+              <AdminLayoutWrapper />
+            </ProtectedRoute>
+          }
+        >
+          {adminRoutes}
+        </Route>
+
         <Route path="/:restaurantSlug" element={<MenuThemeWrapper />}>
           <Route index element={<PublicMenu />} />
           <Route path="menu" element={<MenuViewOnly />} />
@@ -559,7 +594,6 @@ function App() {
           <Route path="bio" element={<LinkBio />} />
           <Route path="bio/sobre" element={<LinkBioAbout />} />
         </Route>
-        <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
 
         {/* Painel do restaurante — URL canônica com slug (domínio principal) */}
         <Route

@@ -63,6 +63,7 @@ export interface DashboardAnalyticsResponse {
 export interface DashboardOperational {
   avg_prep_time: number;
   avg_delivery_time: number;
+  avg_bar_time?: number;
   idleness_heatmap: { hour: number; count: number }[];
 }
 

@@ -92,6 +92,8 @@ import {
   ChefHat,
   Wine,
   Tag,
+  Ticket,
+  Gift,
   ShoppingCart,
   Palette,
   SlidersHorizontal,
@@ -1228,32 +1230,11 @@ export default function AdminMenu() {
       <AdminPageHeader
         title="Central do Cardápio"
         icon={UtensilsCrossed}
-        description={
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/80 px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              <Package className="h-3.5 w-3.5" />
-              {totalProducts} produto{totalProducts !== 1 ? 's' : ''}
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50">
-              <Check className="h-3.5 w-3.5" />
-              {activeProducts} ativo{activeProducts !== 1 ? 's' : ''}
-            </span>
-          </div>
-        }
         actions={
           <>
-            <div className="relative w-full sm:w-auto min-w-[200px] sm:min-w-[220px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Buscar produto..."
-                className="pl-9 h-10 w-full text-sm rounded-lg"
-              />
-            </div>
             <div
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium cursor-pointer transition-all select-none ${
-                showInventory ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400' : 'border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+              className={`flex items-center gap-2 px-3 py-3 rounded-lg border text-xs font-medium cursor-pointer transition-all select-none ${
+                showInventory ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400' : 'border-[#c9d0d9] text-muted-foreground hover:bg-muted/50 hover:text-foreground'
               }`}
               onClick={() => setShowInventory((v) => !v)}
             >
@@ -1261,14 +1242,6 @@ export default function AdminMenu() {
               <span>Ver Custos</span>
               <Switch checked={showInventory} onCheckedChange={setShowInventory} className="h-4 w-7" onClick={(e) => e.stopPropagation()} />
             </div>
-            <Button variant="outline" size="sm" onClick={() => setShowMenuConfigModal(true)} className="h-10 gap-2" title="Tema e configurações do cardápio">
-              <Palette className="h-4 w-4" />
-              <span className="hidden md:inline">Tema</span>
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowOnlineModal(true)} className="h-10 gap-2">
-              <QrCode className="h-4 w-4" />
-              <span className="hidden md:inline">Online</span>
-            </Button>
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.15 }} className="inline-flex">
               <Button size="sm" onClick={() => openNew()} className="h-10 gap-2 shadow-sm">
                 <Plus className="h-4 w-4" />
@@ -1282,12 +1255,12 @@ export default function AdminMenu() {
       {/* ── Layout principal: Categorias (sidebar) + Produtos ─────────────────── */}
       <div className="flex flex-col lg:flex-row gap-6 items-stretch lg:items-start min-h-[520px]">
 
-        {/* ── Sidebar: Categorias ────────────────────────────────────────────── */}
-        <aside className="w-full lg:w-64 xl:w-72 flex-shrink-0">
+        {/* ── Sidebar: Categorias + Atalhos ───────────────────────────────────── */}
+        <aside className="w-full lg:w-64 xl:w-72 flex-shrink-0 space-y-4">
           <Card className="dark:bg-slate-900/50 border-border/80 sticky top-4 overflow-hidden">
             <CardHeader className="pb-3 pt-5 px-4 bg-muted/30 dark:bg-muted/10 border-b border-border/60">
               <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-sm font-semibold text-foreground">Filtrar por categoria</CardTitle>
+                <CardTitle className="text-sm font-semibold text-foreground">Categorias</CardTitle>
                 {savingCategoryOrder && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
               </div>
             </CardHeader>
@@ -1353,6 +1326,59 @@ export default function AdminMenu() {
                 <span>Nova Categoria</span>
               </button>
 
+            </CardContent>
+          </Card>
+
+          {/* ── Card Atalhos ───────────────────────────────────────────────────── */}
+          <Card className="dark:bg-slate-900/50 border-border/80 overflow-hidden">
+            <CardHeader className="pb-3 pt-5 px-4 bg-muted/30 dark:bg-muted/10 border-b border-border/60">
+              <CardTitle className="text-sm font-semibold text-foreground">Atalhos</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 space-y-2">
+              <Link
+                to={`${basePath}/inventory`}
+                className="flex items-center gap-2 rounded-xl border border-transparent bg-background hover:border-border hover:bg-muted/50 transition-all h-10 px-3 text-sm font-medium text-foreground"
+              >
+                <Boxes className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">Estoque</span>
+              </Link>
+              <Link
+                to={`${basePath}/offers`}
+                className="flex items-center gap-2 rounded-xl border border-transparent bg-background hover:border-border hover:bg-muted/50 transition-all h-10 px-3 text-sm font-medium text-foreground"
+              >
+                <Tag className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">Em Oferta</span>
+              </Link>
+              <Link
+                to={`${basePath}/coupons`}
+                className="flex items-center gap-2 rounded-xl border border-transparent bg-background hover:border-border hover:bg-muted/50 transition-all h-10 px-3 text-sm font-medium text-foreground"
+              >
+                <Ticket className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">Cupons</span>
+              </Link>
+              <Link
+                to={`${basePath}/loyalty`}
+                className="flex items-center gap-2 rounded-xl border border-transparent bg-background hover:border-border hover:bg-muted/50 transition-all h-10 px-3 text-sm font-medium text-foreground"
+              >
+                <Gift className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">Fidelidade</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowOnlineModal(true)}
+                className="w-full flex items-center gap-2 rounded-xl border border-transparent bg-background hover:border-border hover:bg-muted/50 transition-all h-10 px-3 text-sm font-medium text-foreground text-left"
+              >
+                <QrCode className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">QR Code</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMenuConfigModal(true)}
+                className="w-full flex items-center gap-2 rounded-xl border border-transparent bg-background hover:border-border hover:bg-muted/50 transition-all h-10 px-3 text-sm font-medium text-foreground text-left"
+              >
+                <Palette className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">Tema</span>
+              </button>
             </CardContent>
           </Card>
         </aside>
@@ -2645,7 +2671,11 @@ export default function AdminMenu() {
 
               {/* ── Coluna direita: QR Codes ── */}
               <div className="p-6">
-                <MenuQRCodeCard slug={slug || restaurant?.slug || ''} />
+                <MenuQRCodeCard
+                  slug={slug || restaurant?.slug || ''}
+                  restaurantName={restaurant?.name ?? null}
+                  logo={restaurant?.logo ?? null}
+                />
               </div>
 
             </div>

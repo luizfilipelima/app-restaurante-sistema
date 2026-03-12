@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/core/supabase';
-import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminCurrency, useAdminRestaurant, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import {
   convertPriceToStorage,
   convertPriceFromStorage,
@@ -353,6 +353,7 @@ function EmptyInventoryState({
 
 export default function AdminInventory() {
   const restaurantId = useAdminRestaurantId();
+  const basePath = useAdminBasePath();
   const { restaurant: ctxRestaurant } = useAdminRestaurant();
   const currency = useAdminCurrency();
   const exchangeRates = ctxRestaurant?.exchange_rates ?? { pyg_per_brl: 3600, ars_per_brl: 1150 };
@@ -763,8 +764,8 @@ export default function AdminInventory() {
     <AdminPageLayout className="space-y-4">
       <AdminPageHeader
         title="Controle de Estoque"
-        description="Produtos, ingredientes e custos vinculados ao faturamento"
         icon={Boxes}
+        backHref={`${basePath}/menu`}
       />
 
       {/* ── Tabs: Produtos | Ingredientes ───────────────────────────────────── */}

@@ -6,7 +6,7 @@ import { supabase } from '@/lib/core/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
-import { useDashboardStats, useDashboardAnalytics, useRestaurant, useLoyaltyMetrics, useLoyaltyProgram, useFeatureAccess } from '@/hooks/queries';
+import { useDashboardStats, useDashboardAnalytics, useRestaurant, useLoyaltyMetrics, useLoyaltyProgram, useOrdersPrepTimeExtremes } from '@/hooks/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,21 +19,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/shared/use-toast';
 import { useQueryErrorToast } from '@/hooks/shared/useQueryErrorToast';
 import { formatPrice } from '@/lib/priceHelper';
-import { exportDashboardCSV, exportDashboardXLSX } from '@/lib/dashboard/dashboard-export';
 import {
   DollarSign, ShoppingCart, TrendingUp, TrendingDown, Clock, RotateCcw, Loader2,
-  MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon, Flame, Bike, HelpCircle,
-  Users, LayoutGrid, Download, FileSpreadsheet, FileText, ChevronDown, Printer,
-  Gift, Star, LayoutDashboard, Store, Banknote,
+  MapPin, Scale, AlertTriangle, TrendingUp as TrendingUpIcon, Flame, Bike, Wine, HelpCircle,
+  Users, LayoutGrid, Printer,
+  Gift, Star, LayoutDashboard, Store, Zap, Timer,
 } from 'lucide-react';
 import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import DashboardPrintReport from '@/components/admin/overview/DashboardPrintReport';
@@ -53,11 +46,12 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChurnRecoveryList } from '@/components/admin/overview/ChurnRecoveryList';
 import { MenuMatrixBCG } from '@/components/admin/overview/MenuMatrixBCG';
-import { CashierDailyTab } from '@/components/admin/overview/CashierDailyTab';
 import type { DashboardAdvancedStatsResponse } from '@/types/dashboard-analytics';
 type PeriodValue = '24h' | '7' | '30' | '365' | 'max' | 'custom';
 
 type AreaValue = 'all' | 'delivery' | 'table' | 'pickup' | 'buffet';
+
+type RetentionPeriodValue = '24h' | '7' | '30';
 
 // ─── Variantes de animação stagger para os cards de métrica ─────────────────
 
@@ -98,8 +92,7 @@ export default function AdminDashboard() {
   const { user } = useAuthStore();
   const { toast } = useToast();
   const { data: restaurant } = useRestaurant(restaurantId);
-  const [mainTab, setMainTab] = useState<'overview' | 'cashier'>('overview');
-  const [period, setPeriod] = useState<PeriodValue>('30');
+  const [period, setPeriod] = useState<PeriodValue>('max');
   const [customStartStr, setCustomStartStr] = useState('');
   const [customEndStr, setCustomEndStr] = useState('');
   const [areaFilter, setAreaFilter] = useState<AreaValue>('all');
@@ -107,8 +100,8 @@ export default function AdminDashboard() {
   const [resetPassword, setResetPassword] = useState('');
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState('');
-  const [exporting, setExporting] = useState(false);
   const [printing,  setPrinting]  = useState(false);
+  const [retentionPeriod, setRetentionPeriod] = useState<RetentionPeriodValue>('7');
 
   const customStart = customStartStr ? new Date(customStartStr) : undefined;
   const customEnd = customEndStr ? new Date(customEndStr) : undefined;
@@ -144,6 +137,22 @@ export default function AdminDashboard() {
   });
 
   const analytics = (statsData ?? analyticsFallback) as DashboardAdvancedStatsResponse | undefined;
+
+  // Período próprio para o card Clientes Novos vs. Recorrentes (24h, 7 dias, 30 dias)
+  const retentionRange = useMemo(() => {
+    const now = new Date();
+    if (retentionPeriod === '24h') return { start: subHours(now, 24), end: now };
+    if (retentionPeriod === '7') return { start: subDays(now, 7), end: now };
+    return { start: subDays(now, 30), end: now };
+  }, [retentionPeriod]);
+
+  const { data: retentionAnalytics } = useDashboardAnalytics({
+    tenantId: restaurantId,
+    startDate: retentionRange.start,
+    endDate: retentionRange.end,
+    areaFilter: 'all',
+    enabled: !!restaurantId,
+  });
 
   // Fonte única para KPIs: analytics (statsData ou fallback) — evita flickering
   const metrics = useMemo(() => {
@@ -182,8 +191,14 @@ export default function AdminDashboard() {
 
   const { data: loyaltyProgram } = useLoyaltyProgram(restaurantId);
   const { data: loyaltyMetrics } = useLoyaltyMetrics(restaurantId, loyaltyProgram?.orders_required ?? 10);
-  const { data: hasTables } = useFeatureAccess('feature_tables', restaurantId);
-  const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
+  const { data: prepTimeExtremes } = useOrdersPrepTimeExtremes({
+    restaurantId,
+    startDate: start,
+    endDate: end,
+    areaFilter: areaForRpc,
+    limit: 5,
+    enabled: !!restaurantId,
+  });
 
   // Loading: aguarda analytics (stats ou fallback) — evita flickering nos cards
   const loading = !analytics && (loadingStats || loadingFallback);
@@ -207,6 +222,7 @@ export default function AdminDashboard() {
   const financial = analytics?.financial;
   const avgPrepTime = operational?.avg_prep_time ?? 0;
   const avgDeliveryTime = operational?.avg_delivery_time ?? 0;
+  const avgBarTime = operational?.avg_bar_time ?? 0;
   const grossProfit = financial?.gross_profit ?? 0;
   const totalCost = financial?.total_cost ?? 0;
   const costByIngredients = financial?.cost_by_ingredients ?? 0;
@@ -232,24 +248,6 @@ export default function AdminDashboard() {
     };
     return map[areaFilter] ?? t('dashboard.filters.all');
   })();
-
-  const handleExport = async (fmt: 'csv' | 'xlsx') => {
-    if (!analytics) return;
-    setExporting(true);
-    try {
-      const params = {
-        analytics: analytics as DashboardAdvancedStatsResponse,
-        restaurantName,
-        currency,
-        periodLabel,
-        areaLabel,
-      };
-      if (fmt === 'csv') exportDashboardCSV(params);
-      else exportDashboardXLSX(params);
-    } finally {
-      setExporting(false);
-    }
-  };
 
   const handlePrintReport = () => {
     setPrinting(true);
@@ -515,53 +513,8 @@ export default function AdminDashboard() {
         <AdminPageHeader
           title={t('dashboard.title')}
           icon={LayoutDashboard}
-          description={
-            <>
-              {periodLabel}{areaFilter !== 'all' ? ` · ${areaLabel}` : ''}
-              {restaurantName && <> · <span className="font-medium">{restaurantName}</span></>}
-            </>
-          }
           actions={
             <>
-              <Tabs
-                value={['pickup', 'buffet'].includes(areaFilter) ? 'all' : (areaFilter === 'table' ? 'hallAndPDV' : areaFilter)}
-                onValueChange={(v) => setAreaFilter(v === 'hallAndPDV' ? 'table' : (v as AreaValue))}
-                className="shrink-0"
-              >
-                <TabsList className="h-9 bg-slate-100 border border-slate-200 p-0.5">
-                  <TabsTrigger value="all" className="h-8 px-3 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                    {t('dashboard.filters.all')}
-                  </TabsTrigger>
-                  <TabsTrigger value="hallAndPDV" className="h-8 px-3 text-xs gap-1 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                    <Store className="h-3.5 w-3.5" />
-                    {t('dashboard.filters.hallAndPDV')}
-                  </TabsTrigger>
-                  <TabsTrigger value="delivery" className="h-8 px-3 text-xs gap-1 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                    <Bike className="h-3.5 w-3.5" />
-                    {t('dashboard.filters.delivery')}
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 px-2.5 text-slate-500 hover:text-slate-700 border-slate-200"
-                    title={t('dashboard.filters.moreFilters')}
-                  >
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                  <DropdownMenuItem className="cursor-pointer" onClick={() => setAreaFilter('pickup')}>
-                    {t('dashboard.filters.pickup')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer" onClick={() => setAreaFilter('buffet')}>
-                    {t('dashboard.filters.buffet')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
               <Select
                 value={period}
                 onValueChange={(v) => {
@@ -614,81 +567,32 @@ export default function AdminDashboard() {
                 {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
                 <span className="hidden sm:inline">{t('print.exportReport')}</span>
               </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 gap-1.5 border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                    disabled={!analytics || exporting}
-                  >
-                    {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                    {t('common.export')}
-                    <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => handleExport('csv')}>
-                    <FileText className="h-4 w-4 text-slate-500" />
-                    {t('dashboard.exportCSV')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => handleExport('xlsx')}>
-                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                    {t('dashboard.exportXLSX')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </>
           }
         />
 
-        {/* Abas principais: Visão Geral | Caixa Diário */}
-        <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'overview' | 'cashier')} className="mt-6">
-          <TabsList className="mb-6 h-10 bg-slate-100 border border-slate-200 p-1.5 w-fit gap-0.5">
-            <TabsTrigger value="overview" className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              <LayoutDashboard className="h-4 w-4" />
-              {t('dashboard.sections.executiveSummary')}
-            </TabsTrigger>
-            <TabsTrigger value="cashier" className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              <Banknote className="h-4 w-4" />
-              {t('cashierDaily.title')}
-            </TabsTrigger>
-          </TabsList>
-
-          {mainTab === 'cashier' && (
-            <CashierDailyTab
-              restaurantId={restaurantId}
-              restaurantName={restaurant?.name}
-              currency={currency}
-              hasTables={!!hasTables}
-              hasBuffet={!!hasBuffet}
-              t={t}
-            />
-          )}
-
-          {mainTab === 'overview' && (
-        <div className="space-y-8">
-        {/* ══ Seção: Resumo Executivo — 5 KPIs em grid unificado ══ */}
+        <div className="mt-6 space-y-8">
+        {/* ══ Seção: Resumo Executivo — 4 KPIs em grid responsivo (4 colunas) ══ */}
         <section>
           <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-2 mb-5">
             <LayoutDashboard className="h-4 w-4 text-primary" />
             {t('dashboard.sections.executiveSummary')}
           </h2>
           <motion.div
-            className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 min-w-0"
+            className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 min-w-0"
             variants={metricContainerVariants}
             initial="hidden"
             animate="visible"
           >
             {/* Faturamento */}
-            <motion.div className="admin-metric-card" variants={metricCardVariants}>
-              <div className="flex items-start justify-between">
+            <div className="admin-metric-card">
+              <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.revenue')}</p>
                 <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
                   <DollarSign className="h-4 w-4 text-blue-600" />
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">
+              <p className="text-[24px] font-bold text-slate-900 mt-2">
                 {formatPrice(metrics.totalRevenue, currency)}
               </p>
               {prevMetrics.totalRevenue > 0 && (
@@ -697,83 +601,47 @@ export default function AdminDashboard() {
                   {revPct}% {t('common.vsPrevious')}
                 </p>
               )}
-            </motion.div>
-
-            {/* Lucro Estimado */}
-            <motion.div className="admin-metric-card" variants={metricCardVariants}>
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <p className="text-sm font-medium text-slate-500 truncate">{t('dashboard.kpis.profit')}</p>
-                  <span
-                    title={costByIngredients > 0
-                      ? 'Lucro calculado com CMV baseado em ingredientes (receitas cadastradas).'
-                      : 'O lucro depende do cadastro do preço de custo dos produtos ou receitas de ingredientes.'}
-                    className="cursor-help text-slate-400 hover:text-slate-600 shrink-0"
-                  >
-                    <HelpCircle className="h-3.5 w-3.5" />
-                  </span>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                  <TrendingUp className="h-4 w-4 text-emerald-600" />
-                </div>
-              </div>
-              <p className={`text-2xl sm:text-3xl font-bold mt-2 ${grossProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                {formatPrice(grossProfit, currency)}
-              </p>
-              {totalCost > 0 && (
-                <p className="text-xs text-slate-500 mt-0.5">
-                  CMV: {formatPrice(totalCost, currency)}
-                  {costByIngredients > 0 && (
-                    <span className="text-emerald-600 ml-1" title="Parte do CMV vinda de receitas de ingredientes">
-                      (ingredientes)
-                    </span>
-                  )}
-                </p>
-              )}
-              <p className="text-xs text-slate-400 mt-0.5">{t('dashboard.kpis.profitDesc')}</p>
-            </motion.div>
+            </div>
 
             {/* Ticket Médio */}
             <motion.div className="admin-metric-card" variants={metricCardVariants}>
-              <div className="flex items-start justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.avgTicket')}</p>
                 <div className="h-9 w-9 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
                   <TrendingUp className="h-4 w-4 text-violet-600" />
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">
+              <p className="text-[24px] font-bold text-slate-900 mt-2">
                 {formatPrice(metrics.averageTicket, currency)}
               </p>
-              <p className="text-xs text-slate-400 mt-1">{t('dashboard.kpis.avgOrderDesc')}</p>
             </motion.div>
 
             {/* Pedidos */}
-            <motion.div className="admin-metric-card" variants={metricCardVariants}>
-              <div className="flex items-center justify-between">
+            <div className="admin-metric-card">
+              <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.orders')}</p>
-                <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                  <ShoppingCart className="h-3.5 w-3.5 text-emerald-600" />
+                <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                  <ShoppingCart className="h-4 w-4 text-emerald-600" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{metrics.totalOrders}</p>
+              <p className="text-[24px] font-bold text-slate-900 mt-2">{metrics.totalOrders}</p>
               {prevMetrics.totalOrders > 0 && (
-                <p className={`text-xs font-medium mt-0.5 flex items-center gap-1 ${Number(ordPct) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                <p className={`text-xs font-medium mt-1 flex items-center gap-1 ${Number(ordPct) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {Number(ordPct) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                   {ordPct}% {t('common.vsPrevious')}
                 </p>
               )}
-            </motion.div>
+            </div>
 
             {/* Pendentes */}
             <motion.div className="admin-metric-card" variants={metricCardVariants}>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-slate-500">{t('dashboard.kpis.pending')}</p>
-                <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-                  <Clock className="h-3.5 w-3.5 text-amber-600" />
+                <div className="h-9 w-9 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                  <Clock className="h-4 w-4 text-amber-600" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{metrics.pendingOrders}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{t('dashboard.kpis.awaitingPrep')}</p>
+              <p className="text-[24px] font-bold text-slate-900 mt-2">{metrics.pendingOrders}</p>
             </motion.div>
           </motion.div>
         </section>
@@ -869,7 +737,7 @@ export default function AdminDashboard() {
               <Flame className="h-4 w-4 text-orange-500" />
               {t('dashboard.operational.title')}
             </h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div className="rounded-xl bg-orange-50 border border-orange-100 px-4 py-3 flex flex-col gap-1">
                 <div className="flex items-center gap-1.5 text-orange-600">
                   <Flame className="h-4 w-4" />
@@ -898,6 +766,20 @@ export default function AdminDashboard() {
                 )}
                 <p className="text-[11px] text-slate-400">{t('dashboard.operational.avgDeliveryTime')}</p>
               </div>
+              <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-amber-700">
+                  <Wine className="h-4 w-4" />
+                  <span className="text-xs font-medium">{t('dashboard.operational.bar')}</span>
+                </div>
+                {avgBarTime > 0 ? (
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {Math.round(avgBarTime)}<span className="text-sm font-normal text-slate-500"> min</span>
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-400 italic mt-1">{t('dashboard.operational.noData')}</p>
+                )}
+                <p className="text-[11px] text-slate-400">{t('dashboard.operational.avgBarTime')}</p>
+              </div>
             </div>
 
             {/* Horas Economizadas — Total pedidos × 4 min */}
@@ -921,8 +803,8 @@ export default function AdminDashboard() {
               {t('dashboard.operational.note')}
             </p>
 
-            {/* Eficiência Logística: KDS vs Entrega */}
-            {(avgPrepTime > 0 || avgDeliveryTime > 0) && (
+            {/* Eficiência Logística: KDS vs Entrega vs Bar */}
+            {(avgPrepTime > 0 || avgDeliveryTime > 0 || avgBarTime > 0) && (
               <div className="mt-4 pt-4 border-t border-slate-100">
                 <p className="text-xs font-semibold text-slate-600 mb-3">Eficiência Logística</p>
                 <div className="w-full min-h-[140px]">
@@ -931,6 +813,7 @@ export default function AdminDashboard() {
                       data={[
                         { name: t('dashboard.operational.kitchen'), valor: Math.round(avgPrepTime), fill: '#f97316' },
                         { name: t('dashboard.operational.delivery'), valor: Math.round(avgDeliveryTime), fill: '#06b6d4' },
+                        { name: t('dashboard.operational.bar'), valor: Math.round(avgBarTime), fill: '#d97706' },
                       ]}
                       layout="vertical"
                       margin={{ top: 0, right: 20, left: 60, bottom: 0 }}
@@ -981,6 +864,93 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+
+          {/* Pedidos mais rápidos e mais demorados */}
+          <div className="admin-card p-6 min-w-0 overflow-hidden lg:col-span-2">
+            <div className="pb-4">
+              <h3 className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                <Timer className="h-4 w-4 text-slate-500" />
+                {t('dashboard.prepTimeExtremes.title')}
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {t('dashboard.operational.note')}
+              </p>
+            </div>
+            {prepTimeExtremes && (prepTimeExtremes.fastest.length > 0 || prepTimeExtremes.slowest.length > 0) ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <div className="flex items-center gap-2 text-emerald-700 font-medium text-sm mb-3">
+                    <Zap className="h-4 w-4" />
+                    {t('dashboard.prepTimeExtremes.fastest')}
+                  </div>
+                  <div className="rounded-lg border border-slate-200 overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="text-left py-2 px-3 font-medium text-slate-600">{t('dashboard.prepTimeExtremes.orderCode')}</th>
+                          <th className="text-left py-2 px-3 font-medium text-slate-600">{t('dashboard.prepTimeExtremes.type')}</th>
+                          <th className="text-left py-2 px-3 font-medium text-slate-600">{t('dashboard.prepTimeExtremes.date')}</th>
+                          <th className="text-right py-2 px-3 font-medium text-slate-600">{t('dashboard.prepTimeExtremes.prepTime')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {prepTimeExtremes.fastest.map((o) => (
+                          <tr key={o.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                            <td className="py-2 px-3 font-mono text-xs font-semibold">#{o.code}</td>
+                            <td className="py-2 px-3 text-slate-600">
+                              {o.orderSource === 'delivery' ? t('dashboard.prepTimeExtremes.typeDelivery')
+                                : o.orderSource === 'pickup' ? t('dashboard.prepTimeExtremes.typePickup')
+                                : o.orderSource === 'table' ? t('dashboard.prepTimeExtremes.typeTable')
+                                : o.orderSource === 'buffet' ? t('dashboard.prepTimeExtremes.typeBuffet')
+                                : t('dashboard.prepTimeExtremes.typeComanda')}
+                            </td>
+                            <td className="py-2 px-3 text-slate-600">{format(new Date(o.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</td>
+                            <td className="py-2 px-3 text-right font-semibold text-emerald-700">{o.prepTimeMinutes} min</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 text-amber-700 font-medium text-sm mb-3">
+                    <Timer className="h-4 w-4" />
+                    {t('dashboard.prepTimeExtremes.slowest')}
+                  </div>
+                  <div className="rounded-lg border border-slate-200 overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="text-left py-2 px-3 font-medium text-slate-600">{t('dashboard.prepTimeExtremes.orderCode')}</th>
+                          <th className="text-left py-2 px-3 font-medium text-slate-600">{t('dashboard.prepTimeExtremes.type')}</th>
+                          <th className="text-left py-2 px-3 font-medium text-slate-600">{t('dashboard.prepTimeExtremes.date')}</th>
+                          <th className="text-right py-2 px-3 font-medium text-slate-600">{t('dashboard.prepTimeExtremes.prepTime')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {prepTimeExtremes.slowest.map((o) => (
+                          <tr key={o.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                            <td className="py-2 px-3 font-mono text-xs font-semibold">#{o.code}</td>
+                            <td className="py-2 px-3 text-slate-600">
+                              {o.orderSource === 'delivery' ? t('dashboard.prepTimeExtremes.typeDelivery')
+                                : o.orderSource === 'pickup' ? t('dashboard.prepTimeExtremes.typePickup')
+                                : o.orderSource === 'table' ? t('dashboard.prepTimeExtremes.typeTable')
+                                : o.orderSource === 'buffet' ? t('dashboard.prepTimeExtremes.typeBuffet')
+                                : t('dashboard.prepTimeExtremes.typeComanda')}
+                            </td>
+                            <td className="py-2 px-3 text-slate-600">{format(new Date(o.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</td>
+                            <td className="py-2 px-3 text-right font-semibold text-amber-700">{o.prepTimeMinutes} min</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400 italic py-4">{t('dashboard.prepTimeExtremes.noData')}</p>
+            )}
+          </div>
         </div>
         </section>
 
@@ -1025,55 +995,122 @@ export default function AdminDashboard() {
           </div>
 
           <div className="admin-card p-6 min-w-0 overflow-hidden">
-            <div className="pb-4">
-              <h3 className="text-lg font-semibold text-slate-900">
-                {t('dashboard.charts.newVsRecurring')}
-              </h3>
-              <p className="text-sm text-slate-500 mt-0.5">
-                {t('dashboard.charts.newVsRecurringDesc')}
-              </p>
-            </div>
+            <header className="flex flex-wrap border-b border-slate-100 pb-0 mb-4 items-center">
+              <div className="flex flex-wrap flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0" aria-hidden>
+                      <Users className="h-4 w-4 text-slate-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-900 leading-6 pl-[7px]">
+                      {t('dashboard.charts.newVsRecurring')}
+                    </h3>
+                  </div>
+                </div>
+                <div className="shrink-0 flex flex-col gap-1.5 pt-[7px] self-center">
+                  <Tabs
+                    value={retentionPeriod}
+                    onValueChange={(v) => setRetentionPeriod(v as RetentionPeriodValue)}
+                    className="shrink-0 flex flex-wrap"
+                    aria-label={t('common.period')}
+                  >
+                    <TabsList className="h-9 bg-slate-100 border border-slate-200 p-0.5 align-middle">
+                      <TabsTrigger value="24h" className="h-8 px-3 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                        {t('dashboard.filters.last24h')}
+                      </TabsTrigger>
+                      <TabsTrigger value="7" className="h-8 px-3 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                        {t('dashboard.filters.last7days')}
+                      </TabsTrigger>
+                      <TabsTrigger value="30" className="h-8 px-3 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                        {t('dashboard.filters.last30')}
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+              </div>
+            </header>
             <div className="min-w-0">
-              {(analytics?.retention?.clientes_novos ?? 0) + (analytics?.retention?.clientes_recorrentes ?? 0) > 0 ? (
-                <>
-                  <div className="w-full min-h-[240px] min-w-0">
-                    <ResponsiveContainer width="100%" height={240} minWidth={0}>
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: 'Novos', value: analytics?.retention?.clientes_novos ?? 0 },
-                            { name: 'Recorrentes', value: analytics?.retention?.clientes_recorrentes ?? 0 },
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={55}
-                          outerRadius={85}
-                          paddingAngle={3}
-                          dataKey="value"
-                        >
-                          <Cell fill="#10b981" />
-                          <Cell fill="#3b82f6" />
-                        </Pie>
-                        <Tooltip formatter={(v: number) => [`${v} clientes`, '']} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
-                    <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2 text-center">
-                      <p className="text-xs text-emerald-700 font-medium">Novos</p>
-                      <p className="text-xl font-bold text-emerald-800">{analytics?.retention?.clientes_novos ?? 0}</p>
+              {(retentionAnalytics?.retention?.clientes_novos ?? 0) + (retentionAnalytics?.retention?.clientes_recorrentes ?? 0) > 0 ? (
+                <div className="flex flex-col lg:flex-row lg:items-stretch gap-6 lg:gap-8">
+                  {/* Gráfico: usa espaço principal */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <div className="w-full h-[260px] sm:h-[280px] min-w-0">
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                        <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                          <Pie
+                            data={[
+                              { name: 'Novos', value: retentionAnalytics?.retention?.clientes_novos ?? 0 },
+                              { name: 'Recorrentes', value: retentionAnalytics?.retention?.clientes_recorrentes ?? 0 },
+                            ]}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius="58%"
+                            outerRadius="85%"
+                            paddingAngle={4}
+                            dataKey="value"
+                            strokeWidth={2}
+                            stroke="fff"
+                          >
+                            <Cell fill="#10b981" />
+                            <Cell fill="#3b82f6" />
+                          </Pie>
+                          <Tooltip
+                            formatter={(v: number) => {
+                              const total = (retentionAnalytics?.retention?.clientes_novos ?? 0) + (retentionAnalytics?.retention?.clientes_recorrentes ?? 0);
+                              const pct = total > 0 ? Math.round((Number(v) / total) * 100) : 0;
+                              return `${v} clientes (${pct}%)`;
+                            }}
+                            contentStyle={{
+                              borderRadius: '10px',
+                              border: 'none',
+                              boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+                              padding: '10px 14px',
+                            }}
+                          />
+                          <Legend
+                            verticalAlign="bottom"
+                            height={36}
+                            formatter={(value) => <span className="text-sm text-slate-600">{value}</span>}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
-                    <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2 text-center">
-                      <p className="text-xs text-blue-700 font-medium">Recorrentes</p>
-                      <p className="text-xl font-bold text-blue-800">{analytics?.retention?.clientes_recorrentes ?? 0}</p>
+                  </div>
+                  {/* Métricas em destaque */}
+                  <div className="flex flex-col gap-4 lg:w-52 lg:shrink-0 lg:justify-center">
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-100/80 p-4 flex flex-col gap-1">
+                      <p className="text-sm font-medium text-emerald-700">Novos</p>
+                      <p className="text-2xl font-bold text-emerald-800 tabular-nums">
+                        {retentionAnalytics?.retention?.clientes_novos ?? 0}
+                      </p>
+                      {((retentionAnalytics?.retention?.clientes_novos ?? 0) + (retentionAnalytics?.retention?.clientes_recorrentes ?? 0)) > 0 && (
+                        <p className="text-xs text-emerald-600">
+                          {Math.round(((retentionAnalytics?.retention?.clientes_novos ?? 0) / ((retentionAnalytics?.retention?.clientes_novos ?? 0) + (retentionAnalytics?.retention?.clientes_recorrentes ?? 0))) * 100)}% do total
+                        </p>
+                      )}
+                    </div>
+                    <div className="rounded-xl bg-blue-50 border border-blue-100/80 p-4 flex flex-col gap-1">
+                      <p className="text-sm font-medium text-blue-700">Recorrentes</p>
+                      <p className="text-2xl font-bold text-blue-800 tabular-nums">
+                        {retentionAnalytics?.retention?.clientes_recorrentes ?? 0}
+                      </p>
+                      {((retentionAnalytics?.retention?.clientes_novos ?? 0) + (retentionAnalytics?.retention?.clientes_recorrentes ?? 0)) > 0 && (
+                        <p className="text-xs text-blue-600">
+                          {Math.round(((retentionAnalytics?.retention?.clientes_recorrentes ?? 0) / ((retentionAnalytics?.retention?.clientes_novos ?? 0) + (retentionAnalytics?.retention?.clientes_recorrentes ?? 0))) * 100)}% do total
+                        </p>
+                      )}
                     </div>
                   </div>
-                </>
+                </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-[300px] text-slate-400 gap-2">
-                  <Users className="h-10 w-10 opacity-20" />
-                  <p className="text-sm">{t('dashboard.noRetention')}</p>
+                <div className="flex flex-col items-center justify-center min-h-[320px] text-slate-400 gap-3 py-8">
+                  <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center">
+                    <Users className="h-7 w-7 text-slate-400" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-500">{t('dashboard.noRetention')}</p>
+                  <p className="text-xs text-slate-400 max-w-[260px] text-center">
+                    {t('dashboard.charts.newVsRecurringDesc')}
+                  </p>
                 </div>
               )}
             </div>
@@ -1514,8 +1551,6 @@ export default function AdminDashboard() {
         </Dialog>
 
         </div>
-          )}
-        </Tabs>
 
         {/* ── Print Report: renderizado em portal no body para evitar páginas em branco ── */}
         {typeof document !== 'undefined' &&
@@ -1534,6 +1569,7 @@ export default function AdminDashboard() {
               grossProfit={grossProfit}
               avgPrepTime={avgPrepTime}
               avgDeliveryTime={avgDeliveryTime}
+              avgBarTime={avgBarTime}
               paymentMethods={paymentMethods}
               topProducts={topProducts}
               bottomProducts={bottomProducts}

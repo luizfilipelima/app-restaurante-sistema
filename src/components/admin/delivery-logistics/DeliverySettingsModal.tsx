@@ -21,10 +21,14 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/shared/use-toast';
-import { Loader2, Settings2, MessageCircle, Package } from 'lucide-react';
+import { Loader2, Settings2, MessageCircle, Package, Bike, MapPin } from 'lucide-react';
 import type { Restaurant, WhatsAppTemplates } from '@/types';
 import { DEFAULT_TEMPLATES } from '@/lib/whatsapp/whatsappTemplates';
 import { WhatsAppTemplatesEditor } from './WhatsAppTemplatesEditor';
+import { DeliveryCouriersSection } from './DeliveryCouriersSection';
+import { DeliveryZonesSection } from './DeliveryZonesSection';
+
+export type DeliverySettingsTab = 'min_order' | 'whatsapp' | 'entregadores' | 'zonas';
 
 interface DeliverySettingsModalProps {
   open: boolean;
@@ -32,6 +36,8 @@ interface DeliverySettingsModalProps {
   restaurantId: string | null;
   restaurant: Restaurant | null;
   onSaved?: () => void;
+  /** Aba inicial ao abrir (ex.: ao vir da página Entregadores ou Áreas de entrega) */
+  initialTab?: DeliverySettingsTab;
 }
 
 export function DeliverySettingsModal({
@@ -40,6 +46,7 @@ export function DeliverySettingsModal({
   restaurantId,
   restaurant,
   onSaved,
+  initialTab = 'min_order',
 }: DeliverySettingsModalProps) {
   const canAccess = useCanAccess(['super_admin', 'owner', 'manager', 'restaurant_admin']);
   const currency = (restaurant?.currency ?? 'BRL') as CurrencyCode;
@@ -48,6 +55,13 @@ export function DeliverySettingsModal({
   const [valueInput, setValueInput] = useState('');
   const [whatsappTemplates, setWhatsappTemplates] = useState<WhatsAppTemplates>({});
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<DeliverySettingsTab>(initialTab);
+
+  useEffect(() => {
+    if (open) {
+      setActiveTab(initialTab);
+    }
+  }, [open, initialTab]);
 
   useEffect(() => {
     if (open && restaurant) {
@@ -111,15 +125,23 @@ export function DeliverySettingsModal({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="min_order" className="flex flex-col flex-1 overflow-hidden min-h-0">
-          <TabsList className="grid grid-cols-2 w-full max-w-md h-10 bg-muted/60 flex-shrink-0">
-            <TabsTrigger value="min_order" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Pedido mínimo
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DeliverySettingsTab)} className="flex flex-col flex-1 overflow-hidden min-h-0">
+          <TabsList className="grid grid-cols-4 w-full max-w-2xl h-10 bg-muted/60 flex-shrink-0">
+            <TabsTrigger value="min_order" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <Package className="h-3.5 w-3.5 shrink-0" />
+              Pedido mín.
             </TabsTrigger>
-            <TabsTrigger value="whatsapp" className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4 text-[#25D366]" />
-              Mensagens WhatsApp
+            <TabsTrigger value="whatsapp" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <MessageCircle className="h-3.5 w-3.5 shrink-0 text-[#25D366]" />
+              WhatsApp
+            </TabsTrigger>
+            <TabsTrigger value="entregadores" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <Bike className="h-3.5 w-3.5 shrink-0" />
+              Entregadores
+            </TabsTrigger>
+            <TabsTrigger value="zonas" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              Áreas
             </TabsTrigger>
           </TabsList>
 
@@ -166,6 +188,18 @@ export function DeliverySettingsModal({
                   compact
                 />
               </div>
+            </TabsContent>
+
+            <TabsContent value="entregadores" className="mt-0 focus-visible:ring-0">
+              <DeliveryCouriersSection restaurantId={restaurantId} />
+            </TabsContent>
+
+            <TabsContent value="zonas" className="mt-0 focus-visible:ring-0">
+              <DeliveryZonesSection
+                restaurantId={restaurantId}
+                restaurant={restaurant}
+                baseCurrency={currency}
+              />
             </TabsContent>
           </div>
         </Tabs>

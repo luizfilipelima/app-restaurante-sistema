@@ -244,8 +244,8 @@ export default function AdminCoupons() {
     <AdminPageLayout>
       <AdminPageHeader
         title={t('coupons.title')}
-        description={t('coupons.subtitle')}
         icon={Ticket}
+        backHref={`${basePath}/menu`}
         actions={
           <>
             <Button asChild variant="outline" size="sm">

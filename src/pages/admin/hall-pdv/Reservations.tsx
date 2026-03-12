@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/core/supabase';
-import { useAdminRestaurantId, useAdminRestaurant } from '@/contexts/AdminRestaurantContext';
+import { useAdminRestaurantId, useAdminRestaurant, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import {
   useReservations,
   useCreateReservation,
@@ -47,7 +47,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, CalendarClock, Loader2, X, User, MapPin, Users, MessageCircle, Link2, RotateCcw, CheckCircle2, ArrowRightLeft } from 'lucide-react';
+import { Plus, CalendarClock, Loader2, X, User, MapPin, Users, MessageCircle, RotateCcw, CheckCircle2, ArrowRightLeft } from 'lucide-react';
 import { format, startOfDay } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
@@ -69,6 +69,7 @@ const STATUS_KEY_MAP: Record<string, string> = {
 
 function ReservationsContent() {
   const restaurantId = useAdminRestaurantId();
+  const basePath = useAdminBasePath();
   const { restaurant } = useAdminRestaurant();
   const { t, lang } = useAdminTranslation();
   const dateLocale = DATE_LOCALES[lang] ?? ptBR;
@@ -203,24 +204,8 @@ function ReservationsContent() {
     <AdminPageLayout className="pb-8">
       <AdminPageHeader
         title={t('reservations.title')}
-        description={
-          <>
-            {t('reservations.subtitle')}
-            {!!hasReservations && linkReservar && (
-              <div className="flex items-center gap-2 mt-2">
-                <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
-                <a href={linkReservar} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
-                  {t('reservations.linkReservation')}
-                </a>
-                <span className="text-muted-foreground">·</span>
-                <a href={linkFila} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
-                  {t('reservations.linkWaitingQueue')}
-                </a>
-              </div>
-            )}
-          </>
-        }
         icon={CalendarClock}
+        backHref={`${basePath}/tables`}
         actions={
           <>
             {!!hasReservations && (

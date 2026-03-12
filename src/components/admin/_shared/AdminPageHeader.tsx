@@ -5,6 +5,8 @@
  */
 
 import * as React from 'react';
+import { Link } from 'react-router-dom';
+import { ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/core/utils';
 import type { LucideIcon } from 'lucide-react';
 
@@ -17,6 +19,8 @@ export interface AdminPageHeaderProps {
   icon?: LucideIcon;
   /** Ações (botões, filtros etc.) alinhadas à direita no desktop */
   actions?: React.ReactNode;
+  /** Link para voltar (ex: central do cardápio). Exibe seta à esquerda do ícone. */
+  backHref?: string;
   className?: string;
 }
 
@@ -25,6 +29,7 @@ const AdminPageHeader = ({
   description,
   icon: Icon,
   actions,
+  backHref,
   className,
 }: AdminPageHeaderProps) => {
   return (
@@ -36,6 +41,16 @@ const AdminPageHeader = ({
     >
       <div className="min-w-0 flex-1">
         <h1 className="admin-page-title flex items-center gap-2">
+          {backHref && (
+            <Link
+              to={backHref}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors -ml-2"
+              title="Voltar"
+              aria-label="Voltar"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Link>
+          )}
           {Icon && (
             <span
               className="flex h-6 w-6 shrink-0 items-center justify-center text-primary"

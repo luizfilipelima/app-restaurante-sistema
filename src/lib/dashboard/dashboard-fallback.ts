@@ -46,6 +46,7 @@ const EMPTY_ADVANCED: DashboardAdvancedStatsResponse = {
   operational: {
     avg_prep_time: 0,
     avg_delivery_time: 0,
+    avg_bar_time: 0,
     idleness_heatmap: Array.from({ length: 24 }, (_, hour) => ({ hour, count: 0 })),
   },
   financial: {
@@ -451,6 +452,7 @@ export async function computeDashboardAdvancedStatsFallback({
     operational: {
       avg_prep_time: Number(avgPrepTime.toFixed(2)),
       avg_delivery_time: Number(avgDeliveryTime.toFixed(2)),
+      avg_bar_time: 0,
       idleness_heatmap: idlenessHeatmap,
     },
     financial: {

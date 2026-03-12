@@ -16,7 +16,6 @@ import { useRestaurant, useHallZones } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { supabase } from '@/lib/core/supabase';
 import {
-  getComandaPublicUrl,
   getWaiterTipForSector,
   type CurrencyCode,
   type WaiterTipSector,
@@ -47,8 +46,6 @@ import {
 import { format, formatDistanceToNow, startOfDay, endOfDay } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { ptBR, es, enUS } from 'date-fns/locale';
-import { QRCodeSVG } from 'qrcode.react';
-import QRCodeLib from 'qrcode';
 import {
   ScanBarcode,
   CheckCircle2,
@@ -58,9 +55,6 @@ import {
   ChevronRight,
   Wifi,
   WifiOff,
-  QrCode,
-  Download,
-  Printer,
   Trash2,
   User,
   Clock,
@@ -68,9 +62,11 @@ import {
   ShoppingBag,
   RefreshCw,
   ListChecks,
+  Banknote,
 } from 'lucide-react';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { CashierCompletedView } from '@/components/cashier/CashierCompletedView';
+import { CashierDailyTab } from '@/components/admin/overview/CashierDailyTab';
 import { useTables, useCancelVirtualComanda } from '@/hooks/queries';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { ROLES_CANCEL_ORDER } from '@/hooks/auth/useUserRole';
@@ -207,128 +203,6 @@ function getDisplayTotalWithWaiterTip(
   return base + amount;
 }
 
-// ─── Modal QR Code ────────────────────────────────────────────────────────────
-
-function QRModal({
-  open,
-  onClose,
-  url,
-  restaurantName,
-  logo,
-  t,
-}: {
-  open: boolean;
-  onClose: () => void;
-  url: string;
-  restaurantName: string;
-  logo: string | null;
-  t: (k: string) => string;
-}) {
-  const [downloading, setDownloading] = useState(false);
-  const [printing, setPrinting] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const handleDownload = async () => {
-    setDownloading(true);
-    try {
-      const png = await QRCodeLib.toDataURL(url, {
-        type: 'image/png',
-        margin: 2,
-        width: 512,
-        color: { dark: '#0f172a', light: '#00000000' },
-        errorCorrectionLevel: 'H',
-      });
-      const a = document.createElement('a');
-      a.href = png;
-      a.download = `qrcode-comanda-${restaurantName.replace(/\s+/g, '-').toLowerCase()}.png`;
-      a.click();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  const handlePrint = async () => {
-    setPrinting(true);
-    try {
-      const qrPng = await QRCodeLib.toDataURL(url, {
-        type: 'image/png',
-        margin: 2,
-        width: 280,
-        color: { dark: '#0f172a', light: '#00000000' },
-        errorCorrectionLevel: 'H',
-      });
-      const logoHtml = logo
-        ? `<img src="${logo}" alt="" style="height:64px;width:64px;border-radius:16px;object-fit:cover;border:1px solid #e2e8f0;margin-bottom:12px" />`
-        : '';
-      const win = window.open('', '_blank');
-      if (!win) {
-        alert(t('cashier.allowPopups'));
-        return;
-      }
-      const scriptClose = '</script>';
-      win.document.write(
-        `<!DOCTYPE html><html><head><meta charset="utf-8"><title>QR Comanda</title>
-        <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff}
-        .card{text-align:center;max-width:320px}.logo{margin-bottom:8px}.title{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#64748b;margin-bottom:4px}
-        .name{font-size:18px;font-weight:700;color:#0f172a;margin-bottom:20px}.qr{padding:12px;border:2px solid #f1f5f9;border-radius:16px;display:inline-block;margin-bottom:14px}
-        .url{font-size:10px;color:#94a3b8;word-break:break-all;font-family:monospace;margin-bottom:14px}.hint{font-size:11px;color:#64748b;background:#f8fafc;padding:12px;border-radius:12px;line-height:1.5}
-        </style></head><body><div class="card">${logoHtml}<p class="title">${t('cashier.scanToOpen')}</p>
-        <p class="name">${restaurantName}</p><div class="qr"><img src="${qrPng}" width="280" height="280"/></div>
-        <p class="url">${url}</p><p class="hint">${t('cashier.scanHintPrint')}</p></div>
-        <script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}${scriptClose}</body></html>`
-      );
-      win.document.close();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setPrinting(false);
-    }
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-[400px] p-0 overflow-hidden rounded-2xl border border-slate-200 shadow-2xl bg-white dark:bg-slate-900 dark:border-slate-700">
-        <div className="flex flex-col items-center gap-4 px-5 py-5">
-          <DialogTitle className="text-sm font-bold text-slate-900">{t('cashier.qrModalTitle')}</DialogTitle>
-          {logo ? (
-            <img src={logo} alt={restaurantName} className="h-12 w-12 rounded-xl object-cover" />
-          ) : (
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#F87116] to-orange-600 flex items-center justify-center">
-              <QrCode className="h-6 w-6 text-white" />
-            </div>
-          )}
-          <div className="p-2 bg-white rounded-xl border">
-            <QRCodeSVG value={url} size={196} level="H" fgColor="#0f172a" bgColor="#ffffff" />
-          </div>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={handlePrint} disabled={printing}>
-              {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
-              {t('cashier.print')}
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleDownload} disabled={downloading}>
-              {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              {t('cashier.download')}
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleCopy}>
-              {copied ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <ScanBarcode className="h-4 w-4" />}
-              {copied ? t('cashier.copied') : t('cashier.copy')}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // ─── Card da fila ─────────────────────────────────────────────────────────────
 
 function QueueCard({
@@ -436,9 +310,7 @@ function CashierContent() {
   const scannerRef = useRef<HTMLInputElement>(null);
   const { data: restaurant } = useRestaurant(restaurantId);
   const { printOrder, receiptData, secondReceiptData, isPrinting } = usePrinter();
-  const comandaUrl = restaurant?.slug ? getComandaPublicUrl(restaurant.slug) : null;
 
-  const [showQRModal, setShowQRModal] = useState(false);
   const [queue, setQueue] = useState<CashierQueueItem[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [isLive, setIsLive] = useState(false);
@@ -465,7 +337,7 @@ function CashierContent() {
     method: PaymentMethod;
     currency: CurrencyCode;
   } | null>(null);
-  const [mainView, setMainView] = useState<'cashier' | 'completed'>('cashier');
+  const [mainView, setMainView] = useState<'cashier' | 'completed' | 'daily'>('cashier');
   const [completedList, setCompletedList] = useState<CompletedItem[]>([]);
 
   const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
@@ -1457,20 +1329,8 @@ function CashierContent() {
 
   return (
     <AdminPageLayout className="h-full flex flex-col">
-      {comandaUrl && restaurant && (
-        <QRModal
-          open={showQRModal}
-          onClose={() => setShowQRModal(false)}
-          url={comandaUrl}
-          restaurantName={restaurant.name}
-          logo={restaurant.logo ?? null}
-          t={t}
-        />
-      )}
-
       <AdminPageHeader
         title={t('cashier.title')}
-        description={t('cashier.subtitle')}
         icon={ScanBarcode}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
@@ -1497,15 +1357,20 @@ function CashierContent() {
                 <ListChecks className="h-4 w-4" />
                 {t('cashierCompleted.viewCompleted')}
               </button>
+              <button
+                onClick={() => setMainView('daily')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  mainView === 'daily'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Banknote className="h-4 w-4" />
+                {t('cashierDaily.title')}
+              </button>
             </div>
             {mainView === 'cashier' && (
             <>
-            {comandaUrl && (
-              <Button variant="outline" size="sm" onClick={() => setShowQRModal(true)}>
-                <QrCode className="h-3.5 w-3.5 mr-1.5" />
-                {t('cashier.qrCode')}
-              </Button>
-            )}
             <div
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
                 isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800' : 'bg-muted border-border text-muted-foreground'
@@ -1544,6 +1409,18 @@ function CashierContent() {
           t={t}
           dateLocale={dateLocale}
         />
+      )}
+      {mainView === 'daily' && (
+        <div className="flex-1 min-w-0 py-2">
+          <CashierDailyTab
+            restaurantId={restaurantId}
+            restaurantName={restaurant?.name ?? ''}
+            currency={baseCurrency}
+            hasTables={!!hasTables}
+            hasBuffet={!!hasBuffet}
+            t={t}
+          />
+        </div>
       )}
       {mainView === 'cashier' && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

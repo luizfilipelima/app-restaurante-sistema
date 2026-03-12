@@ -26,16 +26,12 @@ import {
   LayoutDashboard,
   UtensilsCrossed,
   ClipboardList,
-  MapPin,
-  Clock,
-  CalendarClock,
   Settings,
   LogOut,
   ArrowLeft,
   ChefHat,
   Wine,
   Copy,
-  Bike,
   Scale,
   LayoutGrid,
   ChevronDown,
@@ -44,12 +40,8 @@ import {
   Lock,
   Sparkles,
   ScanBarcode,
-  Boxes,
   Smartphone,
   Instagram,
-  Tag,
-  Ticket,
-  Gift,
   MoreHorizontal,
   Link2,
   Eye,
@@ -95,8 +87,11 @@ interface NavLeaf {
    * Se preenchido, o item é protegido por plano de assinatura.
    * Quando o restaurante não tem a feature, o item é exibido como bloqueado
    * (tom cinza + ícone de cadeado) em vez de ser ocultado.
+   * Use hideWhenNoFeature: true para ocultar o item quando a feature não estiver habilitada.
    */
   featureFlag?: string;
+  /** Se true e featureFlag estiver definido, oculta o item em vez de exibir bloqueado quando o restaurante não tem a feature */
+  hideWhenNoFeature?: boolean;
   /** Descrição curta exibida no tooltip do item bloqueado */
   featureLabel?: string;
   /**
@@ -151,7 +146,7 @@ const buildNavSections = (base: string, t: TFn): NavSection[] => [
       },
     ],
   },
-  // 2. SALÃO & PDV (Frente de Loja)
+  // 2. Caixa, Restaurante, Delivery, Buffet
   {
     kind: 'group',
     label: t('nav.groups.hallAndPDV'),
@@ -167,15 +162,6 @@ const buildNavSections = (base: string, t: TFn): NavSection[] => [
       },
       {
         kind: 'leaf',
-        name: t('nav.items.buffet'),
-        href: `${base}/buffet`,
-        icon: Scale,
-        featureFlag: 'feature_buffet_module',
-        featureLabel: 'Plano Enterprise',
-        roleRequired: ['cashier'],
-      },
-      {
-        kind: 'leaf',
         name: t('nav.items.tablesCentral'),
         href: `${base}/tables`,
         icon: LayoutGrid,
@@ -185,22 +171,6 @@ const buildNavSections = (base: string, t: TFn): NavSection[] => [
       },
       {
         kind: 'leaf',
-        name: t('nav.items.reservations'),
-        href: `${base}/reservations`,
-        icon: CalendarClock,
-        featureFlag: 'feature_reservations',
-        featureLabel: 'Plano Enterprise',
-        roleRequired: ['manager', 'restaurant_admin', 'super_admin', 'cashier'],
-      },
-    ],
-  },
-  // 3. DELIVERY & LOGÍSTICA (Hub exclusivo)
-  {
-    kind: 'group',
-    label: t('nav.groups.deliveryLogistics'),
-    items: [
-      {
-        kind: 'leaf',
         name: t('nav.items.ordersDelivery'),
         href: `${base}/orders`,
         icon: ClipboardList,
@@ -208,32 +178,17 @@ const buildNavSections = (base: string, t: TFn): NavSection[] => [
       },
       {
         kind: 'leaf',
-        name: t('nav.items.couriers'),
-        href: `${base}/couriers`,
-        icon: Bike,
-        featureFlag: 'feature_couriers',
-        featureLabel: 'Plano Standard',
-        roleRequired: ['manager'],
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.deliveryAreas'),
-        href: `${base}/delivery-zones`,
-        icon: MapPin,
-        featureFlag: 'feature_delivery_zones',
-        featureLabel: 'Plano Standard',
-        roleRequired: ['manager'],
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.horarios'),
-        href: `${base}/horarios`,
-        icon: Clock,
-        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
+        name: t('nav.items.buffet'),
+        href: `${base}/buffet`,
+        icon: Scale,
+        featureFlag: 'feature_buffet_module',
+        featureLabel: 'Plano Enterprise',
+        roleRequired: ['cashier'],
+        hideWhenNoFeature: true,
       },
     ],
   },
-  // 4. CARDÁPIO & ESTOQUE
+  // 3. CARDÁPIO & ESTOQUE
   {
     kind: 'group',
     label: t('nav.groups.menuStock'),
@@ -245,40 +200,19 @@ const buildNavSections = (base: string, t: TFn): NavSection[] => [
         icon: UtensilsCrossed,
         roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
       },
-      {
-        kind: 'leaf',
-        name: t('nav.items.inventory'),
-        href: `${base}/inventory`,
-        icon: Boxes,
-        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
-      },
     ],
   },
-  // 5. MARKETING & VENDAS
+  // 4. CONFIGURAÇÕES
   {
     kind: 'group',
-    label: t('nav.groups.marketingSales'),
+    label: t('nav.groups.settings'),
     items: [
       {
         kind: 'leaf',
-        name: t('nav.items.offers'),
-        href: `${base}/offers`,
-        icon: Tag,
-        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.coupons'),
-        href: `${base}/coupons`,
-        icon: Ticket,
-        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
-      },
-      {
-        kind: 'leaf',
-        name: t('nav.items.loyalty'),
-        href: `${base}/loyalty`,
-        icon: Gift,
-        roleRequired: ['manager', 'restaurant_admin', 'super_admin'],
+        name: t('nav.items.settings'),
+        href: `${base}/settings`,
+        icon: Settings,
+        roleRequired: ['manager', 'owner', 'restaurant_admin', 'super_admin'],
       },
     ],
   },
@@ -300,10 +234,10 @@ const submenuHrefs = (sub: NavSubMenu): string[] => sub.items.map((i) => i.href)
 // ─── Componente: item de navegação folha (link direto) ───────────────────────
 
 function NavLinkItem({ item, isActive }: { item: NavLeaf; isActive: boolean }) {
-  const className = `group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors border-l-[3px] ${
+  const className = `group flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
     isActive
-      ? 'bg-orange-50 text-[#F87116] border-l-[#F87116]'
-      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-transparent'
+      ? 'bg-[#F87116]/10 text-[#F87116] shadow-sm'
+      : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
   }`;
 
   // Links externos (ex: KDS) abrem em nova aba.
@@ -356,9 +290,8 @@ function LockedNavItem({ item }: { item: NavLeaf }) {
       to={`${basePath}/upgrade`}
       state={item.featureFlag ? { feature: item.featureFlag } : undefined}
       title={`${item.featureLabel ?? 'Plano superior'} — clique para ver os planos disponíveis`}
-      className="group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg
-                 border-l-[3px] border-l-transparent text-slate-400 hover:bg-amber-50
-                 hover:text-amber-700 hover:border-l-amber-400 transition-colors select-none"
+      className="group flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl
+                 text-slate-400 hover:bg-amber-50/70 hover:text-amber-700 transition-all duration-200 select-none"
     >
       <item.icon className="h-[18px] w-[18px] flex-shrink-0 opacity-50 group-hover:opacity-70" />
       <span className="flex-1 truncate opacity-70 group-hover:opacity-90">{item.name}</span>
@@ -402,10 +335,10 @@ function GuardedNavItem({ item, isActive }: { item: NavLeaf; isActive: boolean }
     return <NavLinkItem item={item} isActive={isActive} />;
   }
 
-  // Plano não inclui esta feature → exibe item bloqueado com cadeado.
-  return hasFeatureAccess
-    ? <NavLinkItem item={item} isActive={isActive} />
-    : <LockedNavItem item={item} />;
+  // Plano não inclui esta feature → exibe bloqueado ou oculta conforme hideWhenNoFeature.
+  if (hasFeatureAccess) return <NavLinkItem item={item} isActive={isActive} />;
+  if (item.hideWhenNoFeature) return null;
+  return <LockedNavItem item={item} />;
 }
 
 // ─── Componente: sub-menu colapsável de segundo nível (ex: Delivery) ─────────
@@ -588,7 +521,7 @@ export default function AdminLayout({
       <div className="min-h-screen bg-slate-50 overflow-x-hidden">
 
         {/* ── Sidebar Desktop ─────────────────────────────────────────────── */}
-        <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col md:flex-shrink-0 admin-sidebar">
+        <div className="hidden md:fixed md:inset-y-0 md:flex md:w-56 md:flex-col md:flex-shrink-0 admin-sidebar">
           <div className="flex flex-col h-full overflow-y-auto">
 
             {/* Logo + Nome do restaurante — layout compacto */}
@@ -629,45 +562,35 @@ export default function AdminLayout({
               </Link>
             </div>
 
-            {/* Navegação principal */}
+            {/* Navegação principal — itens com espaçamento uniforme */}
             <motion.nav
-              className="flex-1 px-3 py-4 space-y-5 overflow-y-auto"
+              className="flex-1 px-3 py-4 overflow-y-auto space-y-1.5"
               variants={sidebarNavVariants}
               initial="hidden"
               animate="visible"
             >
-              {navSections.map((section) => {
+              {navSections.flatMap((section) => {
                 if (section.kind === 'group') {
-                  return (
-                    <motion.div key={section.label} variants={sidebarSectionVariants}>
-                      <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400 select-none">
-                        {section.label}
-                      </p>
-                      <div className="space-y-0.5">
-                        {section.items.map((item) => {
-                          const currentFullPath = location.pathname + (location.hash || '');
-                          return (
-                            <GuardedNavItem
-                              key={item.href}
-                              item={item}
-                              isActive={currentFullPath === item.href}
-                            />
-                          );
-                        })}
-                      </div>
+                  const currentFullPath = location.pathname + (location.hash || '');
+                  return section.items.map((item) => (
+                    <motion.div key={item.href} variants={sidebarSectionVariants}>
+                      <GuardedNavItem
+                        item={item}
+                        isActive={currentFullPath === item.href}
+                      />
                     </motion.div>
-                  );
+                  ));
                 }
 
                 // Collapsible section
-                return (
+                return [
                   <motion.div key={section.key} variants={sidebarSectionVariants}>
                     <CollapsibleSection
                       section={section}
                       currentPath={location.pathname + (location.hash || '')}
                     />
-                  </motion.div>
-                );
+                  </motion.div>,
+                ];
               })}
             </motion.nav>
 
@@ -675,7 +598,7 @@ export default function AdminLayout({
             <div className="flex-shrink-0 px-3 py-4 border-t border-slate-100">
               <Button
                 variant="ghost"
-                className="w-full justify-start text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                className="w-full justify-start rounded-xl py-2.5 text-slate-500 hover:bg-slate-100/80 hover:text-slate-700 transition-all duration-200"
                 onClick={handleSignOut}
               >
                 <LogOut className="mr-3 h-[18px] w-[18px]" />
@@ -686,7 +609,7 @@ export default function AdminLayout({
         </div>
 
         {/* ── Top Bar Desktop ─────────────────────────────────────────────── */}
-        <div className="hidden md:flex fixed top-0 left-64 right-0 z-30 h-16 items-center bg-white border-b border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="hidden md:flex fixed top-0 left-56 right-0 z-30 h-16 items-center bg-white border-b border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
           <div className="flex-1 h-full px-6 flex items-center justify-end gap-3">
             {/* Grupo: Terminais Operacionais */}
             <div className="flex items-center gap-2 border-r border-slate-100 pr-3">
@@ -697,16 +620,16 @@ export default function AdminLayout({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
-                    title="Abrir Central da Cozinha"
+                    title="Abrir Cozinha"
                   >
                     <ChefHat className="h-4 w-4 shrink-0" />
-                    <span className="text-sm font-medium hidden xl:inline">Central da Cozinha</span>
+                    <span className="text-sm font-medium hidden xl:inline">Cozinha</span>
                     <ExternalLink className="h-3 w-3 opacity-60 shrink-0" />
                   </a>
                   <button
                     type="button"
                     onClick={() => copyToClipboard(kdsUrl)}
-                    title="Copiar link da Central da Cozinha"
+                    title="Copiar link da Cozinha"
                     className="flex h-8 w-8 shrink-0 items-center justify-center border-l border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
                   >
                     <Copy className="h-3.5 w-3.5" />
@@ -720,16 +643,16 @@ export default function AdminLayout({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
-                    title="Abrir Central do Bar"
+                    title="Abrir Bar"
                   >
                     <Wine className="h-4 w-4 shrink-0" />
-                    <span className="text-sm font-medium hidden xl:inline">Central do Bar</span>
+                    <span className="text-sm font-medium hidden xl:inline">Bar</span>
                     <ExternalLink className="h-3 w-3 opacity-60 shrink-0" />
                   </a>
                   <button
                     type="button"
                     onClick={() => copyToClipboard(barUrl)}
-                    title="Copiar link da Central do Bar"
+                    title="Copiar link do Bar"
                     className="flex h-8 w-8 shrink-0 items-center justify-center border-l border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
                   >
                     <Copy className="h-3.5 w-3.5" />
@@ -743,16 +666,16 @@ export default function AdminLayout({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
-                    title="Abrir Central do Garçom"
+                    title="Abrir Garçom"
                   >
                     <Smartphone className="h-4 w-4 shrink-0" />
-                    <span className="text-sm font-medium hidden xl:inline">Central do Garçom</span>
+                    <span className="text-sm font-medium hidden xl:inline">Garçom</span>
                     <ExternalLink className="h-3 w-3 opacity-60 shrink-0" />
                   </a>
                   <button
                     type="button"
                     onClick={() => copyToClipboard(terminalUrl)}
-                    title="Copiar link da Central do Garçom"
+                    title="Copiar link do Garçom"
                     className="flex h-8 w-8 shrink-0 items-center justify-center border-l border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
                   >
                     <Copy className="h-3.5 w-3.5" />
@@ -761,13 +684,13 @@ export default function AdminLayout({
               )}
             </div>
 
-            {/* Grupo: Links do Cliente */}
+            {/* Grupo: Links */}
             {(bioUrl || cardapioUrl || cardapioViewOnlyUrl) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="h-9 gap-1.5 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900">
                     <Link2 className="h-4 w-4" />
-                    <span className="hidden lg:inline">Links do Cliente</span>
+                    <span className="hidden lg:inline">Links</span>
                     <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -874,7 +797,7 @@ export default function AdminLayout({
                   className="h-9 w-9 shrink-0"
                   asChild
                 >
-                  <a href={kdsUrl} target="_blank" rel="noopener noreferrer" title="Abrir Central da Cozinha">
+                  <a href={kdsUrl} target="_blank" rel="noopener noreferrer" title="Abrir Cozinha">
                     <ChefHat className="h-4 w-4" />
                   </a>
                 </Button>
@@ -886,7 +809,7 @@ export default function AdminLayout({
                   className="h-9 w-9 shrink-0"
                   asChild
                 >
-                  <a href={barUrl} target="_blank" rel="noopener noreferrer" title="Abrir Central do Bar">
+                  <a href={barUrl} target="_blank" rel="noopener noreferrer" title="Abrir Bar">
                     <Wine className="h-4 w-4" />
                   </a>
                 </Button>
@@ -898,13 +821,13 @@ export default function AdminLayout({
                   className="h-9 w-9 shrink-0"
                   asChild
                 >
-                  <a href={terminalUrl} target="_blank" rel="noopener noreferrer" title="Abrir Central do Garçom">
+                  <a href={terminalUrl} target="_blank" rel="noopener noreferrer" title="Abrir Garçom">
                     <Smartphone className="h-4 w-4" />
                   </a>
                 </Button>
               )}
 
-              {/* Menu overflow: Links do Cliente + Câmbio + Config + Plano + Usuários */}
+              {/* Menu overflow: Links + Câmbio + Config + Plano + Usuários */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 border-slate-200">
@@ -913,7 +836,7 @@ export default function AdminLayout({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[200px]">
-                  <DropdownMenuLabel className="text-xs text-slate-500">Links do Cliente</DropdownMenuLabel>
+                  <DropdownMenuLabel className="text-xs text-slate-500">Links</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {bioUrl && (
                     <DropdownMenuItem
@@ -1020,7 +943,7 @@ export default function AdminLayout({
         </div>
 
         {/* ── Main Content ────────────────────────────────────────────────── */}
-        <div className="md:pl-64 min-w-0 flex-1 w-full">
+        <div className="md:pl-56 min-w-0 flex-1 w-full">
           <main className="pt-[108px] md:pt-20 min-h-screen bg-slate-50">
             <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px] mx-auto min-w-0">
               <AnimatePresence mode="wait">

@@ -204,6 +204,7 @@ export function exportDashboardCSV({
       ['=== OPERACIONAL ==='],
       ['Tempo Médio de Preparo (min)', op.avg_prep_time > 0 ? String(Math.round(op.avg_prep_time)) : 'N/D'],
       ['Tempo Médio de Entrega (min)', op.avg_delivery_time > 0 ? String(Math.round(op.avg_delivery_time)) : 'N/D'],
+      ['Tempo Médio do Bar (min)', (op.avg_bar_time ?? 0) > 0 ? String(Math.round(op.avg_bar_time!)) : 'N/D'],
       [],
     ]));
   }

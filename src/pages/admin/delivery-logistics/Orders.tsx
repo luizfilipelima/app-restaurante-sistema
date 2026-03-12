@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/core/supabase';
 import { useAdminRestaurantId, useAdminCurrency } from '@/contexts/AdminRestaurantContext';
@@ -35,7 +36,7 @@ import type { DualReceiptSlot } from '@/hooks/printer/usePrinter';
 import { OrderReceipt } from '@/components/receipt/OrderReceipt';
 import type { PrintDestination } from '@/types';
 import { CompletedOrdersView } from '@/components/orders/CompletedOrdersView';
-import { DeliverySettingsModal } from '@/components/admin/delivery-logistics/DeliverySettingsModal';
+import { DeliverySettingsModal, type DeliverySettingsTab } from '@/components/admin/delivery-logistics/DeliverySettingsModal';
 import {
   Select,
   SelectContent,
@@ -183,8 +184,19 @@ export default function AdminOrders() {
   const [isLive, setIsLive] = useState(false);
   const [dispatchOrder, setDispatchOrder] = useState<DatabaseOrder | null>(null);
   const [selectedCourierForDispatch, setSelectedCourierForDispatch] = useState<string>('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deliverySettingsParam = searchParams.get('deliverySettings');
+  const deliverySettingsTab: DeliverySettingsTab | null =
+    deliverySettingsParam === 'entregadores' || deliverySettingsParam === 'zonas' ? deliverySettingsParam : null;
+
   const [showDeliverySettingsModal, setShowDeliverySettingsModal] = useState(false);
   const canManageDeliverySettings = useCanAccess(['super_admin', 'owner', 'manager', 'restaurant_admin']);
+
+  useEffect(() => {
+    if (deliverySettingsTab && canManageDeliverySettings) {
+      setShowDeliverySettingsModal(true);
+    }
+  }, [deliverySettingsTab, canManageDeliverySettings]);
   const { couriers } = useCouriers(restaurantId);
   const { printOrder, receiptData, secondReceiptData, isPrinting } = usePrinter();
   const { data: productDestMap } = useProductPrintDestinations(restaurantId);
@@ -521,10 +533,17 @@ export default function AdminOrders() {
       {secondReceiptData && <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />}
       <DeliverySettingsModal
         open={showDeliverySettingsModal}
-        onClose={() => setShowDeliverySettingsModal(false)}
+        onClose={() => {
+          setShowDeliverySettingsModal(false);
+          if (deliverySettingsParam) {
+            searchParams.delete('deliverySettings');
+            setSearchParams(searchParams, { replace: true });
+          }
+        }}
         restaurantId={restaurantId}
         restaurant={restaurant ?? null}
         onSaved={() => queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] })}
+        initialTab={deliverySettingsTab ?? undefined}
       />
       <AdminPageLayout>
         <AdminPageHeader
@@ -543,7 +562,7 @@ export default function AdminOrders() {
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${view === 'kanban' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   <LayoutGrid className="h-4 w-4" />
-                  Kanban
+                  Pedidos
                   {orders.length > 0 && (
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${view === 'kanban' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>{orders.length}</span>
                   )}
@@ -562,7 +581,7 @@ export default function AdminOrders() {
                   className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-background hover:bg-muted/50 text-sm font-medium transition-all"
                 >
                   <Settings2 className="h-4 w-4" />
-                  Configurações do delivery
+                  Configurações
                 </button>
               )}
             </>

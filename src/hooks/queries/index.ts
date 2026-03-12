@@ -84,6 +84,12 @@ export { useDashboardKPIs } from './useDashboardKPIs';
 export type { UseDashboardKPIsParams } from './useDashboardKPIs';
 export { useDashboardStats } from './useDashboardStats';
 export type { UseDashboardStatsParams } from './useDashboardStats';
+export { useOrdersPrepTimeExtremes } from './useOrdersPrepTimeExtremes';
+export type {
+  UseOrdersPrepTimeExtremesParams,
+  OrdersPrepTimeExtremesResult,
+  OrderPrepTimeItem,
+} from './useOrdersPrepTimeExtremes';
 export { useCompletedOrders } from './useCompletedOrders';
 export type { UseCompletedOrdersParams, CompletedOrdersDateRange } from './useCompletedOrders';
 export { useFeatureAccess } from './useFeatureAccess';

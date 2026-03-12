@@ -299,8 +299,8 @@ export default function AdminOffers() {
     <AdminPageLayout>
       <AdminPageHeader
         title={t('offers.title')}
-        description={t('offers.subtitle')}
         icon={Tag}
+        backHref={`${basePath}/menu`}
         actions={
           <>
             <Button asChild variant="outline" size="sm">
