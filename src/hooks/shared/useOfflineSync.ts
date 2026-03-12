@@ -5,7 +5,13 @@ import { toast } from './use-toast';
 
 type SyncStatus = 'online' | 'offline' | 'syncing';
 
-export function useOfflineSync(restaurantId: string) {
+export interface UseOfflineSyncOptions {
+  /** Se false, não exibe toast ao sincronizar itens (padrão: true) */
+  showSyncToast?: boolean;
+}
+
+export function useOfflineSync(restaurantId: string, options: UseOfflineSyncOptions = {}) {
+  const { showSyncToast = true } = options;
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(navigator.onLine ? 'online' : 'offline');
   const [pendingCount, setPendingCount] = useState(0);
   // Controla se a sincronização atual é a inicial (ao montar) — não deve exibir toast
@@ -102,15 +108,15 @@ export function useOfflineSync(restaurantId: string) {
       }
 
       setSyncStatus('online');
-      // Só exibe toast se não for a sincronização inicial ao abrir a tela
-      if (queue.length > 0 && !isInitialSync.current) {
+      // Só exibe toast se não for a sincronização inicial e showSyncToast estiver habilitado
+      if (queue.length > 0 && !isInitialSync.current && showSyncToast) {
         toast({ title: `${queue.length} item(s) sincronizado(s) com sucesso!`, duration: 3000 });
       }
     } catch (error) {
       console.error('Erro na sincronização:', error);
       setSyncStatus('offline');
     }
-  }, [restaurantId]);
+  }, [restaurantId, showSyncToast]);
 
   // Sincronização automática periódica
   useEffect(() => {

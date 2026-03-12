@@ -63,11 +63,16 @@ import {
   RefreshCw,
   ListChecks,
   Banknote,
+  Search,
+  Scale,
+  Plus,
 } from 'lucide-react';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { CashierCompletedView } from '@/components/cashier/CashierCompletedView';
 import { CashierDailyTab } from '@/components/admin/overview/CashierDailyTab';
 import { useTables, useCancelVirtualComanda } from '@/hooks/queries';
+import { useComandas } from '@/hooks/orders/useComandas';
+import type { Product } from '@/types';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { ROLES_CANCEL_ORDER } from '@/hooks/auth/useUserRole';
 
@@ -183,6 +188,99 @@ function getPaymentLabels(t: (k: string) => string): Record<PaymentMethod, strin
 
 const SCANNER_PATTERN = /^CMD-[A-Z0-9]{4}$/i;
 const ALL_CURRENCIES: CurrencyCode[] = ['BRL', 'PYG', 'ARS', 'USD'];
+
+// ─── Painel de Produtos (igual ao Buffet) ───────────────────────────────────────
+
+function CashierProductsPanel({
+  products,
+  currency,
+  buffetPricePerKg,
+  onProductClick,
+  selectedLabel,
+  disabled,
+  t,
+}: {
+  products: Product[];
+  currency: CurrencyCode;
+  buffetPricePerKg?: number | null;
+  onProductClick: (p: Product) => void;
+  selectedLabel: string | null;
+  disabled?: boolean;
+  t: (k: string) => string;
+}) {
+  const [productSearch, setProductSearch] = useState('');
+  const filteredProducts = useMemo(
+    () =>
+      products.filter((p) =>
+        !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase())
+      ),
+    [products, productSearch]
+  );
+
+  return (
+    <div className="rounded-2xl border border-slate-200 dark:border-border bg-white dark:bg-card shadow-sm flex flex-col min-h-0 flex-1 overflow-hidden">
+      <div className="flex flex-col gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 dark:border-border bg-slate-50/60 dark:bg-muted/40 flex-shrink-0">
+          <ShoppingBag className="h-4 w-4 text-[#F87116]" />
+          <span className="text-sm font-semibold text-slate-800 dark:text-foreground">Produtos</span>
+          <span className="ml-auto text-xs text-slate-400 dark:text-muted-foreground">{filteredProducts.length}</span>
+        </div>
+        {selectedLabel && (
+          <div className="px-4 py-2 text-[11px] text-[#F87116] font-medium truncate">
+            → {selectedLabel}
+          </div>
+        )}
+        <div className="px-3 py-2 border-b border-slate-100 dark:border-border flex-shrink-0">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-muted-foreground" />
+            <input
+              type="search"
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder={t('common.search')}
+              className="w-full h-7 pl-8 pr-3 text-xs rounded-lg border border-slate-200 dark:border-input bg-slate-50 dark:bg-background focus:outline-none focus:ring-1 focus:ring-[#F87116]/30 focus:border-[#F87116]"
+            />
+          </div>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        {filteredProducts.length === 0 && (
+          <p className="text-center text-xs text-slate-400 dark:text-muted-foreground py-6">Nenhum produto encontrado</p>
+        )}
+        {filteredProducts.map((product) => (
+          <button
+            key={product.id}
+            type="button"
+            disabled={disabled}
+            onClick={() => onProductClick(product)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-100 dark:border-border bg-white dark:bg-card hover:border-[#F87116]/30 hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-all text-left group disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-card"
+          >
+            {product.is_by_weight ? (
+              <div className="h-7 w-7 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                <Scale className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+              </div>
+            ) : (
+              <div className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-muted flex items-center justify-center flex-shrink-0">
+                <ShoppingBag className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-slate-800 dark:text-foreground truncate group-hover:text-[#F87116] transition-colors">
+                {product.name}
+              </p>
+              <p className="text-[10px] text-slate-500 dark:text-muted-foreground">
+                {formatPrice(product.price_sale ?? product.price ?? buffetPricePerKg ?? 0, currency)}
+                {product.is_by_weight && <span className="text-amber-600 dark:text-amber-400 font-medium">/kg</span>}
+                {product.sku && <span className="ml-2 text-slate-400 dark:text-muted-foreground font-mono">{product.sku}</span>}
+              </p>
+            </div>
+            <Plus className="h-3.5 w-3.5 text-slate-300 dark:text-muted-foreground group-hover:text-[#F87116] flex-shrink-0 transition-colors" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function getDisplayTotal(
   totalAmount: number,
@@ -339,12 +437,17 @@ function CashierContent() {
   } | null>(null);
   const [mainView, setMainView] = useState<'cashier' | 'completed' | 'daily'>('cashier');
   const [completedList, setCompletedList] = useState<CompletedItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [addingProduct, setAddingProduct] = useState(false);
+  const [creatingComanda, setCreatingComanda] = useState(false);
+  const [removingBuffetComanda, setRemovingBuffetComanda] = useState(false);
 
   const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
   const { data: hasTables } = useFeatureAccess('feature_tables', restaurantId);
   const { data: hallZones = [] } = useHallZones(restaurantId);
   useTables(restaurantId);
   const cancelComanda = useCancelVirtualComanda(restaurantId);
+  const { addItemToComanda, createComanda } = useComandas(restaurantId ?? '', { showSyncToast: false });
 
   const exchangeRates: ExchangeRates = restaurant?.exchange_rates ?? {
     pyg_per_brl: 3600,
@@ -359,6 +462,18 @@ function CashierContent() {
     const withBase = valid.includes(baseCurrency) ? valid : [baseCurrency, ...valid];
     return [...new Set(withBase)];
   })();
+
+  // Carregar produtos para o painel de adicionar itens
+  useEffect(() => {
+    if (!restaurantId) return;
+    supabase
+      .from('products')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data }) => setProducts(data ?? []));
+  }, [restaurantId]);
 
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
   const [, setPaymentInputs] = useState<Record<string, string>>({});
@@ -565,6 +680,134 @@ function CashierContent() {
     }
   }, [restaurantId, hasBuffet, hasTables]);
 
+  const handleAddProductToSelected = useCallback(
+    async (product: Product, quantity = 1) => {
+      if (!selected || !restaurantId) return;
+      const unitPrice = product.price_sale ?? product.price ?? (restaurant?.buffet_price_per_kg ?? 0);
+      if (unitPrice <= 0) {
+        toast({ title: 'Configure o preço do produto ou o preço do Kg padrão', variant: 'destructive' });
+        return;
+      }
+      setAddingProduct(true);
+      try {
+        if (selected.type === 'comanda_digital') {
+          const { error } = await supabase.from('virtual_comanda_items').insert({
+            comanda_id: selected.virtualComandaId,
+            product_id: product.id,
+            product_name: product.name,
+            quantity,
+            unit_price: unitPrice,
+            total_price: unitPrice * quantity,
+            notes: null,
+          });
+          if (error) throw error;
+          toast({ title: `${product.name} → ${selected.label}` });
+          loadQueue(false);
+          setSelected((prev) => {
+            if (!prev || prev.type !== 'comanda_digital') return prev;
+            const newItem = {
+              id: crypto.randomUUID(),
+              product_name: product.name,
+              quantity,
+              unit_price: unitPrice,
+              total_price: unitPrice * quantity,
+              notes: null,
+            };
+            return { ...prev, items: [...prev.items, newItem], totalAmount: prev.totalAmount + unitPrice * quantity };
+          });
+        } else if (selected.type === 'comanda_buffet') {
+          await addItemToComanda(selected.comandaId, {
+            product_id: product.id,
+            description: product.name,
+            quantity,
+            unit_price: unitPrice,
+            total_price: unitPrice * quantity,
+          });
+          toast({ title: `${product.name} adicionado!` });
+          loadQueue(false);
+          setSelected((prev) => {
+            if (!prev || prev.type !== 'comanda_buffet') return prev;
+            const newItem = {
+              id: crypto.randomUUID(),
+              description: product.name,
+              quantity,
+              unit_price: unitPrice,
+              total_price: unitPrice * quantity,
+            };
+            return { ...prev, items: [...prev.items, newItem], totalAmount: prev.totalAmount + unitPrice * quantity };
+          });
+        } else if (selected.type === 'table' || isTableGroup(selected)) {
+          const ordersToUpdate = selected.type === 'table'
+            ? [selected as QueueItemTable]
+            : (selected as TableGroup).items;
+          const firstOrder = ordersToUpdate[0] as QueueItemTable;
+          const orderId = firstOrder.order.id;
+          const { data: inserted, error } = await supabase
+            .from('order_items')
+            .insert({
+              order_id: orderId,
+              product_id: product.id,
+              product_name: product.name,
+              quantity,
+              unit_price: unitPrice,
+              total_price: unitPrice * quantity,
+              observations: null,
+              customer_name: null,
+            })
+            .select('id, product_name, quantity, unit_price, total_price, customer_name')
+            .single();
+          if (error) throw error;
+          if (inserted) {
+            const { data: allItems } = await supabase
+              .from('order_items')
+              .select('total_price')
+              .eq('order_id', orderId);
+            const newTotal = (allItems ?? []).reduce((s, i) => s + Number(i.total_price ?? 0), 0);
+            await supabase.from('orders').update({ subtotal: newTotal, total: newTotal }).eq('id', orderId);
+            const newItem = {
+              id: inserted.id,
+              product_name: inserted.product_name,
+              quantity: inserted.quantity,
+              unit_price: inserted.unit_price,
+              total_price: inserted.total_price,
+              customer_name: inserted.customer_name,
+            };
+            setSelected((prev) => {
+              if (!prev) return prev;
+              if (prev.type === 'table') {
+                const o = prev.order as { order_items?: any[]; total?: number };
+                const nextItems = [...(o.order_items ?? []), newItem];
+                const newTotal = (prev.totalAmount ?? 0) + unitPrice * quantity;
+                return { ...prev, order: { ...o, order_items: nextItems, total: newTotal }, totalAmount: newTotal };
+              }
+              if (isTableGroup(prev)) {
+                const items = (prev as TableGroup).items;
+                const updated = items.map((tbl) => {
+                  if (tbl.order.id !== orderId) return tbl;
+                  const o = tbl.order as { order_items?: any[]; total?: number };
+                  const nextItems = [...(o.order_items ?? []), newItem];
+                  const newTotal = (tbl.order.total ?? 0) + unitPrice * quantity;
+                  return { ...tbl, order: { ...o, order_items: nextItems, total: newTotal } };
+                });
+                const newGroupTotal = (prev as TableGroup).totalAmount + unitPrice * quantity;
+                return { ...prev, items: updated, totalAmount: newGroupTotal } as TableGroup;
+              }
+              return prev;
+            });
+            toast({ title: `${product.name} adicionado à mesa` });
+          }
+          loadQueue(false);
+        }
+      } catch (e) {
+        console.error(e);
+        toast({ title: 'Erro ao adicionar produto', variant: 'destructive' });
+      } finally {
+        setAddingProduct(false);
+      }
+    },
+    [selected, restaurantId, restaurant?.buffet_price_per_kg, addItemToComanda, loadQueue]
+  );
+
   const todayStart = useMemo(() => startOfDay(new Date()).toISOString(), []);
 
   const loadCompletedToday = useCallback(async () => {
@@ -739,6 +982,16 @@ function CashierContent() {
           table: 'reservations',
           filter: `restaurant_id=eq.${restaurantId}`,
         },
+        debouncedRefreshCashier
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'virtual_comanda_items' },
+        debouncedRefreshCashier
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'order_items' },
         debouncedRefreshCashier
       )
       .subscribe((status) => setIsLive(status === 'SUBSCRIBED'));
@@ -1160,6 +1413,27 @@ function CashierContent() {
     }
   };
 
+  const handleRemoveBuffetComanda = async () => {
+    if (!selected || selected.type !== 'comanda_buffet') return;
+    const item = selected as QueueItemComandaBuffet;
+    setRemovingBuffetComanda(true);
+    try {
+      const { error } = await supabase
+        .from('comandas')
+        .update({ status: 'closed', closed_at: new Date().toISOString() })
+        .eq('id', item.comandaId);
+      if (error) throw error;
+      setShowRemoveComandaConfirm(false);
+      handleClearSelection();
+      loadQueue();
+      toast({ title: t('cashier.removeComandaSuccess') });
+    } catch (err: any) {
+      toast({ title: t('cashier.errorRemoveComanda'), description: err?.message, variant: 'destructive' });
+    } finally {
+      setRemovingBuffetComanda(false);
+    }
+  };
+
   const handleExcludeTableOrder = async () => {
     if (!selected || excludingOrder || !restaurantId) return;
     const tableIds: string[] = [];
@@ -1482,9 +1756,36 @@ function CashierContent() {
                 {t('cashier.accountClosed')}
               </div>
             )}
+            {hasBuffet && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full gap-2 border-[#F87116]/40 text-[#F87116] hover:bg-orange-50 dark:hover:bg-orange-950/20 hover:border-[#F87116]"
+                onClick={async () => {
+                  setCreatingComanda(true);
+                  try {
+                    await createComanda();
+                    loadQueue(false);
+                  } catch {
+                    // Erro já tratado pelo createComanda
+                  } finally {
+                    setCreatingComanda(false);
+                  }
+                }}
+                disabled={creatingComanda || !restaurantId}
+              >
+                {creatingComanda ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                Nova Comanda
+              </Button>
+            )}
           </div>
 
-          <div className="admin-card-border bg-card overflow-hidden flex-1 min-h-0 flex flex-col shadow-sm">
+          <div className="admin-card-border bg-card overflow-hidden flex-1 min-h-0 flex flex-col shadow-sm shrink-0">
             <div className="px-4 py-3 border-b border-border flex-shrink-0">
               <h2 className="text-sm font-semibold mb-2">
                 {t('cashier.queueTitle')} — {t('cashier.waitingPayment')}
@@ -1527,6 +1828,21 @@ function CashierContent() {
                   )}
             </div>
           </div>
+
+          {/* Painel de Produtos — igual ao Buffet: adicionar itens à conta selecionada */}
+          {selected && !isSelectedReservation && (
+            <div className="flex flex-col min-h-0 flex-1 min-h-[200px]">
+              <CashierProductsPanel
+                products={products}
+                currency={baseCurrency}
+                buffetPricePerKg={restaurant?.buffet_price_per_kg}
+                onProductClick={(p) => handleAddProductToSelected(p)}
+                selectedLabel={selected.label}
+                disabled={addingProduct}
+                t={t}
+              />
+            </div>
+          )}
         </div>
 
         {/* COLUNA DIREITA: Terminal de Pagamento */}
@@ -1695,6 +2011,23 @@ function CashierContent() {
                     </Button>
                   </RoleGuard>
                 )}
+                {selected.type === 'comanda_buffet' && (
+                  <RoleGuard allowedRoles={[...ROLES_CANCEL_ORDER]}>
+                    <Button
+                      variant="ghost"
+                      className="w-full mt-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setShowRemoveComandaConfirm(true)}
+                      disabled={removingBuffetComanda || closing}
+                    >
+                      {removingBuffetComanda ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      {t('cashier.removeComanda')}
+                    </Button>
+                  </RoleGuard>
+                )}
                 {(selected.type === 'table' || isTableGroup(selected)) && (
                   <RoleGuard allowedRoles={[...ROLES_CANCEL_ORDER]}>
                     <Button
@@ -1724,23 +2057,37 @@ function CashierContent() {
       <OrderReceipt data={receiptData} />
       {secondReceiptData && <OrderReceipt data={secondReceiptData} className="receipt-print-area-secondary" />}
 
-      {/* Modal confirmação: Remover comanda da fila */}
+      {/* Modal confirmação: Remover comanda da fila (digital ou buffet) */}
       <Dialog open={showRemoveComandaConfirm} onOpenChange={setShowRemoveComandaConfirm}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t('cashier.removeComanda')}</DialogTitle>
             <DialogDescription>
-              {selected?.type === 'comanda_digital' && (selected as QueueItemComandaDigital).items.length > 0
-                ? t('cashier.removeComandaConfirmWithItems')
-                : t('cashier.removeComandaConfirm')}
+              {selected?.type === 'comanda_buffet'
+                ? t('cashier.removeComandaConfirm')
+                : selected?.type === 'comanda_digital' && (selected as QueueItemComandaDigital).items.length > 0
+                  ? t('cashier.removeComandaConfirmWithItems')
+                  : t('cashier.removeComandaConfirm')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setShowRemoveComandaConfirm(false)} disabled={cancelComanda.isPending}>
+            <Button
+              variant="outline"
+              onClick={() => setShowRemoveComandaConfirm(false)}
+              disabled={cancelComanda.isPending || removingBuffetComanda}
+            >
               {t('common.cancel')}
             </Button>
-            <Button variant="destructive" onClick={handleRemoveComanda} disabled={cancelComanda.isPending}>
-              {cancelComanda.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+            <Button
+              variant="destructive"
+              onClick={selected?.type === 'comanda_buffet' ? handleRemoveBuffetComanda : handleRemoveComanda}
+              disabled={cancelComanda.isPending || removingBuffetComanda}
+            >
+              {(cancelComanda.isPending || removingBuffetComanda) ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
               {t('cashier.removeComanda')}
             </Button>
           </DialogFooter>

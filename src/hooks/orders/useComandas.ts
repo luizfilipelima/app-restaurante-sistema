@@ -5,11 +5,16 @@ import { Comanda, ComandaItem, ComandaWithItems } from '@/types';
 import { toast } from '@/hooks/shared/use-toast';
 import { useOfflineSync } from '@/hooks/shared/useOfflineSync';
 
-export function useComandas(restaurantId: string) {
+export interface UseComandasOptions {
+  /** Se false, não exibe toast de sincronização (ex.: na tela do Caixa) */
+  showSyncToast?: boolean;
+}
+
+export function useComandas(restaurantId: string, options: UseComandasOptions = {}) {
   const [comandas, setComandas] = useState<ComandaWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
-  const { isOnline } = useOfflineSync(restaurantId);
+  const { isOnline } = useOfflineSync(restaurantId, { showSyncToast: options.showSyncToast });
 
   const loadComandas = useCallback(async (silent = false) => {
     if (!restaurantId) return;

@@ -764,7 +764,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 {offersToShow.length}
               </span>
             </h2>
-            <div className="flex flex-col gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
               {offersToShow.map((offer) => (
                   <ProductCardByLayout
                     key={offer.id}
@@ -798,7 +798,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       return (
                         <div key={sub.id} className="space-y-2">
                           <h3 className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wider px-1">{sub.name}</h3>
-                          <div className="flex flex-col gap-3 sm:gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                             {subProducts.map((product) => {
                               const offer = productIdToOffer.get(product.id);
                               return (
@@ -818,7 +818,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                       );
                     })}
                     {productsWithoutSub.length > 0 && (() => (
-                        <div className="flex flex-col gap-3 sm:gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                           {productsWithoutSub.map((product) => {
                             const offer = productIdToOffer.get(product.id);
                             return (
@@ -837,7 +837,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                     ))()}
                   </>
                 ) : (
-                    <div className="flex flex-col gap-3 sm:gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                       {categoryProducts.map((product) => {
                         const offer = productIdToOffer.get(product.id);
                         return (
@@ -862,7 +862,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               <h2 className="text-sm-mobile-block sm:text-base font-semibold text-muted-foreground uppercase tracking-wider px-1">
                 {viewingSingleCategory && currentCategoryFromRoute ? currentCategoryFromRoute.name : selectedCategory}
               </h2>
-              <div className="flex flex-col gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                 {filteredProducts.map((product) => {
                   const offer = productIdToOffer.get(product.id);
                   return (
