@@ -76,7 +76,7 @@ export default function ProductCustomDetailsCard({
               <button
                 key={item.id}
                 type="button"
-                onClick={() => handleToggle(keyName, item.id, allIds)}
+                onPointerDownCapture={(e) => { e.preventDefault(); handleToggle(keyName, item.id, allIds); }}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-sm font-medium transition-all duration-200 touch-manipulation select-none cursor-pointer active:scale-[0.97] ${
                   sel
                     ? 'border-primary bg-primary/10 text-primary'

@@ -62,7 +62,7 @@ function ProductAllergensLabelsSection({
               <button
                 key={a.id}
                 type="button"
-                onClick={() => toggleAllergen(a.id as AllergenId)}
+                onPointerDownCapture={(e) => { e.preventDefault(); toggleAllergen(a.id as AllergenId); }}
                 className={cn(
                   'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200',
                   'border-2 touch-manipulation active:scale-[0.97]',
@@ -96,7 +96,7 @@ function ProductAllergensLabelsSection({
               <button
                 key={l.id}
                 type="button"
-                onClick={() => toggleLabel(l.id as LabelId)}
+                onPointerDownCapture={(e) => { e.preventDefault(); toggleLabel(l.id as LabelId); }}
                 className={cn(
                   'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200',
                   'border-2 touch-manipulation active:scale-[0.97]',
