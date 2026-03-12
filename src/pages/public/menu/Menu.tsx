@@ -163,9 +163,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
-  const [addonModalProduct, setAddonModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
-  const [simpleModalProduct, setSimpleModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
-  const [pizzaModalProduct, setPizzaModalProduct] = useState<{ product: Product; basePrice: number } | null>(null);
+  const [addonModalProduct, setAddonModalProduct] = useState<{ product: Product; basePrice: number; editCartItem?: { item: import('@/types').CartItem; index: number } } | null>(null);
+  const [simpleModalProduct, setSimpleModalProduct] = useState<{ product: Product; basePrice: number; editCartItem?: { item: import('@/types').CartItem; index: number } } | null>(null);
+  const [pizzaModalProduct, setPizzaModalProduct] = useState<{ product: Product; basePrice: number; editCartItem?: { item: import('@/types').CartItem; index: number } } | null>(null);
   const [infoModalOpen, setInfoModalOpen] = useState(false);
 
   const { data: menuData, isLoading: loading, isError, isFetching, isPlaceholderData } = useRestaurantMenuData(restaurantSlug);
@@ -246,6 +246,23 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
   };
 
   const { getItemsCount, getSubtotal, getOrderedItemsCount, getOrderedSubtotal, setRestaurant: setCartRestaurant, restaurantId: cartRestaurantId, removeInactiveProducts } = useCartStore();
+
+  const handleEditCartItem = (item: import('@/types').CartItem, index: number) => {
+    const product = item.productId ? products.find((p) => p.id === item.productId) : null;
+    if (!product) return;
+    const basePrice = item.unitPrice;
+    const editCartItem = { item, index };
+    if (product.is_pizza) {
+      setPizzaModalProduct({ product, basePrice, editCartItem });
+    } else {
+      const addons = productAddonsMap[product.id];
+      if (addons && addons.length > 0) {
+        setAddonModalProduct({ product, basePrice, editCartItem });
+      } else {
+        setSimpleModalProduct({ product, basePrice, editCartItem });
+      }
+    }
+  };
   const { setCurrentRestaurant } = useRestaurantStore();
 
   // Dados salvos para fidelidade e checkout (nome, telefone, país)
@@ -1005,6 +1022,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
           open={cartOpen}
           onClose={() => setCartOpen(false)}
           onCheckout={handleCheckoutNavigation}
+          onEditItem={handleEditCartItem}
           currency={currency}
           convertForDisplay={convertForDisplay}
           restaurantId={cartRestaurantId}
@@ -1021,6 +1039,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             basePrice={simpleModalProduct.basePrice}
             currency={currency}
             convertForDisplay={convertForDisplay}
+            editCartItem={simpleModalProduct.editCartItem}
           />
         )}
 
@@ -1033,8 +1052,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             currency={currency}
             basePrice={addonModalProduct.basePrice}
             convertForDisplay={convertForDisplay}
+            editCartItem={addonModalProduct.editCartItem}
             onAddToCart={({ quantity: qty, unitPrice, addons, observations }) => {
-              useCartStore.getState().addItem({
+              const cartItem = {
                 productId: addonModalProduct.product.id,
                 productName: addonModalProduct.product.name,
                 imageUrl: addonModalProduct.product.image_url ?? undefined,
@@ -1042,7 +1062,13 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 unitPrice,
                 addons: addons.length > 0 ? addons : undefined,
                 observations: observations?.trim() || undefined,
-              });
+              };
+              const store = useCartStore.getState();
+              if (addonModalProduct.editCartItem) {
+                store.replaceItem(addonModalProduct.editCartItem.index, cartItem);
+              } else {
+                store.addItem(cartItem);
+              }
             }}
           />
         )}
@@ -1059,6 +1085,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             open={!!pizzaModalProduct}
             onClose={() => setPizzaModalProduct(null)}
             product={p}
+            editCartItem={pizzaModalProduct.editCartItem}
             basePrice={pizzaModalProduct.basePrice}
             addonGroups={buildPizzaAddonGroups(
               p.id,

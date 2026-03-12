@@ -44,7 +44,8 @@
     "newItems": "Novos itens",
     "sendToKitchen": "Enviar pedido para cozinha",
     "upsellTitle": "Aproveite também",
-    "upsellAdd": "Adicionar"
+    "upsellAdd": "Adicionar",
+    "editOrder": "Editar pedido"
   },
   "loyalty": {
     "stampOf": "de",

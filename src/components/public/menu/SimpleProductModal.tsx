@@ -3,7 +3,7 @@
  * Imagem 4:3 centralizada, seletor de quantidade, botão único "Adicionar ao Carrinho".
  */
 import { useState, useEffect } from 'react';
-import { Product } from '@/types';
+import { Product, type CartItem } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,6 +21,7 @@ interface SimpleProductModalProps {
   basePrice: number;
   currency?: CurrencyCode;
   convertForDisplay?: (value: number) => number;
+  editCartItem?: { item: CartItem; index: number };
 }
 
 export default function SimpleProductModal({
@@ -30,28 +31,40 @@ export default function SimpleProductModal({
   basePrice,
   currency = 'BRL',
   convertForDisplay,
+  editCartItem,
 }: SimpleProductModalProps) {
   const { t } = useTranslation();
   const addItem = useCartStore((state) => state.addItem);
+  const replaceItem = useCartStore((state) => state.replaceItem);
   const [quantity, setQuantity] = useState(1);
   const [observations, setObservations] = useState('');
 
   useEffect(() => {
     if (open) {
-      setQuantity(1);
-      setObservations('');
+      if (editCartItem) {
+        setQuantity(editCartItem.item.quantity);
+        setObservations(editCartItem.item.observations ?? '');
+      } else {
+        setQuantity(1);
+        setObservations('');
+      }
     }
-  }, [open]);
+  }, [open, editCartItem]);
 
   const handleAddToCart = () => {
-    addItem({
+    const cartItem: CartItem = {
       productId: product.id,
       productName: product.name,
       imageUrl: product.image_url ?? undefined,
       quantity,
       unitPrice: basePrice,
       observations: observations.trim() || undefined,
-    });
+    };
+    if (editCartItem) {
+      replaceItem(editCartItem.index, cartItem);
+    } else {
+      addItem(cartItem);
+    }
     onClose();
   };
 

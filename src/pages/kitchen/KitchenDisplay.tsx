@@ -242,8 +242,11 @@ export default function KitchenDisplay() {
     );
   }
 
-  const pendingOrders = orders.filter(o => o.status === 'pending');
-  const preparingOrders = orders.filter(o => o.status === 'preparing');
+  // Ordenar por created_at ASC para que novos pedidos apareçam abaixo dos já exibidos
+  const byCreatedAsc = (a: DatabaseOrder, b: DatabaseOrder) =>
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  const pendingOrders = orders.filter(o => o.status === 'pending').sort(byCreatedAsc);
+  const preparingOrders = orders.filter(o => o.status === 'preparing').sort(byCreatedAsc);
 
   // Categorias para agrupamento no KDS
   type OrderCategory = 'local_fisico' | 'delivery' | 'buffet';
@@ -503,6 +506,9 @@ function OrderCard({
             const sectorClass = dest === 'bar'
               ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
               : 'bg-orange-500/20 text-orange-400 border-orange-500/50';
+            const itemTitle = item.pizza_flavors && item.pizza_flavors.length > 0
+              ? item.pizza_flavors.join(' + ')
+              : (item.product_name || 'Item');
             return (
             <div key={idx} className="flex items-start gap-3 bg-slate-900/30 p-2 rounded-lg">
               <div className="bg-slate-700 text-white font-bold text-xl min-w-[2.5rem] h-10 flex items-center justify-center rounded">
@@ -510,21 +516,18 @@ function OrderCard({
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-lg font-bold text-slate-100 leading-tight">{item.product_name}</p>
+                  <p className="text-lg font-bold text-slate-100 leading-tight">{itemTitle}</p>
                   <Badge variant="outline" className={`shrink-0 border text-xs font-bold ${sectorClass}`}>
                     {dest === 'bar' ? <Wine className="h-3 w-3 mr-1" /> : <ChefHat className="h-3 w-3 mr-1" />}
                     {sectorTag}
                   </Badge>
                 </div>
-                {/* Pizza Details */}
-                {(item.pizza_size || item.pizza_flavors) && (
+                {/* Pizza Details — Sabores já no título quando há pizza_flavors */}
+                {(item.pizza_size || item.pizza_edge || item.pizza_dough) && (
                   <div className="mt-1 text-sm text-slate-400 pl-2 border-l-2 border-slate-600">
                     {item.pizza_size && <p>Tamanho: {item.pizza_size}</p>}
                     {item.pizza_dough && <p>Massa: {item.pizza_dough}</p>}
                     {item.pizza_edge && <p>Borda: {item.pizza_edge}</p>}
-                    {item.pizza_flavors && item.pizza_flavors.length > 0 && (
-                      <p className="text-slate-300">Sabores: {item.pizza_flavors.join(' + ')}</p>
-                    )}
                   </div>
                 )}
                 {/* Addons - sem preços */}

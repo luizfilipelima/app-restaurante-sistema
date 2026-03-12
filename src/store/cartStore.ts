@@ -12,6 +12,7 @@ interface CartState {
   addItem: (item: CartItem) => void;
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
+  replaceItem: (index: number, item: CartItem) => void;
   clearCart: () => void;
   /** Marca itens atuais como já pedidos (após envio para cozinha em pedido de mesa) */
   markTableItemsAsOrdered: () => void;
@@ -102,6 +103,14 @@ export const useCartStore = create<CartState>()(
         const items = get().items;
         const newItems = [...items];
         newItems[index].quantity = quantity;
+        set({ items: newItems });
+      },
+
+      replaceItem: (index: number, item: CartItem) => {
+        const items = get().items;
+        if (index < 0 || index >= items.length) return;
+        const newItems = [...items];
+        newItems[index] = item;
         set({ items: newItems });
       },
 

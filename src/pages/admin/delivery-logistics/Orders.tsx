@@ -45,6 +45,33 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 
+/** Formata o item do pedido com detalhes (pizza: tamanho, borda, sabores; extras) */
+function formatOrderItemLabel(item: {
+  product_name?: string;
+  pizza_size?: string | null;
+  pizza_flavors?: string[] | null;
+  pizza_edge?: string | null;
+  addons?: Array<{ name: string; quantity?: number }> | null;
+}): { main: string; details?: string } {
+  const hasPizza = !!(item.pizza_size || (item.pizza_flavors && item.pizza_flavors.length > 0) || item.pizza_edge);
+  const name = hasPizza && item.pizza_flavors && item.pizza_flavors.length > 0
+    ? item.pizza_flavors.join(' + ')
+    : (item.product_name || 'Item');
+  const parts: string[] = [];
+  if (item.pizza_size) parts.push(item.pizza_size);
+  if (item.pizza_edge) parts.push(`borda ${item.pizza_edge}`);
+  const pizzaStr = parts.length > 0 ? ` (${parts.join(', ')})` : '';
+  const addons = item.addons && Array.isArray(item.addons) && item.addons.length > 0
+    ? item.addons.map((a) => {
+        const qty = a.quantity ?? 1;
+        return qty > 1 ? `${a.name} (${qty}x)` : a.name;
+      }).join(', ')
+    : null;
+  const main = `${name}${pizzaStr}`;
+  const details = addons ? `+ ${addons}` : undefined;
+  return { main, details };
+}
+
 const statusConfig = {
   [OrderStatus.PENDING]: {
     label: 'Pendentes',
@@ -759,20 +786,30 @@ export default function AdminOrders() {
                               </div>
                             )}
 
-                            {/* ── Itens ── */}
-                            <div className="space-y-1 rounded-lg bg-muted/30 px-2 py-1.5">
-                              {order.order_items?.slice(0, 3).map((item: any) => (
-                                <div key={item.id} className="flex items-baseline gap-1.5">
-                                  <span className="text-[11px] font-bold text-foreground/60 flex-shrink-0 w-5 text-right">
-                                    {item.quantity}×
-                                  </span>
-                                  <span className="text-[11px] text-foreground line-clamp-1 flex-1">
-                                    {item.product_name}
-                                  </span>
-                                </div>
-                              ))}
+                            {/* ── Itens (com detalhes: tamanho, borda, sabores, extras) ── */}
+                            <div className="space-y-1.5 rounded-lg bg-muted/30 px-2 py-1.5">
+                              {order.order_items?.slice(0, 3).map((item: any) => {
+                                const { main, details } = formatOrderItemLabel(item);
+                                return (
+                                  <div key={item.id} className="space-y-0.5">
+                                    <div className="flex items-baseline gap-1.5">
+                                      <span className="text-[11px] font-bold text-foreground/60 flex-shrink-0 w-5 text-right">
+                                        {item.quantity}×
+                                      </span>
+                                      <span className="text-[11px] text-foreground flex-1 min-w-0">
+                                        {main}
+                                      </span>
+                                    </div>
+                                    {details && (
+                                      <p className="text-[10px] text-muted-foreground pl-6 leading-tight">
+                                        {details}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })}
                               {order.order_items && order.order_items.length > 3 && (
-                                <p className="text-[11px] text-muted-foreground pl-6">
+                                <p className="text-[11px] text-muted-foreground pl-6 pt-0.5">
                                   +{order.order_items.length - 3} {order.order_items.length - 3 === 1 ? 'item' : 'itens'}
                                 </p>
                               )}

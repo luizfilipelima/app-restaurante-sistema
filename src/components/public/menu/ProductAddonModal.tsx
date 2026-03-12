@@ -38,6 +38,7 @@ interface ProductAddonModalProps {
   currency: CurrencyCode;
   basePrice: number;
   convertForDisplay?: (value: number) => number;
+  editCartItem?: { item: import('@/types').CartItem; index: number };
   onAddToCart: (params: {
     quantity: number;
     unitPrice: number;
@@ -54,6 +55,7 @@ export default function ProductAddonModal({
   currency,
   basePrice,
   convertForDisplay,
+  editCartItem,
   onAddToCart,
 }: ProductAddonModalProps) {
   const { t } = useTranslation();
@@ -65,9 +67,25 @@ export default function ProductAddonModal({
 
   useEffect(() => {
     if (open) {
-      setObservations('');
+      if (editCartItem) {
+        const { item } = editCartItem;
+        setQuantity(item.quantity);
+        setObservations(item.observations ?? '');
+        setSelectedAddons(
+          (item.addons ?? []).map((a) => ({
+            addonItemId: a.addonItemId,
+            name: a.name,
+            price: a.price,
+            quantity: a.quantity ?? 1,
+          }))
+        );
+      } else {
+        setQuantity(1);
+        setObservations('');
+        setSelectedAddons([]);
+      }
     }
-  }, [open]);
+  }, [open, editCartItem]);
 
   const getAddonQty = (addonItemId: string) =>
     selectedAddons.find((a) => a.addonItemId === addonItemId)?.quantity ?? 0;

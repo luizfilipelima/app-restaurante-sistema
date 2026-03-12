@@ -3,7 +3,7 @@
  * Suporta produtos simples, com addons e pizza (opções de pizza no topo, sem imagem).
  */
 import { useState, useEffect } from 'react';
-import { Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, PizzaExtra } from '@/types';
+import { Product, PizzaSize, PizzaFlavor, PizzaDough, PizzaEdge, PizzaExtra, type CartItem } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { type CurrencyCode } from '@/lib/core/utils';
 import { formatPrice } from '@/lib/priceHelper';
@@ -49,6 +49,7 @@ interface UnifiedProductModalProps {
   pizzaProducts?: Product[];
   currency?: CurrencyCode;
   convertForDisplay?: (value: number) => number;
+  editCartItem?: { item: CartItem; index: number };
 }
 
 export default function UnifiedProductModal({
@@ -61,9 +62,11 @@ export default function UnifiedProductModal({
   pizzaProducts = [],
   currency = 'BRL',
   convertForDisplay,
+  editCartItem,
 }: UnifiedProductModalProps) {
   const { t } = useTranslation();
   const addItem = useCartStore((state) => state.addItem);
+  const replaceItem = useCartStore((state) => state.replaceItem);
   const isPizza = !!pizzaConfig;
 
   const [quantity, setQuantity] = useState(1);
@@ -81,17 +84,45 @@ export default function UnifiedProductModal({
 
   useEffect(() => {
     if (open) {
-      setQuantity(1);
-      setObservations('');
-      setSelectedAddons([]);
-      setSelectedSecondProduct(null);
-      if (pizzaConfig) {
-        setSelectedSize(singleSize ? pizzaConfig.sizes[0] ?? null : pizzaConfig.sizes[0] ?? null);
-        setSelectedDough(pizzaConfig.doughs[0] || null);
-        setSelectedEdge(null);
+      if (editCartItem) {
+        const { item } = editCartItem;
+        setQuantity(item.quantity);
+        setObservations(item.observations ?? '');
+        setSelectedAddons(
+          (item.addons ?? []).map((a) => ({
+            addonItemId: a.addonItemId,
+            name: a.name,
+            price: a.price,
+            quantity: a.quantity ?? 1,
+          }))
+        );
+        if (pizzaConfig && item.isPizza) {
+          const sz = item.pizzaSize ? pizzaConfig.sizes.find((s) => s.name === item.pizzaSize) ?? pizzaConfig.sizes[0] : pizzaConfig.sizes[0];
+          setSelectedSize(sz ?? null);
+          setSelectedDough(item.pizzaDough ? pizzaConfig.doughs.find((d) => d.name === item.pizzaDough) ?? pizzaConfig.doughs[0] : pizzaConfig.doughs[0]);
+          setSelectedEdge(item.pizzaEdge ? pizzaConfig.edges.find((e) => e.name === item.pizzaEdge) ?? null : null);
+          const flavors = item.pizzaFlavors ?? [];
+          setSelectedSecondProduct(
+            flavors.length > 1 && pizzaProducts.length > 0
+              ? pizzaProducts.find((p) => p.name === flavors[1]) ?? null
+              : null
+          );
+        } else {
+          setSelectedSecondProduct(null);
+        }
+      } else {
+        setQuantity(1);
+        setObservations('');
+        setSelectedAddons([]);
+        setSelectedSecondProduct(null);
+        if (pizzaConfig) {
+          setSelectedSize(singleSize ? pizzaConfig.sizes[0] ?? null : pizzaConfig.sizes[0] ?? null);
+          setSelectedDough(pizzaConfig.doughs[0] || null);
+          setSelectedEdge(null);
+        }
       }
     }
-  }, [open, pizzaConfig, singleSize]);
+  }, [open, pizzaConfig, singleSize, editCartItem, pizzaProducts]);
 
   const getAddonQty = (addonItemId: string) =>
     selectedAddons.find((a) => a.addonItemId === addonItemId)?.quantity ?? 0;
@@ -171,7 +202,7 @@ export default function UnifiedProductModal({
     if (isPizza) {
       if (!effectiveSize) return;
       const pizzaFlavors = selectedSecondProduct ? [product.name, selectedSecondProduct.name] : [product.name];
-      addItem({
+      const cartItem: CartItem = {
         productId: product.id,
         productName: product.name,
         imageUrl: product.image_url ?? undefined,
@@ -186,9 +217,14 @@ export default function UnifiedProductModal({
         pizzaEdgePrice: edgePrice,
         addons: selectedAddons.length > 0 ? selectedAddons.map((a) => ({ addonItemId: a.addonItemId, name: a.name, price: a.price, quantity: a.quantity })) : undefined,
         observations: observations.trim() || undefined,
-      });
+      };
+      if (editCartItem) {
+        replaceItem(editCartItem.index, cartItem);
+      } else {
+        addItem(cartItem);
+      }
     } else {
-      addItem({
+      const cartItemSimple: CartItem = {
         productId: product.id,
         productName: product.name,
         imageUrl: product.image_url ?? undefined,
@@ -196,7 +232,12 @@ export default function UnifiedProductModal({
         unitPrice,
         addons: selectedAddons.length > 0 ? selectedAddons.map((a) => ({ addonItemId: a.addonItemId, name: a.name, price: a.price, quantity: a.quantity })) : undefined,
         observations: observations.trim() || undefined,
-      });
+      };
+      if (editCartItem) {
+        replaceItem(editCartItem.index, cartItemSimple);
+      } else {
+        addItem(cartItemSimple);
+      }
     }
     setSelectedAddons([]);
     setQuantity(1);

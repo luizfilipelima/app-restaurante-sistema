@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { type CurrencyCode } from '@/lib/core/utils';
 import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
-import { Plus, Minus, Trash2, Sparkles, ShoppingBag, ChevronRight, Check } from 'lucide-react';
+import { Plus, Minus, Trash2, Sparkles, ShoppingBag, ChevronRight, Check, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchUpsellsForProducts, type UpsellRow, useLoyaltyProgram, useLoyaltyStatus } from '@/hooks/queries';
 import type { CartItem } from '@/types';
@@ -14,6 +14,8 @@ interface CartDrawerProps {
   open: boolean;
   onClose: () => void;
   onCheckout: () => void;
+  /** Chamado ao clicar em "Editar pedido" em um item — permite editar no modal do produto */
+  onEditItem?: (item: CartItem, index: number) => void;
   currency?: CurrencyCode;
   /** Converte valor da moeda base para moeda de exibição. Se não informado, usa valor direto. */
   convertForDisplay?: (value: number) => number;
@@ -25,9 +27,9 @@ interface CartDrawerProps {
   tableNumber?: number | null;
 }
 
-export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL', convertForDisplay, restaurantId, customerPhone, tableCustomerName, tableNumber }: CartDrawerProps) {
+export default function CartDrawer({ open, onClose, onCheckout, onEditItem, currency = 'BRL', convertForDisplay, restaurantId, customerPhone, tableCustomerName, tableNumber }: CartDrawerProps) {
   const { t } = useTranslation();
-  const { items, orderedTableItems, addItem, updateQuantity, removeItem, getSubtotal } = useCartStore();
+  const { items, orderedTableItems, addItem, removeItem, getSubtotal } = useCartStore();
   const isTableOrder = tableNumber != null;
   const [upsellRows, setUpsellRows] = useState<UpsellRow[]>([]);
 
@@ -328,20 +330,20 @@ export default function CartDrawer({ open, onClose, onCheckout, currency = 'BRL'
                             </div>
 
                             <div className="flex items-center justify-between mt-auto">
-                              <div className="flex items-center bg-muted rounded-xl overflow-hidden">
-                                <button
-                                  className="h-9 w-9 flex items-center justify-center text-foreground hover:bg-muted-foreground/20 active:scale-95 touch-manipulation transition-all"
-                                  onClick={() => updateQuantity(index, item.quantity - 1)}
-                                >
-                                  <Minus className="h-3.5 w-3.5" />
-                                </button>
-                                <span className="w-8 text-center text-sm font-bold text-foreground">{item.quantity}</span>
-                                <button
-                                  className="h-9 w-9 flex items-center justify-center text-foreground hover:bg-muted-foreground/20 active:scale-95 touch-manipulation transition-all"
-                                  onClick={() => updateQuantity(index, item.quantity + 1)}
-                                >
-                                  <Plus className="h-3.5 w-3.5" />
-                                </button>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-muted-foreground">
+                                  {item.quantity}× {fmt(item.unitPrice)}
+                                </span>
+                                {onEditItem && item.productId && (
+                                  <button
+                                    type="button"
+                                    onClick={() => { onClose(); onEditItem(item, index); }}
+                                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 font-medium text-xs transition-colors touch-manipulation"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                    {t('cart.editOrder')}
+                                  </button>
+                                )}
                               </div>
                               <span className="font-bold text-foreground text-sm">
                                 {fmt(itemTotal)}
