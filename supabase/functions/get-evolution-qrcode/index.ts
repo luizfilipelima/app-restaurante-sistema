@@ -1,5 +1,6 @@
-// Edge Function: criar instância (se não existir) + obter QR Code da Evolution API
-// Nome da instância: rest_${restaurantId} (UUID com _ no lugar de -)
+// Edge Function: obter QR Code da Evolution API
+// Fluxo: 1) GET /instance/connect — se 200, retorna QR; se 404, cria instância e depois obtém QR
+// Evita POST /instance/create quando a instância já existe (403).
 // Deploy: npx supabase functions deploy get-evolution-qrcode
 // Secrets: EVOLUTION_API_BASE_URL, EVOLUTION_API_KEY, WEBHOOK_BASE_URL (opcional)
 
@@ -9,6 +10,13 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+/** Headers para chamadas à Evolution API */
+function evolutionHeaders(evolutionKey: string, contentType = false): Record<string, string> {
+  const h: Record<string, string> = { apikey: evolutionKey };
+  if (contentType) h['Content-Type'] = 'application/json';
+  return h;
+}
 
 /** Gera nome da instância: rest_xxx a partir do restaurantId */
 export function toInstanceName(restaurantId: string): string {
@@ -83,53 +91,6 @@ Deno.serve(async (req) => {
     const instanceName = toInstanceName(restaurantId);
     const baseUrl = evolutionBase.replace(/\/$/, '');
 
-    // 1. Criar instância se não existir
-    const createBody: Record<string, unknown> = {
-      instanceName,
-      integration: 'WHATSAPP-BAILEYS',
-      qrcode: true,
-    };
-    if (webhookBase) {
-      const webhookUrl = `${webhookBase.replace(/\/$/, '')}/api/webhooks/evolution`;
-      createBody.webhook = {
-        enabled: true,
-        url: webhookUrl,
-        webhook_by_events: false,
-        events: ['CONNECTION_UPDATE'],
-      };
-    }
-
-    const createRes = await fetch(`${baseUrl}/instance/create`, {
-      method: 'POST',
-      headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify(createBody),
-    });
-
-    const createData = await createRes.json().catch(() => ({}));
-
-    if (!createRes.ok) {
-      const msg = (createData as { message?: string })?.message || '';
-      if (createRes.status === 409 || msg.toLowerCase().includes('already') || msg.toLowerCase().includes('exist')) {
-        // Instância já existe — continua para obter QR
-      } else {
-        console.error('[get-evolution-qrcode] Create instance erro:', createRes.status, createData);
-        const hint = createRes.status === 403
-          ? ' Verifique EVOLUTION_API_KEY no Supabase (deve ser igual a AUTHENTICATION_API_KEY da Evolution API).'
-          : '';
-        return fail((msg || `Erro ao criar instância: ${createRes.status}`) + hint, 502);
-      }
-    }
-
-    // 2. Salvar evolution_instance_name no banco
-    await admin
-      .from('restaurants')
-      .update({
-        evolution_instance_name: instanceName,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', restaurantId);
-
-    // 3. Obter QR Code (retry quando count=0 — Evolution API pode demorar para gerar)
     const whatsapp = (restaurant as { whatsapp?: string; phone?: string })?.whatsapp?.trim();
     const phone = (restaurant as { phone?: string })?.phone?.trim();
     let numberParam = (whatsapp || phone || '').replace(/\D/g, '');
@@ -138,15 +99,86 @@ Deno.serve(async (req) => {
     }
     const qs = numberParam ? `?number=${encodeURIComponent(numberParam)}` : '';
 
-    let connectData: Record<string, unknown> = {};
+    // 1. Tentar GET /instance/connect primeiro (instância já existe?)
+    const firstConnectRes = await fetch(
+      `${baseUrl}/instance/connect/${encodeURIComponent(instanceName)}${qs}`,
+      { method: 'GET', headers: evolutionHeaders(evolutionKey) }
+    );
+    const firstConnectData = await firstConnectRes.json().catch(() => ({}));
+
+    if (firstConnectRes.status === 404 || firstConnectRes.status === 400) {
+      const msg = String((firstConnectData as { message?: string })?.message ?? '').toLowerCase();
+      const isNotFound = firstConnectRes.status === 404 || msg.includes('not found') || msg.includes('não encontrad') || msg.includes('does not exist') || msg.includes('não existe');
+      if (!isNotFound) {
+        console.error('[get-evolution-qrcode] Connect erro inesperado:', firstConnectRes.status, firstConnectData);
+        return fail(
+          (firstConnectData as { message?: string })?.message || `Erro ao obter instância: ${firstConnectRes.status}`,
+          502
+        );
+      }
+      // 2. Instância não existe — criar
+      const createBody: Record<string, unknown> = {
+        instanceName,
+        integration: 'WHATSAPP-BAILEYS',
+        qrcode: true,
+      };
+      if (webhookBase) {
+        const webhookUrl = `${webhookBase.replace(/\/$/, '')}/api/webhooks/evolution`;
+        createBody.webhook = {
+          enabled: true,
+          url: webhookUrl,
+          webhook_by_events: false,
+          events: ['CONNECTION_UPDATE'],
+        };
+      }
+      const createRes = await fetch(`${baseUrl}/instance/create`, {
+        method: 'POST',
+        headers: evolutionHeaders(evolutionKey, true),
+        body: JSON.stringify(createBody),
+      });
+      const createData = await createRes.json().catch(() => ({}));
+      if (!createRes.ok) {
+        const createMsg = (createData as { message?: string })?.message || '';
+        console.error('[get-evolution-qrcode] Create instance erro:', createRes.status, createData);
+        return fail(createMsg || `Erro ao criar instância: ${createRes.status}`, 502);
+      }
+      await admin
+        .from('restaurants')
+        .update({ evolution_instance_name: instanceName, updated_at: new Date().toISOString() })
+        .eq('id', restaurantId);
+    } else if (!firstConnectRes.ok) {
+      console.error('[get-evolution-qrcode] Connect erro:', firstConnectRes.status, firstConnectData);
+      return fail(
+        (firstConnectData as { message?: string })?.message || `Erro ao obter QR: ${firstConnectRes.status}`,
+        502
+      );
+    } else {
+      await admin
+        .from('restaurants')
+        .update({ evolution_instance_name: instanceName, updated_at: new Date().toISOString() })
+        .eq('id', restaurantId);
+    }
+
+    // 3. Obter QR Code (retry quando count=0 — Evolution API pode demorar para gerar)
+    let connectData: Record<string, unknown> = firstConnectRes.ok ? firstConnectData : {};
+    const hasValidQr = (d: Record<string, unknown>) => {
+      const hasCode = !!(d?.code as string);
+      const hasBase64 = !!(d?.base64 as string);
+      const count = d?.count as number | undefined;
+      const hasPairing = !!(d?.pairingCode as string) && (count ?? 0) > 0;
+      return hasCode || hasBase64 || hasPairing;
+    };
+    if (hasValidQr(connectData)) {
+      return ok({ data: connectData, instanceName });
+    }
     const maxRetries = 4;
     const retryDelayMs = 2000;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const connectRes = await fetch(`${baseUrl}/instance/connect/${encodeURIComponent(instanceName)}${qs}`, {
-        method: 'GET',
-        headers: { 'apikey': evolutionKey },
-      });
+      const connectRes = await fetch(
+        `${baseUrl}/instance/connect/${encodeURIComponent(instanceName)}${qs}`,
+        { method: 'GET', headers: evolutionHeaders(evolutionKey) }
+      );
 
       connectData = await connectRes.json().catch(() => ({}));
 
