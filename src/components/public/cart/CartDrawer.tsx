@@ -294,17 +294,11 @@ export default function CartDrawer({ open, onClose, onCheckout, onEditItem, curr
                           <div className="flex-1 min-w-0 flex flex-col gap-2">
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold text-foreground text-sm leading-snug">{item.productName}</h4>
-                            {item.isPizza && (
-                              <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                                {item.pizzaSize && <p>{t('cart.size')}: {item.pizzaSize}</p>}
-                                {item.pizzaFlavors && item.pizzaFlavors.length > 0 && (
-                                  <p className="line-clamp-1">{t('cart.flavors')}: {item.pizzaFlavors.join(', ')}</p>
-                                )}
-                                {item.pizzaDough && <p>{t('cart.dough')}: {item.pizzaDough}</p>}
-                                {item.pizzaEdge && <p>{t('cart.edge')}: {item.pizzaEdge}</p>}
-                              </div>
-                            )}
+                                <h4 className="font-semibold text-foreground text-sm leading-snug">
+                                  {item.pizzaFlavors && item.pizzaFlavors.length >= 2
+                                    ? item.pizzaFlavors.join(' + ')
+                                    : item.productName}
+                                </h4>
                             {item.addons && item.addons.length > 0 && (
                               <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
                                 {item.addons.map((a, i) => {
@@ -331,9 +325,6 @@ export default function CartDrawer({ open, onClose, onCheckout, onEditItem, curr
 
                             <div className="flex items-center justify-between mt-auto">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-muted-foreground">
-                                  {item.quantity}× {fmt(item.unitPrice)}
-                                </span>
                                 {onEditItem && item.productId && (
                                   <button
                                     type="button"

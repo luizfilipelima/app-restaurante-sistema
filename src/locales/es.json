@@ -138,6 +138,7 @@
   "productCard": {
     "add": "Añadir",
     "addToCart": "Añadir al Carrito",
+    "confirmChanges": "Confirmar cambios",
     "details": "Detalles",
     "customize": "Personalizar",
     "from": "desde",

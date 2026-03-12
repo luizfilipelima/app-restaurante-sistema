@@ -174,7 +174,7 @@ export default function SimpleProductModal({
             onClick={handleAddToCart}
                 className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base transition-colors active:scale-[0.99] touch-manipulation shadow-sm"
           >
-            {t('productCard.addToCart')}
+            {editCartItem ? t('productCard.confirmChanges') : t('productCard.addToCart')}
           </button>
         </footer>
       </DialogContent>
