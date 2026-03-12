@@ -207,7 +207,7 @@ export default function PizzaConfigSection({
 
   const handleUpdateExtra = async (
     id: string,
-    data: { name?: string; price?: number; cost?: number; cost_currency?: string; in_stock?: boolean; ingredient_id?: string | null }
+    data: { name?: string; price?: number; cost?: number; cost_currency?: string; in_stock?: boolean; ingredient_id?: string | null; max_quantity?: number }
   ) => {
     try {
       await mut.updateExtra.mutateAsync({ id, data });

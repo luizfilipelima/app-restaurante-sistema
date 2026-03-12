@@ -29,7 +29,7 @@ function toggleIds(ids: string[] | undefined, id: string, allIds: string[]): str
   return next;
 }
 
-function isSelected(ids: string[] | undefined, id: string, allIds: string[]): boolean {
+function isSelected(ids: string[] | undefined, id: string, _allIds: string[]): boolean {
   if (!ids || ids.length === 0) return true;
   return ids.includes(id);
 }

@@ -1061,7 +1061,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             addonGroups={buildPizzaAddonGroups(
               p.id,
               filteredExtras,
-              restaurant ? { mode: restaurant.custom_extras_mode, min: restaurant.custom_extras_min ?? undefined, max: restaurant.custom_extras_max ?? undefined, required: restaurant.custom_extras_required ?? undefined } : undefined,
+              restaurant ? { mode: restaurant.custom_extras_mode ?? undefined, min: restaurant.custom_extras_min ?? undefined, max: restaurant.custom_extras_max ?? undefined, required: restaurant.custom_extras_required ?? undefined } : undefined,
               productAddonsMap
             )}
             pizzaConfig={{
