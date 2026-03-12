@@ -872,7 +872,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         </section>
 
         {/* Rodapé */}
-        <footer className="pt-8 pb-6 text-center border-t border-border">
+        <footer className="pt-[25px] pb-[29px] text-center">
           <a
             href="https://quiero.food"
             target="_blank"
@@ -880,7 +880,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
             className="inline-flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <span
-              className="inline-block h-7 w-20 bg-primary opacity-90 hover:opacity-100 transition-opacity shrink-0"
+              className="inline-block h-7 w-[100px] bg-primary opacity-90 hover:opacity-100 transition-opacity shrink-0"
               style={{
                 maskImage: 'url(/quierofood-logo-f.svg)',
                 maskSize: 'contain',
@@ -893,7 +893,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
               }}
               aria-hidden
             />
-            <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="sr-only" width={80} height={28} />
+            <img src="/quierofood-logo-f.svg" alt="Quiero.food" className="sr-only" width={100} height={28} />
           </a>
         </footer>
         </>
