@@ -4,21 +4,24 @@ Guia para configurar o fluxo de conexão via Evolution API e webhook.
 
 ## 1. Variáveis de ambiente na Vercel
 
-O endpoint `/api/webhooks/evolution` precisa acessar o Supabase com permissão de service role para atualizar `restaurants.whatsapp_connected`.
+Configure no painel da Vercel (Settings → Environment Variables) ou via CLI.
 
-Configure no painel da Vercel ou via CLI:
+### Frontend (Vite — prefixo `VITE_`)
 
-```bash
-vercel env add SUPABASE_URL
-# Cole a URL do projeto Supabase (ex: https://xxx.supabase.co)
+| Variável | Valor | Obrigatório |
+|----------|-------|-------------|
+| `VITE_SUPABASE_URL` | `https://xxx.supabase.co` | Sim |
+| `VITE_SUPABASE_ANON_KEY` | chave anon do Supabase | Sim |
+| `VITE_EVOLUTION_API_URL` | `https://api.quiero.food` | Não (fallback hardcoded) |
 
-vercel env add SUPABASE_SERVICE_ROLE_KEY
-# Cole a chave Service Role (Project Settings → API → service_role)
-```
+### Backend (API Routes / Node)
 
-> A `VITE_SUPABASE_URL` já existe para o frontend. O webhook roda no backend e precisa de `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (a Vercel pode usar `VITE_SUPABASE_URL` se `SUPABASE_URL` não existir; o código lê ambas).
+| Variável | Valor | Obrigatório |
+|----------|-------|-------------|
+| `SUPABASE_URL` | `https://xxx.supabase.co` | Sim (webhook) |
+| `SUPABASE_SERVICE_ROLE_KEY` | chave service_role do Supabase | Sim (webhook) |
 
-**Importante:** `SUPABASE_SERVICE_ROLE_KEY` é obrigatória para o webhook funcionar.
+O endpoint `/api/webhooks/evolution` usa `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`. Se `SUPABASE_URL` não existir, o código tenta `VITE_SUPABASE_URL` como fallback.
 
 ## 2. Secrets do Supabase (Edge Functions)
 
@@ -80,6 +83,18 @@ Se a mensagem for "A instância não retornou QR Code":
 | `EVOLUTION_API_BASE_URL` | Supabase secrets | ✅ |
 | `EVOLUTION_API_KEY` | Supabase secrets | ✅ |
 | `WEBHOOK_BASE_URL` | Supabase secrets | ✅ |
-| `SUPABASE_URL` | Vercel env | Configurar se não existir |
+| `SUPABASE_URL` | Vercel env | **Obrigatório** para webhook |
 | `SUPABASE_SERVICE_ROLE_KEY` | Vercel env | **Obrigatório** |
+| `VITE_SUPABASE_URL` | Vercel env | **Obrigatório** (frontend) |
+| `VITE_SUPABASE_ANON_KEY` | Vercel env | **Obrigatório** (frontend) |
+| `VITE_EVOLUTION_API_URL` | Vercel env | Opcional (fallback: api.quiero.food) |
 | Toggle `whatsapp_evolution_enabled` | Super Admin | Ligar por restaurante |
+
+### Erro WebSocket `ws://localhost:8081` no console
+
+O app não usa WebSocket para localhost. Esse erro costuma vir de:
+- **HMR do Vite** quando em dev local (porta 5173)
+- **Evolution API Manager** aberto em outra aba (usa WebSocket próprio na VPS)
+- Extensões do navegador
+
+Em produção (Vercel), o build é estático e não injeta HMR. Se ainda aparecer, verifique se está acessando o domínio de produção (ex: https://app.quiero.food) e não localhost.

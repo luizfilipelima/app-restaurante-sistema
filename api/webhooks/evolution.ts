@@ -91,7 +91,7 @@ export default async function handler(
       return res.status(200).json({ ok: true, ignored: true, reason: 'instance_not_rest', instanceName });
     }
 
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseUrl || !serviceKey) {
       console.error('[webhooks/evolution] SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY ausentes');
