@@ -423,6 +423,7 @@ function CashierContent() {
   const [showExcludeOrderConfirm, setShowExcludeOrderConfirm] = useState(false);
   const [excludingOrder, setExcludingOrder] = useState(false);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
+  const [removeItemConfirm, setRemoveItemConfirm] = useState<{ orderId: string; orderItemId: string; itemName: string } | null>(null);
   const [payPersonDialog, setPayPersonDialog] = useState<{
     customerKey: string;
     label: string;
@@ -1944,7 +1945,10 @@ function CashierContent() {
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6 shrink-0 opacity-0 group-hover/item:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={(e) => { e.stopPropagation(); handleRemoveOrderItem(it.orderId, it.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRemoveItemConfirm({ orderId: it.orderId, orderItemId: it.id, itemName: it.name });
+                              }}
                               disabled={!!removingItemId}
                               title={t('cashier.removeItem')}
                             >
@@ -2242,6 +2246,46 @@ function CashierContent() {
             <Button onClick={handleFinalize} disabled={closing}>
               {closing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
               {t('cashier.finalize')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal confirmação: Remover item da conta */}
+      <Dialog open={!!removeItemConfirm} onOpenChange={(open) => !open && setRemoveItemConfirm(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('cashier.removeItemConfirm')}</DialogTitle>
+            <DialogDescription>
+              {removeItemConfirm
+                ? t('cashier.removeItemConfirmDesc', { name: removeItemConfirm.itemName })
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setRemoveItemConfirm(null)}
+              disabled={!!removingItemId}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (removeItemConfirm) {
+                  handleRemoveOrderItem(removeItemConfirm.orderId, removeItemConfirm.orderItemId);
+                  setRemoveItemConfirm(null);
+                }
+              }}
+              disabled={!!removingItemId}
+            >
+              {removingItemId ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              {t('cashier.removeItem')}
             </Button>
           </DialogFooter>
         </DialogContent>

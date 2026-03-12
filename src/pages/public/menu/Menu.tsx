@@ -951,9 +951,9 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                 </div>
               </div>
 
-              {/* Right Side: CTA Ver bolsa — mantém aparência atual (sem divisor para evitar gap transparente ao rolar) */}
+              {/* Right Side: CTA Ver Carrinho — mantém aparência atual (sem divisor para evitar gap transparente ao rolar) */}
               <div className="px-6 flex items-center justify-center gap-2 h-full min-w-[120px] bg-primary text-primary-foreground shrink-0">
-                <span className="text-sm font-bold">{t('menu.viewBag')}</span>
+                <span className="text-sm font-bold">{t('menu.viewCart')}</span>
                 <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
               </div>
             </button>

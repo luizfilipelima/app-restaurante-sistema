@@ -154,6 +154,7 @@ export function DeliveryZonesSection({ restaurantId, restaurant, baseCurrency }:
   const [deleting, setDeleting] = useState(false);
   const [restaurantAddress, setRestaurantAddress] = useState<string | null>(null);
   const [restaurantAddressLoading, setRestaurantAddressLoading] = useState(false);
+  const [isEditingRestaurantLocation, setIsEditingRestaurantLocation] = useState(false);
   const reverseGeocodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -340,6 +341,7 @@ export function DeliveryZonesSection({ restaurantId, restaurant, baseCurrency }:
         .eq('id', restaurantId);
       await queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
       if (restaurant?.slug) invalidatePublicMenuCache(queryClient, restaurant.slug);
+      setIsEditingRestaurantLocation(false);
       toast({ title: 'Localização salva' });
     } catch (err) {
       console.error(err);
@@ -519,6 +521,7 @@ export function DeliveryZonesSection({ restaurantId, restaurant, baseCurrency }:
                     setRestaurantLng(lng);
                   }}
                   height="200px"
+                  editable={isEditingRestaurantLocation}
                 />
               </Suspense>
               <div className="min-h-[2rem] text-xs text-muted-foreground">
@@ -527,13 +530,24 @@ export function DeliveryZonesSection({ restaurantId, restaurant, baseCurrency }:
                 ) : restaurantAddress ? (
                   restaurantAddress
                 ) : (
-                  'Clique no mapa para definir o ponto.'
+                  'Clique em "Editar" para definir o ponto no mapa.'
                 )}
               </div>
-              <Button onClick={saveRestaurantLocation} disabled={savingRestaurantLocation} size="sm">
-                {savingRestaurantLocation && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-                Salvar localização
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={isEditingRestaurantLocation ? 'secondary' : 'outline'}
+                  size="sm"
+                  onClick={() => setIsEditingRestaurantLocation((v) => !v)}
+                  disabled={savingRestaurantLocation}
+                >
+                  <Edit className="h-3.5 w-3.5 mr-1.5" />
+                  {isEditingRestaurantLocation ? 'Cancelar edição' : 'Editar'}
+                </Button>
+                <Button onClick={saveRestaurantLocation} disabled={savingRestaurantLocation} size="sm">
+                  {savingRestaurantLocation && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                  Salvar localização
+                </Button>
+              </div>
             </div>
           </div>
           <div className="rounded-xl border border-border overflow-hidden">

@@ -86,8 +86,8 @@ function ProductCardGrid({ product, onClick, readOnly = false, currency = 'BRL',
       </div>
 
       {/* Conteúdo */}
-      <div className="flex-1 flex flex-col p-3 sm:p-4">
-        <h3 className="font-medium text-foreground text-[15px] sm:text-base leading-snug line-clamp-2">
+      <div className="flex-1 flex flex-col pt-[22px] pr-[15px] pl-[23px] pb-[15px]">
+        <h3 className="font-medium text-foreground text-[15px] sm:text-base leading-snug line-clamp-2 overflow-visible">
           {product.name}
         </h3>
         {subtitle && (
@@ -98,7 +98,7 @@ function ProductCardGrid({ product, onClick, readOnly = false, currency = 'BRL',
         {(product.allergens?.length || product.labels?.length) ? (
           <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} compact className="mt-2" />
         ) : null}
-        <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="mt-2.5 flex items-center justify-between gap-3 box-content">
           <div className="min-w-0">
             {isOffer && (
               <span className="text-xs text-muted-foreground line-through mr-2">

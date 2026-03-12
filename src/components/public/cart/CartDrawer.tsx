@@ -124,12 +124,10 @@ export default function CartDrawer({ open, onClose, onCheckout, onEditItem, curr
             transition={{ type: 'spring', damping: 32, stiffness: 380, mass: 0.8 }}
           >
             {/* Drag indicator */}
-            <div className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-grab active:cursor-grabbing" onClick={onClose}>
-              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-            </div>
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-grab active:cursor-grabbing" onClick={onClose} />
 
             {/* Header */}
-            <div className="flex flex-col gap-1.5 px-5 py-3 border-b border-border flex-shrink-0">
+            <div className="flex flex-col gap-1.5 px-5 pt-[7px] pb-5 border-b border-border flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-sm">
@@ -291,9 +289,9 @@ export default function CartDrawer({ open, onClose, onCheckout, onEditItem, curr
                               </div>
                             )}
                           </div>
-                          <div className="flex-1 min-w-0 flex flex-col gap-2">
+                          <div className="flex-1 min-w-0 flex flex-col gap-0">
                             <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
+                              <div className="flex-1 min-w-0 mt-1 mb-1">
                                 <h4 className="font-semibold text-foreground text-sm leading-snug">
                                   {item.pizzaFlavors && item.pizzaFlavors.length >= 2
                                     ? item.pizzaFlavors.join(' + ')
@@ -329,14 +327,14 @@ export default function CartDrawer({ open, onClose, onCheckout, onEditItem, curr
                                   <button
                                     type="button"
                                     onClick={() => { onClose(); onEditItem(item, index); }}
-                                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 font-medium text-xs transition-colors touch-manipulation"
+                                    className="inline-flex items-center gap-1.5 h-9 px-5 rounded-[12px] bg-primary/10 text-primary hover:bg-primary/20 font-medium text-xs transition-colors touch-manipulation"
                                   >
                                     <Pencil className="h-3.5 w-3.5" />
                                     {t('cart.editOrder')}
                                   </button>
                                 )}
                               </div>
-                              <span className="font-bold text-foreground text-sm">
+                              <span className="font-bold text-foreground text-sm box-content mr-[9px]">
                                 {fmt(itemTotal)}
                               </span>
                             </div>

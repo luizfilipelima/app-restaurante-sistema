@@ -7,6 +7,8 @@ interface RestaurantLocationMapEditorProps {
   centerLng: number;
   onCenterChange: (lat: number, lng: number) => void;
   height?: string;
+  /** Quando false, o mapa não responde a cliques (somente visualização). O usuário deve clicar em "Editar" para mover o pino. */
+  editable?: boolean;
 }
 
 function MapClickHandler({ onCenterChange }: { onCenterChange: (lat: number, lng: number) => void }) {
@@ -31,6 +33,7 @@ export default function RestaurantLocationMapEditor({
   centerLng,
   onCenterChange,
   height = '280px',
+  editable = true,
 }: RestaurantLocationMapEditorProps) {
   const center: [number, number] = useMemo(
     () => [centerLat, centerLng],
@@ -48,16 +51,18 @@ export default function RestaurantLocationMapEditor({
     <div className="space-y-2">
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground select-none">
         <span className="text-sm leading-none">📍</span>
-        Clique no mapa para definir a localização do restaurante (origem para cálculo do frete)
+        {editable
+          ? 'Clique no mapa para definir a localização do restaurante (origem para cálculo do frete)'
+          : 'Clique em "Editar" para mover a localização do restaurante no mapa'}
       </p>
       <div
-        className="relative overflow-hidden rounded-xl border border-slate-200 isolate"
+        className={`relative overflow-hidden rounded-xl border border-slate-200 isolate ${!editable ? 'pointer-events-none' : ''}`}
         style={{ height }}
       >
         <MapContainer
           center={center}
           zoom={14}
-          className="h-full w-full cursor-crosshair"
+          className={`h-full w-full ${editable ? 'cursor-crosshair' : 'cursor-default'}`}
           style={{ height } as React.CSSProperties}
         >
           <TileLayer
@@ -65,7 +70,7 @@ export default function RestaurantLocationMapEditor({
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <ChangeView center={center} />
-          <MapClickHandler onCenterChange={handleCenterChange} />
+          {editable && <MapClickHandler onCenterChange={handleCenterChange} />}
         </MapContainer>
         {/* Pin marcando a localização do restaurante no centro do mapa */}
         <div

@@ -86,8 +86,8 @@ function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', con
       </div>
 
       {/* Conteúdo */}
-      <div className="flex-1 min-w-0 flex flex-col justify-center py-3.5 pr-3 sm:py-4 sm:pr-4 pl-0">
-        <h3 className="font-medium text-foreground text-[15px] sm:text-base leading-snug line-clamp-2">
+      <div className="flex-1 min-w-0 flex flex-col justify-center pt-[22px] pr-[15px] pb-[15px] pl-0">
+        <h3 className="font-medium text-foreground text-[15px] sm:text-base leading-snug line-clamp-2 overflow-visible">
           {product.name}
         </h3>
         {subtitle && (
@@ -98,7 +98,7 @@ function ProductCard({ product, onClick, readOnly = false, currency = 'BRL', con
         {(product.allergens?.length || product.labels?.length) ? (
           <ProductAllergensLabelsBadges allergens={product.allergens} labels={product.labels} compact className="mt-2" />
         ) : null}
-        <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="mt-2.5 flex items-center justify-between gap-3 box-content">
           <div className="min-w-0">
             {isOffer && (
               <span className="text-xs text-muted-foreground line-through mr-2">

@@ -10,8 +10,8 @@ import { formatPrice } from '@/lib/priceHelper';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Minus, Plus, ArrowLeft, X, Check } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Minus, Plus, ArrowLeft, X, Check, ChevronDown } from 'lucide-react';
 import ProductAllergensLabelsBadges from './ProductAllergensLabelsBadges';
 import ExpandableDescription from './ExpandableDescription';
 
@@ -341,24 +341,53 @@ export default function UnifiedProductModal({
                             </button>
                           </div>
                         ) : (
-                          <Select
-                            value=""
-                            onValueChange={(id) => {
-                              const p = pizzaProducts.find((x) => x.id === id);
-                              if (p) setSelectedSecondProduct(p);
-                            }}
-                          >
-                            <SelectTrigger className="w-full rounded-lg border-2 border-border hover:bg-muted/50">
-                              <SelectValue placeholder={t('customModal.addSecondFlavor')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {pizzaProducts.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.name} ({p.category})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="flex h-10 w-full items-center justify-between rounded-lg border-2 border-border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
+                              >
+                                <span className="text-muted-foreground">{t('customModal.addSecondFlavor')}</span>
+                                <ChevronDown className="h-4 w-4 opacity-50" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="max-h-[min(60vh,320px)] w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto p-1.5">
+                              {pizzaProducts.map((p) => {
+                                const price = convertForDisplay
+                                  ? convertForDisplay(Number(p.price_sale ?? p.price) * (effectiveSize?.price_multiplier ?? 1))
+                                  : Number(p.price_sale ?? p.price) * (effectiveSize?.price_multiplier ?? 1);
+                                return (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedSecondProduct(p);
+                                    }}
+                                    className="flex w-full cursor-pointer items-center gap-3 rounded-lg p-2 text-left outline-none transition-colors hover:bg-muted/80 focus:bg-muted/80"
+                                  >
+                                    <div className="h-14 w-14 min-h-14 min-w-14 flex-shrink-0 overflow-hidden rounded-xl bg-muted ring-1 ring-border">
+                                      {p.image_url ? (
+                                        <img
+                                          src={p.image_url}
+                                          alt={p.name}
+                                          className="h-full w-full object-cover object-center"
+                                          loading="lazy"
+                                        />
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center">
+                                          <span className="text-2xl opacity-25">🍽</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-medium text-foreground text-sm leading-snug">{p.name}</p>
+                                      <p className="text-xs text-muted-foreground">{fmt(price)}</p>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
                       </div>
                     )}
