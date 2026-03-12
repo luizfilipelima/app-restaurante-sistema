@@ -140,7 +140,7 @@ const buildNavSections = (base: string, t: TFn): NavSection[] => [
       {
         kind: 'leaf',
         name: t('nav.items.dashboard'),
-        href: base,
+        href: `${base}/dashboard`,
         icon: LayoutDashboard,
         roleRequired: ['owner', 'restaurant_admin', 'super_admin'],
       },

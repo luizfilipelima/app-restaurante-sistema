@@ -92,9 +92,11 @@ function LoadingScreen() {
 
 const adminRoutes = (
   <>
-    {/* Dashboard financeiro — somente proprietário e acima */}
+    {/* index → redireciona sempre para /cashier como página inicial do painel */}
+    <Route index element={<Navigate to="cashier" replace />} />
+    {/* Meu Negócio (Dashboard) — somente proprietor e acima */}
     <Route
-      index
+      path="dashboard"
       element={
         <RoleProtectedRoute allowedRoles={['owner', 'restaurant_admin', 'super_admin']}>
           <AdminDashboard />

@@ -18,9 +18,9 @@ test.describe('i18n Cardápio Público', () => {
     const base = baseURL || 'http://localhost:5173';
     await page.goto(`${base}/${SLUG}`, { waitUntil: 'load' });
     await page.waitForLoadState('networkidle');
-    // Splash ~2s + fetch: aguarda botão do carrinho ou cards de produto
+    // Splash ~2s + fetch: aguarda botão do carrinho ou cards de produto (first evita strict mode violation)
     await expect(
-      page.getByTestId('menu-view-cart').or(page.getByTestId(/product-add-/))
+      page.getByTestId('menu-view-cart').or(page.getByTestId(/product-add-/)).first()
     ).toBeVisible({ timeout: 25000 });
   });
 
@@ -29,7 +29,7 @@ test.describe('i18n Cardápio Público', () => {
     await page.goto(`${base}/${SLUG}`, { waitUntil: 'load' });
     await page.waitForLoadState('networkidle');
     await expect(
-      page.getByTestId('menu-view-cart').or(page.getByTestId(/product-add-/))
+      page.getByTestId('menu-view-cart').or(page.getByTestId(/product-add-/)).first()
     ).toBeVisible({ timeout: 25000 });
 
     // Seletor de idioma (PT/ES) — Menu padrão pode não ter; LinkBio tem

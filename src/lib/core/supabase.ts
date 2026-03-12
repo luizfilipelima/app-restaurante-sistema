@@ -8,9 +8,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // persistSession e autoRefreshToken habilitam sync multi-tab via BroadcastChannel (auth-js)
+// realtime: logLevel 'error' reduz ruído no console; logger custom evita spam em falhas de rede
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
   },
+  realtime: { logLevel: 'error' },
 });

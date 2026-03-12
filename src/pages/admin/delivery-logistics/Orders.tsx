@@ -281,32 +281,57 @@ export default function AdminOrders() {
   const handleRealtimeOrderRef = useRef(handleRealtimeOrder);
   useEffect(() => { handleRealtimeOrderRef.current = handleRealtimeOrder; }, [handleRealtimeOrder]);
 
+  const [realtimeError, setRealtimeError] = useState(false);
+  const retryCountRef = useRef(0);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const MAX_RETRIES = 3;
+
   useEffect(() => {
-    // Só subscreve quando temos UUID válido (evita undefined/slug malformado na montagem)
     if (!restaurantId || !isUUID(restaurantId)) return;
-    const channel = supabase
-      .channel(`orders-changes-${restaurantId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          filter: `restaurant_id=eq.${restaurantId}`,
-        },
-        (payload) => handleRealtimeOrderRef.current(payload)
-      )
-      .subscribe((status, err) => {
-        setIsLive(status === 'SUBSCRIBED');
-        if (status === 'CHANNEL_ERROR' && import.meta.env.DEV && err) {
-          console.warn('[Orders Realtime]', status, err);
-        }
-      });
-    return () => {
-      supabase.removeChannel(channel);
-      setIsLive(false);
+
+    let retryTimeoutId: ReturnType<typeof setTimeout>;
+
+    const subscribe = () => {
+      const ch = supabase
+        .channel(`orders-changes-${restaurantId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: `restaurant_id=eq.${restaurantId}`,
+          },
+          (payload) => handleRealtimeOrderRef.current(payload)
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            setIsLive(true);
+            setRealtimeError(false);
+            retryCountRef.current = 0;
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            setIsLive(false);
+            setRealtimeError(true);
+            if (retryCountRef.current < MAX_RETRIES) {
+              retryCountRef.current += 1;
+              const delay = Math.min(2000 * retryCountRef.current, 8000);
+              retryTimeoutId = setTimeout(subscribe, delay);
+            }
+          }
+        });
+      channelRef.current = ch;
     };
-  }, [restaurantId]); // apenas restaurantId — evita re-subscrição desnecessária
+
+    subscribe();
+
+    return () => {
+      clearTimeout(retryTimeoutId);
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      setIsLive(false);
+      setRealtimeError(false);
+      retryCountRef.current = 0;
+    };
+  }, [restaurantId]);
 
   // Fallback: polling quando Realtime não está conectado (ex: tabela fora da publicação)
   useEffect(() => {
@@ -552,9 +577,17 @@ export default function AdminOrders() {
           actions={
             <>
               <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
-                isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-muted border-border text-muted-foreground'
+                isLive ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : realtimeError ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-muted border-border text-muted-foreground'
               }`}>
-                {isLive ? (<><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /><Wifi className="h-3 w-3" /> Ao Vivo</>) : (<><WifiOff className="h-3 w-3" /> Conectando…</>)}
+                {isLive ? (
+                  <><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /><Wifi className="h-3 w-3" /> Ao Vivo</>
+                ) : realtimeError ? (
+                  <button type="button" onClick={() => refetchOrders()} className="flex items-center gap-1.5 hover:underline" title="Atualizar pedidos">
+                    <WifiOff className="h-3 w-3" /> Sem conexão — clique para atualizar
+                  </button>
+                ) : (
+                  <><WifiOff className="h-3 w-3" /> Conectando…</>
+                )}
               </div>
               <div className="flex items-center gap-1 admin-card-border bg-muted/40 p-1">
                 <button

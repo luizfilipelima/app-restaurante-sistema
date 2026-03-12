@@ -45,10 +45,13 @@ test.describe('Order Journey (Admin → Cardápio → Checkout)', () => {
     await page.goto(`${base}/${slug}/painel/menu`);
     await page.waitForLoadState('networkidle');
 
-    const editBtn = page.getByRole('button', { name: 'Editar' }).first();
+    const editBtn = page.getByRole('button', { name: /editar/i }).first();
     await editBtn.click();
 
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 8000 });
     const priceInput = page.getByTestId('product-price-input');
+    await priceInput.scrollIntoViewIfNeeded();
+    await expect(priceInput).toBeVisible({ timeout: 8000 });
     await priceInput.clear();
     await priceInput.fill('29,90');
     await page.getByTestId('menu-save-product').click();

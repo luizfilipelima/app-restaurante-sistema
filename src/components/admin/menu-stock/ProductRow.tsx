@@ -103,6 +103,7 @@ export default function ProductRow({
             className="h-8 w-8"
             onClick={() => onEdit(product)}
             title="Editar"
+            aria-label="Editar"
           >
             <Edit className="h-4 w-4" />
           </Button>
