@@ -65,6 +65,11 @@ export function ConectarWhatsApp({
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      // #region agent log
+      const _dbg1={sessionId:'2db9a3',location:'ConectarWhatsApp.tsx:handleGerarQR',message:'session before invoke',data:{hasSession:!!session,userId:session?.user?.id?.slice(0,8),restaurantId},hypothesisId:'H1,H2,H3',timestamp:Date.now()};
+      console.log('[DEBUG]',JSON.stringify(_dbg1));
+      fetch('http://127.0.0.1:7844/ingest/17b6b815-dfd2-4413-bb3c-b7e8274baaa6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2db9a3'},body:JSON.stringify(_dbg1)}).catch(()=>{});
+      // #endregion
       if (!session) {
         setError('Sessão expirada. Faça logout e login novamente para continuar.');
         toast({ title: 'Sessão expirada', description: 'Faça login novamente.', variant: 'destructive' });
@@ -75,8 +80,21 @@ export function ConectarWhatsApp({
         body: { restaurantId },
       });
 
+      // #region agent log
+      const ctx = err && typeof err === 'object' && 'context' in err ? (err as {context?: unknown}).context : undefined;
+      const resLike = ctx && typeof ctx === 'object' && 'status' in ctx ? ctx : null;
+      const statusVal = resLike && typeof (resLike as {status?: number}).status === 'number' ? (resLike as {status: number}).status : null;
+      const _dbg2={sessionId:'2db9a3',location:'ConectarWhatsApp.tsx:after invoke',message:'invoke result',data:{hasError:!!err,errMessage:(err as {message?:string})?.message,status:statusVal,hasContext:!!ctx,hasContextJson:!!(ctx&&typeof ctx==='object'&&'json' in ctx&&typeof (ctx as {json?: unknown}).json==='function')},hypothesisId:'H4,H5',timestamp:Date.now()};
+      console.log('[DEBUG]',JSON.stringify(_dbg2));
+      fetch('http://127.0.0.1:7844/ingest/17b6b815-dfd2-4413-bb3c-b7e8274baaa6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2db9a3'},body:JSON.stringify(_dbg2)}).catch(()=>{});
+      // #endregion
       if (err) {
         const msg = await getInvokeErrorMessage(err);
+        // #region agent log
+        const _dbg3={sessionId:'2db9a3',location:'ConectarWhatsApp.tsx:extracted msg',message:'getInvokeErrorMessage result',data:{extractedMsg:msg?.slice(0,120)},hypothesisId:'H5',timestamp:Date.now()};
+        console.log('[DEBUG]',JSON.stringify(_dbg3));
+        fetch('http://127.0.0.1:7844/ingest/17b6b815-dfd2-4413-bb3c-b7e8274baaa6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2db9a3'},body:JSON.stringify(_dbg3)}).catch(()=>{});
+        // #endregion
         throw new Error(msg);
       }
 
