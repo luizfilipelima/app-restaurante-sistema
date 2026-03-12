@@ -45,7 +45,7 @@ export default function ProductCardViewOnly({ product, currency, comboItems, lay
       >
         <div className={`relative overflow-hidden bg-muted ring-1 ring-border ${
           isVertical
-            ? 'w-full aspect-[4/3] rounded-t-2xl'
+            ? 'w-full aspect-[4/3] rounded-2xl'
             : 'w-[120px] sm:w-[140px] min-w-[120px] sm:min-w-[140px] min-h-[120px] sm:min-h-[140px] flex-shrink-0 self-stretch rounded-2xl'
         }`}>
           {product.image_url ? (
@@ -84,7 +84,7 @@ export default function ProductCardViewOnly({ product, currency, comboItems, lay
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md w-[calc(100%-2rem)] max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 rounded-2xl border-border">
-          <div className="relative w-full aspect-[3/4] max-h-[50vh] overflow-hidden rounded-t-2xl bg-muted flex-shrink-0">
+          <div className="relative w-full aspect-[3/4] max-h-[50vh] overflow-hidden rounded-2xl bg-muted flex-shrink-0">
             {product.image_url ? (
               <img
                 src={product.image_url}

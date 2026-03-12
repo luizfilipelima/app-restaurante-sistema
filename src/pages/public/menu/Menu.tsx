@@ -490,7 +490,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         </div>
       )}
       {/* Header - Layout referência: logo + nome/status à esquerda, carrinho à direita */}
-      <header className="bg-card/95 backdrop-blur-sm border-b border-border sticky top-0 z-20 safe-area-inset-top">
+      <header className="bg-transparent backdrop-blur-sm border-b border-border sticky top-0 z-20 safe-area-inset-top">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-6xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -601,7 +601,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
                   >
                     {cat.image_url ? (
                       <>
-                        <div className="relative w-full aspect-video bg-muted overflow-hidden rounded-t-2xl">
+                        <div className="relative w-full aspect-video bg-muted overflow-hidden rounded-2xl">
                           <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                         </div>
@@ -638,15 +638,15 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
 
         {/* Busca e categorias — layout referência: busca em destaque + pills horizontais (não no modo categorias-first inicial) */}
         {(!categoriesFirst || viewingSingleCategory) && (
-        <div className={`sticky z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-card/95 backdrop-blur-sm rounded-b-xl ${tableNumber != null && onCallWaiter ? 'top-[115px] sm:top-[125px] md:top-[135px]' : 'top-[65px] sm:top-[73px] md:top-[81px]'}`}>
+        <div className={`sticky z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3 bg-transparent backdrop-blur-sm rounded-b-xl ${tableNumber != null && onCallWaiter ? 'top-[115px] sm:top-[125px] md:top-[135px]' : 'top-[65px] sm:top-[73px] md:top-[81px]'}`}>
           <div className="space-y-2.5">
             <div className="relative">
-              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
               <Input
                 placeholder={t('menu.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-3 sm:pr-4 bg-card border border-input rounded-xl focus-visible:ring-2 focus-visible:ring-ring text-base text-foreground placeholder:text-muted-foreground transition-colors touch-manipulation"
+                className="w-full h-11 sm:h-12 pl-10 sm:pl-11 pr-3 sm:pr-4 bg-card border border-input rounded-[60px] focus-visible:ring-2 focus-visible:ring-ring text-base text-foreground placeholder:text-muted-foreground transition-colors touch-manipulation"
               />
             </div>
 
@@ -904,8 +904,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
       {/* Cart FAB (Mobile) — fundo transparente */}
       {((getItemsCount() > 0) || (isTableOrder && getOrderedItemsCount() > 0)) && !splashOverlay && (
         <div 
-          className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-transparent"
+          className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
           style={{ 
+            opacity: 1,
+            background: 'transparent',
             paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
             paddingLeft: 'max(12px, env(safe-area-inset-left))',
             paddingRight: 'max(12px, env(safe-area-inset-right))'

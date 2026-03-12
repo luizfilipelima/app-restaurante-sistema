@@ -9,7 +9,7 @@ import type { PizzaSize, PizzaDough, PizzaEdge, PizzaExtra } from '@/types';
 
 interface ProductCustomDetailsCardProps {
   config: ProductCustomConfig | null | undefined;
-  onChange: (config: ProductCustomConfig) => void;
+  onChange: (configOrUpdater: ProductCustomConfig | ((prev: ProductCustomConfig | null) => ProductCustomConfig | null)) => void;
   sizes: PizzaSize[];
   doughs: PizzaDough[];
   edges: PizzaEdge[];
@@ -48,10 +48,10 @@ export default function ProductCustomDetailsCard({
     id: string,
     allIds: string[]
   ) => {
-    const current = config?.[key];
-    const next = toggleIds(current, id, allIds);
+    const next = toggleIds(config?.[key], id, allIds);
     if (next === null) return;
-    onChange({ ...config, [key]: next });
+    // Usa functional update para evitar estado desatualizado ao alternar rapidamente
+    onChange((prev) => ({ ...(prev ?? {}), [key]: next }));
   };
 
   const Section = ({

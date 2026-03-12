@@ -221,7 +221,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
                   >
                     {cat.image_url ? (
                       <>
-                        <div className="relative w-full aspect-video bg-muted overflow-hidden rounded-t-2xl">
+                        <div className="relative w-full aspect-video bg-muted overflow-hidden rounded-2xl">
                           <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                         </div>

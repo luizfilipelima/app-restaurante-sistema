@@ -56,7 +56,7 @@ function ProductCardGrid({ product, onClick, readOnly = false, currency = 'BRL',
       } ${!readOnly ? 'cursor-pointer active:scale-[0.995] hover:shadow-md hover:border-border touch-manipulation' : ''}`}
     >
       {/* Imagem em destaque no topo */}
-      <div className="relative w-full aspect-[4/3] overflow-hidden rounded-t-2xl bg-muted">
+      <div className="relative w-full aspect-[4/3] overflow-hidden rounded-2xl bg-muted">
         {hasImage ? (
           <img
             src={product.image_url!}
