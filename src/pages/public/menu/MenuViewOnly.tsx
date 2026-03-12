@@ -151,7 +151,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
   return (
     <div className="min-h-screen bg-background font-sans antialiased pb-8 md:pb-8 safe-area-inset-bottom">
       {/* Header - Mobile First */}
-      <header className="bg-card/95 backdrop-blur-sm border-b border-border sticky top-0 z-20 safe-area-inset-top">
+      <header className="fixed top-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-b border-border z-20 safe-area-inset-top">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-6xl">
           <div className="flex items-center justify-between gap-2 sm:gap-4 min-w-0">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
@@ -204,7 +204,7 @@ export default function MenuViewOnly({ tenantSlug: tenantSlugProp }: MenuViewOnl
 
       <RestaurantInfoModal open={infoModalOpen} onOpenChange={setInfoModalOpen} restaurant={restaurant} />
 
-      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-6xl space-y-4 sm:space-y-6">
+      <main className="container mx-auto px-3 sm:px-4 pt-[73px] sm:pt-20 py-4 sm:py-6 max-w-6xl space-y-4 sm:space-y-6">
         {/* Modo categorias primeiro: cards com imagem no topo (16:9), bordas arredondadas */}
         {categoriesFirst && !viewingSingleCategory && (
           <div className="space-y-4">

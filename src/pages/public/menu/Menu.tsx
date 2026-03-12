@@ -490,7 +490,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         </div>
       )}
       {/* Header - Layout referência: logo + nome/status à esquerda, carrinho à direita */}
-      <header className="bg-transparent backdrop-blur-sm border-b border-border sticky top-0 z-20 safe-area-inset-top">
+      <header className="fixed top-0 left-0 right-0 bg-transparent backdrop-blur-sm border-b border-border z-20 safe-area-inset-top">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-6xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -584,7 +584,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         )}
       </header>
 
-      <main className="container mx-auto px-3 sm:px-4 py-3 sm:py-5 max-w-6xl space-y-4 sm:space-y-5">
+      <main className="container mx-auto px-3 sm:px-4 pt-[73px] sm:pt-20 py-3 sm:py-5 max-w-6xl space-y-4 sm:space-y-5">
         {/* ── Modo categorias primeiro: cards com imagem no topo (16:9), bordas arredondadas ── */}
         {categoriesFirst && !viewingSingleCategory && (
           <div className="space-y-4">
