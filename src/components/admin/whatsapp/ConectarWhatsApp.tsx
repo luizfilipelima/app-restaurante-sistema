@@ -64,7 +64,12 @@ export function ConectarWhatsApp({
     setQrImageSrc(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: refreshErr } = await supabase.auth.refreshSession();
+      if (refreshErr || !session) {
+        setError('Sessão expirada. Faça logout e login novamente para continuar.');
+        toast({ title: 'Sessão expirada', description: 'Faça login novamente.', variant: 'destructive' });
+        return;
+      }
       // #region agent log
       const _dbg1={sessionId:'2db9a3',location:'ConectarWhatsApp.tsx:handleGerarQR',message:'session before invoke',data:{hasSession:!!session,userId:session?.user?.id?.slice(0,8),restaurantId},hypothesisId:'H1,H2,H3',timestamp:Date.now()};
       console.log('[DEBUG]',JSON.stringify(_dbg1));
@@ -151,8 +156,8 @@ export function ConectarWhatsApp({
 
     setDisconnecting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { session }, error: refreshErr } = await supabase.auth.refreshSession();
+      if (refreshErr || !session) {
         toast({ title: 'Sessão expirada', description: 'Faça login novamente.', variant: 'destructive' });
         return;
       }
