@@ -10,6 +10,7 @@
 import { useEffect, useState, useMemo, useLayoutEffect } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
 import { supabase } from '@/lib/core/supabase';
+import i18n, { setStoredMenuLanguage, getStoredMenuLanguage, hasStoredMenuLanguage, type MenuLanguage } from '@/lib/i18n';
 import { getMenuThemeConfig, paletteToCssVars, getSemanticCssVarsForCustomTheme, updateDocumentThemeMeta, resetDocumentThemeMeta } from '@/lib/menu/menuThemes';
 import { getMenuThemeCache, setMenuThemeCache } from '@/lib/menu/menuThemeCache';
 
@@ -38,7 +39,7 @@ export default function MenuThemeWrapper() {
       try {
         const { data } = await supabase
           .from('restaurants')
-          .select('menu_theme, menu_theme_accent')
+          .select('menu_theme, menu_theme_accent, language')
           .eq('slug', restaurantSlug)
           .eq('is_active', true)
           .single();
@@ -47,9 +48,14 @@ export default function MenuThemeWrapper() {
         setMenuThemeId(themeId);
         setMenuThemeAccent(accent);
         setMenuThemeCache(restaurantSlug, { menuThemeId: themeId, menuThemeAccent: accent });
+        const userHasChosen = hasStoredMenuLanguage();
+        const lang = (userHasChosen ? getStoredMenuLanguage() : (data?.language === 'es' ? 'es' : 'pt')) as MenuLanguage;
+        if (!userHasChosen) setStoredMenuLanguage(lang);
+        i18n.changeLanguage(lang);
       } catch {
         setMenuThemeId(null);
         setMenuThemeAccent(null);
+        i18n.changeLanguage('pt');
       }
     })();
   }, [restaurantSlug]);

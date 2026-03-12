@@ -716,7 +716,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     <div className="min-h-screen bg-background safe-area-inset-bottom">
 
       {/* ── Header sticky ── */}
-      <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-border/80 safe-area-inset-top">
+      <div className="sticky top-0 z-30 bg-transparent backdrop-blur-sm border-b border-border/80 safe-area-inset-top">
         <div className="max-w-xl mx-auto px-4 h-14 flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -751,7 +751,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
       </div>
 
       {/* ── Conteúdo ── */}
-      <div className="max-w-xl mx-auto px-4 pt-4 pb-36 space-y-4">
+      <div className="max-w-xl mx-auto px-4 pt-4 pb-[105px] space-y-4">
 
         {/* ── 1. Sacola ── */}
         <div className="relative z-10 bg-card rounded-2xl shadow-sm overflow-hidden">
@@ -883,9 +883,9 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         {!isTableOrder && (
           <div className="relative z-10 flex gap-2">
             {[
-              { type: DeliveryType.DELIVERY, icon: Bike, label: t('checkout.delivery'), sub: 'No seu endereço' },
-              { type: DeliveryType.PICKUP, icon: Store, label: t('checkout.pickup'), sub: 'Retirar no local' },
-            ].map(({ type, icon: Icon, label, sub }) => (
+              { type: DeliveryType.DELIVERY, icon: Bike, label: t('checkout.delivery') },
+              { type: DeliveryType.PICKUP, icon: Store, label: t('checkout.pickup') },
+            ].map(({ type, icon: Icon, label }) => (
               <button
                 key={type}
                 onClick={() => setDeliveryType(type)}
@@ -897,7 +897,6 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               >
                 <Icon className={`h-5 w-5 ${deliveryType === type ? 'text-primary' : 'text-muted-foreground'}`} />
                 <span>{label}</span>
-                <span className="text-[10px] font-normal opacity-70">{sub}</span>
               </button>
             ))}
           </div>
@@ -1361,7 +1360,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
                       {value === PaymentMethod.CASH && paymentMethod === PaymentMethod.CASH && (
                         <div className="mt-2 px-1">
                           <Label className="text-xs text-muted-foreground mb-1.5 block">
-                            {t('checkout.changeFor')} em {displayCurrency === 'PYG' ? 'Guaraní' : displayCurrency === 'ARS' ? 'Peso Argentino' : 'Real'} — <span className="text-muted-foreground/70">opcional</span>
+                            {t('checkout.changeFor')}
                           </Label>
                           <Input
                             placeholder={displayCurrency === 'PYG' ? 'Ex: 100.000' : 'Ex: 100,00'}
@@ -1383,8 +1382,8 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         {!isTableOrder && (
           <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 flex items-center gap-2 border-b border-border">
-              <div className="h-6 w-6 rounded-lg bg-warning/20 flex items-center justify-center flex-shrink-0">
-                <StickyNote className="h-3.5 w-3.5 text-warning" />
+              <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <StickyNote className="h-3.5 w-3.5 text-primary" />
               </div>
               <span className="text-sm font-semibold text-card-foreground">{t('checkout.notesLabel')}</span>
               <span className="text-xs text-muted-foreground ml-1">• opcional</span>
@@ -1586,7 +1585,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
       {/* ── Barra de ação sticky ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 bg-card/97 backdrop-blur-md border-t border-border px-4 pt-3 shadow-2xl shadow-black/10"
+        className="fixed bottom-0 left-0 right-0 z-30 bg-card/97 backdrop-blur-md border-t border-border px-4 pt-4 shadow-2xl shadow-black/10"
         style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
       >
         <div className="max-w-xl mx-auto space-y-2.5">
@@ -1609,7 +1608,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
           <Button
             size="lg"
             data-testid="checkout-submit"
-            className={`w-full font-bold h-14 rounded-2xl shadow-lg flex items-center justify-center gap-2.5 text-base touch-manipulation active:scale-[0.98] transition-all ${
+            className={`w-full font-bold h-14 rounded-2xl shadow-lg flex items-center justify-center gap-[15px] px-5 text-base touch-manipulation active:scale-[0.98] transition-all ${
               isTableOrder
                 ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
                 : 'bg-[#25D366] hover:bg-[#1ebc57] active:bg-[#1aa34a] text-white dark:text-[hsl(var(--background))]'

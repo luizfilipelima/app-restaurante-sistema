@@ -1,6 +1,6 @@
 /**
  * Card "Detalhes Custom" — permite ativar/desativar itens da Config Custom para o produto.
- * Posicionado abaixo do card de Etiquetas. Vazio = usa todos.
+ * Posicionado abaixo do card de Etiquetas. Vazio = nenhum selecionado.
  */
 import { Label } from '@/components/ui/label';
 import { SlidersHorizontal, Check } from 'lucide-react';
@@ -16,18 +16,9 @@ interface ProductCustomDetailsCardProps {
   extras: PizzaExtra[];
 }
 
-function toggleIds(ids: string[] | undefined, id: string, allIds: string[]): string[] | undefined | null {
-  const current = ids && ids.length > 0 ? ids : allIds;
+function toggleIds(current: string[], id: string): string[] {
   const hasId = current.includes(id);
-  const next = hasId ? current.filter((x) => x !== id) : [...current, id];
-  if (next.length === 0) return null;
-  if (next.length === allIds.length) return undefined;
-  return next;
-}
-
-function isSelected(ids: string[] | undefined, id: string, _allIds: string[]): boolean {
-  if (!ids || ids.length === 0) return true;
-  return ids.includes(id);
+  return hasId ? current.filter((x) => x !== id) : [...current, id];
 }
 
 export default function ProductCustomDetailsCard({
@@ -48,9 +39,8 @@ export default function ProductCustomDetailsCard({
     id: string,
     allIds: string[]
   ) => {
-    const next = toggleIds(config?.[key], id, allIds);
-    if (next === null) return;
-    // Usa functional update para evitar estado desatualizado ao alternar rapidamente
+    const current = config == null ? allIds : (config?.[key] ?? []);
+    const next = toggleIds(current, id);
     onChange((prev) => ({ ...(prev ?? {}), [key]: next }));
   };
 
@@ -68,26 +58,30 @@ export default function ProductCustomDetailsCard({
     allIds: string[];
   }) => {
     if (items.length === 0) return null;
-    const selectedIds = (config?.[keyName] && config[keyName]!.length > 0) ? config[keyName]! : allIds;
+    const selectedIds = config == null ? allIds : (config?.[keyName] ?? []);
+    const count = selectedIds.length;
+    const statusText =
+      count === 0
+        ? 'Nenhum selecionado'
+        : count === allIds.length
+          ? 'Todos selecionados'
+          : `${count} de ${allIds.length} selecionados`;
     return (
       <div className="space-y-2">
         <Label className="text-xs font-semibold text-muted-foreground uppercase">{title}</Label>
         <div className="flex flex-wrap gap-2">
           {items.map((item) => {
-            const sel = isSelected(config?.[keyName], item.id, allIds);
-            const isLastSelected = sel && selectedIds.length === 1;
+            const sel = selectedIds.includes(item.id);
             return (
               <button
                 key={item.id}
                 type="button"
-                onClick={() => !isLastSelected && handleToggle(keyName, item.id, allIds)}
-                disabled={isLastSelected}
-                title={isLastSelected ? 'Selecione pelo menos um' : undefined}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-sm font-medium transition-all duration-200 touch-manipulation select-none ${
+                onClick={() => handleToggle(keyName, item.id, allIds)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-sm font-medium transition-all duration-200 touch-manipulation select-none cursor-pointer active:scale-[0.97] ${
                   sel
                     ? 'border-primary bg-primary/10 text-primary'
                     : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50'
-                } ${isLastSelected ? 'opacity-90 cursor-default' : 'cursor-pointer active:scale-[0.97]'}`}
+                }`}
               >
                 {sel && <Check className="h-3.5 w-3.5" />}
                 {getLabel(item)}
@@ -95,11 +89,7 @@ export default function ProductCustomDetailsCard({
             );
           })}
         </div>
-        <p className="text-xs text-muted-foreground">
-          {config?.[keyName] && (config[keyName]?.length ?? 0) > 0 && (config[keyName]?.length ?? 0) < allIds.length
-            ? `${config[keyName]?.length} de ${allIds.length} selecionados`
-            : 'Todos aplicados (vazio = todos)'}
-        </p>
+        <p className="text-xs text-muted-foreground">{statusText}</p>
       </div>
     );
   };

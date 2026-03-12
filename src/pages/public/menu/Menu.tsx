@@ -490,7 +490,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         </div>
       )}
       {/* Header - Layout referência: logo + nome/status à esquerda, carrinho à direita */}
-      <header className="fixed top-0 left-0 right-0 bg-transparent backdrop-blur-sm border-b border-border z-20 safe-area-inset-top">
+      <header className="sticky top-0 left-0 right-0 bg-background/80 backdrop-blur-md border-b border-border z-20 safe-area-inset-top">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-6xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -584,7 +584,7 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         )}
       </header>
 
-      <main className="container mx-auto px-3 sm:px-4 pt-[73px] sm:pt-20 py-3 sm:py-5 max-w-6xl space-y-4 sm:space-y-5">
+      <main className="container mx-auto px-3 sm:px-4 py-3 sm:py-5 max-w-6xl space-y-4 sm:space-y-5">
         {/* ── Modo categorias primeiro: cards com imagem no topo (16:9), bordas arredondadas ── */}
         {categoriesFirst && !viewingSingleCategory && (
           <div className="space-y-4">
@@ -1050,10 +1050,10 @@ export default function PublicMenu({ tenantSlug: tenantSlugProp, tableId, tableN
         {pizzaModalProduct && (() => {
           const p = pizzaModalProduct.product;
           const cc = p.custom_config;
-          const filteredSizes = cc?.sizeIds?.length ? pizzaSizes.filter((s) => cc.sizeIds!.includes(s.id)) : pizzaSizes;
-          const filteredDoughs = cc?.doughIds?.length ? pizzaDoughs.filter((d) => cc.doughIds!.includes(d.id)) : pizzaDoughs;
-          const filteredEdges = cc?.edgeIds?.length ? pizzaEdges.filter((e) => cc.edgeIds!.includes(e.id)) : pizzaEdges;
-          const filteredExtras = cc?.extraIds?.length ? pizzaExtras.filter((e) => cc.extraIds!.includes(e.id)) : pizzaExtras;
+          const filteredSizes = cc?.sizeIds != null ? pizzaSizes.filter((s) => cc.sizeIds!.includes(s.id)) : pizzaSizes;
+          const filteredDoughs = cc?.doughIds != null ? pizzaDoughs.filter((d) => cc.doughIds!.includes(d.id)) : pizzaDoughs;
+          const filteredEdges = cc?.edgeIds != null ? pizzaEdges.filter((e) => cc.edgeIds!.includes(e.id)) : pizzaEdges;
+          const filteredExtras = cc?.extraIds != null ? pizzaExtras.filter((e) => cc.extraIds!.includes(e.id)) : pizzaExtras;
           return (
           <UnifiedProductModal
             open={!!pizzaModalProduct}

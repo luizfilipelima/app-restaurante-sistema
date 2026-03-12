@@ -695,7 +695,7 @@ export default function AdminMenu() {
       costCurrency: currency as CostCurrencyCode,
       cardLayout: 'grid',
     });
-    setCustomConfig(null);
+    setCustomConfig({ sizeIds: [], doughIds: [], edgeIds: [], extraIds: [] });
     setModalOpen(true);
   };
 
