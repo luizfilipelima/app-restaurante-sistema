@@ -412,6 +412,7 @@ function WaiterTerminalContent() {
                   key={table.id}
                   table={table}
                   currency={currency}
+                  zoneId={table.hall_zone_id}
                   zoneName={hallZones.find((z) => z.id === table.hall_zone_id)?.name ?? null}
                   onClick={() => setSelectedTable(table)}
                   t={t}

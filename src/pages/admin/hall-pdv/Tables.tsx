@@ -592,6 +592,7 @@ export default function AdminTables() {
               key={table.id}
               table={table}
               currency={currency}
+              zoneId={table.hall_zone_id}
               zoneName={hallZones.find((z) => z.id === table.hall_zone_id)?.name ?? null}
               onClick={() => setSelectedTable(table)}
               t={t}
@@ -1222,19 +1223,25 @@ export default function AdminTables() {
   );
 }
 
-// Cores para badges de zona (estilo Kanban: fundo claro + texto escuro)
+// Cores distintas para badges de zona (evitar azul/ciano similares — cada zona com cor única)
 const ZONE_BADGE_STYLES = [
   'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
-  'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-200',
   'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200',
   'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
   'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
   'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200',
+  'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200',
+  'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200',
+  'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200',
+  'bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200',
+  'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/40 dark:text-fuchsia-200',
 ];
 
-function getZoneBadgeStyle(zoneName: string): string {
+/** Hash estável: zoneId quando disponível, senão zoneName. Garante cores distintas por zona. */
+function getZoneBadgeStyle(zoneId: string | null, zoneName: string): string {
+  const key = zoneId ?? zoneName || 'none';
   let hash = 0;
-  for (let i = 0; i < zoneName.length; i++) hash = ((hash << 5) - hash) + zoneName.charCodeAt(i);
+  for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash) + key.charCodeAt(i);
   return ZONE_BADGE_STYLES[Math.abs(hash) % ZONE_BADGE_STYLES.length];
 }
 
@@ -1268,6 +1275,7 @@ function getStatusConfig(t: (k: string) => string) {
 export function TableCard({
   table,
   currency,
+  zoneId,
   zoneName,
   onClick,
   t,
@@ -1275,6 +1283,7 @@ export function TableCard({
 }: {
   table: TableWithStatus;
   currency: string;
+  zoneId?: string | null;
   zoneName?: string | null;
   onClick: () => void;
   t: (k: string) => string;
@@ -1381,7 +1390,7 @@ export function TableCard({
             <span
               className={cn(
                 'inline-block text-[11px] font-semibold uppercase tracking-wide px-2 py-1 rounded break-words max-w-full',
-                getZoneBadgeStyle(zoneName)
+                getZoneBadgeStyle(zoneId ?? null, zoneName)
               )}
             >
               {zoneName}
@@ -2270,7 +2279,7 @@ export function TableOperationSheet({
                     return (
                       <div key={zId ?? '__sem_zona__'} className="space-y-1.5">
                         {zoneName && (
-                          <p className="text-[11px] font-medium text-muted-foreground/90 px-1.5 truncate">
+                          <p className={cn('text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded truncate max-w-full inline-block', getZoneBadgeStyle(zId, zoneName))}>
                             {zoneName}
                           </p>
                         )}
