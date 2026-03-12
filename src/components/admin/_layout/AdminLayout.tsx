@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageTransition } from '@/components/ui/PageTransition';
 import { useAuthStore } from '@/store/authStore';
-import { AdminRestaurantContext, useAdminRestaurantId, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
+import { AdminRestaurantContext, useAdminRestaurant, useAdminRestaurantId, useAdminBasePath } from '@/contexts/AdminRestaurantContext';
 import { useRestaurant } from '@/hooks/queries';
 import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { useCanAccess } from '@/hooks/auth/useUserRole';
@@ -44,6 +44,7 @@ import {
   Instagram,
   MoreHorizontal,
   Link2,
+  MessageSquare,
   Eye,
   ShoppingCart,
   type LucideIcon,
@@ -94,6 +95,8 @@ interface NavLeaf {
   hideWhenNoFeature?: boolean;
   /** Descrição curta exibida no tooltip do item bloqueado */
   featureLabel?: string;
+  /** Se true, o item só aparece quando o restaurante tem whatsapp_evolution_enabled */
+  requiresWhatsAppEvolution?: boolean;
   /**
    * Se preenchido, o item só é visível para usuários com esses cargos
    * (hierarquia respeitada: roles superiores também têm acesso).
@@ -214,6 +217,14 @@ const buildNavSections = (base: string, t: TFn): NavSection[] => [
         icon: Settings,
         roleRequired: ['manager', 'owner', 'restaurant_admin', 'super_admin'],
       },
+      {
+        kind: 'leaf',
+        name: 'Conectar WhatsApp',
+        href: `${base}/settings#whatsapp`,
+        icon: MessageSquare,
+        roleRequired: ['manager', 'owner', 'restaurant_admin', 'super_admin'],
+        requiresWhatsAppEvolution: true,
+      },
     ],
   },
 ];
@@ -313,8 +324,14 @@ function LockedNavItem({ item }: { item: NavLeaf }) {
 
 function GuardedNavItem({ item, isActive }: { item: NavLeaf; isActive: boolean }) {
   const restaurantId = useAdminRestaurantId();
+  const { restaurant } = useAdminRestaurant();
 
   // IMPORTANTE: Todos os hooks devem ser chamados incondicionalmente, antes de qualquer return,
+
+  // Item condicional: só exibe quando whatsapp_evolution_enabled
+  if (item.requiresWhatsAppEvolution && !(restaurant as { whatsapp_evolution_enabled?: boolean })?.whatsapp_evolution_enabled) {
+    return null;
+  }
   // para respeitar as regras dos Hooks do React. Caso contrário ocorre Error #300.
   const hasRoleAccess = useCanAccess(item.roleRequired ?? ['kitchen']);
   const { data: hasFeatureAccess, isLoading } = useFeatureAccess(
@@ -514,7 +531,10 @@ export default function AdminLayout({
         ? item.items
         : []
     )
-  );
+  ).filter((item) => {
+    if (item.requiresWhatsAppEvolution && !(restaurant as { whatsapp_evolution_enabled?: boolean })?.whatsapp_evolution_enabled) return false;
+    return true;
+  });
 
   return (
     <AdminRestaurantContext.Provider value={contextValue}>

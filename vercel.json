@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/((?!assets/|og-image\\.png|og-image\\.svg|favicon|manifest\\.json|quierofood-logo).*)",
+      "source": "/((?!api/|assets/|og-image\\.png|og-image\\.svg|favicon|manifest\\.json|quierofood-logo).*)",
       "destination": "/index.html"
     }
   ]

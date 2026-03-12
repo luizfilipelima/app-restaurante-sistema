@@ -295,7 +295,7 @@ export default function RestaurantDetails() {
               <div>
                 <p className="text-sm font-medium text-slate-700">Habilitar para este restaurante</p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  O restaurante configurará o nome da instância nas Configurações.
+                  O restaurante gerará o QR Code nas Configurações para conectar o WhatsApp.
                 </p>
               </div>
               <Switch

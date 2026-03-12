@@ -57,6 +57,22 @@ npx supabase functions deploy send-order-whatsapp-notification --project-ref SEU
 | `EVOLUTION_API_BASE_URL` | URL base da Evolution API (ex: `https://api.quiero.food`) |
 | `EVOLUTION_API_KEY` | Chave de API da Evolution API |
 
+---
+
+## get-evolution-qrcode
+
+Retorna o QR Code da instância para conectar o WhatsApp (proxy para não expor a API key no frontend).
+
+### Deploy
+
+```bash
+npx supabase functions deploy get-evolution-qrcode --project-ref SEU_PROJECT_REF
+```
+
+### Secrets
+
+Usa os mesmos `EVOLUTION_API_BASE_URL` e `EVOLUTION_API_KEY` da função `send-order-whatsapp-notification`.
+
 ### Erros comuns
 
 | Erro / Comportamento | Causa | Solução |

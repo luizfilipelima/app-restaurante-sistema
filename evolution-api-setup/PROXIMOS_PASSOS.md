@@ -33,14 +33,24 @@ O script instala Nginx, obtém certificado Let's Encrypt e configura o proxy rev
 
 ## 2. Conectar o WhatsApp (QR Code)
 
-Use o **Evolution Manager** no navegador:
+**Se o QR Code não aparecer** (modal vazio, "Disconnected"), execute na VPS:
+
+```bash
+cd ~/evolution-api-setup
+chmod +x fix-qr-connection.sh
+./fix-qr-connection.sh
+```
+
+Isso adiciona `CONFIG_SESSION_PHONE_VERSION`, `WEBSOCKET_ENABLED=true` e `SERVER_URL` ao `.env` e reinicia os containers.
+
+Depois, use o **Evolution Manager** no navegador:
 
 1. Abra: **https://api.quiero.food/manager**
 2. Configure:
    - **URL da API:** `https://api.quiero.food`
    - **Chave (apikey):** `fcb5c6bd6b0de852e1b63f32f79ea896`
 3. Localize a instância **restaurante-principal**
-4. Clique em **Conectar** e escaneie o QR Code com o WhatsApp do restaurante
+4. Clique em **Conectar** ou **Get QR Code** e escaneie com o WhatsApp
 
 ---
 

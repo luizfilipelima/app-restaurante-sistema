@@ -73,6 +73,7 @@ A chave aparece ao final do `install.sh` e está em `~/.env`. Use-a na Etapa 2 (
 | Comando | Descrição |
 |---------|-----------|
 | `docker compose logs -f evolution_api` | Logs em tempo real |
+| `./fix-qr-connection.sh` | Corrige QR vazio / WhatsApp desconectado |
 | `docker compose down` | Parar containers |
 | `docker compose up -d` | Iniciar novamente |
 | `systemctl status nginx` | Status do Nginx |

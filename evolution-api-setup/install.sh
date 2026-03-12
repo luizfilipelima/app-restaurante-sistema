@@ -76,6 +76,11 @@ CACHE_REDIS_ENABLED=true
 CACHE_REDIS_URI=redis://redis:6379
 CACHE_REDIS_PREFIX_KEY=evolution
 CACHE_LOCAL_ENABLED=false
+
+# QR Code e WebSocket (Manager remoto)
+SERVER_URL=https://api.quiero.food
+WEBSOCKET_ENABLED=true
+CONFIG_SESSION_PHONE_VERSION=2.3000.1023923395
 EOF
 
 # Ajusta senha do postgres no docker-compose (substitui variável)

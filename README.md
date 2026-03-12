@@ -140,7 +140,10 @@ O sistema utiliza o Supabase Auth com controle de acesso baseado em roles:
 2. Configure as variáveis de ambiente:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY` — obrigatória para o webhook `/api/webhooks/evolution` (WhatsApp Evolution API)
 3. Deploy automático!
+
+Para deploy completo do fluxo WhatsApp, veja [docs/WHATSAPP-EVOLUTION-DEPLOY.md](docs/WHATSAPP-EVOLUTION-DEPLOY.md).
 
 ### Outras Plataformas
 

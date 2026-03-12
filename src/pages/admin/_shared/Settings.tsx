@@ -38,6 +38,7 @@ import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
 import RestaurantUsersPanel from '@/components/admin/_shared/RestaurantUsersPanel';
 import SettingsHorariosSection from '@/pages/admin/_shared/SettingsHorariosSection';
 import { FeatureGuard } from '@/components/auth/FeatureGuard';
+import { ConectarWhatsApp } from '@/components/admin/whatsapp/ConectarWhatsApp';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -505,7 +506,6 @@ export default function AdminSettings() {
           if (!v) return null;
           return v;
         })(),
-        evolution_instance_name: formData.evolution_instance_name?.trim() || null,
         updated_at:              new Date().toISOString(),
       };
       const { error } = await supabase.from('restaurants').update(updatePayload).eq('id', restaurantId);
@@ -2058,20 +2058,12 @@ export default function AdminSettings() {
                   Enviamos automaticamente ao cliente quando o pedido vai para &quot;Em Preparo&quot; e quando sai &quot;Saiu para Entrega&quot;.
                 </p>
                 {(restaurant as { whatsapp_evolution_enabled?: boolean })?.whatsapp_evolution_enabled ? (
-                  <div className="mt-4 space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="evolution_instance">Nome da instância WhatsApp</Label>
-                      <Input
-                        id="evolution_instance"
-                        value={formData.evolution_instance_name}
-                        onChange={(e) => set('evolution_instance_name', e.target.value)}
-                        placeholder="restaurante-principal"
-                        className="font-mono"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Mesmo nome configurado na Evolution API. Se vazio, as notificações não serão enviadas.
-                      </p>
-                    </div>
+                  <div className="mt-4 space-y-5">
+                    <ConectarWhatsApp
+                      restaurantId={restaurantId!}
+                      whatsappConnected={(restaurant as { whatsapp_connected?: boolean })?.whatsapp_connected ?? false}
+                      onStatusChange={() => loadRestaurant()}
+                    />
                   </div>
                 ) : (
                   <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
