@@ -38,6 +38,8 @@ import {
   Grape,
   Cherry,
   Scroll,
+  Hamburger,
+  Package,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -63,9 +65,11 @@ export const CATEGORY_ICON_OPTIONS: Array<{ id: string; label: string; group?: s
   { id: 'Salad', label: 'Sashimi / temaki / poke', group: 'Comida japonesa' },
   { id: 'CookingPot', label: 'Lámen / sopas japonesas', group: 'Comida japonesa' },
   // Burger / Lanches
+  { id: 'Hamburger', label: 'Burger / Hambúrguer', group: 'Burger e lanches' },
   { id: 'Beef', label: 'Hambúrguer / x-burger', group: 'Burger e lanches' },
   { id: 'Sandwich', label: 'Sanduíche / lanche', group: 'Burger e lanches' },
-  { id: 'Drumstick', label: 'Frango / batatas fritas', group: 'Burger e lanches' },
+  { id: 'Package', label: 'Batatas fritas / Fresh Fries', group: 'Burger e lanches' },
+  { id: 'Drumstick', label: 'Frango / frango empanado', group: 'Burger e lanches' },
   { id: 'EggFried', label: 'Egg / café da manhã', group: 'Burger e lanches' },
   // Comida árabe
   { id: 'Wheat', label: 'Shawarma / kebab / pão árabe', group: 'Comida árabe' },
@@ -105,8 +109,10 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Fish,
   Salad,
   CookingPot,
+  Hamburger,
   Beef,
   Sandwich,
+  Package,
   Drumstick,
   EggFried,
   Wheat,

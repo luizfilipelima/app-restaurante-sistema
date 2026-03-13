@@ -85,15 +85,6 @@ export default function Header() {
           <Button variant="outline" className="border-slate-200 text-slate-700" asChild>
             <a href={appLink}>{loginLabel}</a>
           </Button>
-          <Button
-            className="text-white shadow-lg"
-            style={{ backgroundColor: primaryColor }}
-            asChild
-          >
-            <a href={waLink} target="_blank" rel="noopener noreferrer">
-              {ctaLabel}
-            </a>
-          </Button>
         </div>
 
         {/* Mobile Menu Toggle */}

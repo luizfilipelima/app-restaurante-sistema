@@ -45,7 +45,7 @@
     "jspdf-autotable": "^5.0.7",
     "leaflet": "^1.9.4",
     "leaflet.heat": "^0.2.0",
-    "lucide-react": "0.335.0",
+    "lucide-react": "^0.504.0",
     "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
