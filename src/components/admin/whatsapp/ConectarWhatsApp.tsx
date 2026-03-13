@@ -98,7 +98,8 @@ export function ConectarWhatsApp({
       if (!payload?.ok) {
         const errMsg = (payload as { error?: string })?.error;
         const isAuthError = errMsg && /401|autentic|sessão|token|login/i.test(errMsg);
-        throw new Error(isAuthError ? 'Sessão expirada ou inválida. Faça logout e login novamente.' : (errMsg || 'Resposta inválida'));
+        const finalMsg = isAuthError ? 'Sessão expirada ou inválida. Faça logout e login novamente.' : (errMsg || 'Resposta inválida');
+        throw new Error(finalMsg);
       }
 
       const qrCode = payload.qrCode as string | undefined;
@@ -142,7 +143,9 @@ export function ConectarWhatsApp({
       }
 
       if (count === 0) {
-        setError('A instância não retornou QR Code. Tente novamente ou aguarde alguns segundos e clique em "Atualizar".');
+        setError(
+          'A Evolution API retornou sem QR Code (count: 0). Isso costuma ser configuração na VPS: execute fix-qr-connection.sh na pasta evolution-api-setup do servidor (ajusta CONFIG_SESSION_PHONE_VERSION, WEBSOCKET_ENABLED e SERVER_URL) e reinicie os containers. Depois tente novamente.'
+        );
         return;
       }
 
