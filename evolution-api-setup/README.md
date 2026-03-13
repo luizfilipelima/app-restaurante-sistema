@@ -2,6 +2,8 @@
 
 Setup para rodar a Evolution API em **api.quiero.food** (VPS Hostinger) para automação de mensagens WhatsApp no fluxo Kanban.
 
+**Setup completo:** veja [docs/HOSTINGER-VPS-SETUP-COMPLETO.md](../docs/HOSTINGER-VPS-SETUP-COMPLETO.md) para o playbook passo a passo (MCP, SSH ou script único).
+
 ---
 
 ## URL final
