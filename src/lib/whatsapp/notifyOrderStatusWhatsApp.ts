@@ -7,7 +7,7 @@ import { supabase } from '@/lib/core/supabase';
 
 export async function notifyOrderStatusWhatsApp(
   orderId: string,
-  newStatus: 'preparing' | 'delivering'
+  newStatus: 'preparing' | 'delivering' | 'courier_dispatch'
 ): Promise<void> {
   try {
     await supabase.functions.invoke('send-order-whatsapp-notification', {

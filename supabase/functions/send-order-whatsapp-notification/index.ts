@@ -14,11 +14,13 @@ const corsHeaders = {
 const DEFAULT_TEMPLATES = {
   delivery_notification: `Olá {{cliente_nome}}! 🛵 Seu pedido acabou de sair para entrega. Em breve estará na sua porta! 😊`,
   preparing_notification: `Olá {{cliente_nome}}! ✅ Seu pedido foi confirmado e já está em preparo no {{restaurante_nome}}. Em breve você receberá a confirmação de envio para entrega! 😊`,
+  courier_dispatch: `🛵 *Novo pedido para entrega*\n\n*Pedido:* #{{codigo_pedido}}\n*Cliente:* {{cliente_nome}}\n*WhatsApp:* {{cliente_telefone}}\n\n*Endereço:* {{detalhes_endereco}}\n🗺️ {{mapa}}\n\n*Itens:*\n{{itens}}\n\n*Subtotal:* {{subtotal}}\n*Taxa de entrega:* {{taxa_entrega}}\n*Total:* {{total}}`,
 };
 
 const DEFAULT_TEMPLATES_ES = {
   delivery_notification: `¡Hola {{cliente_nome}}! 🛵 Tu pedido acaba de salir para entrega. ¡En breve estará en tu puerta! 😊`,
   preparing_notification: `¡Hola {{cliente_nome}}! ✅ Tu pedido fue confirmado y ya está en preparación en {{restaurante_nome}}. ¡En breve recibirás la confirmación de envío para entrega! 😊`,
+  courier_dispatch: `🛵 *Nuevo pedido para entrega*\n\n*Pedido:* #{{codigo_pedido}}\n*Cliente:* {{cliente_nome}}\n*WhatsApp:* {{cliente_telefone}}\n\n*Dirección:* {{detalhes_endereco}}\n🗺️ {{mapa}}\n\n*Ítems:*\n{{itens}}\n\n*Subtotal:* {{subtotal}}\n*Costo de envío:* {{taxa_entrega}}\n*Total:* {{total}}`,
 };
 
 function processTemplate(template: string, vars: Record<string, string>): string {
@@ -31,8 +33,8 @@ function processTemplate(template: string, vars: Record<string, string>): string
 }
 
 function getTemplate(
-  key: 'delivery_notification' | 'preparing_notification',
-  custom?: { delivery_notification?: string; preparing_notification?: string } | null,
+  key: 'delivery_notification' | 'preparing_notification' | 'courier_dispatch',
+  custom?: { delivery_notification?: string; preparing_notification?: string; courier_dispatch?: string } | null,
   lang: 'pt' | 'es' = 'pt'
 ): string {
   if (custom?.[key]) return custom[key]!;
@@ -109,7 +111,7 @@ Deno.serve(async (req) => {
     const { orderId, newStatus } = body;
     if (!orderId || !newStatus) return fail('orderId e newStatus obrigatórios');
 
-    if (newStatus !== 'preparing' && newStatus !== 'delivering') {
+    if (newStatus !== 'preparing' && newStatus !== 'delivering' && newStatus !== 'courier_dispatch') {
       return ok({ skipped: true, reason: 'status_not_trigger' });
     }
 
@@ -137,6 +139,72 @@ Deno.serve(async (req) => {
 
     const enabled = restaurant.whatsapp_evolution_enabled === true;
     const instance = (restaurant.evolution_instance_name as string)?.trim();
+    const baseUrl = evolutionBase.replace(/\/$/, '');
+    const customTemplates = restaurant.whatsapp_templates as Record<string, string> | null;
+
+    // ── Despacho para entregador ──────────────────────────────────────────────
+    if (newStatus === 'courier_dispatch') {
+      if (!enabled || !instance) {
+        return ok({ skipped: true, reason: !enabled ? 'disabled' : 'no_instance' });
+      }
+
+      const { data: fullOrder } = await admin
+        .from('orders')
+        .select('id, customer_name, customer_phone, customer_language, courier_id, address_details, latitude, longitude, subtotal, delivery_fee, total, order_items(quantity, product_name)')
+        .eq('id', orderId)
+        .single();
+
+      if (!fullOrder?.courier_id) return ok({ skipped: true, reason: 'no_courier' });
+
+      const { data: courier } = await admin
+        .from('couriers')
+        .select('id, name, phone, phone_country')
+        .eq('id', fullOrder.courier_id as string)
+        .single();
+
+      if (!courier?.phone) return ok({ skipped: true, reason: 'courier_no_phone' });
+
+      const orderLang = (fullOrder.customer_language === 'es' || restaurant.language === 'es') ? 'es' : 'pt';
+      const itemsText = ((fullOrder.order_items as Array<{ quantity: number; product_name: string }>) ?? [])
+        .map((i) => `  • ${i.quantity}x ${i.product_name}`)
+        .join('\n');
+      const mapsUrl = fullOrder.latitude && fullOrder.longitude
+        ? `https://www.google.com/maps?q=${fullOrder.latitude},${fullOrder.longitude}`
+        : '';
+      const clienteTelefone = (fullOrder.customer_phone as string) || '';
+
+      const template = getTemplate('courier_dispatch', customTemplates ?? undefined, orderLang as 'pt' | 'es');
+      const text = processTemplate(template, {
+        codigo_pedido:     `${(fullOrder.id as string).slice(0, 8).toUpperCase()}`,
+        cliente_nome:      (fullOrder.customer_name as string) || '',
+        cliente_telefone:  clienteTelefone,
+        detalhes_endereco: (fullOrder.address_details as string) || '',
+        endereco:          fullOrder.latitude ? `${fullOrder.latitude},${fullOrder.longitude}` : '',
+        mapa:              mapsUrl,
+        restaurante_nome:  (restaurant.name as string) || '',
+        itens:             itemsText,
+        subtotal:          String(fullOrder.subtotal ?? ''),
+        taxa_entrega:      fullOrder.delivery_fee ? String(fullOrder.delivery_fee) : '',
+        total:             String(fullOrder.total ?? ''),
+      });
+
+      const courierCountry = (courier.phone_country === 'PY' ? 'PY' : courier.phone_country === 'AR' ? 'AR' : 'BR') as 'BR' | 'PY' | 'AR';
+      const courierNumber = normalizePhone(courier.phone as string, courierCountry);
+
+      const courierRes = await fetch(`${baseUrl}/message/sendText/${encodeURIComponent(instance)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: evolutionKey },
+        body: JSON.stringify({ number: courierNumber, text }),
+      });
+      const courierData = await courierRes.json().catch(() => ({}));
+      if (!courierRes.ok) {
+        console.error('[send-order-whatsapp] courier dispatch erro:', courierRes.status, courierData);
+        return fail(`Falha ao notificar entregador: ${(courierData as { message?: string })?.message || courierRes.statusText}`, 502);
+      }
+      return ok({ sent: true, templateKey: 'courier_dispatch' });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const phone = (order.customer_phone as string)?.trim();
 
     if (!enabled || !instance || !phone) {
@@ -153,14 +221,13 @@ Deno.serve(async (req) => {
     const number = normalizePhone(phone, country);
 
     const templateKey = newStatus === 'preparing' ? 'preparing_notification' : 'delivery_notification';
-    const customTemplates = restaurant.whatsapp_templates as Record<string, string> | null;
     const template = getTemplate(templateKey, customTemplates ?? undefined, orderLang);
     const text = processTemplate(template, {
       cliente_nome: firstName,
       restaurante_nome: restaurantName,
     });
 
-    const url = `${evolutionBase.replace(/\/$/, '')}/message/sendText/${encodeURIComponent(instance)}`;
+    const url = `${baseUrl}/message/sendText/${encodeURIComponent(instance)}`;
     const evolutionRes = await fetch(url, {
       method: 'POST',
       headers: {

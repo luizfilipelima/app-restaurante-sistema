@@ -175,6 +175,7 @@ export default function AdminOrders() {
   const orders = ordersData?.orders ?? [];
   const { data: printSettings } = usePrintSettings(restaurantId);
   const { data: restaurant } = useRestaurant(restaurantId);
+  const evolutionEnabled = !!(restaurant as { whatsapp_evolution_enabled?: boolean })?.whatsapp_evolution_enabled;
   const printSettingsRef = useRef(printSettings);
   printSettingsRef.current = printSettings;
 
@@ -449,9 +450,12 @@ export default function AdminOrders() {
 
       await refetchOrders();
 
-      // Notificação WhatsApp automática via Evolution API (preparando/entregando)
+      // Notificação WhatsApp automática via Evolution API
       if (newStatus === OrderStatus.PREPARING || newStatus === OrderStatus.DELIVERING) {
         notifyOrderStatusWhatsApp(orderId, newStatus).catch(() => {});
+      }
+      if (newStatus === OrderStatus.READY && evolutionEnabled) {
+        notifyOrderStatusWhatsApp(orderId, 'courier_dispatch').catch(() => {});
       }
 
       // Atualiza métricas do Dashboard BI (pedidos concluídos refletem nos KPIs e analytics)
@@ -676,8 +680,8 @@ export default function AdminOrders() {
                       const isDelivering = status === OrderStatus.DELIVERING;
                       const isDeliveryOrder = !isTableOrder && !isComandaOrder && (order.delivery_type === 'delivery' || order.order_source === 'delivery');
                       const isPickupOrder = !isTableOrder && !isComandaOrder && !isDeliveryOrder;
-                      const canNotifyPreparingWhatsApp = isPreparing && (isDeliveryOrder || isPickupOrder);
-                      const canNotifyWhatsApp = isDelivering && isDeliveryOrder;
+                      const canNotifyPreparingWhatsApp = isPreparing && (isDeliveryOrder || isPickupOrder) && !evolutionEnabled;
+                      const canNotifyWhatsApp = isDelivering && isDeliveryOrder && !evolutionEnabled;
 
                       // Botão de avanço de status:
                       // - Comanda: sempre vai direto para Concluído
@@ -742,7 +746,7 @@ export default function AdminOrders() {
                         return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
                       };
 
-                      const canNotifyPickupWhatsApp = status === OrderStatus.READY && isPickupOrder;
+                      const canNotifyPickupWhatsApp = status === OrderStatus.READY && isPickupOrder && !evolutionEnabled;
 
                       return (
                         <div
@@ -902,8 +906,8 @@ export default function AdminOrders() {
                               </span>
                             </div>
 
-                            {/* ── Entregador (só delivery — oculto em pedidos de retirada) ── */}
-                            {couriers.length > 0 && isDeliveryOrder && (
+                            {/* ── Entregador (só delivery, apenas nas colunas Pendentes e Em Preparo) ── */}
+                            {couriers.length > 0 && isDeliveryOrder && (status === OrderStatus.PENDING || status === OrderStatus.PREPARING) && (
                               <div className="space-y-1">
                                 <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
                                   <Bike className="h-3 w-3" /> Entregador
@@ -927,8 +931,8 @@ export default function AdminOrders() {
                               </div>
                             )}
 
-                            {/* ── Despachar para Entregador (Prontos) ── */}
-                            {status === OrderStatus.READY && isDeliveryOrder && couriers.filter((c) => c.active).length > 0 && (
+                            {/* ── Despachar para Entregador (Prontos, apenas sem Evolution API) ── */}
+                            {status === OrderStatus.READY && isDeliveryOrder && couriers.filter((c) => c.active).length > 0 && !evolutionEnabled && (
                               <Button
                                 size="sm"
                                 className="w-full h-8 text-xs bg-gradient-to-r from-violet-500 to-indigo-600 text-white border-0 shadow-sm hover:shadow-md hover:brightness-105 transition-all font-semibold"
