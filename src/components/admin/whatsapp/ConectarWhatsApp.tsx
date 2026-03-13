@@ -113,8 +113,6 @@ export function ConectarWhatsApp({
         const src = qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`;
         setQrImageSrc(src);
         toast({ title: 'QR Code gerado', description: 'Escaneie com o WhatsApp do celular.' });
-        queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
-        onStatusChange?.();
         return;
       }
 
@@ -122,8 +120,6 @@ export function ConectarWhatsApp({
         const dataUrl = await QRCode.toDataURL(code, { margin: 2, width: 280 });
         setQrImageSrc(dataUrl);
         toast({ title: 'QR Code gerado', description: 'Escaneie com o WhatsApp do celular.' });
-        queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
-        onStatusChange?.();
         return;
       }
 
@@ -131,8 +127,6 @@ export function ConectarWhatsApp({
         const src = legacyBase64.startsWith('data:') ? legacyBase64 : `data:image/png;base64,${legacyBase64}`;
         setQrImageSrc(src);
         toast({ title: 'QR Code gerado', description: 'Escaneie com o WhatsApp do celular.' });
-        queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
-        onStatusChange?.();
         return;
       }
 
@@ -157,7 +151,7 @@ export function ConectarWhatsApp({
     } finally {
       setLoading(false);
     }
-  }, [restaurantId, queryClient, onStatusChange, navigate]);
+  }, [restaurantId, navigate]);
 
   const handleDesconectar = useCallback(async () => {
     if (!restaurantId) return;
