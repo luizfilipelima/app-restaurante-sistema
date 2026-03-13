@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
       const courierRes = await fetch(`${baseUrl}/message/sendText/${encodeURIComponent(instance)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: evolutionKey },
-        body: JSON.stringify({ number: courierNumber, text }),
+        body: JSON.stringify({ number: courierNumber, text, delay: 3000 }),
       });
       const courierData = await courierRes.json().catch(() => ({}));
       if (!courierRes.ok) {
@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
         'apikey': evolutionKey,
       },
-      body: JSON.stringify({ number, text }),
+      body: JSON.stringify({ number, text, delay: 3000 }),
     });
 
     const evolutionData = await evolutionRes.json().catch(() => ({}));
