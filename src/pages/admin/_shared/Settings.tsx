@@ -21,6 +21,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { uploadRestaurantLogo } from '@/lib/imageUpload';
+import { convertPriceToStorage, convertPriceFromStorage } from '@/lib/priceHelper';
 import { getBioPublicUrl, getCardapioPublicUrl, generateWhatsAppLink } from '@/lib/core/utils';
 import { toast } from '@/hooks/shared/use-toast';
 import {
@@ -29,9 +30,10 @@ import {
   Users, ExternalLink, Link2, FileText,
   MessageCircle, AtSign, Repeat, CreditCard, Landmark, QrCode, Settings as SettingsIcon, MessageSquare,
   Pencil, Trash2, Plus, ChevronUp, ChevronDown, Lock,
-  Bike, Bluetooth, Cable,
+  Bike, Bluetooth, Cable, Scale,
 } from 'lucide-react';
 import { useRestaurant } from '@/hooks/queries';
+import { useFeatureAccess } from '@/hooks/queries/useFeatureAccess';
 import { useLinkBioButtons, useLinkBioButtonsMutations, type CreateLinkBioButtonPayload } from '@/hooks/queries/useLinkBioButtons';
 import { useCanAccess } from '@/hooks/auth/useUserRole';
 import { AdminPageHeader, AdminPageLayout } from '@/components/admin/_shared';
@@ -323,6 +325,7 @@ export default function AdminSettings() {
   const restaurantId = useAdminRestaurantId();
   const { t }        = useAdminTranslation();
   const canAccessUsers = useCanAccess([...ROLES_USERS_MANAGEMENT]);
+  const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
   const basePath = useAdminBasePath();
   const { data: restaurant } = useRestaurant(restaurantId);
   const { data: linkBioButtons = [], isLoading: linkBioLoading } = useLinkBioButtons(restaurantId);
@@ -363,6 +366,9 @@ export default function AdminSettings() {
     description:             '',
     custom_domain:           '',
     evolution_instance_name: '',
+    buffet_price_per_kg_input: '',
+    scale_baud_rate:         9600,
+    scale_unit:              'kg' as 'kg' | 'g',
   });
 
   const [bankCountry, setBankCountry] = useState<'pyg' | 'ars'>('pyg');
@@ -393,7 +399,7 @@ export default function AdminSettings() {
   const set = <K extends keyof typeof formData>(k: K, v: (typeof formData)[K]) =>
     setFormData(f => ({ ...f, [k]: v }));
 
-  const validTabs = ['perfil', 'dominios', 'pagamentos', 'impressao', 'cambio', 'links-bio', 'whatsapp', 'usuarios', 'horarios'];
+  const validTabs = ['perfil', 'dominios', 'pagamentos', 'impressao', 'cambio', 'links-bio', 'whatsapp', 'usuarios', 'horarios', ...(hasBuffet ? ['buffet'] : [])];
   const hashTab = location.hash ? location.hash.replace(/^#/, '') : null;
   const initialTab = hashTab && validTabs.includes(hashTab) ? hashTab : 'perfil';
   const [activeTab, setActiveTab] = useState<string>(initialTab);
@@ -460,6 +466,11 @@ export default function AdminSettings() {
         description:             data.description ?? '',
         custom_domain:           data.custom_domain ?? '',
         evolution_instance_name: data.evolution_instance_name ?? '',
+        buffet_price_per_kg_input: data.buffet_price_per_kg != null && data.buffet_price_per_kg > 0
+          ? convertPriceFromStorage(data.buffet_price_per_kg, currency)
+          : '',
+        scale_baud_rate:         data.scale_baud_rate ?? 9600,
+        scale_unit:              (data.scale_unit === 'g' || data.scale_unit === 'kg' ? data.scale_unit : 'kg') as 'kg' | 'g',
       });
     } catch (err) {
       console.error('Erro ao carregar restaurante:', err);
@@ -506,11 +517,17 @@ export default function AdminSettings() {
           if (!v) return null;
           return v;
         })(),
+        buffet_price_per_kg:     formData.buffet_price_per_kg_input?.trim()
+          ? convertPriceToStorage(formData.buffet_price_per_kg_input, formData.currency as CurrencyCode)
+          : null,
+        scale_baud_rate:         Math.max(300, Math.min(115200, Number(formData.scale_baud_rate) || 9600)),
+        scale_unit:              formData.scale_unit,
         updated_at:              new Date().toISOString(),
       };
       const { error } = await supabase.from('restaurants').update(updatePayload).eq('id', restaurantId);
       if (error) throw error;
       invalidatePublicMenuCache(queryClient, formData.slug || undefined);
+      await queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
       // Persiste o idioma do painel via store (localStorage + Zustand → reatividade imediata)
       setStoreLang(panelLangLocal);
       toast({ title: '✅ ' + t('settings.title') + ' — ' + t('common.success') });
@@ -564,6 +581,7 @@ export default function AdminSettings() {
               { value: 'horarios',     icon: Clock,      label: 'Horários' },
               { value: 'links-bio',    icon: Link2,      label: 'Links e Bio' },
               { value: 'whatsapp',     icon: MessageSquare, label: 'WhatsApp' },
+              ...(hasBuffet ? [{ value: 'buffet', icon: Scale, label: 'Buffet e Balança' }] : []),
               ...(canAccessUsers ? [{ value: 'usuarios', icon: Users, label: t('settings.tabs.users') }] : []),
             ].map(({ value, icon: Icon, label }) => (
               <TabsTrigger
@@ -1603,6 +1621,91 @@ export default function AdminSettings() {
             <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
           </div>
         </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            ABA — Buffet e Balança (feature_buffet_module)
+        ══════════════════════════════════════════════════════════════════════ */}
+        <FeatureGuard feature="feature_buffet_module" bannerVariant="inline">
+          <TabsContent value="buffet" className="mt-0 space-y-5">
+            <div className="admin-card-border bg-card shadow-sm overflow-hidden">
+              <div className="p-5 pb-4 border-b border-border/60 bg-muted/20">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center flex-shrink-0">
+                    <Scale className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground">Buffet e Pesagem por Kg</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Configure o preço padrão por kg e a comunicação com a balança conectada via USB (Chrome ou Edge).
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-5 space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Preço padrão por kg</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Usado na pesagem quando o produto não tem preço definido. Na moeda do restaurante ({formData.currency}).
+                  </p>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={formData.buffet_price_per_kg_input}
+                    onChange={(e) => set('buffet_price_per_kg_input', e.target.value)}
+                    placeholder={formData.currency === 'PYG' ? '65.000' : '45,90'}
+                    className="max-w-[180px] font-mono"
+                  />
+                </div>
+
+                <div className="border-t border-border/60 pt-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Cable className="h-4 w-4 text-amber-600" />
+                      Configuração da balança
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      A balança deve estar conectada via USB. Use Chrome ou Edge. Na tela Buffet ou Caixa, clique em &quot;Conectar balança&quot; e selecione a porta.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm">Baud rate</Label>
+                      <p className="text-[11px] text-muted-foreground">Ex: 9600, 2400 (consulte o manual da balança)</p>
+                      <Input
+                        type="number"
+                        min={300}
+                        max={115200}
+                        step={300}
+                        value={formData.scale_baud_rate}
+                        onChange={(e) => set('scale_baud_rate', Math.max(300, Math.min(115200, Number(e.target.value) || 9600)))}
+                        className="max-w-[140px] font-mono"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm">Unidade de saída</Label>
+                      <p className="text-[11px] text-muted-foreground">kg ou gramas — o sistema converte para kg automaticamente</p>
+                      <Select
+                        value={formData.scale_unit}
+                        onValueChange={(v: 'kg' | 'g') => set('scale_unit', v)}
+                      >
+                        <SelectTrigger className="max-w-[120px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="kg">kg (quilogramas)</SelectItem>
+                          <SelectItem value="g">g (gramas)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <SaveButton saving={saving} onClick={handleSubmit} label={t('common.save')} savingLabel={t('common.saving')} />
+            </div>
+          </TabsContent>
+        </FeatureGuard>
 
         {/* ══════════════════════════════════════════════════════════════════════
             ABA 5b — Câmbio

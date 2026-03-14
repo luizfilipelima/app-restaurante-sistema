@@ -48,7 +48,10 @@ import {
   AlertTriangle,
   Settings2,
   Save,
+  Cable,
+  PlugZap,
 } from 'lucide-react';
+import { useScaleConnection } from '@/hooks/useScaleConnection';
 
 // ─── Padrão CMD-XXXX ──────────────────────────────────────────────────────────
 const VIRTUAL_COMANDA_PATTERN = /^CMD-[A-Z0-9]{4}$/i;
@@ -119,6 +122,13 @@ function ScannerPanel({
   buffetPricePerKg,
   exchangeRates,
   paymentCurrencies,
+  scaleConnected,
+  scaleConnecting,
+  scaleWeight,
+  scaleAvailable,
+  onScaleConnect,
+  onScaleDisconnect,
+  scaleError,
 }: {
   scannerRef: React.RefObject<HTMLInputElement>;
   weightRef: React.RefObject<HTMLInputElement>;
@@ -142,6 +152,13 @@ function ScannerPanel({
   buffetPricePerKg?: number | null;
   exchangeRates?: ExchangeRates | null;
   paymentCurrencies?: string[] | null;
+  scaleConnected?: boolean;
+  scaleConnecting?: boolean;
+  scaleWeight?: number | null;
+  scaleAvailable?: boolean;
+  onScaleConnect?: () => void;
+  onScaleDisconnect?: () => void;
+  scaleError?: string | null;
 }) {
   const [productSearch, setProductSearch] = useState('');
   const filteredProducts = useMemo(() =>
@@ -205,6 +222,37 @@ function ScannerPanel({
                     {formatPrice(selectedProduct.price_sale ?? selectedProduct.price ?? buffetPricePerKg ?? 0, currency)}/kg
                   </span>
                 </div>
+                {scaleAvailable && (
+                  <div className="flex items-center gap-2">
+                    {scaleConnected ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={onScaleDisconnect}
+                        className="h-9 gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                      >
+                        <Cable className="h-3.5 w-3.5" />
+                        Balança conectada
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={onScaleConnect}
+                        disabled={scaleConnecting}
+                        className="h-9 gap-1.5 border-amber-200"
+                      >
+                        {scaleConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlugZap className="h-3.5 w-3.5" />}
+                        {scaleConnecting ? 'Conectando…' : 'Conectar balança'}
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {scaleError && (
+                  <p className="text-[10px] text-red-600">{scaleError}</p>
+                )}
                 <div className="flex gap-2">
                   <Input
                     ref={weightRef}
@@ -213,7 +261,7 @@ function ScannerPanel({
                     value={weightInput}
                     onChange={(e) => setWeightInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') onWeightSubmit(); }}
-                    placeholder="0.350 kg"
+                    placeholder={scaleConnected && scaleWeight != null ? "Peso da balança" : "0.350 kg"}
                     className="text-xl h-12 font-mono flex-1 border-amber-200 focus:border-amber-400 bg-white"
                     autoFocus
                   />
@@ -221,6 +269,14 @@ function ScannerPanel({
                     <Calculator className="h-5 w-5" />
                   </Button>
                 </div>
+                {scaleConnected && scaleWeight != null && scaleWeight > 0 && (
+                  <p className="text-[11px] text-amber-700 font-medium">
+                    Balança: <span className="font-mono font-bold">{scaleWeight.toFixed(3)} kg</span>
+                    {selectedProduct.price_sale ?? selectedProduct.price ?? buffetPricePerKg
+                      ? ` → ${formatPrice((selectedProduct.price_sale ?? selectedProduct.price ?? buffetPricePerKg ?? 0) * scaleWeight, currency)}`
+                      : ''}
+                  </p>
+                )}
               </div>
             </motion.div>
           )}
@@ -544,6 +600,9 @@ export default function Buffet() {
   const [products,           setProducts]           = useState<Product[]>([]);
   const [buffetPriceInput,   setBuffetPriceInput]   = useState('');
   const [savingBuffetPrice,  setSavingBuffetPrice]  = useState(false);
+  const [scaleBaudInput,    setScaleBaudInput]     = useState('9600');
+  const [scaleUnitInput,    setScaleUnitInput]     = useState<'kg' | 'g'>('kg');
+  const [savingScaleConfig, setSavingScaleConfig]  = useState(false);
   const [selectedComandaId,  setSelectedComandaId]  = useState<string | null>(null);
   const [scannerInput,       setScannerInput]        = useState('');
   const [weightInput,        setWeightInput]         = useState('');
@@ -556,6 +615,24 @@ export default function Buffet() {
 
   const scannerRef = useRef<HTMLInputElement>(null);
   const weightRef  = useRef<HTMLInputElement>(null);
+
+  const scaleConfig = useMemo(() => ({
+    baudRate: restaurant?.scale_baud_rate ?? 9600,
+    unit: (restaurant?.scale_unit ?? 'kg') as 'kg' | 'g',
+  }), [restaurant?.scale_baud_rate, restaurant?.scale_unit]);
+
+  const {
+    isAvailable: scaleAvailable,
+    isConnected: scaleConnected,
+    isConnecting: scaleConnecting,
+    lastWeight: scaleWeight,
+    connect: scaleConnect,
+    disconnect: scaleDisconnect,
+    error: scaleError,
+  } = useScaleConnection({
+    config: scaleConfig,
+    onWeight: (kg) => setWeightInput(kg.toFixed(3)),
+  });
 
   const selectedComanda = selectedComandaId
     ? (comandas.find((c) => c.id === selectedComandaId) ?? null)
@@ -587,6 +664,14 @@ export default function Buffet() {
       setBuffetPriceInput('');
     }
   }, [restaurant?.buffet_price_per_kg, currency]);
+
+  // Sincronizar config da balança
+  useEffect(() => {
+    const baud = restaurant?.scale_baud_rate;
+    const unit = restaurant?.scale_unit;
+    if (baud != null && baud > 0) setScaleBaudInput(String(baud));
+    if (unit === 'g' || unit === 'kg') setScaleUnitInput(unit);
+  }, [restaurant?.scale_baud_rate, restaurant?.scale_unit]);
 
   const exchangeRates: ExchangeRates = restaurant?.exchange_rates ?? {
     pyg_per_brl: 3600,
@@ -833,8 +918,8 @@ export default function Buffet() {
         }
       />
 
-      {/* ── Config: Preço do Kg ──────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm flex flex-wrap items-end gap-4">
+      {/* ── Config: Preço do Kg + Balança ─────────────────────────────────────── */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm flex flex-wrap items-end gap-6">
         <div className="flex items-center gap-2 min-w-0">
           <Settings2 className="h-4 w-4 text-slate-500 flex-shrink-0" />
           <div>
@@ -842,7 +927,7 @@ export default function Buffet() {
             <p className="text-[11px] text-slate-500">Usado na pesagem quando o produto não tem preço definido</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-1 min-w-[180px]">
+        <div className="flex items-center gap-2 min-w-[180px]">
           <Input
             type="text"
             inputMode="decimal"
@@ -880,6 +965,63 @@ export default function Buffet() {
             Salvar
           </Button>
         </div>
+        {scaleAvailable && (
+          <div className="flex items-center gap-4 border-l border-slate-200 pl-6">
+            <Cable className="h-4 w-4 text-slate-500 flex-shrink-0" />
+            <div>
+              <label className="block text-xs font-semibold text-slate-700">Balança</label>
+              <p className="text-[11px] text-slate-500">Conecte via USB (Chrome/Edge)</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div>
+                <label className="sr-only">Baud rate</label>
+                <Input
+                  type="number"
+                  value={scaleBaudInput}
+                  onChange={(e) => setScaleBaudInput(e.target.value)}
+                  placeholder="9600"
+                  className="w-20 h-8 text-sm font-mono"
+                />
+              </div>
+              <select
+                value={scaleUnitInput}
+                onChange={(e) => setScaleUnitInput(e.target.value as 'kg' | 'g')}
+                className="h-8 px-2 rounded-md border border-input bg-background text-sm"
+              >
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+              </select>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={savingScaleConfig || !restaurantId || !isOnline}
+                onClick={async () => {
+                  if (!restaurantId) return;
+                  setSavingScaleConfig(true);
+                  try {
+                    const baud = parseInt(scaleBaudInput, 10);
+                    const { error } = await supabase
+                      .from('restaurants')
+                      .update({
+                        scale_baud_rate: isNaN(baud) || baud <= 0 ? 9600 : baud,
+                        scale_unit: scaleUnitInput,
+                      })
+                      .eq('id', restaurantId);
+                    if (error) throw error;
+                    await queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
+                    toast({ title: 'Config da balança salva!' });
+                  } catch {
+                    toast({ title: 'Erro ao salvar', variant: 'destructive' });
+                  } finally {
+                    setSavingScaleConfig(false);
+                  }
+                }}
+              >
+                {savingScaleConfig ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Salvar'}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Métricas rápidas ───────────────────────────────────────────── */}
@@ -927,6 +1069,13 @@ export default function Buffet() {
           buffetPricePerKg={restaurant?.buffet_price_per_kg}
           exchangeRates={restaurant?.exchange_rates}
           paymentCurrencies={restaurant?.payment_currencies}
+          scaleAvailable={scaleAvailable}
+          scaleConnected={scaleConnected}
+          scaleConnecting={scaleConnecting}
+          scaleWeight={scaleWeight}
+          onScaleConnect={scaleConnect}
+          onScaleDisconnect={scaleDisconnect}
+          scaleError={scaleError}
         />
 
         {/* Coluna direita: grid de comandas */}

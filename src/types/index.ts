@@ -181,6 +181,10 @@ export interface Restaurant {
   manual_monthly_revenue_brl?: number | null;
   /** Preço padrão por Kg para buffet (moeda nativa: centavos BRL, inteiro PYG). Usado na pesagem quando produto não tem preço. */
   buffet_price_per_kg?: number | null;
+  /** Baud rate da balança serial (ex: 9600, 2400). */
+  scale_baud_rate?: number | null;
+  /** Unidade de saída da balança: kg ou g. */
+  scale_unit?: 'kg' | 'g' | null;
   /** Tema do cardápio: default_light (padrão), minimal_light ou minimal_dark. NULL = default_light. */
   menu_theme?: string | null;
   /** Cor dos detalhes nos temas minimalistas (orange, blue, emerald, etc). NULL = orange. */

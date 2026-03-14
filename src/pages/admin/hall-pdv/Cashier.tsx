@@ -66,7 +66,11 @@ import {
   Search,
   Scale,
   Plus,
+  Calculator,
+  Cable,
+  PlugZap,
 } from 'lucide-react';
+import { useScaleConnection } from '@/hooks/useScaleConnection';
 import { useAdminTranslation } from '@/hooks/admin/useAdminTranslation';
 import { CashierCompletedView } from '@/components/cashier/CashierCompletedView';
 import { CashierDailyTab } from '@/components/admin/overview/CashierDailyTab';
@@ -188,6 +192,108 @@ function getPaymentLabels(t: (k: string) => string): Record<PaymentMethod, strin
 
 const SCANNER_PATTERN = /^CMD-[A-Z0-9]{4}$/i;
 const ALL_CURRENCIES: CurrencyCode[] = ['BRL', 'PYG', 'ARS', 'USD'];
+
+// ─── Painel de Peso (produtos por kg) ───────────────────────────────────────────
+
+function CashierWeightPanel({
+  product,
+  currency,
+  buffetPricePerKg,
+  weightInput,
+  setWeightInput,
+  onConfirm,
+  onCancel,
+  scaleConnected,
+  scaleConnecting,
+  scaleWeight,
+  scaleAvailable,
+  onScaleConnect,
+  onScaleDisconnect,
+  scaleError,
+}: {
+  product: Product;
+  currency: CurrencyCode;
+  buffetPricePerKg?: number | null;
+  weightInput: string;
+  setWeightInput: (v: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+  scaleConnected?: boolean;
+  scaleConnecting?: boolean;
+  scaleWeight?: number | null;
+  scaleAvailable?: boolean;
+  onScaleConnect?: () => void;
+  onScaleDisconnect?: () => void;
+  scaleError?: string | null;
+}) {
+  const unitPrice = product.price_sale ?? product.price ?? (buffetPricePerKg ?? 0);
+  return (
+    <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 space-y-2 mx-3 mb-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+          <Scale className="h-3.5 w-3.5" />
+          {product.name}
+          <span className="font-normal text-amber-600 dark:text-amber-400">
+            {formatPrice(unitPrice, currency)}/kg
+          </span>
+        </div>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCancel}>
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      {scaleAvailable && (
+        <div className="flex items-center gap-2">
+          {scaleConnected ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onScaleDisconnect}
+              className="h-8 gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+            >
+              <Cable className="h-3.5 w-3.5" />
+              Balança conectada
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onScaleConnect}
+              disabled={scaleConnecting}
+              className="h-8 gap-1.5"
+            >
+              {scaleConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlugZap className="h-3.5 w-3.5" />}
+              {scaleConnecting ? 'Conectando…' : 'Conectar balança'}
+            </Button>
+          )}
+        </div>
+      )}
+      {scaleError && <p className="text-[10px] text-red-600 dark:text-red-400">{scaleError}</p>}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          inputMode="decimal"
+          value={weightInput}
+          onChange={(e) => setWeightInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') onConfirm(); }}
+          placeholder={scaleConnected && scaleWeight != null ? 'Peso da balança' : '0.350 kg'}
+          className="flex-1 h-10 px-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-card font-mono text-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+        <Button onClick={onConfirm} size="sm" className="h-10 px-4 bg-amber-500 hover:bg-amber-600 text-white">
+          <Calculator className="h-4 w-4 mr-1" />
+          Adicionar
+        </Button>
+      </div>
+      {scaleConnected && scaleWeight != null && scaleWeight > 0 && (
+        <p className="text-[11px] text-amber-700 dark:text-amber-300 font-medium">
+          Balança: <span className="font-mono font-bold">{scaleWeight.toFixed(3)} kg</span>
+          {unitPrice > 0 && ` → ${formatPrice(unitPrice * scaleWeight, currency)}`}
+        </p>
+      )}
+    </div>
+  );
+}
 
 // ─── Painel de Produtos (igual ao Buffet) ───────────────────────────────────────
 
@@ -447,6 +553,28 @@ function CashierContent() {
   const [addingProduct, setAddingProduct] = useState(false);
   const [creatingComanda, setCreatingComanda] = useState(false);
   const [removingBuffetComanda, setRemovingBuffetComanda] = useState(false);
+  const [selectedWeightProduct, setSelectedWeightProduct] = useState<Product | null>(null);
+  const [weightInput, setWeightInput] = useState('');
+
+  const scaleConfig = useMemo(
+    () => ({
+      baudRate: restaurant?.scale_baud_rate ?? 9600,
+      unit: (restaurant?.scale_unit ?? 'kg') as 'kg' | 'g',
+    }),
+    [restaurant?.scale_baud_rate, restaurant?.scale_unit]
+  );
+  const {
+    isAvailable: scaleAvailable,
+    isConnected: scaleConnected,
+    isConnecting: scaleConnecting,
+    lastWeight: scaleWeight,
+    connect: scaleConnect,
+    disconnect: scaleDisconnect,
+    error: scaleError,
+  } = useScaleConnection({
+    config: scaleConfig,
+    onWeight: (kg) => setWeightInput(kg.toFixed(3)),
+  });
 
   const { data: hasBuffet } = useFeatureAccess('feature_buffet_module', restaurantId);
   const { data: hasTables } = useFeatureAccess('feature_tables', restaurantId);
@@ -1904,11 +2032,48 @@ function CashierContent() {
           {/* Painel de Produtos — igual ao Buffet: adicionar itens à conta selecionada */}
           {selected && !isSelectedReservation && (
             <div className="flex flex-col min-h-0 flex-1 min-h-[200px]">
+              {selectedWeightProduct && (
+                <CashierWeightPanel
+                  product={selectedWeightProduct}
+                  currency={baseCurrency}
+                  buffetPricePerKg={restaurant?.buffet_price_per_kg}
+                  weightInput={weightInput}
+                  setWeightInput={setWeightInput}
+                  onConfirm={async () => {
+                    const w = parseFloat(weightInput.replace(',', '.'));
+                    if (isNaN(w) || w <= 0) {
+                      toast({ title: 'Peso inválido', variant: 'destructive' });
+                      return;
+                    }
+                    await handleAddProductToSelected(selectedWeightProduct, w);
+                    setSelectedWeightProduct(null);
+                    setWeightInput('');
+                  }}
+                  onCancel={() => {
+                    setSelectedWeightProduct(null);
+                    setWeightInput('');
+                  }}
+                  scaleConnected={scaleConnected}
+                  scaleConnecting={scaleConnecting}
+                  scaleWeight={scaleWeight}
+                  scaleAvailable={scaleAvailable}
+                  onScaleConnect={scaleConnect}
+                  onScaleDisconnect={scaleDisconnect}
+                  scaleError={scaleError}
+                />
+              )}
               <CashierProductsPanel
                 products={products}
                 currency={baseCurrency}
                 buffetPricePerKg={restaurant?.buffet_price_per_kg}
-                onProductClick={(p) => handleAddProductToSelected(p)}
+                onProductClick={(p) => {
+                  if (p.is_by_weight) {
+                    setSelectedWeightProduct(p);
+                    setWeightInput('');
+                  } else {
+                    handleAddProductToSelected(p);
+                  }
+                }}
                 selectedLabel={selected.label}
                 disabled={addingProduct}
                 t={t}
