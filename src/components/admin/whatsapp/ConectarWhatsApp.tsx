@@ -6,7 +6,7 @@
  * - Status "WhatsApp Conectado" quando whatsapp_connected = true (atualizado via webhook)
  * - Botão "Desconectar" para encerrar a sessão
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/core/supabase';
 
@@ -27,6 +27,7 @@ async function getInvokeErrorMessage(err: unknown): Promise<string> {
   return e.message || fallback;
 }
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Loader2, QrCode, RefreshCw, AlertCircle, CheckCircle2, Link2Off } from 'lucide-react';
 import { toast } from '@/hooks/shared/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -35,6 +36,7 @@ import QRCode from 'qrcode';
 export interface ConectarWhatsAppProps {
   restaurantId: string;
   whatsappConnected?: boolean;
+  automationActive?: boolean;
   disabled?: boolean;
   onStatusChange?: () => void;
   className?: string;
@@ -47,6 +49,7 @@ function toInstanceName(restaurantId: string): string {
 export function ConectarWhatsApp({
   restaurantId,
   whatsappConnected = false,
+  automationActive = true,
   disabled,
   onStatusChange,
   className = '',
@@ -55,8 +58,26 @@ export function ConectarWhatsApp({
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [togglingAutomation, setTogglingAutomation] = useState(false);
   const [qrImageSrc, setQrImageSrc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Poll connected status every 3s while QR is displayed
+  useEffect(() => {
+    if (!qrImageSrc || whatsappConnected) return;
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [qrImageSrc, whatsappConnected, queryClient, restaurantId]);
+
+  // Clear QR when connection confirmed
+  useEffect(() => {
+    if (whatsappConnected && qrImageSrc) {
+      setQrImageSrc(null);
+      setError(null);
+    }
+  }, [whatsappConnected, qrImageSrc]);
 
   const handleGerarQR = useCallback(async () => {
     if (!restaurantId) return;
@@ -188,6 +209,28 @@ export function ConectarWhatsApp({
     }
   }, [restaurantId, queryClient, onStatusChange]);
 
+  const handleToggleAutomation = useCallback(async (active: boolean) => {
+    setTogglingAutomation(true);
+    try {
+      const { data: rest } = await supabase
+        .from('restaurants')
+        .select('whatsapp_templates')
+        .eq('id', restaurantId)
+        .single();
+      const templates = ((rest as { whatsapp_templates?: Record<string, unknown> })?.whatsapp_templates) ?? {};
+      await supabase
+        .from('restaurants')
+        .update({ whatsapp_templates: { ...templates, automation_active: active } })
+        .eq('id', restaurantId);
+      queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
+      toast({ title: active ? 'Automação ativada' : 'Automação desativada' });
+    } catch {
+      toast({ title: 'Erro', description: 'Não foi possível alterar a configuração', variant: 'destructive' });
+    } finally {
+      setTogglingAutomation(false);
+    }
+  }, [restaurantId, queryClient]);
+
   if (whatsappConnected) {
     return (
       <div className={`space-y-4 ${className}`}>
@@ -214,6 +257,21 @@ export function ConectarWhatsApp({
             )}
             Desconectar
           </Button>
+        </div>
+        <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">Envios automáticos</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {automationActive
+                ? 'Notificações automáticas ativadas para clientes e entregadores'
+                : 'Desativado — botões manuais do kanban voltam a aparecer'}
+            </p>
+          </div>
+          <Switch
+            checked={automationActive}
+            onCheckedChange={handleToggleAutomation}
+            disabled={togglingAutomation}
+          />
         </div>
       </div>
     );
