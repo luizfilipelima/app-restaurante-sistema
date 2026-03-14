@@ -95,7 +95,7 @@ interface NavLeaf {
   hideWhenNoFeature?: boolean;
   /** Descrição curta exibida no tooltip do item bloqueado */
   featureLabel?: string;
-  /** Se true, o item só aparece quando o restaurante tem whatsapp_evolution_enabled */
+  /** Se true, o item é ocultado quando o restaurante tem whatsapp_evolution_enabled (atalho para conectar) */
   requiresWhatsAppEvolution?: boolean;
   /**
    * Se preenchido, o item só é visível para usuários com esses cargos
@@ -328,8 +328,8 @@ function GuardedNavItem({ item, isActive }: { item: NavLeaf; isActive: boolean }
 
   // IMPORTANTE: Todos os hooks devem ser chamados incondicionalmente, antes de qualquer return,
 
-  // Item condicional: só exibe quando whatsapp_evolution_enabled
-  if (item.requiresWhatsAppEvolution && !(restaurant as { whatsapp_evolution_enabled?: boolean })?.whatsapp_evolution_enabled) {
+  // Item condicional: oculta quando whatsapp_evolution_enabled (restaurante já tem a feature; não precisa do atalho)
+  if (item.requiresWhatsAppEvolution && (restaurant as { whatsapp_evolution_enabled?: boolean })?.whatsapp_evolution_enabled) {
     return null;
   }
   // para respeitar as regras dos Hooks do React. Caso contrário ocorre Error #300.
@@ -532,7 +532,7 @@ export default function AdminLayout({
         : []
     )
   ).filter((item) => {
-    if (item.requiresWhatsAppEvolution && !(restaurant as { whatsapp_evolution_enabled?: boolean })?.whatsapp_evolution_enabled) return false;
+    if (item.requiresWhatsAppEvolution && (restaurant as { whatsapp_evolution_enabled?: boolean })?.whatsapp_evolution_enabled) return false;
     return true;
   });
 

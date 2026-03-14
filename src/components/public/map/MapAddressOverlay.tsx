@@ -63,7 +63,7 @@ export default function MapAddressOverlay({
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent
         side="bottom"
-        className="h-[90vh] max-h-[90vh] flex flex-col rounded-t-2xl px-4 pb-8 pt-4 gap-4"
+        className="h-fit max-h-[90vh] flex flex-col rounded-2xl left-4 right-4 top-1/2 -translate-y-1/2 bottom-auto px-4 pb-4 pt-4 gap-4 border"
         showCloseButton={true}
       >
         <SheetHeader className="flex-shrink-0">
@@ -88,7 +88,7 @@ export default function MapAddressOverlay({
           </div>
         )}
 
-        <div className="flex-1 min-h-[240px] rounded-xl overflow-hidden border border-border">
+        <div className="min-h-[240px] rounded-xl overflow-hidden shrink-0">
           <MapAddressPicker
             lat={lat}
             lng={lng}

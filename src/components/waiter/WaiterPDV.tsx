@@ -11,6 +11,11 @@ import { supabase } from '@/lib/core/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
 import { formatPrice } from '@/lib/priceHelper';
 import { ArrowLeft, Send, Plus, Minus, Trash2, Loader2, User } from 'lucide-react';
 import { toast } from '@/hooks/shared/use-toast';
@@ -47,6 +52,9 @@ export function WaiterPDV({ table, restaurantId, currency, products, onOrderPlac
   const [customerName, setCustomerName] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [productForModal, setProductForModal] = useState<Product | null>(null);
+  const [modalObservation, setModalObservation] = useState('');
+  const [modalQuantity, setModalQuantity] = useState(1);
 
   const categories = useMemo(() => {
     const cats = [...new Set(products.map((p) => p.category || 'Outros'))].sort();
@@ -61,24 +69,30 @@ export function WaiterPDV({ table, restaurantId, currency, products, onOrderPlac
   const subtotal = cart.reduce((s, i) => s + i.totalPrice, 0);
   const customerNameForItems = customerName.trim() || null;
 
-  const addSimpleProduct = (p: Product) => {
+  const addProductToCart = (p: Product, quantity = 1, observations?: string) => {
     const price = Number(p.price_sale ?? p.price);
-    const existing = cart.find(
-      (i) =>
-        i.productId === p.id &&
-        !i.pizzaSize &&
-        !i.addons?.length &&
-        !i.observations
-    );
-    if (existing) {
+    const obs = observations?.trim() || undefined;
+
+    // Só mescla se não tiver observação e houver item idêntico (sem addons, pizza, etc.)
+    const existing = !obs
+      ? cart.find(
+          (i) =>
+            i.productId === p.id &&
+            !i.pizzaSize &&
+            !i.addons?.length &&
+            !i.observations
+        )
+      : null;
+
+    if (existing && !obs) {
       setCart((prev) =>
         prev.map((item) =>
           item === existing
             ? {
                 ...item,
                 imageUrl: item.imageUrl ?? p.image_url ?? undefined,
-                quantity: item.quantity + 1,
-                totalPrice: (item.quantity + 1) * item.unitPrice,
+                quantity: item.quantity + quantity,
+                totalPrice: (item.quantity + quantity) * item.unitPrice,
               }
             : item
         )
@@ -90,12 +104,29 @@ export function WaiterPDV({ table, restaurantId, currency, products, onOrderPlac
           productId: p.id,
           productName: p.name,
           imageUrl: p.image_url ?? undefined,
-          quantity: 1,
+          quantity,
           unitPrice: price,
-          totalPrice: price,
+          totalPrice: price * quantity,
+          observations: obs,
         },
       ]);
     }
+  };
+
+  const handleAddFromModal = () => {
+    if (!productForModal) return;
+    const name = productForModal.name;
+    addProductToCart(productForModal, modalQuantity, modalObservation || undefined);
+    setProductForModal(null);
+    setModalObservation('');
+    setModalQuantity(1);
+    toast({ title: `${name} adicionado ao carrinho` });
+  };
+
+  const openProductModal = (p: Product) => {
+    setProductForModal(p);
+    setModalObservation('');
+    setModalQuantity(1);
   };
 
   const updateQuantity = (index: number, delta: number) => {
@@ -225,7 +256,7 @@ export function WaiterPDV({ table, restaurantId, currency, products, onOrderPlac
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => addSimpleProduct(p)}
+                  onClick={() => openProductModal(p)}
                   className="flex items-stretch gap-3 rounded-xl border bg-white p-3 text-left shadow-sm hover:shadow-md active:scale-[0.98] transition-all touch-manipulation overflow-hidden"
                 >
                   <div className="w-14 h-14 min-w-14 min-h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0 ring-1 ring-border">
@@ -306,6 +337,9 @@ export function WaiterPDV({ table, restaurantId, currency, products, onOrderPlac
                         <span className="text-xs text-muted-foreground">
                           {formatPrice(item.unitPrice, currency as 'BRL' | 'PYG' | 'ARS' | 'USD')} × {item.quantity}
                         </span>
+                        {item.observations && (
+                          <p className="text-xs text-amber-700 mt-1 font-medium">Obs: {item.observations}</p>
+                        )}
                       </div>
                       <div className="flex items-center gap-1">
                         <Button
@@ -363,6 +397,79 @@ export function WaiterPDV({ table, restaurantId, currency, products, onOrderPlac
           </div>
         </div>
       </div>
+
+      {/* Modal de item com observação opcional — mobile-first */}
+      <Dialog open={!!productForModal} onOpenChange={(open) => !open && setProductForModal(null)}>
+        <DialogContent
+          hideClose
+          className="max-w-sm w-[calc(100vw-32px)] sm:w-full p-0 gap-0 overflow-hidden rounded-2xl border shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out"
+        >
+          {productForModal && (
+            <>
+              <div className="p-4 border-b">
+                <div className="flex gap-4">
+                  <div className="w-16 h-16 min-w-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                    {productForModal.image_url ? (
+                      <img src={productForModal.image_url} alt={productForModal.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-2xl opacity-25">🍽</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-slate-900 line-clamp-2">{productForModal.name}</h3>
+                    <p className="mt-1 text-base font-bold text-primary">
+                      {formatPrice(Number(productForModal.price_sale ?? productForModal.price), currency as 'BRL' | 'PYG' | 'ARS' | 'USD')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 space-y-4">
+                <div>
+                  <Label className="text-sm text-muted-foreground">Observação (opcional) — aparece no KDS da cozinha e bar</Label>
+                  <Textarea
+                    placeholder="Ex: Sem cebola, ponto da carne, sem gelo..."
+                    value={modalObservation}
+                    onChange={(e) => setModalObservation(e.target.value)}
+                    rows={2}
+                    className="mt-1.5 min-h-[72px] resize-none touch-manipulation"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Quantidade</span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9"
+                      onClick={() => setModalQuantity((q) => Math.max(1, q - 1))}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <span className="w-8 text-center font-semibold tabular-nums">{modalQuantity}</span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9"
+                      onClick={() => setModalQuantity((q) => q + 1)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 pt-0 flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setProductForModal(null)}>
+                  Cancelar
+                </Button>
+                <Button className="flex-1" onClick={handleAddFromModal}>
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Adicionar
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

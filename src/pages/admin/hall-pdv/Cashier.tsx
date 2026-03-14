@@ -74,7 +74,7 @@ import { useTables, useCancelVirtualComanda } from '@/hooks/queries';
 import { useComandas } from '@/hooks/orders/useComandas';
 import type { Product } from '@/types';
 import { RoleGuard } from '@/components/auth/RoleGuard';
-import { ROLES_CANCEL_ORDER } from '@/hooks/auth/useUserRole';
+import { ROLES_REMOVE_OR_EXCLUDE_ORDER } from '@/hooks/auth/useUserRole';
 
 const DATE_LOCALES = { pt: ptBR, es, en: enUS } as const;
 
@@ -106,7 +106,7 @@ interface QueueItemComandaDigital extends QueueItemBase {
   virtualComandaId: string;
   shortCode: string;
   tableNumber: string | null;
-  items: { id: string; product_name: string; quantity: number; unit_price: number; total_price: number; notes: string | null }[];
+  items: { id: string; product_name: string; quantity: number; unit_price: number; total_price: number; notes: string | null; orderId?: string | null }[];
   /** Preenchido quando a comanda é de uma reserva (status pending/confirmed) */
   reservation?: ReservationInfo;
   /** IDs dos pedidos de mesa vinculados (reserva+mesa: paga comanda + marca orders) */
@@ -423,7 +423,12 @@ function CashierContent() {
   const [showExcludeOrderConfirm, setShowExcludeOrderConfirm] = useState(false);
   const [excludingOrder, setExcludingOrder] = useState(false);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
-  const [removeItemConfirm, setRemoveItemConfirm] = useState<{ orderId: string; orderItemId: string; itemName: string } | null>(null);
+  const [removeItemConfirm, setRemoveItemConfirm] = useState<
+    | { type: 'order'; orderId: string; orderItemId: string; itemName: string }
+    | { type: 'virtual_comanda'; comandaId: string; itemId: string; itemName: string; orderId?: string | null }
+    | { type: 'buffet'; comandaId: string; itemId: string; itemName: string }
+    | null
+  >(null);
   const [payPersonDialog, setPayPersonDialog] = useState<{
     customerKey: string;
     label: string;
@@ -576,13 +581,14 @@ function CashierContent() {
           unit_price: i.unit_price,
           total_price: i.total_price,
           notes: i.notes,
+          orderId: null as string | null,
         }));
 
         let label: string;
         let customerName: string | null;
         let tableNumber: string | null = vc.table_number;
         let totalAmount = vc.total_amount ?? 0;
-        const mergedItems = [...vcItems];
+        const mergedItems: Array<{ id: string; product_name: string; quantity: number; unit_price: number; total_price: number; notes: string | null; orderId: string | null }> = [...vcItems];
         let linkedTableOrderIds: string[] | undefined;
 
         if (reservation?.table_id) {
@@ -602,6 +608,7 @@ function CashierContent() {
                   unit_price: i.unit_price ?? 0,
                   total_price: i.total_price ?? 0,
                   notes: i.observations ?? null,
+                  orderId: o.id,
                 });
               });
             });
@@ -1577,6 +1584,70 @@ function CashierContent() {
     }
   };
 
+  const handleRemoveComandaItem = async (
+    type: 'virtual_comanda' | 'buffet',
+    comandaId: string,
+    itemId: string,
+    orderId?: string | null
+  ) => {
+    if (!restaurantId || removingItemId) return;
+    setRemovingItemId(itemId);
+    try {
+      if (type === 'virtual_comanda' && orderId) {
+        await handleRemoveOrderItem(orderId, itemId);
+        if (selected && selected.type === 'comanda_digital' && selected.virtualComandaId === comandaId) {
+          const nextItems = selected.items.filter((i) => i.id !== itemId);
+          if (nextItems.length === 0) handleClearSelection();
+          else {
+            const newTotal = nextItems.reduce((sum, i) => sum + Number(i.total_price ?? 0), 0);
+            setSelected({ ...selected, items: nextItems, totalAmount: newTotal });
+          }
+        }
+        return;
+      }
+      if (type === 'virtual_comanda') {
+        const { error } = await supabase.rpc('cashier_remove_virtual_comanda_item', {
+          p_comanda_id: comandaId,
+          p_item_id: itemId,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.rpc('cashier_remove_comanda_item', {
+          p_comanda_id: comandaId,
+          p_item_id: itemId,
+        });
+        if (error) throw error;
+      }
+      loadQueue();
+      queryClient.invalidateQueries({ queryKey: ['tableStatuses', restaurantId] });
+      toast({ title: t('cashier.itemRemoved') });
+      if (selected) {
+        const refreshSelected = (s: typeof selected) => {
+          if (s.type === 'comanda_digital' && s.virtualComandaId === comandaId) {
+            const nextItems = s.items.filter((i) => i.id !== itemId);
+            if (nextItems.length === 0) return null;
+            const newTotal = nextItems.reduce((sum, i) => sum + Number(i.total_price ?? 0), 0);
+            return { ...s, items: nextItems, totalAmount: newTotal } as CashierDisplayItem;
+          }
+          if (s.type === 'comanda_buffet' && s.comandaId === comandaId) {
+            const nextItems = s.items.filter((i) => i.id !== itemId);
+            if (nextItems.length === 0) return null;
+            const newTotal = nextItems.reduce((sum, i) => sum + Number(i.total_price ?? 0), 0);
+            return { ...s, items: nextItems, totalAmount: newTotal } as CashierDisplayItem;
+          }
+          return s;
+        };
+        const next = refreshSelected(selected);
+        if (next) setSelected(next);
+        else handleClearSelection();
+      }
+    } catch (err: any) {
+      toast({ title: t('cashier.errorRemoveItem'), description: err?.message, variant: 'destructive' });
+    } finally {
+      setRemovingItemId(null);
+    }
+  };
+
   function refreshSelectedAfterItemRemoval(
     current: CashierDisplayItem,
     orderId: string,
@@ -1939,7 +2010,7 @@ function CashierContent() {
                         <div key={it.id} className="flex justify-between items-center gap-2 text-sm py-0.5 group/item">
                           <span className="truncate flex-1">{Number(it.qty) % 1 === 0 ? `${it.qty}×` : it.qty} {it.name}</span>
                           <span className="font-medium tabular-nums shrink-0">{formatPrice(Number(it.price), currency)}</span>
-                          <RoleGuard allowedRoles={[...ROLES_CANCEL_ORDER]}>
+                          <RoleGuard allowedRoles={[...ROLES_REMOVE_OR_EXCLUDE_ORDER]}>
                             <Button
                               type="button"
                               variant="ghost"
@@ -1947,7 +2018,7 @@ function CashierContent() {
                               className="h-6 w-6 shrink-0 opacity-0 group-hover/item:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setRemoveItemConfirm({ orderId: it.orderId, orderItemId: it.id, itemName: it.name });
+                                setRemoveItemConfirm({ type: 'order', orderId: it.orderId, orderItemId: it.id, itemName: it.name });
                               }}
                               disabled={!!removingItemId}
                               title={t('cashier.removeItem')}
@@ -1957,6 +2028,35 @@ function CashierContent() {
                           </RoleGuard>
                         </div>
                       ))}
+                    </div>
+                  ))
+                ) : (selected?.type === 'comanda_digital' || selected?.type === 'comanda_buffet') && selected.items?.length ? (
+                  selected.items.map((it: { id: string; product_name?: string; description?: string; quantity: number; total_price: number; orderId?: string | null }) => (
+                    <div key={it.id} className="px-4 py-3 flex justify-between items-center gap-2 group/comitem">
+                      <span className="text-sm truncate flex-1">
+                        {Number(it.quantity) % 1 === 0 ? `${it.quantity}×` : it.quantity} {it.product_name ?? it.description ?? ''}
+                      </span>
+                      <span className="text-sm font-semibold tabular-nums shrink-0">{formatPrice(Number(it.total_price), currency)}</span>
+                      <RoleGuard allowedRoles={[...ROLES_REMOVE_OR_EXCLUDE_ORDER]}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0 opacity-0 group-hover/comitem:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRemoveItemConfirm(
+                              selected.type === 'comanda_digital'
+                                ? { type: 'virtual_comanda', comandaId: selected.virtualComandaId, itemId: it.id, itemName: it.product_name ?? it.description ?? '', orderId: it.orderId ?? null }
+                                : { type: 'buffet', comandaId: selected.comandaId, itemId: it.id, itemName: it.description ?? '' }
+                            );
+                          }}
+                          disabled={!!removingItemId}
+                          title={t('cashier.removeItem')}
+                        >
+                          {removingItemId === it.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                        </Button>
+                      </RoleGuard>
                     </div>
                   ))
                 ) : (
@@ -1999,7 +2099,7 @@ function CashierContent() {
                   {t('cashier.finalize')}
                 </Button>
                 {selected.type === 'comanda_digital' && (
-                  <RoleGuard allowedRoles={[...ROLES_CANCEL_ORDER]}>
+                  <RoleGuard allowedRoles={[...ROLES_REMOVE_OR_EXCLUDE_ORDER]}>
                     <Button
                       variant="ghost"
                       className="w-full mt-3 text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -2016,7 +2116,7 @@ function CashierContent() {
                   </RoleGuard>
                 )}
                 {selected.type === 'comanda_buffet' && (
-                  <RoleGuard allowedRoles={[...ROLES_CANCEL_ORDER]}>
+                  <RoleGuard allowedRoles={[...ROLES_REMOVE_OR_EXCLUDE_ORDER]}>
                     <Button
                       variant="ghost"
                       className="w-full mt-3 text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -2033,7 +2133,7 @@ function CashierContent() {
                   </RoleGuard>
                 )}
                 {(selected.type === 'table' || isTableGroup(selected)) && (
-                  <RoleGuard allowedRoles={[...ROLES_CANCEL_ORDER]}>
+                  <RoleGuard allowedRoles={[...ROLES_REMOVE_OR_EXCLUDE_ORDER]}>
                     <Button
                       variant="ghost"
                       className="w-full mt-3 text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -2273,10 +2373,18 @@ function CashierContent() {
             <Button
               variant="destructive"
               onClick={() => {
-                if (removeItemConfirm) {
+                if (!removeItemConfirm) return;
+                if (removeItemConfirm.type === 'order') {
                   handleRemoveOrderItem(removeItemConfirm.orderId, removeItemConfirm.orderItemId);
-                  setRemoveItemConfirm(null);
+                } else {
+                  handleRemoveComandaItem(
+                    removeItemConfirm.type,
+                    removeItemConfirm.comandaId,
+                    removeItemConfirm.itemId,
+                    removeItemConfirm.type === 'virtual_comanda' ? removeItemConfirm.orderId : undefined
+                  );
                 }
+                setRemoveItemConfirm(null);
               }}
               disabled={!!removingItemId}
             >

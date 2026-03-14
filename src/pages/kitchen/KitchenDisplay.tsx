@@ -482,12 +482,12 @@ function OrderCard({
       <CardHeader className="pb-2 bg-slate-800/50 border-b border-slate-700/50">
         <div className="flex justify-between items-start gap-2">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-2xl font-black text-white">#{order.id.slice(0, 4).toUpperCase()}</h3>
-              <Badge variant="outline" className={`shrink-0 border-0 text-xs font-bold ${categoryConfig.badgeClass}`}>
-                <IconComp className="h-3 w-3 mr-1" />
+            <div className="flex flex-col gap-1.5">
+              <Badge variant="outline" className={`shrink-0 border-2 w-fit text-xl font-black px-4 py-1.5 rounded-lg ${categoryConfig.badgeClass}`}>
+                <IconComp className="h-5 w-5 mr-2" />
                 {badgeLabel}
               </Badge>
+              <span className="text-sm font-medium text-slate-400">#{order.id.slice(0, 4).toUpperCase()}</span>
             </div>
             {(isTableOrder || isComandaOrder) && order.customer_name && !/^Mesa\s+\d+$/i.test(order.customer_name) && (
               <p className="text-slate-400 text-sm font-medium mt-0.5">Cliente: {order.customer_name}</p>

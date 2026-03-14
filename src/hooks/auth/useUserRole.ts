@@ -120,5 +120,8 @@ export const ROLES_ORDERS_READ = ['waiter', 'cashier', 'manager', 'restaurant_ad
 /** Roles que podem cancelar pedidos ou itens no Caixa/PDV: caixa, recepcionista (cashier), gerente, admin (proprietário), super_admin */
 export const ROLES_CANCEL_ORDER = ['cashier', 'manager', 'owner', 'restaurant_admin', 'super_admin'] as const;
 
+/** Roles que podem remover item ou excluir pedido: apenas super_admin e proprietário (owner/restaurant_admin) */
+export const ROLES_REMOVE_OR_EXCLUDE_ORDER = ['owner', 'restaurant_admin', 'super_admin'] as const;
+
 /** Roles que podem acessar o KDS */
 export const ROLES_KITCHEN_ACCESS = ['kitchen', 'manager', 'restaurant_admin', 'super_admin'] as const;

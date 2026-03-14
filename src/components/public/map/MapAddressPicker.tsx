@@ -124,8 +124,8 @@ export default function MapAddressPicker({
 
   return (
     <div className="space-y-2">
-      <p className="flex items-center gap-1.5 text-xs text-muted-foreground select-none">
-        <span className="text-sm leading-none">✋</span>
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground select-none px-0 pb-4">
+        <span className="text-sm leading-none px-[5px]">✋</span>
         {instruction}
       </p>
 

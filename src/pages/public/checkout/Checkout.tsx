@@ -294,6 +294,26 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
     load();
   }, [restaurantId, currentRestaurant?.id]);
 
+  // Sincroniza i18n com o idioma do restaurante sempre que currentRestaurant estiver disponível
+  useEffect(() => {
+    const r = currentRestaurant as { language?: 'pt' | 'es' | 'en' } | null;
+    if (!r?.language) return;
+    const userHasChosen = hasStoredMenuLanguage();
+    const lang: MenuLanguage = userHasChosen ? getStoredMenuLanguage() : (r.language === 'es' ? 'es' : 'pt');
+    if (!userHasChosen) setStoredMenuLanguage(lang);
+    i18n.changeLanguage(lang);
+  }, [currentRestaurant?.id, (currentRestaurant as { language?: string })?.language]);
+
+  // Define o país padrão do telefone conforme o telefone do restaurante (quando não houver preferência salva)
+  useEffect(() => {
+    if (!restaurantId || !currentRestaurant) return;
+    const pc = (currentRestaurant as { phone_country?: string })?.phone_country;
+    if (!pc || !['BR', 'PY', 'AR'].includes(pc)) return;
+    const saved = localStorage.getItem(`checkout_phone_country_${restaurantId}`);
+    if (saved) return;
+    setPhoneCountry(pc as 'BR' | 'PY' | 'AR');
+  }, [restaurantId, currentRestaurant?.id, (currentRestaurant as { phone_country?: string })?.phone_country]);
+
   useEffect(() => {
     document.title = currentRestaurant?.name
       ? `${currentRestaurant.name} - ${t('checkout.title')}`
@@ -776,7 +796,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
               return (
                 <div key={index} className="flex items-start gap-3 px-4 py-3.5">
                   {/* Emoji/avatar */}
-                  <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 text-xl mt-0.5">
+                  <div className="h-[55px] w-[55px] rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 text-xl mt-0.5">
                     {item.isPizza ? '🍽️' : item.isMarmita ? '🍱' : '🍽️'}
                   </div>
 
@@ -1521,7 +1541,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
         {/* ── 9. Resumo ── */}
         {!isTableOrder && (
           <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-border">
+            <div className="px-4 pt-0 pb-3 border-b border-border">
               <span className="text-sm font-semibold text-card-foreground">Resumo do pedido</span>
             </div>
             <div className="px-4 py-3 space-y-2.5">
@@ -1585,8 +1605,7 @@ export default function PublicCheckout({ tenantSlug: tenantSlugProp }: PublicChe
 
       {/* ── Barra de ação sticky ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 bg-card/97 backdrop-blur-md border-t border-border px-4 pt-4 shadow-2xl shadow-black/10"
-        style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+        className="fixed bottom-0 left-0 right-0 z-30 bg-card/97 backdrop-blur-md border-t border-border px-[18px] pt-[18px] pb-5 shadow-2xl shadow-black/10"
       >
         <div className="max-w-xl mx-auto space-y-2.5">
 
