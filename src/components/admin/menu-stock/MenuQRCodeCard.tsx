@@ -2,8 +2,8 @@ import { useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import QRCodeLib from 'qrcode';
 import { Button } from '@/components/ui/button';
-import { Download, QrCode, ShoppingCart, Eye, Copy, Printer, Receipt, Loader2, Check } from 'lucide-react';
-import { getCardapioPublicUrl, getComandaPublicUrl } from '@/lib/core/utils';
+import { Download, QrCode, ShoppingCart, Eye, Copy, Printer, Receipt, Loader2, Check, Link2 } from 'lucide-react';
+import { getCardapioPublicUrl, getComandaPublicUrl, getBioPublicUrl } from '@/lib/core/utils';
 import { toast } from '@/hooks/shared/use-toast';
 
 interface MenuQRCodeCardProps {
@@ -14,7 +14,7 @@ interface MenuQRCodeCardProps {
   logo?: string | null;
 }
 
-type QRCodeType = 'interactive' | 'view-only' | 'comanda';
+type QRCodeType = 'interactive' | 'view-only' | 'bio' | 'comanda';
 
 const COMANDA_PRINT_TITLE = 'Escaneie para abrir sua comanda';
 const COMANDA_PRINT_HINT = 'Aponte a câmera do celular. Nenhum aplicativo necessário.';
@@ -22,6 +22,7 @@ const COMANDA_PRINT_HINT = 'Aponte a câmera do celular. Nenhum aplicativo neces
 export default function MenuQRCodeCard({ slug, restaurantName, logo }: MenuQRCodeCardProps) {
   const qrCodeRefInteractive = useRef<HTMLDivElement>(null);
   const qrCodeRefViewOnly = useRef<HTMLDivElement>(null);
+  const qrCodeRefBio = useRef<HTMLDivElement>(null);
   const qrCodeRefComanda = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState<QRCodeType | null>(null);
   const [printingComanda, setPrintingComanda] = useState(false);
@@ -29,6 +30,7 @@ export default function MenuQRCodeCard({ slug, restaurantName, logo }: MenuQRCod
 
   const cardapioUrl = getCardapioPublicUrl(slug);
   const cardapioViewOnlyUrl = cardapioUrl + '/menu';
+  const bioUrl = slug ? getBioPublicUrl(slug) : '';
   const comandaUrl = slug ? getComandaPublicUrl(slug) : '';
 
   if (!slug) {
@@ -67,7 +69,7 @@ export default function MenuQRCodeCard({ slug, restaurantName, logo }: MenuQRCod
       return;
     }
 
-    const qrCodeRef = type === 'interactive' ? qrCodeRefInteractive : qrCodeRefViewOnly;
+    const qrCodeRef = type === 'interactive' ? qrCodeRefInteractive : type === 'view-only' ? qrCodeRefViewOnly : qrCodeRefBio;
     if (!qrCodeRef.current) return;
 
     setDownloading(type);
@@ -98,7 +100,8 @@ export default function MenuQRCodeCard({ slug, restaurantName, logo }: MenuQRCod
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `qrcode-cardapio-${slug}-${type === 'interactive' ? 'interativo' : 'visualizacao'}.png`;
+          const label = type === 'interactive' ? 'interativo' : type === 'view-only' ? 'visualizacao' : 'link-bio';
+          link.download = `qrcode-cardapio-${slug}-${label}.png`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -268,6 +271,50 @@ export default function MenuQRCodeCard({ slug, restaurantName, logo }: MenuQRCod
           )}
         </Button>
       </div>
+
+      {/* QR Code Link Bio */}
+      {bioUrl && (
+        <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-cyan-100 dark:bg-cyan-950/40 flex items-center justify-center shrink-0">
+              <Link2 className="h-3 w-3 text-cyan-600" />
+            </div>
+            <span className="text-xs font-semibold text-foreground">Link Bio</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">Links e Bio</span>
+          </div>
+
+          <div className="flex justify-center">
+            <div
+              ref={qrCodeRefBio}
+              className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-sm inline-block"
+            >
+              <QRCodeSVG
+                value={bioUrl}
+                size={148}
+                level="H"
+                includeMargin={false}
+                fgColor="#111827"
+                bgColor="#ffffff"
+              />
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full h-8 text-xs gap-1.5"
+            onClick={() => handleDownloadQRCode('bio')}
+            disabled={downloading !== null}
+          >
+            {downloading === 'bio' ? (
+              <><Download className="h-3.5 w-3.5 animate-pulse" />Gerando...</>
+            ) : (
+              <><Download className="h-3.5 w-3.5" />Baixar PNG</>
+            )}
+          </Button>
+        </div>
+      )}
 
       {/* QR Code Comanda (mesa / PDV) */}
       {comandaUrl && (

@@ -555,9 +555,11 @@ function BarOrderCard({
           </div>
         )}
 
-        <Button className={`w-full h-14 text-xl font-bold ${actionColor} shadow-lg mt-2`} onClick={onAction}>
-          {actionLabel} <ArrowRight className="ml-2 h-6 w-6" />
-        </Button>
+        {variant === 'preparing' && (
+          <Button className={`w-full h-14 text-xl font-bold ${actionColor} shadow-lg mt-2`} onClick={onAction}>
+            {actionLabel} <ArrowRight className="ml-2 h-6 w-6" />
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
